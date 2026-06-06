@@ -26,7 +26,7 @@ window.CFG = {
   logoUrl:           "Logo.png",
 
   // App edition label shown below logo in sidebar (leave blank to hide)
-  appEdition:        "Enterprise Edition",
+  appEdition:        "",
 
   // ── 🔤 Typography ────────────────────────────────────────────────────────
   fontFamily:        "DM Sans",
