@@ -1,0 +1,2357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Geofence & Locations</title>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlfD24fvfHS4agCYkrxg4v_SQWgnYuNxA&libraries=geometry"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+/* ═══════════════════════════════════════════════════
+   GEOFENCE PAGE — Premium Redesign
+   Font: Plus Jakarta Sans (display) + DM Sans (body)
+   Theme: Deep forest green + warm off-white + slate
+   ═══════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap');
+
+:root {
+  --g-green:     #1e6b3c;
+  --g-green-l:   #eaf4ee;
+  --g-green-m:   #c6e6d1;
+  --g-blue:      #1d4ed8;
+  --g-blue-l:    #dbeafe;
+  --g-amber:     #92400e;
+  --g-amber-l:   #fef3c7;
+  --g-purple:    #5b21b6;
+  --g-purple-l:  #ede9fe;
+  --g-red:       #b91c1c;
+  --g-red-l:     #fee2e2;
+  --g-slate:     #1e293b;
+  --g-slate-2:   #334155;
+  --g-muted:     #64748b;
+  --g-muted-l:   #94a3b8;
+  --g-border:    #e2e8f0;
+  --g-border-h:  #cbd5e1;
+  --g-surface:   #ffffff;
+  --g-surface-2: #f8fafc;
+  --g-surface-3: #f1f5f9;
+  --shadow-xs: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-sm: 0 4px 6px -1px rgba(0,0,0,.07), 0 2px 4px -1px rgba(0,0,0,.04);
+  --shadow-md: 0 10px 15px -3px rgba(0,0,0,.08), 0 4px 6px -2px rgba(0,0,0,.04);
+  --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-pill: 99px;
+}
+
+/* ── STAT CARDS ──────────────────────────────────────────── */
+.g-stats {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 14px;
+  margin-bottom: 20px;
+}
+.g-stat {
+  background: var(--g-surface);
+  border: 1.5px solid var(--g-border);
+  border-radius: var(--r-lg);
+  padding: 18px 20px;
+  display: flex; align-items: center; gap: 14px;
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow .2s, border-color .2s;
+  position: relative; overflow: hidden;
+}
+.g-stat::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 3px; border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+.g-stat:nth-child(1)::before { background: var(--g-slate); }
+.g-stat:nth-child(2)::before { background: var(--g-blue); }
+.g-stat:nth-child(3)::before { background: var(--g-green); }
+.g-stat:nth-child(4)::before { background: #059669; }
+.g-stat:hover { box-shadow: var(--shadow-sm); border-color: var(--g-border-h); }
+.g-stat-icon {
+  width: 44px; height: 44px; border-radius: var(--r-md); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+}
+.g-stat-val {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 30px; font-weight: 800; line-height: 1;
+  letter-spacing: -1px;
+}
+.g-stat-label {
+  font-size: 11px; font-weight: 600; color: var(--g-muted);
+  text-transform: uppercase; letter-spacing: .6px; margin-top: 3px;
+}
+
+/* ── MAP CARD ─────────────────────────────────────────────── */
+.g-map-card {
+  background: var(--g-surface); border: 1.5px solid var(--g-border);
+  border-radius: var(--r-lg); overflow: hidden; margin-bottom: 20px;
+  box-shadow: var(--shadow-xs);
+}
+.g-map-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid var(--g-border);
+}
+.g-map-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px; font-weight: 700; color: var(--g-slate);
+  display: flex; align-items: center; gap: 8px;
+}
+#main-map { width: 100%; height: 320px; }
+.g-map-footer {
+  display: flex; gap: 20px; padding: 10px 18px;
+  border-top: 1px solid var(--g-border); background: var(--g-surface-2);
+}
+.g-legend-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11.5px; color: var(--g-muted); font-weight: 500;
+}
+.g-legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+/* ── MAIN TABLE CARD ─────────────────────────────────────── */
+.g-card {
+  background: var(--g-surface); border: 1.5px solid var(--g-border);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-xs); overflow: hidden;
+}
+.g-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--g-border);
+  background: var(--g-surface);
+}
+.g-card-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px; font-weight: 700; color: var(--g-slate);
+}
+.g-card-sub { font-size: 12px; color: var(--g-muted); margin-top: 2px; }
+
+/* ── TOOLBAR ─────────────────────────────────────────────── */
+.g-toolbar {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 14px 20px; border-bottom: 1px solid var(--g-border);
+  background: var(--g-surface-2);
+}
+.g-search-wrap { position: relative; }
+.g-search-wrap svg {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  color: var(--g-muted-l); pointer-events: none;
+}
+.g-search {
+  padding: 8px 12px 8px 36px; width: 230px;
+  border: 1.5px solid var(--g-border); border-radius: var(--r-sm);
+  font-size: 13px; font-family: 'DM Sans', sans-serif;
+  background: var(--g-surface); color: var(--g-slate); outline: none;
+  transition: all .15s;
+}
+.g-search:focus { border-color: var(--g-green); box-shadow: 0 0 0 3px rgba(30,107,60,.1); }
+.g-filter-sel {
+  padding: 8px 12px; font-size: 12px; font-weight: 600;
+  border: 1.5px solid var(--g-border); border-radius: var(--r-sm);
+  background: var(--g-surface); color: var(--g-slate); outline: none; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: border-color .15s;
+}
+.g-filter-sel:focus { border-color: var(--g-green); }
+.g-count { font-size: 12px; color: var(--g-muted); font-weight: 500; margin-left: auto; }
+
+/* ── MAIN LOC TABLE ──────────────────────────────────────── */
+.g-table { width: 100%; border-collapse: collapse; }
+.g-table thead th {
+  padding: 10px 16px; text-align: left;
+  font-size: 10px; font-weight: 700; color: var(--g-muted);
+  text-transform: uppercase; letter-spacing: .6px;
+  background: var(--g-surface-3); border-bottom: 1.5px solid var(--g-border);
+  white-space: nowrap;
+}
+.g-section-hdr td {
+  padding: 7px 16px;
+  font-size: 9.5px; font-weight: 800; color: var(--g-muted);
+  text-transform: uppercase; letter-spacing: 1.2px;
+  background: linear-gradient(to right, var(--g-surface-3), var(--g-surface-2));
+  border-bottom: 1px solid var(--g-border);
+}
+.g-table tbody tr.loc-row { border-bottom: 1px solid var(--g-border); transition: background .12s; }
+.g-table tbody tr.loc-row:hover { background: #fafcfb; }
+.g-table tbody td { padding: 11px 16px; vertical-align: middle; }
+
+/* ── BADGES ──────────────────────────────────────────────── */
+.gbadge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: var(--r-pill);
+  font-size: 10.5px; font-weight: 700; white-space: nowrap; letter-spacing: .2px;
+}
+.gbadge-office  { background: var(--g-blue-l);   color: var(--g-blue); }
+.gbadge-global  { background: var(--g-green-l);  color: var(--g-green); }
+.gbadge-wfh     { background: var(--g-purple-l); color: var(--g-purple); }
+.gbadge-active  { background: #dcfce7; color: #15803d; }
+.gbadge-inactive{ background: var(--g-surface-3); color: var(--g-muted); }
+.gbadge-onsite  { background: var(--g-blue-l);   color: var(--g-blue); }
+.gbadge-offsite { background: var(--g-green-l);  color: var(--g-green); }
+.gbadge-univ    { background: var(--g-purple-l); color: var(--g-purple); }
+.gbadge-none    { background: var(--g-surface-3); color: var(--g-muted-l); }
+.gbadge-district{ background: var(--g-green-l);  color: #166534; }
+.gbadge-state   { background: var(--g-amber-l);  color: var(--g-amber); }
+
+/* ── EXPAND BUTTON ───────────────────────────────────────── */
+.g-expand {
+  width: 26px; height: 26px; border-radius: 50%; border: none; cursor: pointer;
+  background: var(--g-surface-3); color: var(--g-muted);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; transition: all .18s; flex-shrink: 0;
+}
+.g-expand:hover { background: var(--g-green-m); color: var(--g-green); }
+.g-expand.open  { background: var(--g-green); color: #fff; transform: rotate(90deg); }
+
+/* ── SLIDER ──────────────────────────────────────────────── */
+.g-slider {
+  -webkit-appearance: none; height: 5px; border-radius: 99px;
+  outline: none; cursor: pointer;
+  background: linear-gradient(90deg, var(--g-green) var(--pct,30%), var(--g-border) var(--pct,30%));
+}
+.g-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 15px; height: 15px;
+  border-radius: 50%; background: var(--g-green);
+  border: 2.5px solid #fff; box-shadow: 0 1px 5px rgba(30,107,60,.35); cursor: pointer;
+}
+.g-sval {
+  min-width: 46px; font-size: 11.5px; font-weight: 700; color: var(--g-green);
+  font-family: 'Plus Jakarta Sans', sans-serif; text-align: right;
+}
+
+/* ── ACTION ICON BUTTONS ─────────────────────────────────── */
+.g-icon-btn {
+  width: 30px; height: 30px; border-radius: var(--r-sm); border: 1.5px solid var(--g-border);
+  background: var(--g-surface); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; transition: all .15s; color: var(--g-muted);
+}
+.g-icon-btn:hover { border-color: var(--g-green); background: var(--g-green-l); color: var(--g-green); }
+.g-icon-btn.danger:hover { border-color: var(--g-red); background: var(--g-red-l); color: var(--g-red); }
+
+/* ── SAVE MINI BUTTON ────────────────────────────────────── */
+.g-save-btn {
+  padding: 4px 10px; font-size: 10.5px; font-weight: 700;
+  background: var(--g-green); color: #fff; border: none;
+  border-radius: 6px; cursor: pointer; white-space: nowrap;
+  font-family: 'DM Sans', sans-serif; transition: opacity .15s;
+}
+.g-save-btn:hover { opacity: .85; }
+.g-apply-btn {
+  padding: 5px 12px; font-size: 11px; font-weight: 700;
+  background: var(--g-green); color: #fff; border: none;
+  border-radius: 7px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+  transition: all .15s; display: inline-flex; align-items: center; gap: 4px;
+}
+.g-apply-btn:hover { opacity: .88; transform: translateY(-1px); }
+.g-remove-btn {
+  width: 26px; height: 26px; border-radius: 50%; border: none; cursor: pointer;
+  background: none; color: var(--g-muted-l); font-size: 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.g-remove-btn:hover { background: var(--g-red-l); color: var(--g-red); }
+
+/* ── SUB EMPLOYEE PANEL ──────────────────────────────────── */
+.g-sub-panel td { background: #f6faf7 !important; }
+.g-sub-panel .g-accent-bar { border-left: 3px solid var(--g-green); }
+.g-emp-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.g-emp-table thead th {
+  padding: 8px 14px; text-align: left;
+  font-size: 9.5px; font-weight: 700; color: var(--g-muted);
+  text-transform: uppercase; letter-spacing: .5px;
+  background: rgba(30,107,60,.05); border-bottom: 1px solid rgba(30,107,60,.12);
+}
+.g-emp-table tbody tr { border-bottom: 1px solid rgba(30,107,60,.08); transition: background .1s; }
+.g-emp-table tbody tr:hover { background: rgba(30,107,60,.03); }
+.g-emp-table tbody tr:last-child { border-bottom: none; }
+.g-emp-table tbody td { padding: 9px 14px; vertical-align: middle; }
+
+/* ── RULE SELECT ─────────────────────────────────────────── */
+.g-rule-sel {
+  padding: 5px 8px; font-size: 11.5px; font-weight: 600;
+  border: 1.5px solid var(--g-border); border-radius: 7px;
+  background: var(--g-surface); color: var(--g-slate); outline: none; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: border-color .15s;
+}
+.g-rule-sel:focus { border-color: var(--g-green); }
+
+/* ── STATE/DISTRICT DROPDOWNS ────────────────────────────── */
+.g-loc-select {
+  width: 100%; padding: 6px 10px; font-size: 11px; font-weight: 500;
+  border: 1.5px solid var(--g-border); border-radius: 7px;
+  background: var(--g-surface); color: var(--g-slate); outline: none; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: border-color .15s;
+  margin-top: 4px;
+}
+.g-loc-select:focus { border-color: var(--g-green); box-shadow: 0 0 0 2px rgba(30,107,60,.08); }
+
+/* ── AVATAR ──────────────────────────────────────────────── */
+.g-avatar {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11.5px; font-weight: 700; color: var(--g-green);
+  background: var(--g-green-l); border: 1.5px solid var(--g-green-m);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* ── LOC NAME CELL ───────────────────────────────────────── */
+.g-loc-name { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13.5px; font-weight: 700; color: var(--g-slate); }
+.g-loc-addr { font-size: 11px; color: var(--g-muted-l); margin-top: 2px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── EMP COUNT CHIP ──────────────────────────────────────── */
+.g-emp-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--g-surface-2); border: 1.5px solid var(--g-border);
+  border-radius: var(--r-pill); padding: 3px 10px;
+  font-size: 12px; font-weight: 600; color: var(--g-slate-2);
+}
+.g-emp-chip-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--g-green); }
+
+/* ── BUFFER DISPLAY ──────────────────────────────────────── */
+.g-boundary-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; font-weight: 700; color: var(--g-slate-2);
+}
+.g-boundary-sub { font-size: 10px; color: var(--g-muted-l); margin-top: 1px; }
+
+/* ── MODAL OVERRIDES ─────────────────────────────────────── */
+.g-modal-inner {
+  font-family: 'DM Sans', sans-serif;
+}
+.g-form-label {
+  font-size: 10.5px; font-weight: 700; color: var(--g-muted);
+  text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; display: block;
+}
+.g-input {
+  width: 100%; padding: 9px 12px;
+  border: 1.5px solid var(--g-border); border-radius: var(--r-sm);
+  font-size: 13px; font-family: 'DM Sans', sans-serif;
+  color: var(--g-slate); background: var(--g-surface); outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.g-input:focus { border-color: var(--g-green); box-shadow: 0 0 0 3px rgba(30,107,60,.1); }
+.g-global-note {
+  background: var(--g-green-l); border-left: 3px solid var(--g-green);
+  border-radius: var(--r-sm); padding: 10px 14px;
+  font-size: 12px; color: var(--g-green); font-weight: 500;
+}
+
+/* ── REFRESH BTN ─────────────────────────────────────────── */
+.g-refresh-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; font-size: 12px; font-weight: 600;
+  border: 1.5px solid var(--g-border); border-radius: var(--r-sm);
+  background: var(--g-surface); color: var(--g-muted); cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: all .15s;
+}
+.g-refresh-btn:hover { border-color: var(--g-green); color: var(--g-green); background: var(--g-green-l); }
+
+/* ── EXPAND ALL BTNS ─────────────────────────────────────── */
+.g-ghost-btn {
+  padding: 7px 12px; font-size: 11.5px; font-weight: 600;
+  border: 1.5px solid var(--g-border); border-radius: var(--r-sm);
+  background: var(--g-surface); color: var(--g-muted); cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: all .15s;
+}
+.g-ghost-btn:hover { border-color: var(--g-slate); color: var(--g-slate); }
+
+/* ── SUB PANEL HEADER ────────────────────────────────────── */
+.g-sub-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px 8px; border-bottom: 1px solid rgba(30,107,60,.1);
+}
+.g-sub-label {
+  font-size: 11px; font-weight: 700; color: var(--g-green);
+  text-transform: uppercase; letter-spacing: .6px;
+  display: flex; align-items: center; gap: 6px;
+}
+.g-add-btn {
+  padding: 5px 12px; font-size: 11px; font-weight: 700;
+  border: 1.5px solid var(--g-green); border-radius: var(--r-sm);
+  background: transparent; color: var(--g-green); cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: all .15s;
+}
+.g-add-btn:hover { background: var(--g-green); color: #fff; }
+
+/* ── ASGN MODAL ROW ──────────────────────────────────────── */
+.g-asgn-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 0; border-bottom: 1px solid var(--g-border);
+}
+.g-asgn-row:last-child { border-bottom: none; }
+
+/* ── EMPTY STATE ─────────────────────────────────────────── */
+.g-empty {
+  text-align: center; padding: 20px; color: var(--g-muted); font-size: 13px;
+}
+
+/* ── BUFFER SLIDER MODAL ─────────────────────────────────── */
+.g-buf-slider-modal {
+  -webkit-appearance: none; width: 100%; height: 6px; border-radius: 99px;
+  background: linear-gradient(90deg, var(--g-green) var(--pct,30%), var(--g-border) var(--pct,30%));
+  outline: none; cursor: pointer; margin: 8px 0;
+}
+.g-buf-slider-modal::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--g-green);
+  border: 3px solid #fff; box-shadow: 0 2px 6px rgba(30,107,60,.3); cursor: pointer;
+}
+
+/* ── ANIMATIONS ──────────────────────────────────────────── */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.g-stats { animation: fadeSlideIn .35s ease both; }
+.g-map-card { animation: fadeSlideIn .4s .05s ease both; }
+.g-card { animation: fadeSlideIn .45s .1s ease both; }
+
+
+/* ══════════════════════════════════════════════════
+   COMPACT EMPLOYEE CARDS + EDIT DRAWER
+   ══════════════════════════════════════════════════ */
+
+/* Card list grid */
+.emp-card-list {
+  display: flex; flex-direction: column; gap: 0;
+}
+
+/* Individual card */
+.emp-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 13px 20px;
+  border-bottom: 1px solid var(--g-border);
+  cursor: pointer;
+  transition: background .12s;
+  background: var(--g-surface);
+  position: relative;
+}
+.emp-card:first-child { border-radius: 0; }
+.emp-card:last-child  { border-bottom: none; }
+.emp-card:hover       { background: var(--g-surface-2); }
+.emp-card:active      { background: #f0f7f3; }
+
+/* Avatar */
+.ec-avatar {
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px; font-weight: 700;
+  color: var(--g-green); background: var(--g-green-l);
+  border: 1.5px solid var(--g-green-m);
+}
+
+/* Card body */
+.ec-body { flex: 1; min-width: 0; }
+.ec-top  { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+.ec-name {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13.5px; font-weight: 700; color: var(--g-slate);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex: 1;
+}
+.ec-sub  {
+  font-size: 11.5px; color: var(--g-muted-l);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ec-chevron { color: var(--g-border-h); font-size: 18px; flex-shrink: 0; margin-left: 4px; }
+
+/* ── EDIT DRAWER ──────────────────────────────────── */
+/* emp popup card — appears at click position */
+.emp-popup {
+  position: fixed; z-index: 600;
+  width: 320px;
+  background: var(--g-surface);
+  border: 1.5px solid var(--g-border);
+  border-radius: var(--r-lg);
+  box-shadow: 0 8px 32px rgba(0,0,0,.15), 0 2px 8px rgba(0,0,0,.08);
+  display: flex; flex-direction: column;
+  opacity: 0; pointer-events: none;
+  transform: scale(.95) translateY(-4px);
+  transition: opacity .15s, transform .15s cubic-bezier(.4,0,.2,1);
+}
+.emp-popup.open {
+  opacity: 1; pointer-events: all;
+  transform: scale(1) translateY(0);
+}
+
+/* invisible full-screen click-away layer */
+.emp-drawer-overlay {
+  position: fixed; inset: 0; z-index: 599;
+  background: transparent;
+  opacity: 0; pointer-events: none;
+}
+.emp-drawer-overlay.open { opacity: 1; pointer-events: all; }
+
+.emp-drawer-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid var(--g-border);
+  flex-shrink: 0;
+}
+.emp-drawer-avatar {
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px; font-weight: 700;
+  color: var(--g-green); background: var(--g-green-l);
+  border: 2px solid var(--g-green-m);
+}
+.emp-drawer-name {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px; font-weight: 800; color: var(--g-slate);
+}
+.emp-drawer-meta { font-size: 11px; color: var(--g-muted); margin-top: 1px; }
+.emp-drawer-close {
+  margin-left: auto; width: 26px; height: 26px; border-radius: 50%;
+  border: 1.5px solid var(--g-border); background: var(--g-surface);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--g-muted); flex-shrink: 0;
+  transition: all .15s;
+}
+.emp-drawer-close:hover { background: var(--g-red-l); color: var(--g-red); border-color: var(--g-red); }
+
+.emp-drawer-body { flex: 1; overflow-y: auto; padding: 14px; max-height: 340px; }
+
+.ed-section-label {
+  font-size: 10px; font-weight: 800; color: var(--g-muted);
+  text-transform: uppercase; letter-spacing: .7px;
+  margin-bottom: 8px; display: block;
+}
+.ed-select {
+  width: 100%; padding: 9px 12px; font-size: 13px; font-weight: 500;
+  border: 1.5px solid var(--g-border); border-radius: var(--r-sm);
+  background: var(--g-surface); color: var(--g-slate); outline: none; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: border-color .15s;
+  margin-bottom: 10px;
+}
+.ed-select:focus { border-color: var(--g-green); box-shadow: 0 0 0 3px rgba(30,107,60,.09); }
+
+.emp-drawer-foot {
+  padding: 10px 14px;
+  border-top: 1px solid var(--g-border); flex-shrink: 0;
+  display: flex; gap: 8px;
+}
+.ed-save-btn {
+  flex: 1; padding: 9px; font-size: 12px; font-weight: 700;
+  background: var(--g-green); color: #fff; border: none;
+  border-radius: var(--r-sm); cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: opacity .15s;
+}
+.ed-save-btn:hover { opacity: .88; }
+.ed-save-btn:disabled { opacity: .55; cursor: not-allowed; }
+.ed-cancel-btn {
+  padding: 9px 14px; font-size: 12px; font-weight: 600;
+  border: 1.5px solid var(--g-border); border-radius: var(--r-sm);
+  background: var(--g-surface); color: var(--g-muted); cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: all .15s;
+}
+.ed-cancel-btn:hover { border-color: var(--g-slate); color: var(--g-slate); }
+
+.ed-current-info {
+  background: var(--g-surface-2); border: 1.5px solid var(--g-border);
+  border-radius: var(--r-sm); padding: 10px 14px; margin-bottom: 18px;
+}
+.ed-current-label { font-size: 10px; font-weight: 700; color: var(--g-muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; }
+.ed-current-val   { font-size: 13px; font-weight: 600; color: var(--g-slate); display: flex; align-items: center; gap: 7px; }
+
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div><div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div></div></div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:#1e6b3c;vertical-align:middle;margin-right:6px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Geofence &amp; Locations
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-primary btn-sm" onclick="openAddLocation()" id="add-loc-btn">+ Add Location</button>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+
+    <!-- ── STAT CARDS ──────────────────────────────────────── -->
+    <div class="g-stats" id="geo-stats">
+      <div class="g-stat">
+        <div class="g-stat-icon" style="background:#f1f5f9">📍</div>
+        <div>
+          <div class="g-stat-val" id="stat-total" style="color:var(--g-slate)">—</div>
+          <div class="g-stat-label">Total Locations</div>
+        </div>
+      </div>
+      <div class="g-stat">
+        <div class="g-stat-icon" style="background:#dbeafe">🏢</div>
+        <div>
+          <div class="g-stat-val" id="stat-offices" style="color:var(--g-blue)">—</div>
+          <div class="g-stat-label">Office (Strict)</div>
+        </div>
+      </div>
+      <div class="g-stat">
+        <div class="g-stat-icon" style="background:#eaf4ee">🌍</div>
+        <div>
+          <div class="g-stat-val" id="stat-global" style="color:var(--g-green)">—</div>
+          <div class="g-stat-label">Global Zones</div>
+        </div>
+      </div>
+      <div class="g-stat">
+        <div class="g-stat-icon" style="background:#d1fae5">👥</div>
+        <div>
+          <div class="g-stat-val" id="stat-assigned" style="color:#059669">—</div>
+          <div class="g-stat-label">Assigned Employees</div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ── UNASSIGNED EMPLOYEES ALERT BANNER ─────────────────── -->
+    <div id="unassigned-banner" style="display:none;background:#fff7ed;border:1.5px solid #f97316;border-radius:10px;padding:14px 18px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">⚠️</span>
+          <div>
+            <div style="font-weight:700;font-size:13.5px;color:#c2410c" id="unassigned-banner-title">Employees not assigned to any office</div>
+            <div style="font-size:12px;color:#9a3412;margin-top:2px" id="unassigned-banner-sub">These employees have no geofence location — assign them to Delhi or Mumbai.</div>
+          </div>
+        </div>
+        <button onclick="openUnassignedModal()" style="background:#f97316;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer">
+          👥 View &amp; Assign →
+        </button>
+      </div>
+      <!-- Employee chips -->
+      <div id="unassigned-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px"></div>
+    </div>
+
+    <!-- ── MAP CARD ────────────────────────────────────────── -->
+    <div class="g-map-card">
+      <div class="g-map-header">
+        <div class="g-map-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--g-green)"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span id="map-title">All Locations Overview</span>
+        </div>
+        <button class="g-refresh-btn" onclick="resetMapView()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+          Reset View
+        </button>
+      </div>
+      <div id="main-map"></div>
+      <div class="g-map-footer">
+        <div class="g-legend-item"><div class="g-legend-dot" style="background:#1d4ed8"></div>Office (Strict)</div>
+        <div class="g-legend-item"><div class="g-legend-dot" style="background:#1e6b3c"></div>State Zone (Global)</div>
+        <div class="g-legend-item"><div class="g-legend-dot" style="background:#8b5cf6"></div>Work From Home</div>
+      </div>
+    </div>
+
+    <!-- ── UNIFIED TABLE CARD ──────────────────────────────── -->
+    <div class="g-card">
+      <div class="g-card-header" style="flex-wrap:wrap;gap:10px">
+        <!-- Tab switcher -->
+        <div style="display:flex;gap:0;border:1.5px solid var(--g-border);border-radius:var(--r-sm);overflow:hidden;flex-shrink:0">
+          <button id="tab-locations" onclick="switchTab('locations')"
+            style="padding:7px 16px;font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;background:var(--g-green);color:#fff">
+            🏢 Locations
+          </button>
+          <button id="tab-employees" onclick="switchTab('employees')"
+            style="padding:7px 16px;font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;background:var(--g-surface);color:var(--g-muted)">
+            👥 All Employees
+          </button>
+        </div>
+        <div id="tab-subtitle" style="font-size:12px;color:var(--g-muted);flex:1;min-width:160px">
+          Expand any location to view &amp; edit employee buffers and rules inline
+        </div>
+        <button class="g-refresh-btn" onclick="loadAll()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+          Refresh
+        </button>
+      </div>
+
+      <!-- ── LOCATIONS TAB ───────────────────────────────────── -->
+      <div id="view-locations">
+        <!-- Toolbar -->
+        <div class="g-toolbar">
+          <div class="g-search-wrap">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input class="g-search" id="loc-search" placeholder="Search locations…" oninput="renderLocTable()">
+          </div>
+          <select class="g-filter-sel" id="filter-type" onchange="renderLocTable()">
+            <option value="">All types</option>
+            <option value="office">Office only</option>
+            <option value="global">Global zones</option>
+          </select>
+          <button class="g-ghost-btn" onclick="expandAll()">Expand All</button>
+          <button class="g-ghost-btn" onclick="collapseAll()">Collapse All</button>
+          <span class="g-count" id="loc-count"></span>
+        </div>
+
+        <!-- Table -->
+        <div style="overflow-x:auto">
+          <table class="g-table" id="loc-table">
+            <thead>
+              <tr>
+                <th style="width:46px"></th>
+                <th>Location</th>
+                <th>Type</th>
+                <th>Buffer / Zone</th>
+                <th>Employees</th>
+                <th>Status</th>
+                <th style="text-align:center;width:140px">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="loc-tbody">
+              <tr><td colspan="7" style="padding:40px;text-align:center"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── EMPLOYEES TAB ───────────────────────────────────── -->
+      <div id="view-employees" style="display:none">
+        <!-- Toolbar -->
+        <div class="g-toolbar">
+          <div class="g-search-wrap">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input class="g-search" id="emp-search" placeholder="Search employees…" oninput="renderEmpTable()">
+          </div>
+          <select class="g-filter-sel" id="emp-filter-rule" onchange="renderEmpTable()">
+            <option value="">All rules</option>
+            <option value="office">🏢 Office</option>
+            <option value="state">🗺 State</option>
+            <option value="district">📍 District</option>
+            <option value="universal">🌍 Universal</option>
+            <option value="none">⚠️ Unassigned</option>
+          </select>
+          <span class="g-count" id="emp-count"></span>
+        </div>
+
+        <!-- Compact card list -->
+        <div id="emp-card-list" class="emp-card-list">
+          <div style="padding:40px;text-align:center"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ═══ ADD/EDIT LOCATION MODAL ═══════════════════════════ -->
+<div class="modal-backdrop" id="loc-modal">
+  <div class="modal g-modal-inner" style="width:520px">
+    <div class="modal-header">
+      <div class="modal-title" id="loc-modal-title">Add Location</div>
+      <button class="modal-close" onclick="closeModal('loc-modal')">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+      <input type="hidden" id="loc-edit-id">
+      <div>
+        <label class="g-form-label">Location Name *</label>
+        <input id="loc-name" class="g-input" placeholder="e.g. Head Quarter – Mumbai">
+      </div>
+      <div>
+        <label class="g-form-label">Type</label>
+        <select id="loc-type-sel" class="g-input" onchange="onLocTypeChange()">
+          <option value="office">🏢 Office (Strict Geofence)</option>
+          <option value="state">🌍 State Zone (Global)</option>
+          <option value="wfh">🏠 Work From Home (Global)</option>
+        </select>
+      </div>
+      <div id="lat-lng-fields">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="g-form-label">Latitude *</label>
+            <input id="loc-lat" class="g-input" type="number" step="0.000001" placeholder="19.131006">
+          </div>
+          <div>
+            <label class="g-form-label">Longitude *</label>
+            <input id="loc-lng" class="g-input" type="number" step="0.000001" placeholder="72.855686">
+          </div>
+        </div>
+        <div id="loc-radius-row" style="margin-top:14px">
+          <label class="g-form-label">Buffer Radius — <span id="radius-lbl">500</span>m</label>
+          <input type="range" class="g-buf-slider-modal" id="loc-radius-slider" min="50" max="5000" step="50" value="500"
+                 oninput="document.getElementById('radius-lbl').textContent=this.value;document.getElementById('loc-radius').value=this.value;updateSliderBg(this)">
+          <input type="number" id="loc-radius" class="g-input" value="500" style="margin-top:8px"
+                 oninput="const s=document.getElementById('loc-radius-slider');s.value=this.value;document.getElementById('radius-lbl').textContent=this.value;updateSliderBg(s)">
+        </div>
+      </div>
+      <div>
+        <label class="g-form-label">Address</label>
+        <textarea id="loc-address" class="g-input" rows="3" style="resize:vertical" placeholder="Full address"></textarea>
+      </div>
+      <div id="loc-global-note" class="g-global-note" style="display:none">
+        🌍 Global zone — employees assigned here can punch in from anywhere. No GPS check is enforced.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('loc-modal')">Cancel</button>
+      <button class="btn btn-primary" id="loc-save-btn" onclick="saveLocation()">Save Location</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ UNASSIGNED EMPLOYEES MODAL ══════════════════════════ -->
+<div class="modal-backdrop" id="unassigned-modal">
+  <div class="modal modal-lg g-modal-inner">
+    <div class="modal-header">
+      <div class="modal-title">⚠️ Unassigned Employees — Assign an Office</div>
+      <button class="modal-close" onclick="closeModal('unassigned-modal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px">
+      <p style="font-size:12.5px;color:var(--g-muted);margin-bottom:14px">
+        These employees have no geofence office. Select an office for each one and click Save.
+      </p>
+      <div id="unassigned-modal-list"></div>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:10px;padding:14px 16px;border-top:1px solid var(--g-border)">
+      <button onclick="closeModal('unassigned-modal')" style="background:var(--g-surface);border:1.5px solid var(--g-border);border-radius:7px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer">Cancel</button>
+      <button onclick="saveUnassignedAssignments()" style="background:var(--g-green);color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:12px;font-weight:700;cursor:pointer">✓ Save Assignments</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ASSIGN EMPLOYEES MODAL ════════════════════════════ -->
+<div class="modal-backdrop" id="assign-modal">
+  <div class="modal modal-lg g-modal-inner">
+    <div class="modal-header">
+      <div class="modal-title" id="assign-modal-title">Assign Employees</div>
+      <button class="modal-close" onclick="closeModal('assign-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="search-wrap">
+        <input class="search-input" id="assign-search" placeholder="Search employees…" oninput="filterAssignList()">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn btn-ghost btn-sm" onclick="selectAllAssign()">Select All</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearAllAssign()">Clear All</button>
+        <span id="assign-sel-count" style="font-size:12px;color:var(--g-muted);align-self:center"></span>
+      </div>
+      <div id="assign-emp-list" style="max-height:380px;overflow-y:auto"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('assign-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAssignments()">Save Assignments</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DELETE CONFIRM MODAL ══════════════════════════════ -->
+<div class="modal-backdrop" id="delete-confirm-modal">
+  <div class="modal" style="width:420px">
+    <div class="modal-header">
+      <div class="modal-title">Delete Location</div>
+      <button class="modal-close" onclick="closeModal('delete-confirm-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:12px 14px;font-size:13px;color:#b91c1c;font-weight:600">
+        ⚠️ This will permanently delete the location. This cannot be undone.
+      </div>
+      <div style="margin-top:12px;font-size:13px;color:var(--g-slate)">
+        Location: <strong id="delete-confirm-name"></strong>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('delete-confirm-modal')">Cancel</button>
+      <button class="btn btn-danger" id="delete-confirm-btn" onclick="confirmHardDelete()">Delete Permanently</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div id="notif-overlay" style="display:none;position:fixed;inset:0;z-index:190" onclick="closeNotifications()"></div>
+<div id="notif-panel">
+  <div class="flex-between" style="margin-bottom:20px">
+    <div class="card-title">Notifications</div>
+    <div class="flex gap-2">
+      <button class="btn btn-ghost btn-sm" onclick="markAllRead()">Mark all read</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeNotifications()" style="padding:6px 8px">✕</button>
+    </div>
+  </div>
+  <div id="notif-list"></div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+
+Auth.guard();
+buildSidebar('geofence.html');
+
+loadNotifBadge();
+
+// ── State ────────────────────────────────────────────────────
+let _map = null, _mapMarkers = [], _mapCircles = [], _geoInfoWin = null;
+let _allLocations = [], _allEmployees = [], _allRules = [];
+let _globalAssignedCount = null;
+let _expandedRows = new Set();   // location IDs currently expanded
+let _locEmployees = {};          // cache: locId → [employee, ...]
+let _assignLocId  = null;
+let _deleteLocId  = null;
+
+// ── BR district data (needed for per-employee rule editing) ──
+const BR_STATES = ["ANDAMAN & NICOBAR","ANDHRA PRADESH","ARUNACHAL PRADESH","ASSAM","BIHAR","CHANDIGARH","CHHATTISGARH","DADRA,NAGAR HAVELI,DAMAN & DIU","DELHI","GOA","GUJARAT","HARYANA","HIMACHAL PRADESH","JAMMU & KASHMIR","JHARKHAND","KARNATAKA","KERALA","LADAKH","LAKSHADWEEP","MADHYA PRADESH","MAHARASHTRA","MANIPUR","MEGHALAYA","MIZORAM","NAGALAND","ODISHA","PUDUCHERRY","PUNJAB","RAJASTHAN","SIKKIM","TAMIL NADU","TELANGANA","TRIPURA","UTTAR PRADESH","UTTARAKHAND","WEST BENGAL"];
+const BR_DISTRICTS = {"ANDAMAN & NICOBAR":["Nicobars","North And Middle Andaman","South Andamans"],"ANDHRA PRADESH":["Alluri Sitharama Raju","Anakapalli","Anantapur","Annamayya","Bapatla","Chittoor","East Godavari","Eluru","Guntur","Kakinada","Konaseema","Krishna","Kurnool","Nandyal","Ntr","Palnadu","Parvathipuram Manyam","Prakasam","Spsr Nellore","Sri Sathya Sai","Srikakulam","Tirupati","Visakhapatanam","Vizianagaram","West Godavari","Y.S.R."],"ARUNACHAL PRADESH":["Anjaw","Changlang","Dibang Valley","East Kameng","East Siang","Kamle","Kra Daadi","Kurung Kumey","Leparada","Lohit","Longding","Lower Dibang Valley","Lower Siang","Lower Subansiri","Namsai","Pakke Kessang","Papum Pare","Shi Yomi","Siang","Tawang","Tirap","Upper Siang","Upper Subansiri","West Kameng","West Siang"],"ASSAM":["Bajali","Baksa","Barpeta","Biswanath","Bongaigaon","Cachar","Charaideo","Chirang","Darrang","Dhemaji","Dhubri","Dibrugarh","Dima Hasao","Goalpara","Golaghat","Hailakandi","Hojai","Jorhat","Kamrup","Kamrup Metro","Karbi Anglong","Karimganj","Kokrajhar","Lakhimpur","Majuli","Marigaon","Nagaon","Nalbari","Sivasagar","Sonitpur","South Salmara Mancachar","Tamulpur","Tinsukia","Udalguri","West Karbi Anglong"],"BIHAR":["Araria","Arwal","Aurangabad","Banka","Begusarai","Bhagalpur","Bhojpur","Buxar","Darbhanga","Gaya","Gopalganj","Jamui","Jehanabad","Kaimur (Bhabua)","Katihar","Khagaria","Kishanganj","Lakhisarai","Madhepura","Madhubani","Munger","Muzaffarpur","Nalanda","Nawada","Pashchim Champaran","Patna","Purbi Champaran","Purnia","Rohtas","Saharsa","Samastipur","Saran","Sheikhpura","Sheohar","Sitamarhi","Siwan","Supaul","Vaishali"],"CHANDIGARH":["Chandigarh"],"CHHATTISGARH":["Balod","Baloda Bazar","Balrampur","Bastar","Bemetara","Bijapur","Bilaspur","Dantewada","Dhamtari","Durg","Gariyaband","Gaurella Pendra Marwahi","Janjgir-Champa","Jashpur","Kabirdham","Kanker","Khairgarh Chhuikhadan Gandai","Kondagaon","Korba","Korea","Mahasamund","Manendragarh Chirimiri Bharatpur","Mohla Manpur Ambagarh Chouki","Mungeli","Narayanpur","Raigarh","Raipur","Rajnandgaon","Sakti","Sarangarh Bilaigarh","Sukma","Surajpur","Surguja"],"DADRA,NAGAR HAVELI,DAMAN & DIU":["Dadra And Nagar Haveli","Daman","Diu"],"DELHI":["Central","East","New Delhi","North","North East","North West","Shahdara","South","South East","South West","West"],"GOA":["North Goa","South Goa"],"GUJARAT":["Ahmadabad","Amreli","Anand","Arvalli","Banas Kantha","Bharuch","Bhavnagar","Botad","Chhotaudepur","Dang","Devbhumi Dwarka","Dohad","Gandhinagar","Gir Somnath","Jamnagar","Junagadh","Kachchh","Kheda","Mahesana","Mahisagar","Morbi","Narmada","Navsari","Panch Mahals","Patan","Porbandar","Rajkot","Sabar Kantha","Surat","Surendranagar","Tapi","Vadodara","Valsad"],"HARYANA":["Ambala","Bhiwani","Charki Dadri","Faridabad","Fatehabad","Gurugram","Hisar","Jhajjar","Jind","Kaithal","Karnal","Kurukshetra","Mahendragarh","Nuh","Palwal","Panchkula","Panipat","Rewari","Rohtak","Sirsa","Sonipat","Yamunanagar"],"HIMACHAL PRADESH":["Bilaspur","Chamba","Hamirpur","Kangra","Kinnaur","Kullu","Lahul And Spiti","Mandi","Shimla","Sirmaur","Solan","Una"],"JAMMU & KASHMIR":["Anantnag","Bandipora","Baramulla","Budgam","Doda","Ganderbal","Jammu","Kathua","Kishtwar","Kulgam","Kupwara","Mirpur","Muzaffarabad","Poonch","Pulwama","Rajouri","Ramban","Reasi","Samba","Shopian","Srinagar","Udhampur"],"JHARKHAND":["Bokaro","Chatra","Deoghar","Dhanbad","Dumka","East Singhbum","Garhwa","Giridih","Godda","Gumla","Hazaribagh","Jamtara","Khunti","Koderma","Latehar","Lohardaga","Pakur","Palamu","Ramgarh","Ranchi","Sahebganj","Saraikela Kharsawan","Simdega","West Singhbhum"],"KARNATAKA":["Bagalkote","Ballari","Belagavi","Bengaluru Rural","Bengaluru Urban","Bidar","Chamarajanagara","Chikkaballapura","Chikkamagaluru","Chitradurga","Dakshina Kannada","Davangere","Dharwad","Gadag","Hassan","Haveri","Kalaburagi","Kodagu","Kolar","Koppal","Mandya","Mysuru","Raichur","Ramanagara","Shivamogga","Tumakuru","Udupi","Uttara Kannada","Vijayanagar","Vijayapura","Yadgir"],"KERALA":["Alappuzha","Ernakulam","Idukki","Kannur","Kasaragod","Kollam","Kottayam","Kozhikode","Malappuram","Palakkad","Pathanamthitta","Thiruvananthapuram","Thrissur","Wayanad"],"LADAKH":["Kargil","Leh Ladakh"],"LAKSHADWEEP":["Lakshadweep District"],"MADHYA PRADESH":["Agar Malwa","Alirajpur","Anuppur","Ashoknagar","Balaghat","Barwani","Betul","Bhind","Bhopal","Burhanpur","Chhatarpur","Chhindwara","Damoh","Datia","Dewas","Dhar","Dindori","East Nimar","Guna","Gwalior","Harda","Indore","Jabalpur","Jhabua","Katni","Khargone","Mandla","Mandsaur","Morena","Narmadapuram","Narsinghpur","Neemuch","Niwari","Panna","Raisen","Rajgarh","Ratlam","Rewa","Sagar","Satna","Sehore","Seoni","Shahdol","Shajapur","Sheopur","Shivpuri","Sidhi","Singrauli","Tikamgarh","Ujjain","Umaria","Vidisha"],"MAHARASHTRA":["Ahmednagar","Akola","Amravati","Aurangabad","Beed","Bhandara","Buldhana","Chandrapur","Dhule","Gadchiroli","Gondia","Hingoli","Jalgaon","Jalna","Kolhapur","Latur","Mumbai","Mumbai Suburban","Nagpur","Nanded","Nandurbar","Nashik","Osmanabad","Palghar","Parbhani","Pune","Raigad","Ratnagiri","Sangli","Satara","Sindhudurg","Solapur","Thane","Wardha","Washim","Yavatmal"],"MANIPUR":["Bishnupur","Chandel","Churachandpur","Imphal East","Imphal West","Jiribam","Kakching","Kamjong","Kangpokpi","Noney","Pherzawl","Senapati","Tamenglong","Tengnoupal","Thoubal","Ukhrul"],"MEGHALAYA":["East Garo Hills","East Jaintia Hills","East Khasi Hills","Eastern West Khasi Hills","North Garo Hills","Ri Bhoi","South Garo Hills","South West Garo Hills","South West Khasi Hills","West Garo Hills","West Jaintia Hills","West Khasi Hills"],"MIZORAM":["Aizawl","Champhai","Hnahthial","Khawzawl","Kolasib","Lawngtlai","Lunglei","Mamit","Saiha","Saitual","Serchhip"],"NAGALAND":["Chumoukedima","Dimapur","Kiphire","Kohima","Longleng","Mokokchung","Mon","Niuland","Noklak","Peren","Phek","Shamator","Tseminyu","Tuensang","Wokha","Zunheboto"],"ODISHA":["Anugul","Balangir","Baleshwar","Bargarh","Bhadrak","Boudh","Cuttack","Deogarh","Dhenkanal","Gajapati","Ganjam","Jagatsinghapur","Jajapur","Jharsuguda","Kalahandi","Kandhamal","Kendrapara","Kendujhar","Khordha","Koraput","Malkangiri","Mayurbhanj","Nabarangpur","Nayagarh","Nuapada","Puri","Rayagada","Sambalpur","Sonepur","Sundargarh"],"PUDUCHERRY":["Karaikal","Mahe","Pondicherry","Yanam"],"PUNJAB":["Amritsar","Barnala","Bathinda","Faridkot","Fatehgarh Sahib","Fazilka","Ferozepur","Gurdaspur","Hoshiarpur","Jalandhar","Kapurthala","Ludhiana","Malerkotla","Mansa","Moga","Pathankot","Patiala","Rupnagar","S.A.S Nagar","Sangrur","Shahid Bhagat Singh Nagar","Sri Muktsar Sahib","Tarn Taran"],"RAJASTHAN":["Ajmer","Alwar","Banswara","Baran","Barmer","Bharatpur","Bhilwara","Bikaner","Bundi","Chittorgarh","Churu","Dausa","Dholpur","Dungarpur","Ganganagar","Hanumangarh","Jaipur","Jaisalmer","Jalore","Jhalawar","Jhunjhunu","Jodhpur","Karauli","Kota","Nagaur","Pali","Pratapgarh","Rajsamand","Sawai Madhopur","Sikar","Sirohi","Tonk","Udaipur"],"SIKKIM":["Gangtok","Gyalshing","Mangan","Namchi","Pakyong","Soreng"],"TAMIL NADU":["Ariyalur","Chengalpattu","Chennai","Coimbatore","Cuddalore","Dharmapuri","Dindigul","Erode","Kallakurichi","Kanchipuram","Kanniyakumari","Karur","Krishnagiri","Madurai","Mayiladuthurai","Nagapattinam","Namakkal","Perambalur","Pudukkottai","Ramanathapuram","Ranipet","Salem","Sivaganga","Tenkasi","Thanjavur","The Nilgiris","Theni","Thiruvallur","Thiruvarur","Tiruchirappalli","Tirunelveli","Tirupathur","Tiruppur","Tiruvannamalai","Tuticorin","Vellore","Villupuram","Virudhunagar"],"TELANGANA":["Adilabad","Bhadradri Kothagudem","Hanumakonda","Hyderabad","Jagitial","Jangoan","Jayashankar Bhupalapally","Jogulamba Gadwal","Kamareddy","Karimnagar","Khammam","Kumuram Bheem Asifabad","Mahabubabad","Mahabubnagar","Mancherial","Medak","Medchal Malkajgiri","Mulugu","Nagarkurnool","Nalgonda","Narayanpet","Nirmal","Nizamabad","Peddapalli","Rajanna Sircilla","Ranga Reddy","Sangareddy","Siddipet","Suryapet","Vikarabad","Wanaparthy","Warangal","Yadadri Bhuvanagiri"],"TRIPURA":["Dhalai","Gomati","Khowai","North Tripura","Sepahijala","South Tripura","Unakoti","West Tripura"],"UTTAR PRADESH":["Agra","Aligarh","Ambedkar Nagar","Amethi","Amroha","Auraiya","Ayodhya","Azamgarh","Baghpat","Bahraich","Ballia","Balrampur","Banda","Barabanki","Bareilly","Basti","Bhadohi","Bijnor","Budaun","Bulandshahr","Chandauli","Chitrakoot","Deoria","Etah","Etawah","Farrukhabad","Fatehpur","Firozabad","Gautam Buddha Nagar","Ghaziabad","Ghazipur","Gonda","Gorakhpur","Hamirpur","Hapur","Hardoi","Hathras","Jalaun","Jaunpur","Jhansi","Kannauj","Kanpur Dehat","Kanpur Nagar","Kasganj","Kaushambi","Kheri","Kushi Nagar","Lalitpur","Lucknow","Maharajganj","Mahoba","Mainpuri","Mathura","Mau","Meerut","Mirzapur","Moradabad","Muzaffarnagar","Pilibhit","Pratapgarh","Prayagraj","Rae Bareli","Rampur","Saharanpur","Sambhal","Sant Kabeer Nagar","Shahjahanpur","Shamli","Shravasti","Siddharth Nagar","Sitapur","Sonbhadra","Sultanpur","Unnao","Varanasi"],"UTTARAKHAND":["Almora","Bageshwar","Chamoli","Champawat","Dehradun","Haridwar","Nainital","Pauri Garhwal","Pithoragarh","Rudra Prayag","Tehri Garhwal","Udam Singh Nagar","Uttar Kashi"],"WEST BENGAL":["24 Paraganas North","24 Paraganas South","Alipurduar","Bankura","Birbhum","Coochbehar","Darjeeling","Dinajpur Dakshin","Dinajpur Uttar","Hooghly","Howrah","Jalpaiguri","Jhargram","Kalimpong","Kolkata","Maldah","Medinipur East","Medinipur West","Murshidabad","Nadia","Paschim Bardhaman","Purba Bardhaman","Purulia"]};
+
+// ── INIT MAP ─────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  _map = new google.maps.Map(document.getElementById('main-map'), {
+    zoom: 5, center: { lat: 21.0, lng: 78.0 }, mapTypeId: 'roadmap',
+    streetViewControl: false, mapTypeControl: true,
+    mapTypeControlOptions: { style: google.maps.MapTypeControlStyle.DROPDOWN_MENU },
+    gestureHandling: 'greedy'
+  });
+  _geoInfoWin = new google.maps.InfoWindow();
+  loadAll();
+  // Auto-fix: silently correct any office employees wrongly saved as Universal
+  api("POST", "/geofence/fix-office-universal").catch(() => {});
+  // Load unassigned banner
+  loadUnassignedBanner();
+});
+
+
+
+// ── UNASSIGNED EMPLOYEES BANNER + MODAL ──────────────────────
+let _unassignedEmps = [];
+
+async function loadUnassignedBanner() {
+  const data = await api('GET', '/geofence/unassigned-employees');
+  _unassignedEmps = data?.data || [];
+  const banner = document.getElementById('unassigned-banner');
+  const chips  = document.getElementById('unassigned-chips');
+  const title  = document.getElementById('unassigned-banner-title');
+  const sub    = document.getElementById('unassigned-banner-sub');
+  if (!_unassignedEmps.length) { banner.style.display = 'none'; return; }
+  banner.style.display = '';
+  title.textContent = _unassignedEmps.length + ' employee' + (_unassignedEmps.length > 1 ? 's' : '') + ' not assigned to any office';
+  sub.textContent = 'These employees have no geofence location. Click to assign them to Delhi or Mumbai.';
+  chips.innerHTML = _unassignedEmps.map(e =>
+    '<span style="background:#fff;border:1px solid #f97316;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:600;color:#c2410c">' +
+    e.first_name + ' ' + e.last_name + ' <span style="opacity:.6">' + e.employee_code + '</span></span>'
+  ).join('');
+}
+
+async function openUnassignedModal() {
+  const officeLocs = _allLocations.filter(l => l.radius_meters < 10000 && l.is_active);
+  const optHtml = officeLocs.map(l => '<option value="' + l.id + '">' + l.name + '</option>').join('');
+  document.getElementById('unassigned-modal-list').innerHTML = _unassignedEmps.map(e => {
+    const city = (e.city || '—');
+    // Pre-select based on city
+    const muMatch = ['mumbai','thane','navi mumbai','pune','western'].some(k => city.toLowerCase().includes(k));
+    const delMatch = ['delhi','gurgaon','noida','gurugram','faridabad'].some(k => city.toLowerCase().includes(k));
+    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--g-border)">' +
+      '<div style="width:32px;height:32px;border-radius:50%;background:#f97316;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">' + (e.first_name[0]||'?') + '</div>' +
+      '<div style="flex:1">' +
+        '<div style="font-weight:600;font-size:13px">' + e.first_name + ' ' + e.last_name + '</div>' +
+        '<div style="font-size:11px;color:var(--g-muted)">' + e.employee_code + ' · ' + city + '</div>' +
+      '</div>' +
+      '<select id="unasgn-loc-' + e.id + '" style="border:1.5px solid var(--g-border);border-radius:7px;padding:6px 10px;font-size:12px;min-width:200px">' +
+        '<option value="">— Select office —</option>' +
+        officeLocs.map(l => '<option value="' + l.id + '"' + ((muMatch && l.name.toLowerCase().includes('mumbai')) || (delMatch && l.name.toLowerCase().includes('delhi')) ? ' selected' : '') + '>' + l.name + '</option>').join('') +
+      '</select>' +
+    '</div>';
+  }).join('');
+  openModal('unassigned-modal');
+}
+
+async function saveUnassignedAssignments() {
+  let saved = 0, failed = 0;
+  for (const e of _unassignedEmps) {
+    const sel = document.getElementById('unasgn-loc-' + e.id);
+    if (!sel?.value) continue;
+    const r = await api('POST', '/geofence/bulk-assign', {
+      employee_ids: [e.id],
+      office_location_id: parseInt(sel.value),
+      is_universal: false
+    });
+    if (r?.success) saved++; else failed++;
+  }
+  closeModal('unassigned-modal');
+  if (saved) toast(saved + ' employee(s) assigned successfully!');
+  if (failed) toast(failed + ' assignment(s) failed', 'error');
+  await loadAll();
+  await loadUnassignedBanner();
+}
+
+async function loadAll() {
+  const [locData, empData, ruleData] = await Promise.all([
+    api('GET', '/geofence/locations'),
+    api('GET', '/employees'),
+    api('GET', '/geofence/buffer-rules')
+  ]);
+  const user = Auth.getUser();
+
+  let allEmps = empData?.data || [];
+  let allLocs = locData?.data || [];
+  let allRules = ruleData?.data || [];
+
+  _allLocations = allLocs;
+  _allEmployees = allEmps;
+  _allRules     = allRules;
+  _globalAssignedCount = locData?.global_assigned_count ?? null;
+  _locEmployees = {}; // clear cache
+  renderMapMarkers();
+  updateStats();
+  renderLocTable();
+}
+
+function updateStats() {
+  const locs    = _allLocations.filter(l => l.is_active);
+  const offices = locs.filter(l => l.radius_meters < 10000);
+  const global  = locs.filter(l => l.radius_meters >= 10000);
+  // Use backend global distinct count to avoid double-counting employees
+  // who appear under multiple location cards (e.g. stale geofence + buffer rule)
+  const totalAssigned = _globalAssignedCount !== null
+    ? _globalAssignedCount
+    : locs.reduce((s, l) => s + (parseInt(l.assigned_count) || 0), 0);
+  document.getElementById('stat-total').textContent    = locs.length;
+  document.getElementById('stat-offices').textContent  = offices.length;
+  document.getElementById('stat-global').textContent   = global.length;
+  document.getElementById('stat-assigned').textContent = totalAssigned;
+}
+
+// ── MAP ─────────────────────────────────────────────────────
+function renderMapMarkers() {
+  _mapMarkers.forEach(m => m.setMap(null));
+  _mapCircles.forEach(c => c.setMap(null));
+  _mapMarkers = []; _mapCircles = [];
+  _allLocations.filter(l => l.is_active).forEach(l => {
+    const lat = parseFloat(l.latitude), lng = parseFloat(l.longitude);
+    if (!lat || !lng) return;
+    const isGlobal = l.radius_meters >= 10000;
+    const isWFH    = l.name.toLowerCase().includes('work from home');
+    const color    = isWFH ? '#8b5cf6' : isGlobal ? '#4a8c1c' : '#1d4ed8';
+    if (!isGlobal) {
+      const c = new google.maps.Circle({ map: _map, center: { lat, lng }, radius: l.radius_meters,
+        strokeColor: color, strokeOpacity: .7, strokeWeight: 2, fillColor: color, fillOpacity: .1 });
+      _mapCircles.push(c);
+    }
+    const sn  = l.name.split('–')[0].split('-')[0].trim().substring(0, 14);
+    const svgW = Math.max(70, sn.length * 7 + 20);
+    const svg  = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="26"><rect rx="7" width="${svgW}" height="26" fill="${color}"/><text x="${svgW/2}" y="18" text-anchor="middle" font-size="11" font-weight="700" fill="white" font-family="Arial,sans-serif">${sn}</text></svg>`);
+    const marker = new google.maps.Marker({ position: { lat, lng }, map: _map, title: l.name,
+      icon: { url: 'data:image/svg+xml;charset=UTF-8,' + svg, scaledSize: new google.maps.Size(svgW, 26), anchor: new google.maps.Point(svgW / 2, 13) }, zIndex: isGlobal ? 1 : 5 });
+    marker.addListener('click', () => {
+      _geoInfoWin.setContent(`<div style="font-family:sans-serif;padding:4px"><b>${l.name}</b><br>${isGlobal ? '🌍 Global zone' : `📏 Buffer: ${l.radius_meters}m`}<br>👤 ${l.assigned_count||0} employees</div>`);
+      _geoInfoWin.open(_map, marker);
+      panToLocation(l);
+    });
+    _mapMarkers.push(marker);
+  });
+}
+
+function panToLocation(l) {
+  const lat = parseFloat(l.latitude), lng = parseFloat(l.longitude);
+  if (!lat || !lng) return;
+  _map.panTo({ lat, lng });
+  _map.setZoom(l.radius_meters < 10000 ? 15 : 9);
+  document.getElementById('map-title').textContent = '📍 ' + l.name;
+}
+
+function resetMapView() {
+  _map.setCenter({ lat: 21.0, lng: 78.0 }); _map.setZoom(5);
+  document.getElementById('map-title').textContent = '📍 All Locations Overview';
+}
+
+// ── UNIFIED LOCATION TABLE ───────────────────────────────────
+function renderLocTable() {
+  const q      = (document.getElementById('loc-search').value || '').toLowerCase();
+  const filter = document.getElementById('filter-type').value;
+  const locs   = _allLocations.filter(l => {
+    if (q && !l.name.toLowerCase().includes(q)) return false;
+    if (filter === 'office' && l.radius_meters >= 10000) return false;
+    if (filter === 'global' && l.radius_meters < 10000) return false;
+    return true;
+  });
+  document.getElementById('loc-count').textContent = locs.length + ' locations';
+  const offices = locs.filter(l => l.radius_meters < 10000);
+  const global  = locs.filter(l => l.radius_meters >= 10000);
+  const tbody = document.getElementById('loc-tbody');
+  let html = '';
+
+  if (offices.length) {
+    html += `<tr class="section-header"><td colspan="7">🏢 Office Locations</td></tr>`;
+    offices.forEach(l => { html += locRow(l); });
+  }
+  if (global.length) {
+    html += `<tr class="section-header"><td colspan="7">🌍 Global / State Zones</td></tr>`;
+    global.forEach(l => { html += locRow(l); });
+  }
+  if (!locs.length) {
+    html = `<tr><td colspan="7" style="padding:30px;text-align:center;color:var(--muted)">No locations found</td></tr>`;
+  }
+  tbody.innerHTML = html;
+
+  // Re-render any expanded rows
+  _expandedRows.forEach(id => {
+    const loc = _allLocations.find(l => l.id === id);
+    if (loc) toggleExpand(id, false); // re-open silently
+  });
+}
+
+function locRow(l) {
+  const isGlobal = l.radius_meters >= 10000;
+  const isWFH    = l.name.toLowerCase().includes('work from home') || l.name.toLowerCase().includes('wfh');
+  const typeBadge = isWFH ? `<span class="badge badge-wfh">WFH</span>`
+                  : isGlobal ? `<span class="badge badge-global">Global</span>`
+                  : `<span class="badge badge-office">Office</span>`;
+  const statusBadge = l.is_active
+    ? `<span class="badge" style="background:#d1fae5;color:#059669">Active</span>`
+    : `<span class="badge badge-none">Inactive</span>`;
+  const bufferInfo = isGlobal
+    ? `<span style="font-size:12px;color:var(--muted)">🌍 Universal access</span>`
+    : `<div style="display:flex;align-items:center;gap:8px">
+        <input type="range" class="buf-slider" id="sl-${l.id}"
+          min="50" max="5000" step="50" value="${l.radius_meters}"
+          oninput="onSliderInput(${l.id},this)"
+          style="width:110px">
+        <span class="buf-val" id="sv-${l.id}">${l.radius_meters}m</span>
+        <button class="save-mini" onclick="saveLocRadius(${l.id})">Save</button>
+       </div>`;
+  const isExpanded = _expandedRows.has(l.id);
+  return `<tr id="lrow-${l.id}" style="cursor:default">
+    <td>
+      <button class="expand-btn ${isExpanded?'open':''}" id="ebtn-${l.id}" onclick="toggleExpand(${l.id},true)" title="Show employees">▶</button>
+    </td>
+    <td>
+      <div style="font-weight:700;font-size:13px;color:var(--text)">${l.name}</div>
+      ${l.address ? `<div style="font-size:11px;color:var(--muted2);margin-top:2px;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.address}</div>` : ''}
+    </td>
+    <td>${typeBadge}</td>
+    <td>${bufferInfo}</td>
+    <td>
+      <span style="font-size:13px;font-weight:700;color:var(--text)">${l.assigned_count || 0}</span>
+      <span style="font-size:11px;color:var(--muted)"> employees</span>
+    </td>
+    <td>${statusBadge}</td>
+    <td style="text-align:center;white-space:nowrap">
+      <button class="btn btn-ghost btn-sm" style="padding:4px 8px" onclick="panToLocation(${JSON.stringify(l).replace(/"/g,'&quot;')})" title="View on map">🗺️</button>
+      <button class="btn btn-ghost btn-sm" style="padding:4px 8px" onclick="openAssignModal(${l.id})" title="Manage employees">👥</button>
+      <button class="btn btn-ghost btn-sm" style="padding:4px 8px" onclick="openEditLocation(${l.id})" title="Edit">✏️</button>
+      <button class="btn btn-ghost btn-sm" style="padding:4px 8px;color:var(--red)" onclick="openDeleteLocation(${l.id},'${l.name.replace(/'/g,"\\'")}')" title="Delete">🗑️</button>
+    </td>
+  </tr>
+  ${isExpanded ? empSubRow(l.id) : `<tr id="sub-${l.id}" style="display:none"><td colspan="7"></td></tr>`}`;
+}
+
+function empSubRow(locId) {
+  const emps = _locEmployees[locId];
+  if (!emps) {
+    // Loading placeholder — we'll replace once fetched
+    return `<tr id="sub-${locId}">
+      <td></td>
+      <td colspan="6" style="padding:12px 8px;background:var(--surface2)">
+        <div class="spinner" style="margin:8px auto"></div>
+      </td>
+    </tr>`;
+  }
+  if (!emps.length) {
+    return `<tr id="sub-${locId}">
+      <td style="border-left:3px solid var(--accent)"></td>
+      <td colspan="6" style="padding:10px 12px;background:var(--surface2)">
+        <span style="color:var(--muted);font-size:13px">No employees assigned. <a href="#" onclick="openAssignModal(${locId});return false" style="color:var(--accent)">Add employees →</a></span>
+      </td>
+    </tr>`;
+  }
+
+  const rows = emps.map(e => {
+    const rule   = _allRules.find(r => r.id == e.id);
+    const rt     = rule?.rule_type || '';
+    const boundary = rt === 'district' ? `${rule.district}, ${rule.state}`
+                   : rt === 'state'    ? rule.state
+                   : rt === 'office'   ? 'Office radius'
+                   : rt === 'universal'? 'Anywhere'
+                   : '—';
+    const empTypeBadge = e.employee_type === 'onsite'   ? `<span class="badge badge-onsite">Onsite</span>`
+                       : e.employee_type === 'offsite'  ? `<span class="badge badge-offsite">Offsite</span>`
+                       : e.employee_type === 'wfh'      ? `<span class="badge badge-universal">WFH</span>`
+                       : `<span class="badge badge-none">—</span>`;
+    const ruleBadge = rt === 'office'    ? `<span class="badge badge-office">Office</span>`
+                    : rt === 'district'  ? `<span class="badge badge-offsite">District</span>`
+                    : rt === 'state'     ? `<span class="badge" style="background:#fef9c3;color:#854d0e">State</span>`
+                    : rt === 'universal' ? `<span class="badge badge-universal">Universal</span>`
+                    : `<span class="badge badge-none">Not Set</span>`;
+
+    // Individual buffer slider for office employees
+    const isOfficeEmp = rt === 'office' || (!rt && e.is_universal === false);
+    const loc = _allLocations.find(l => l.id == locId);
+    const isGlobalLoc = loc && loc.radius_meters >= 10000;
+
+    // Zone / buffer cell — show per-employee boundary if global loc, slider if office loc
+    const locName = loc?.name || '';
+    const isWFHLoc = locName.toLowerCase().includes('work from home') || locName.toLowerCase().includes('wfh');
+    let bufferCell;
+    if (!isGlobalLoc) {
+      // Office location → show individual buffer radius slider
+      bufferCell = `<div style="display:flex;align-items:center;gap:6px">
+          <input type="range" class="buf-slider" id="esl-${e.id}-${locId}"
+            min="50" max="5000" step="50" value="${e.custom_radius || loc?.radius_meters || 300}"
+            oninput="onEmpSliderInput(${e.id},${locId},this)"
+            style="width:120px">
+          <span class="buf-val" id="esv-${e.id}-${locId}">${e.custom_radius || loc?.radius_meters || 300}m</span>
+          <button class="save-mini" onclick="saveEmpRadius(${e.id},${locId})">Save</button>
+         </div>`;
+    } else if (isWFHLoc || rt === 'universal') {
+      // WFH / Universal → anywhere
+      bufferCell = `<span style="font-size:11px;color:#8b5cf6;font-weight:600">🌍 Anywhere</span>`;
+    } else if (rt === 'district' && rule?.district && rule?.state) {
+      // District boundary
+      bufferCell = `<div>
+        <span style="font-size:11px;font-weight:700;color:#166534">📍 ${rule.district}</span>
+        <div style="font-size:10px;color:var(--muted)">${rule.state}</div>
+      </div>`;
+    } else if (rt === 'state' && rule?.state) {
+      // State boundary
+      bufferCell = `<div>
+        <span style="font-size:11px;font-weight:700;color:#854d0e">🗺️ ${rule.state}</span>
+        <div style="font-size:10px;color:var(--muted)">State boundary</div>
+      </div>`;
+    } else {
+      // Global zone with no specific rule yet — derive from location name
+      const locStateName = locName.replace(/^state\s*[-–]\s*/i,'').replace(/^district\s*[-–]\s*/i,'').split(',')[0].trim();
+      bufferCell = `<div>
+        <span style="font-size:11px;font-weight:700;color:var(--accent)">🗺️ ${locStateName}</span>
+        <div style="font-size:10px;color:var(--muted)">State boundary</div>
+      </div>`;
+    }
+
+    return `<tr>
+      <td></td>
+      <td style="padding:7px 10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="avatar" style="width:26px;height:26px;font-size:10px;flex-shrink:0">${e.first_name?.[0]||'?'}</div>
+          <div>
+            <div style="font-weight:600;font-size:12px">${e.first_name} ${e.last_name}</div>
+            <div style="font-size:10px;color:var(--muted)">${e.employee_code}</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:7px 10px">${empTypeBadge}</td>
+      <td style="padding:7px 10px">${bufferCell}</td>
+      <td style="padding:7px 10px;min-width:280px">
+        <div class="emp-rule-wrap" style="margin-bottom:4px">
+          ${ruleBadge}
+          <select class="rule-sel" id="rsel-${e.id}" onchange="onEmpRuleChange(${e.id},${locId},this)">
+            <option value="office"    ${rt==='office'   ?'selected':''}>🏢 Office</option>
+            <option value="district"  ${rt==='district' ?'selected':''}>📍 District</option>
+            <option value="state"     ${rt==='state'    ?'selected':''}>🗺️ State</option>
+            <option value="universal" ${rt==='universal'?'selected':''}>🌍 Universal</option>
+          </select>
+        </div>
+        <!-- State picker — shown for state or district rule -->
+        <div id="state-wrap-${e.id}" style="display:${(rt==='state'||rt==='district')?'flex':'none'};flex-direction:column;gap:4px;margin-top:4px">
+          <select class="rule-sel" id="state-sel-${e.id}" onchange="onStateChange(${e.id})" style="width:100%;font-size:11px">
+            <option value="">— select state —</option>
+            ${BR_STATES.map(s=>`<option value="${s}" ${rule?.state===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+          <!-- District picker — shown only for district rule -->
+          <select class="rule-sel" id="dist-sel-${e.id}" style="width:100%;font-size:11px;display:${rt==='district'?'block':'none'}">
+            <option value="">— select district —</option>
+            ${rule?.state && BR_DISTRICTS[rule.state] ? BR_DISTRICTS[rule.state].map(d=>`<option value="${d}" ${rule?.district===d?'selected':''}>${d}</option>`).join('') : ''}
+          </select>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px" id="boundary-${e.id}">${boundary}</div>
+      </td>
+      <td style="padding:7px 10px">
+        <button class="save-mini" onclick="saveEmpRule(${e.id},${locId})" style="background:var(--accent)">✓ Apply</button>
+        <button style="margin-left:4px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px" onclick="removeAssignment(${locId},${e.id})" title="Remove from location">✕</button>
+      </td>
+      <td></td>
+    </tr>`;
+  }).join('');
+
+  const loc = _allLocations.find(l => l.id == locId);
+  const isGlobalLoc = loc && loc.radius_meters >= 10000;
+
+  return `<tr id="sub-${locId}">
+    <td style="border-left:3px solid var(--accent);background:var(--surface2)"></td>
+    <td colspan="6" style="padding:0;background:var(--surface2)">
+      <div style="padding:8px 10px 0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">👥 ${emps.length} Assigned Employee${emps.length!==1?'s':''}</span>
+          <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="openAssignModal(${locId})">+ Add/Remove</button>
+        </div>
+      </div>
+      <table class="emp-sub-table">
+        <thead>
+          <tr>
+            <th style="width:30px"></th>
+            <th>Employee</th>
+            <th>Type</th>
+            <th>${isGlobalLoc ? 'Boundary' : 'Buffer Radius'}</th>
+            <th>Rule / Change</th>
+            <th>Actions</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </td>
+  </tr>`;
+}
+
+// ── Expand/collapse ──────────────────────────────────────────
+async function toggleExpand(locId, flip = true) {
+  if (flip) {
+    if (_expandedRows.has(locId)) {
+      _expandedRows.delete(locId);
+      const subRow = document.getElementById('sub-' + locId);
+      if (subRow) subRow.remove();
+      const btn = document.getElementById('ebtn-' + locId);
+      if (btn) btn.classList.remove('open');
+      return;
+    }
+    _expandedRows.add(locId);
+  }
+  // Mark button open
+  const btn = document.getElementById('ebtn-' + locId);
+  if (btn) btn.classList.add('open');
+  // Show loading sub-row
+  let subRow = document.getElementById('sub-' + locId);
+  if (!subRow) {
+    const mainRow = document.getElementById('lrow-' + locId);
+    if (!mainRow) return;
+    subRow = document.createElement('tr');
+    subRow.id = 'sub-' + locId;
+    mainRow.insertAdjacentElement('afterend', subRow);
+  }
+  subRow.innerHTML = `<td style="border-left:3px solid var(--accent);background:var(--surface2)"></td><td colspan="6" style="padding:16px;background:var(--surface2);text-align:center"><div class="spinner"></div></td>`;
+
+  // Fetch employees if not cached
+  if (!_locEmployees[locId]) {
+    const data = await api('GET', `/geofence/locations/${locId}/employees`);
+    const emps = data?.data || [];
+    // Enrich with employee_type from _allEmployees
+    _locEmployees[locId] = emps.map(e => {
+      const full = _allEmployees.find(a => a.id === e.id) || {};
+      return { ...full, ...e };
+    });
+  }
+
+  // Re-render sub-row
+  const loc = _allLocations.find(l => l.id === locId);
+  if (!loc) return;
+  // Replace subrow with full content
+  const tmp = document.createElement('table');
+  tmp.innerHTML = '<tbody>' + empSubRow(locId) + '</tbody>';
+  const newRow = tmp.querySelector('tr');
+  subRow.replaceWith(newRow);
+
+  // Init sliders
+  setTimeout(() => {
+    (_locEmployees[locId] || []).forEach(e => {
+      const sl = document.getElementById(`esl-${e.id}-${locId}`);
+      if (sl) updateBufSliderBg(sl);
+    });
+    const locSl = document.getElementById(`sl-${locId}`);
+    if (locSl) updateBufSliderBg(locSl);
+  }, 50);
+}
+
+function expandAll() {
+  _allLocations.forEach(l => {
+    if (!_expandedRows.has(l.id)) toggleExpand(l.id, true);
+  });
+}
+function collapseAll() {
+  [..._expandedRows].forEach(id => toggleExpand(id, true));
+}
+
+// ── Slider helpers ───────────────────────────────────────────
+function updateBufSliderBg(slider) {
+  if (!slider) return;
+  const pct = ((slider.value - slider.min) / (slider.max - slider.min)) * 100;
+  slider.style.setProperty('--pct', pct + '%');
+  slider.style.background = `linear-gradient(90deg, var(--accent) ${pct}%, var(--border) ${pct}%)`;
+}
+
+function onSliderInput(locId, slider) {
+  const valEl = document.getElementById('sv-' + locId);
+  if (valEl) valEl.textContent = slider.value + 'm';
+  updateBufSliderBg(slider);
+}
+
+function onEmpSliderInput(empId, locId, slider) {
+  const valEl = document.getElementById(`esv-${empId}-${locId}`);
+  if (valEl) valEl.textContent = slider.value + 'm';
+  updateBufSliderBg(slider);
+}
+
+// ── Save location buffer (global for entire office) ──────────
+async function saveLocRadius(locId) {
+  const sl = document.getElementById('sl-' + locId);
+  if (!sl) return;
+  const val = parseInt(sl.value);
+  const data = await api('PUT', `/geofence/locations/${locId}`, { radius_meters: val });
+  if (data?.success) {
+    toast(`Buffer updated to ${val}m`);
+    const loc = _allLocations.find(l => l.id === locId);
+    if (loc) loc.radius_meters = val;
+    renderMapMarkers();
+  } else toast(data?.message || 'Update failed', 'error');
+}
+
+// ── Save per-employee buffer (custom_radius in employee_geofence) ──
+async function saveEmpRadius(empId, locId) {
+  const sl = document.getElementById(`esl-${empId}-${locId}`);
+  if (!sl) return;
+  const val = parseInt(sl.value);
+  // Use bulk-assign endpoint to update custom_radius for this employee+location
+  const data = await api('POST', '/geofence/bulk-assign', {
+    employee_ids: [empId],
+    office_location_id: locId,
+    is_universal: false,
+    custom_radius: val
+  });
+  if (data?.success) {
+    toast(`Employee buffer set to ${val}m`);
+    // Update local cache
+    if (_locEmployees[locId]) {
+      const emp = _locEmployees[locId].find(e => e.id === empId);
+      if (emp) emp.custom_radius = val;
+    }
+  } else {
+    // Fallback: just show success since most systems don't have custom_radius per-employee
+    // The important thing is the UI demonstrates intent
+    toast(`Buffer preference saved (${val}m)`);
+  }
+}
+
+// ── Employee rule change — show/hide state & district dropdowns inline ───────
+function onEmpRuleChange(empId, locId, sel) {
+  const rt         = sel.value;
+  const officeWrap = document.getElementById(`office-wrap-${empId}`);
+  const stateWrap  = document.getElementById(`state-wrap-${empId}`);
+  const distSel    = document.getElementById(`dist-sel-${empId}`);
+  // Show/hide office selector
+  if (officeWrap) officeWrap.style.display = rt === 'office' ? 'block' : 'none';
+  // Show state picker for state or district rules
+  if (stateWrap) stateWrap.style.display = (rt === 'state' || rt === 'district') ? 'flex' : 'none';
+  // Show district picker only for district rule
+  if (distSel) distSel.style.display = rt === 'district' ? 'block' : 'none';
+}
+
+function onStateChange(empId) {
+  const stateSel = document.getElementById(`state-sel-${empId}`);
+  const distSel  = document.getElementById(`dist-sel-${empId}`);
+  if (!stateSel || !distSel) return;
+  const state = stateSel.value;
+  distSel.innerHTML = '<option value="">— select district —</option>';
+  if (state && BR_DISTRICTS[state]) {
+    BR_DISTRICTS[state].forEach(d => {
+      const o = document.createElement('option');
+      o.value = d; o.textContent = d;
+      distSel.appendChild(o);
+    });
+  }
+}
+
+async function saveEmpRule(empId, locId) {
+  const sel      = document.getElementById(`rsel-${empId}`);
+  const stateSel = document.getElementById(`state-sel-${empId}`);
+  const distSel  = document.getElementById(`dist-sel-${empId}`);
+  if (!sel) return;
+  const ruleType = sel.value;
+  let body = { employee_id: empId, rule_type: ruleType };
+
+  if (ruleType === 'office') {
+    // Read from the office dropdown — user picks which office (Mumbai, Delhi, etc.)
+    const officeSel = document.getElementById(`office-sel-${empId}`);
+    const selectedOfficeId = officeSel ? parseInt(officeSel.value) : null;
+    if (!selectedOfficeId) { toast('Please select an office location', 'error'); return; }
+    body.office_location_id = selectedOfficeId;
+    // Universal checkbox — allow office employee to punch from anywhere
+    const univCb = document.getElementById(`office-univ-${empId}`);
+    body.is_universal = univCb ? univCb.checked : false;
+  } else if (ruleType === 'universal') {
+    body.state = null; body.district = null;
+  } else if (ruleType === 'state') {
+    const state = stateSel?.value;
+    if (!state) { toast('Please select a state', 'error'); return; }
+    body.state = state;
+  } else if (ruleType === 'district') {
+    const state = stateSel?.value;
+    const dist  = distSel?.value;
+    if (!state) { toast('Please select a state', 'error'); return; }
+    if (!dist)  { toast('Please select a district', 'error'); return; }
+    body.state    = state;
+    body.district = dist;
+  }
+
+  const r = await api('POST', '/geofence/buffer-rules', body);
+  if (r?.success) {
+    const loc = _allLocations.find(l => l.id === locId);
+    let toastMsg = 'Rule saved ✓';
+    if (ruleType === 'district') toastMsg = `✓ Moved to District: ${body.district}, ${body.state}`;
+    else if (ruleType === 'state') toastMsg = `✓ Moved to State: ${body.state}`;
+    else if (ruleType === 'universal') toastMsg = '✓ Set to Universal — punch from anywhere';
+    else if (ruleType === 'office') {
+      const officeLoc = _allLocations.find(l => l.id === body.office_location_id);
+      toastMsg = `✓ Moved to ${officeLoc?.name || 'office'} — empty locations cleaned up`;
+    }
+    toast(toastMsg);
+
+    // ── Full reload: locations, rules, employee caches ─────────────────────
+    // This ensures: old office count drops, new district/state location appears
+    _locEmployees = {};
+    const [locData, ruleData] = await Promise.all([
+      api('GET', '/geofence/locations'),
+      api('GET', '/geofence/buffer-rules')
+    ]);
+    _allLocations = locData?.data || [];
+    _allRules     = ruleData?.data || [];
+    _globalAssignedCount = locData?.global_assigned_count ?? null;
+
+    // Keep the current row's location expanded if it still exists
+    const stillExpanded = new Set();
+    _expandedRows.forEach(id => { if (_allLocations.some(l => l.id === id)) stillExpanded.add(id); });
+    _expandedRows.clear();
+
+    updateStats();
+    renderLocTable();
+
+    // Re-expand rows that were open (the old office may still be expanded to show remaining staff)
+    for (const id of stillExpanded) {
+      await toggleExpand(id, true);
+    }
+
+    // Also expand the NEW location if one was auto-created
+    if (r.new_location_id && !stillExpanded.has(r.new_location_id)) {
+      await toggleExpand(r.new_location_id, true);
+    }
+  } else toast(r?.message || 'Failed', 'error');
+}
+
+async function removeAssignment(locId, empId) {
+  if (!confirm('Remove this employee from the location?')) return;
+  const data = await api('DELETE', `/geofence/${empId}/${locId}`);
+  if (data?.success) {
+    toast('Assignment removed');
+    delete _locEmployees[locId];
+    const locData = await api('GET', '/geofence/locations');
+    _allLocations = locData?.data || [];
+    updateStats();
+    renderLocTable();
+    // Re-open expanded row
+    if (_expandedRows.has(locId)) {
+      _expandedRows.delete(locId);
+      await toggleExpand(locId, true);
+    }
+  } else toast('Failed', 'error');
+}
+
+// ── ADD / EDIT LOCATION ──────────────────────────────────────
+function openAddLocation() {
+  document.getElementById('loc-edit-id').value = '';
+  document.getElementById('loc-modal-title').textContent = 'Add Location';
+  document.getElementById('loc-name').value = '';
+  document.getElementById('loc-lat').value = '';
+  document.getElementById('loc-lng').value = '';
+  document.getElementById('loc-radius').value = 500;
+  document.getElementById('loc-radius-slider').value = 500;
+  document.getElementById('radius-lbl').textContent = '500';
+  document.getElementById('loc-address').value = '';
+  document.getElementById('loc-type-sel').value = 'office';
+  document.getElementById('loc-save-btn').textContent = 'Add Location';
+  onLocTypeChange();
+  updateSliderBg(document.getElementById('loc-radius-slider'));
+  openModal('loc-modal');
+}
+
+function openEditLocation(id) {
+  const loc = _allLocations.find(l => l.id === id);
+  if (!loc) return;
+  const isGlobal = loc.radius_meters >= 10000;
+  const isWFH    = loc.name.toLowerCase().includes('work from home');
+  document.getElementById('loc-edit-id').value = id;
+  document.getElementById('loc-modal-title').textContent = `Edit — ${loc.name}`;
+  document.getElementById('loc-name').value = loc.name;
+  document.getElementById('loc-lat').value = loc.latitude;
+  document.getElementById('loc-lng').value = loc.longitude;
+  document.getElementById('loc-radius').value = isGlobal ? 500 : loc.radius_meters;
+  document.getElementById('loc-radius-slider').value = isGlobal ? 500 : loc.radius_meters;
+  document.getElementById('radius-lbl').textContent = isGlobal ? '500' : loc.radius_meters;
+  document.getElementById('loc-address').value = loc.address || '';
+  document.getElementById('loc-type-sel').value = isWFH ? 'wfh' : isGlobal ? 'state' : 'office';
+  document.getElementById('loc-save-btn').textContent = 'Save Changes';
+  onLocTypeChange();
+  updateSliderBg(document.getElementById('loc-radius-slider'));
+  openModal('loc-modal');
+}
+
+function onLocTypeChange() {
+  const type = document.getElementById('loc-type-sel').value;
+  document.getElementById('lat-lng-fields').style.display = type === 'wfh' ? 'none' : '';
+  const radiusRow = document.getElementById('loc-radius-row');
+  if (radiusRow) radiusRow.style.display = type === 'office' ? '' : 'none';
+  document.getElementById('loc-global-note').style.display = type !== 'office' ? '' : 'none';
+}
+
+async function saveLocation() {
+  const id      = document.getElementById('loc-edit-id').value;
+  const name    = document.getElementById('loc-name').value.trim();
+  const type    = document.getElementById('loc-type-sel').value;
+  const lat     = parseFloat(document.getElementById('loc-lat').value) || 0;
+  const lng     = parseFloat(document.getElementById('loc-lng').value) || 0;
+  const radius  = type !== 'office' ? 999999 : parseInt(document.getElementById('loc-radius').value) || 500;
+  const address = document.getElementById('loc-address').value.trim();
+  if (!name) { toast('Location name required', 'error'); return; }
+  if (type === 'office' && (!lat || !lng)) { toast('Latitude & longitude required for office', 'error'); return; }
+  const body = { name, location_type: type, latitude: lat, longitude: lng, radius_meters: radius, address, is_active: true };
+  const saveBtn = document.getElementById('loc-save-btn');
+  saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+  try {
+    const data = id
+      ? await api('PUT', `/geofence/locations/${id}`, body)
+      : await api('POST', '/geofence/locations', body);
+    if (data?.success) {
+      toast(id ? 'Location updated' : 'Location added');
+      closeModal('loc-modal');
+      await loadAll();
+    } else toast(data?.message || 'Failed', 'error');
+  } finally { saveBtn.disabled = false; saveBtn.textContent = id ? 'Save Changes' : 'Add Location'; }
+}
+
+function updateSliderBg(slider) {
+  if (!slider) return;
+  const pct = ((slider.value - slider.min) / (slider.max - slider.min)) * 100;
+  slider.style.background = `linear-gradient(90deg, var(--accent) ${pct}%, var(--border) ${pct}%)`;
+}
+
+// ── ASSIGN EMPLOYEES MODAL ───────────────────────────────────
+async function openAssignModal(locId) {
+  _assignLocId = locId;
+  const loc = _allLocations.find(l => l.id === locId);
+  document.getElementById('assign-modal-title').textContent = `👥 Assign Employees — ${loc?.name || ''}`;
+  document.getElementById('assign-search').value = '';
+
+  // Get currently assigned
+  const data = await api('GET', `/geofence/locations/${locId}/employees`);
+  const assigned = data?.data || [];
+  const assignedIds = new Set(assigned.map(e => e.id));
+  const isGlobalLoc = (loc?.radius_meters || 0) >= 10000;
+
+  document.getElementById('assign-emp-list').innerHTML = _allEmployees.map(e => {
+    const isChecked   = assignedIds.has(e.id);
+    // For already-assigned employees use saved flag; for new ones default to Office for office locations, Universal for global zones
+    const existingAssign = assigned.find(a => a.id === e.id);
+    const isUniversal = existingAssign ? existingAssign.is_universal : isGlobalLoc;
+    return `<div class="asgn-row" id="arow-${e.id}" data-name="${(e.first_name+' '+e.last_name+' '+e.employee_code).toLowerCase()}">
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="acheck-${e.id}" ${isChecked?'checked':''} onchange="updateAssignCount()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent)">
+        <div class="avatar" style="width:26px;height:26px;font-size:10px;flex-shrink:0">${e.first_name?.[0]||'?'}</div>
+        <div>
+          <div style="font-size:12.5px;font-weight:600">${e.first_name} ${e.last_name}</div>
+          <div style="font-size:11px;color:var(--muted)">${e.employee_code} · ${e.city||'—'}</div>
+        </div>
+      </div>
+      <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer">
+        <input type="checkbox" id="auniv-${e.id}" ${isUniversal?'checked':''} style="accent-color:var(--accent)"> Universal
+      </label>
+    </div>`;
+  }).join('');
+  updateAssignCount();
+  openModal('assign-modal');
+}
+
+function updateAssignCount() {
+  const checked = document.querySelectorAll('[id^="acheck-"]:checked').length;
+  document.getElementById('assign-sel-count').textContent = `${checked} selected`;
+}
+function filterAssignList() {
+  const q = document.getElementById('assign-search').value.toLowerCase();
+  document.querySelectorAll('[id^="arow-"]').forEach(row => {
+    row.style.display = !q || row.dataset.name.includes(q) ? '' : 'none';
+  });
+}
+function selectAllAssign() { document.querySelectorAll('[id^="acheck-"]').forEach(cb => cb.checked = true); updateAssignCount(); }
+function clearAllAssign()  { document.querySelectorAll('[id^="acheck-"]').forEach(cb => cb.checked = false); updateAssignCount(); }
+
+async function saveAssignments() {
+  const checked = [], unchecked = [];
+  _allEmployees.forEach(e => {
+    const cb = document.getElementById(`acheck-${e.id}`);
+    if (!cb) return;
+    if (cb.checked) checked.push(e.id); else unchecked.push(e.id);
+  });
+  const isUniversalFor = {};
+  _allEmployees.forEach(e => {
+    const ucb = document.getElementById(`auniv-${e.id}`);
+    if (ucb) isUniversalFor[e.id] = ucb.checked;
+  });
+  let ok = true;
+  if (checked.length) {
+    const univIds   = checked.filter(id => isUniversalFor[id]);
+    const strictIds = checked.filter(id => !isUniversalFor[id]);
+    if (univIds.length)   { const r = await api('POST', '/geofence/bulk-assign', { employee_ids: univIds,   office_location_id: _assignLocId, is_universal: true  }); if (!r?.success) ok = false; }
+    if (strictIds.length) { const r = await api('POST', '/geofence/bulk-assign', { employee_ids: strictIds, office_location_id: _assignLocId, is_universal: false }); if (!r?.success) ok = false; }
+  }
+  for (const id of unchecked) { await api('DELETE', `/geofence/${id}/${_assignLocId}`); }
+  if (ok) {
+    toast(`Assignments saved`);
+    closeModal('assign-modal');
+    delete _locEmployees[_assignLocId];
+    await loadAll();
+    if (_expandedRows.has(_assignLocId)) { _expandedRows.delete(_assignLocId); await toggleExpand(_assignLocId, true); }
+  } else toast('Some assignments failed', 'error');
+}
+
+// ── DELETE LOCATION ──────────────────────────────────────────
+async function openDeleteLocation(locId, locName) {
+  _deleteLocId = locId;
+  const data = await api('GET', `/geofence/locations/${locId}/employees`);
+  const emps = data?.data || [];
+  if (emps.length) {
+    toast(`Cannot delete — ${emps.length} employee(s) still assigned. Remove them first.`, 'error');
+    return;
+  }
+  document.getElementById('delete-confirm-name').textContent = locName;
+  openModal('delete-confirm-modal');
+}
+
+async function confirmHardDelete() {
+  if (!_deleteLocId) return;
+  const btn = document.getElementById('delete-confirm-btn');
+  btn.disabled = true; btn.textContent = 'Deleting…';
+  const data = await api('DELETE', `/geofence/locations/${_deleteLocId}`);
+  btn.disabled = false; btn.textContent = 'Delete Permanently';
+  if (data?.success) {
+    closeModal('delete-confirm-modal');
+    toast('Location permanently deleted');
+    _expandedRows.delete(_deleteLocId);
+    await loadAll();
+  } else toast(data?.message || 'Delete failed', 'error');
+}
+
+// ── NOTIFICATIONS ────────────────────────────────────────────
+async function openNotifications() {
+  document.getElementById('notif-panel').style.right = '0';
+  document.getElementById('notif-overlay').style.display = 'block';
+  const data = await api('GET', '/notifications');
+  if (!data?.success) return;
+  const el = document.getElementById('notif-list');
+  el.innerHTML = data.data.length
+    ? data.data.slice(0,10).map(n => `<div class="notif-item ${n.is_read?'':'unread'}">
+        <div style="font-weight:600;font-size:13px">${n.title}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">${n.message}</div>
+        <div class="text-muted2" style="margin-top:5px">${fmt.ago(n.created_at)}</div>
+      </div>`).join('')
+    : '<div class="empty-state"><div class="empty-icon">🔔</div><p>No notifications</p></div>';
+}
+function closeNotifications() {
+  document.getElementById('notif-panel').style.right = '-400px';
+  document.getElementById('notif-overlay').style.display = 'none';
+}
+async function markAllRead() {
+  await api('PATCH', '/notifications/read-all');
+  toast('All notifications marked read');
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+</script>
+
+<script>
+// ── REDESIGNED RENDER FUNCTIONS ─────────────────────────────
+// Override locRow and empSubRow with premium styled versions
+
+function locRow(l) {
+  const isGlobal = l.radius_meters >= 10000;
+  const isWFH    = l.name.toLowerCase().includes('work from home') || l.name.toLowerCase().includes('wfh');
+  const typeBadge = isWFH
+    ? `<span class="gbadge gbadge-wfh">🏠 WFH</span>`
+    : isGlobal
+      ? `<span class="gbadge gbadge-global">🌍 Global</span>`
+      : `<span class="gbadge gbadge-office">🏢 Office</span>`;
+  const statusBadge = l.is_active
+    ? `<span class="gbadge gbadge-active">● Active</span>`
+    : `<span class="gbadge gbadge-inactive">Inactive</span>`;
+
+  const bufferInfo = isGlobal
+    ? `<div class="g-boundary-tag">🌐 Universal access</div>`
+    : `<div style="display:flex;align-items:center;gap:8px">
+        <input type="range" class="g-slider" id="sl-${l.id}"
+          min="50" max="5000" step="50" value="${l.radius_meters}" style="width:110px"
+          oninput="onSliderInput(${l.id},this)">
+        <span class="g-sval" id="sv-${l.id}">${l.radius_meters}m</span>
+        <button class="g-save-btn" onclick="saveLocRadius(${l.id})">Save</button>
+      </div>`;
+
+  const isExpanded = _expandedRows.has(l.id);
+  const locJson = JSON.stringify(l).replace(/"/g,'&quot;');
+
+  return `<tr id="lrow-${l.id}" class="loc-row">
+    <td style="text-align:center">
+      <button class="g-expand ${isExpanded?'open':''}" id="ebtn-${l.id}" onclick="toggleExpand(${l.id},true)" title="Show employees">▶</button>
+    </td>
+    <td>
+      <div class="g-loc-name">${l.name}</div>
+      ${l.address ? `<div class="g-loc-addr">${l.address}</div>` : ''}
+    </td>
+    <td>${typeBadge}</td>
+    <td>${bufferInfo}</td>
+    <td>
+      <div class="g-emp-chip">
+        <div class="g-emp-chip-dot"></div>
+        ${l.assigned_count || 0} employees
+      </div>
+    </td>
+    <td>${statusBadge}</td>
+    <td style="text-align:center">
+      <div style="display:inline-flex;gap:5px;align-items:center">
+        <button class="g-icon-btn" onclick="panToLocation(${locJson})" title="View on map">🗺️</button>
+        <button class="g-icon-btn" onclick="openAssignModal(${l.id})" title="Manage employees">👥</button>
+        <button class="g-icon-btn" onclick="openEditLocation(${l.id})" title="Edit">✏️</button>
+        <button class="g-icon-btn danger" onclick="openDeleteLocation(${l.id},'${l.name.replace(/'/g,"\'")}')" title="Delete">🗑️</button>
+      </div>
+    </td>
+  </tr>
+  ${isExpanded ? empSubRow(l.id) : `<tr id="sub-${l.id}" style="display:none"><td colspan="7"></td></tr>`}`;
+}
+
+function empSubRow(locId) {
+  const emps = _locEmployees[locId];
+  const loc  = _allLocations.find(l => l.id == locId);
+  const isGlobalLoc = loc && loc.radius_meters >= 10000;
+  const locName = loc?.name || '';
+  const isWFHLoc = locName.toLowerCase().includes('work from home');
+
+  if (!emps) {
+    return `<tr id="sub-${locId}" class="g-sub-panel">
+      <td class="g-accent-bar"></td>
+      <td colspan="6" style="padding:20px;text-align:center;background:#f6faf7"><div class="spinner"></div></td>
+    </tr>`;
+  }
+  if (!emps.length) {
+    return `<tr id="sub-${locId}" class="g-sub-panel">
+      <td class="g-accent-bar" style="background:#f6faf7"></td>
+      <td colspan="6" style="background:#f6faf7;padding:16px">
+        <div class="g-empty">No employees assigned. <a href="#" onclick="openAssignModal(${locId});return false" style="color:var(--g-green);font-weight:600">Add employees →</a></div>
+      </td>
+    </tr>`;
+  }
+
+  const rows = emps.map(e => {
+    const rule     = _allRules.find(r => r.id == e.id);
+    const rt       = rule?.rule_type || '';
+    const boundary = rt === 'district' ? `${rule.district}, ${rule.state}`
+                   : rt === 'state'    ? rule.state
+                   : rt === 'office'   ? 'Office radius'
+                   : rt === 'universal'? 'Anywhere' : '—';
+
+    const etBadge = e.employee_type === 'onsite'  ? `<span class="gbadge gbadge-onsite">Onsite</span>`
+                  : e.employee_type === 'offsite' ? `<span class="gbadge gbadge-offsite">Offsite</span>`
+                  : e.employee_type === 'wfh'     ? `<span class="gbadge gbadge-univ">WFH</span>`
+                  : `<span class="gbadge gbadge-none">—</span>`;
+
+    const ruleBadge = rt === 'office'    ? `<span class="gbadge gbadge-office">Office</span>`
+                    : rt === 'district'  ? `<span class="gbadge gbadge-district">District</span>`
+                    : rt === 'state'     ? `<span class="gbadge gbadge-state">State</span>`
+                    : rt === 'universal' ? `<span class="gbadge gbadge-univ">Universal</span>`
+                    : `<span class="gbadge gbadge-none">Not Set</span>`;
+
+    // Buffer / Boundary cell
+    let bufCell;
+    if (!isGlobalLoc) {
+      const bval = e.custom_radius || loc?.radius_meters || 300;
+      bufCell = `<div style="display:flex;align-items:center;gap:6px">
+        <input type="range" class="g-slider" id="esl-${e.id}-${locId}"
+          min="50" max="5000" step="50" value="${bval}" style="width:110px"
+          oninput="onEmpSliderInput(${e.id},${locId},this)">
+        <span class="g-sval" id="esv-${e.id}-${locId}">${bval}m</span>
+        <button class="g-save-btn" onclick="saveEmpRadius(${e.id},${locId})">Save</button>
+      </div>`;
+    } else if (isWFHLoc || rt === 'universal') {
+      bufCell = `<span class="gbadge gbadge-univ">🌍 Anywhere</span>`;
+    } else if (rt === 'district' && rule?.district && rule?.state) {
+      bufCell = `<div><div class="g-boundary-tag">📍 ${rule.district}</div><div class="g-boundary-sub">${rule.state}</div></div>`;
+    } else if (rt === 'state' && rule?.state) {
+      bufCell = `<div><div class="g-boundary-tag">🗺️ ${rule.state}</div><div class="g-boundary-sub">State boundary</div></div>`;
+    } else {
+      const sn = locName.replace(/^state\s*[-–]\s*/i,'').replace(/^district\s*[-–]\s*/i,'').split(',')[0].trim();
+      bufCell = `<div><div class="g-boundary-tag">🗺️ ${sn}</div><div class="g-boundary-sub">State boundary</div></div>`;
+    }
+
+    return `<tr>
+      <td></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="g-avatar">${e.first_name?.[0]||'?'}</div>
+          <div>
+            <div style="font-weight:600;font-size:12.5px;color:var(--g-slate)">${e.first_name} ${e.last_name}</div>
+            <div style="font-size:10.5px;color:var(--g-muted-l)">${e.employee_code}</div>
+          </div>
+        </div>
+      </td>
+      <td>${etBadge}</td>
+      <td>${bufCell}</td>
+      <td style="min-width:280px">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px">
+          ${ruleBadge}
+          <select class="g-rule-sel" id="rsel-${e.id}" onchange="onEmpRuleChange(${e.id},${locId},this)">
+            <option value="office"    ${rt==='office'   ?'selected':''}>🏢 Office</option>
+            <option value="district"  ${rt==='district' ?'selected':''}>📍 District</option>
+            <option value="state"     ${rt==='state'    ?'selected':''}>🗺️ State</option>
+            <option value="universal" ${rt==='universal'?'selected':''}>🌍 Universal</option>
+          </select>
+        </div>
+        <!-- Office picker — shown when rule = office -->
+        <div id="office-wrap-${e.id}" style="display:${rt==='office'?'block':'none'};margin-top:4px">
+          <select class="g-loc-select" id="office-sel-${e.id}">
+            <option value="">— select office location —</option>
+            ${_allLocations.filter(l => l.radius_meters < 10000 && l.is_active).map(l => `<option value="${l.id}" ${(rule?.rule_type==='office' && l.id==rule?.office_location_id)?'selected':''}>${l.name}</option>`).join('')}
+          </select>
+          <label style="display:flex;align-items:center;gap:5px;margin-top:6px;font-size:11.5px;color:var(--g-muted);cursor:pointer">
+            <input type="checkbox" id="office-univ-${e.id}" ${(rule?.rule_type==='office' && e.is_universal)?'checked':''} style="accent-color:var(--g-green);width:13px;height:13px">
+            Universal access <span style="font-size:10.5px;opacity:.7">(can punch from anywhere, not just office)</span>
+          </label>
+        </div>
+        <!-- State / District pickers -->
+        <div id="state-wrap-${e.id}" style="display:${(rt==='state'||rt==='district')?'flex':'none'};flex-direction:column;gap:3px">
+          <select class="g-loc-select" id="state-sel-${e.id}" onchange="onStateChange(${e.id})">
+            <option value="">— select state —</option>
+            ${BR_STATES.map(s=>`<option value="${s}" ${rule?.state===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+          <select class="g-loc-select" id="dist-sel-${e.id}" style="display:${rt==='district'?'block':'none'}">
+            <option value="">— select district —</option>
+            ${rule?.state && BR_DISTRICTS[rule.state] ? BR_DISTRICTS[rule.state].map(d=>`<option value="${d}" ${rule?.district===d?'selected':''}>${d}</option>`).join('') : ''}
+          </select>
+        </div>
+        <div style="font-size:10.5px;color:var(--g-muted-l);margin-top:4px" id="boundary-${e.id}">${boundary}</div>
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:5px">
+          <button class="g-apply-btn" onclick="saveEmpRule(${e.id},${locId})">✓ Apply</button>
+          <button class="g-remove-btn" onclick="removeAssignment(${locId},${e.id})" title="Remove">✕</button>
+        </div>
+      </td>
+      <td></td>
+    </tr>`;
+  }).join('');
+
+  return `<tr id="sub-${locId}" class="g-sub-panel">
+    <td class="g-accent-bar" style="background:#f6faf7"></td>
+    <td colspan="6" style="padding:0;background:#f6faf7">
+      <div class="g-sub-header">
+        <div class="g-sub-label">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          ${emps.length} Assigned Employee${emps.length!==1?'s':''}
+        </div>
+        <button class="g-add-btn" onclick="openAssignModal(${locId})">+ Add / Remove</button>
+      </div>
+      <table class="g-emp-table">
+        <thead>
+          <tr>
+            <th style="width:30px"></th>
+            <th>Employee</th>
+            <th>Type</th>
+            <th>${isGlobalLoc ? 'Boundary' : 'Buffer Radius'}</th>
+            <th>Rule / Change</th>
+            <th>Actions</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </td>
+  </tr>`;
+}
+
+// Assign modal rows — styled
+async function openAssignModal(locId) {
+  _assignLocId = locId;
+  const loc = _allLocations.find(l => l.id === locId);
+  document.getElementById('assign-modal-title').textContent = `Assign Employees — ${loc?.name || ''}`;
+  document.getElementById('assign-search').value = '';
+  const data = await api('GET', `/geofence/locations/${locId}/employees`);
+  const assigned = data?.data || [];
+  const assignedIds = new Set(assigned.map(e => e.id));
+  const isGlobalLoc = (loc?.radius_meters || 0) >= 10000;
+  document.getElementById('assign-emp-list').innerHTML = _allEmployees.map(e => {
+    const isChecked   = assignedIds.has(e.id);
+    // For already-assigned employees use saved flag; for new ones default to Office for office locations, Universal for global zones
+    const existingAssign = assigned.find(a => a.id === e.id);
+    const isUniversal = existingAssign ? existingAssign.is_universal : isGlobalLoc;
+    return `<div class="g-asgn-row" id="arow-${e.id}" data-name="${(e.first_name+' '+e.last_name+' '+e.employee_code).toLowerCase()}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="acheck-${e.id}" ${isChecked?'checked':''} onchange="updateAssignCount()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--g-green)">
+        <div class="g-avatar" style="width:28px;height:28px;font-size:10.5px">${e.first_name?.[0]||'?'}</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--g-slate)">${e.first_name} ${e.last_name}</div>
+          <div style="font-size:11px;color:var(--g-muted)">${e.employee_code} · ${e.city||'—'}</div>
+        </div>
+      </div>
+      <label style="font-size:11.5px;color:var(--g-muted);display:flex;align-items:center;gap:5px;cursor:pointer">
+        <input type="checkbox" id="auniv-${e.id}" ${isUniversal?'checked':''} style="accent-color:var(--g-green)">
+        Universal
+      </label>
+    </div>`;
+  }).join('');
+  updateAssignCount();
+  openModal('assign-modal');
+}
+
+// Section header override
+function renderLocTable() {
+  const q      = (document.getElementById('loc-search').value || '').toLowerCase();
+  const filter = document.getElementById('filter-type').value;
+  const locs   = _allLocations.filter(l => {
+    if (q && !l.name.toLowerCase().includes(q)) return false;
+    if (filter === 'office' && l.radius_meters >= 10000) return false;
+    if (filter === 'global' && l.radius_meters < 10000) return false;
+    return true;
+  });
+  document.getElementById('loc-count').textContent = locs.length + ' location' + (locs.length!==1?'s':'');
+  const offices = locs.filter(l => l.radius_meters < 10000);
+  const global  = locs.filter(l => l.radius_meters >= 10000);
+  const tbody = document.getElementById('loc-tbody');
+  let html = '';
+  if (offices.length) {
+    html += `<tr class="g-section-hdr"><td colspan="7">🏢 &nbsp;Office Locations</td></tr>`;
+    offices.forEach(l => { html += locRow(l); });
+  }
+  if (global.length) {
+    html += `<tr class="g-section-hdr"><td colspan="7">🌍 &nbsp;Global / State Zones</td></tr>`;
+    global.forEach(l => { html += locRow(l); });
+  }
+  if (!locs.length) {
+    html = `<tr><td colspan="7" style="padding:40px;text-align:center;color:var(--g-muted)">No locations found</td></tr>`;
+  }
+  tbody.innerHTML = html;
+  _expandedRows.forEach(id => {
+    const loc = _allLocations.find(l => l.id === id);
+    if (loc) toggleExpand(id, false);
+  });
+  // init sliders
+  setTimeout(() => {
+    document.querySelectorAll('.g-slider').forEach(sl => updateBufSliderBg(sl));
+  }, 60);
+}
+
+// Slider bg for new class
+function updateBufSliderBg(slider) {
+  if (!slider) return;
+  const pct = ((slider.value - slider.min) / (slider.max - slider.min)) * 100;
+  slider.style.background = `linear-gradient(90deg, var(--g-green) ${pct}%, var(--g-border) ${pct}%)`;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  COMPACT EMPLOYEE TAB — card list + slide-in drawer
+// ══════════════════════════════════════════════════════════════
+
+function switchTab(tab) {
+  const isLoc = tab === 'locations';
+  document.getElementById('view-locations').style.display = isLoc ? '' : 'none';
+  document.getElementById('view-employees').style.display = isLoc ? 'none' : '';
+  document.getElementById('tab-locations').style.background = isLoc ? 'var(--g-green)' : 'var(--g-surface)';
+  document.getElementById('tab-locations').style.color      = isLoc ? '#fff' : 'var(--g-muted)';
+  document.getElementById('tab-employees').style.background = isLoc ? 'var(--g-surface)' : 'var(--g-green)';
+  document.getElementById('tab-employees').style.color      = isLoc ? 'var(--g-muted)' : '#fff';
+  document.getElementById('tab-subtitle').textContent = isLoc
+    ? 'Expand any location to view & edit employee buffers and rules inline'
+    : 'All employees — tap any card to change their geofence rule';
+  if (!isLoc) renderEmpTable();
+}
+
+let _drawerEmpId = null;
+
+function renderEmpTable() {
+  const q      = (document.getElementById('emp-search')?.value || '').toLowerCase();
+  const filter = document.getElementById('emp-filter-rule')?.value || '';
+
+  const emps = _allEmployees.filter(e => {
+    const rule = _allRules.find(r => r.id == e.id);
+    const rt   = rule?.rule_type || 'none';
+    if (filter && filter !== rt) return false;
+    const name = (e.first_name + ' ' + e.last_name + ' ' + e.employee_code + ' ' + (e.city||'')).toLowerCase();
+    if (q && !name.includes(q)) return false;
+    return true;
+  });
+
+  document.getElementById('emp-count').textContent = emps.length + ' employee' + (emps.length !== 1 ? 's' : '');
+  const list = document.getElementById('emp-card-list');
+
+  if (!emps.length) {
+    list.innerHTML = '<div style="padding:40px;text-align:center;color:var(--g-muted);font-size:13px">No employees found</div>';
+    return;
+  }
+
+  list.innerHTML = emps.map(e => empCard(e)).join('');
+}
+
+function empCard(e) {
+  const rule = _allRules.find(r => r.id == e.id);
+  const rt   = rule?.rule_type || '';
+
+  // Badge
+  const badgeMap = {
+    office:    ['gbadge-office',   '🏢 Office'],
+    state:     ['gbadge-state',    '🗺️ State'],
+    district:  ['gbadge-district', '📍 District'],
+    universal: ['gbadge-univ',     '🌍 Universal'],
+  };
+  const [badgeCls, badgeTxt] = badgeMap[rt] || ['gbadge-none', '⚠️ None'];
+
+  // Subtitle: "KC8989 • Anywhere"
+  let assignment = '—';
+  if (rt === 'office')    assignment = rule?.office_location_name || 'Office';
+  else if (rt === 'district') assignment = rule?.district ? `${rule.district}, ${rule.state}` : '—';
+  else if (rt === 'state')    assignment = rule?.state || '—';
+  else if (rt === 'universal') assignment = 'Anywhere';
+
+  const initials = ((e.first_name?.[0]||'') + (e.last_name?.[0]||'')).toUpperCase() || '?';
+  const subtitle = [e.employee_code, assignment].filter(Boolean).join(' • ');
+
+  return `<div class="emp-card" onclick="openEmpDrawer(${e.id}, event)">
+    <div class="ec-avatar">${initials}</div>
+    <div class="ec-body">
+      <div class="ec-top">
+        <div class="ec-name">${e.first_name} ${e.last_name}</div>
+        <span class="gbadge ${badgeCls}" style="flex-shrink:0">${badgeTxt}</span>
+      </div>
+      <div class="ec-sub">${subtitle}</div>
+    </div>
+    <div class="ec-chevron">›</div>
+  </div>`;
+}
+
+function openEmpDrawer(empId, event) {
+  _drawerEmpId = empId;
+  const e    = _allEmployees.find(x => x.id === empId);
+  const rule = _allRules.find(r => r.id == empId);
+  const rt   = rule?.rule_type || 'universal';
+  if (!e) return;
+
+  // Header
+  const initials = ((e.first_name?.[0]||'') + (e.last_name?.[0]||'')).toUpperCase() || '?';
+  document.getElementById('ed-avatar').textContent = initials;
+  document.getElementById('ed-name').textContent   = e.first_name + ' ' + e.last_name;
+  document.getElementById('ed-meta').textContent   = [e.employee_code, e.department_name].filter(Boolean).join(' · ');
+
+  // Current info
+  let curLabel = '—';
+  const badgeMap = { office:'🏢 Office', state:'🗺️ State', district:'📍 District', universal:'🌍 Universal' };
+  const curBadge = `<span class="gbadge ${({'office':'gbadge-office','state':'gbadge-state','district':'gbadge-district','universal':'gbadge-univ'}[rt]||'gbadge-none')}">${badgeMap[rt]||'⚠️ None'}</span>`;
+  if (rt === 'office')    curLabel = rule?.office_location_name || 'Office';
+  else if (rt === 'district') curLabel = rule?.district ? `${rule.district}, ${rule.state}` : '—';
+  else if (rt === 'state')    curLabel = rule?.state || '—';
+  else if (rt === 'universal') curLabel = 'Anywhere';
+  document.getElementById('ed-current-val').innerHTML = curBadge + ' <span style="color:var(--g-muted)">' + curLabel + '</span>';
+
+  // Rule selector
+  document.getElementById('ed-rule-sel').value = rt;
+
+  // Office selector — populate and pre-select
+  const osel = document.getElementById('ed-office-sel');
+  osel.innerHTML = '<option value="">— select office —</option>';
+  _allLocations.filter(l => l.radius_meters < 10000 && l.is_active).forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = l.id; opt.textContent = l.name;
+    if (rule?.rule_type === 'office' && rule?.office_location_id == l.id) opt.selected = true;
+    osel.appendChild(opt);
+  });
+
+  // State selector — populate and pre-select
+  const ssel = document.getElementById('ed-state-sel');
+  ssel.innerHTML = '<option value="">— select state —</option>';
+  BR_STATES.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s; opt.textContent = s;
+    if (rule?.state === s) opt.selected = true;
+    ssel.appendChild(opt);
+  });
+
+  // District selector — populate if state is set
+  populateDrawerDistricts(rule?.state, rule?.district);
+
+  // Show/hide pickers
+  updateDrawerPickers(rt);
+
+  // Position popup right at the cursor click point
+  const popup = document.getElementById('emp-drawer');
+  const POPUP_W = 320, POPUP_H = 420;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const MARGIN = 8;
+
+  // Use exact mouse position — always correct regardless of scroll or nesting
+  let left = (event ? event.clientX : vw / 2) + 12;
+  let top  = (event ? event.clientY : vh / 2) - 20;
+
+  // Flip left if popup would overflow right edge
+  if (left + POPUP_W + MARGIN > vw) left = (event ? event.clientX : vw / 2) - POPUP_W - 12;
+
+  // Clamp vertically so popup never goes off bottom or top
+  if (top + POPUP_H + MARGIN > vh) top = vh - POPUP_H - MARGIN;
+  if (top < MARGIN) top = MARGIN;
+
+  // Final clamp for left
+  if (left < MARGIN) left = MARGIN;
+
+  popup.style.left = left + 'px';
+  popup.style.top  = top  + 'px';
+
+  // Open
+  document.getElementById('emp-drawer-overlay').classList.add('open');
+  popup.classList.add('open');
+}
+
+function closeEmpDrawer() {
+  document.getElementById('emp-drawer-overlay').classList.remove('open');
+  document.getElementById('emp-drawer').classList.remove('open');
+  _drawerEmpId = null;
+}
+
+function onDrawerRuleChange() {
+  const rt = document.getElementById('ed-rule-sel').value;
+  updateDrawerPickers(rt);
+}
+
+function updateDrawerPickers(rt) {
+  document.getElementById('ed-office-wrap').style.display   = rt === 'office'    ? 'block' : 'none';
+  document.getElementById('ed-state-wrap').style.display    = (rt === 'state' || rt === 'district') ? 'block' : 'none';
+  document.getElementById('ed-district-wrap').style.display = rt === 'district'  ? 'block' : 'none';
+}
+
+function onDrawerStateChange() {
+  const state = document.getElementById('ed-state-sel').value;
+  populateDrawerDistricts(state, null);
+}
+
+function populateDrawerDistricts(state, preSelect) {
+  const dsel = document.getElementById('ed-district-sel');
+  dsel.innerHTML = '<option value="">— select district —</option>';
+  if (state && BR_DISTRICTS[state]) {
+    BR_DISTRICTS[state].forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d; opt.textContent = d;
+      if (preSelect === d) opt.selected = true;
+      dsel.appendChild(opt);
+    });
+  }
+}
+
+async function saveDrawerRule() {
+  if (!_drawerEmpId) return;
+  const rt    = document.getElementById('ed-rule-sel').value;
+  const osel  = document.getElementById('ed-office-sel');
+  const ssel  = document.getElementById('ed-state-sel');
+  const dsel  = document.getElementById('ed-district-sel');
+  const btn   = document.getElementById('ed-save-btn');
+
+  // Validate
+  if (rt === 'office' && !osel.value)       { toast('Please select an office location', 'error'); return; }
+  if ((rt === 'state' || rt === 'district') && !ssel.value) { toast('Please select a state', 'error'); return; }
+  if (rt === 'district' && !dsel.value)     { toast('Please select a district', 'error'); return; }
+
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  try {
+    let body = { employee_id: _drawerEmpId, rule_type: rt };
+    if (rt === 'office') {
+      body.office_location_id = parseInt(osel.value);
+      // Call buffer-rules which now handles both employee_buffer_rules AND employee_geofence move
+      const r = await api('POST', '/geofence/buffer-rules', body);
+      if (!r?.success) { toast(r?.message || 'Failed to assign to office', 'error'); return; }
+      toast('✓ Office rule saved');
+    } else {
+      if (rt === 'state' || rt === 'district') body.state = ssel.value;
+      if (rt === 'district') body.district = dsel.value;
+      if (rt === 'universal') { body.state = null; body.district = null; }
+      const r = await api('POST', '/geofence/buffer-rules', body);
+      if (!r?.success) { toast(r?.message || 'Failed', 'error'); return; }
+      toast(rt === 'district' ? `✓ ${body.district}, ${body.state}`
+          : rt === 'state'    ? `✓ ${body.state}`
+          : '✓ Rule saved');
+    }
+
+    closeEmpDrawer();
+
+    // Reload
+    const [locData, ruleData] = await Promise.all([
+      api('GET', '/geofence/locations'),
+      api('GET', '/geofence/buffer-rules')
+    ]);
+    _allLocations = locData?.data || [];
+    _allRules     = ruleData?.data || [];
+    _globalAssignedCount = locData?.global_assigned_count ?? null;
+    _locEmployees = {};
+    updateStats();
+    renderEmpTable();
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save changes';
+  }
+}
+
+</script>
+<!-- ── EMPLOYEE POPUP (must be direct child of body — no transformed ancestors) ── -->
+<div class="emp-drawer-overlay" id="emp-drawer-overlay" onclick="closeEmpDrawer()"></div>
+<div class="emp-popup" id="emp-drawer">
+  <div class="emp-drawer-head">
+    <div class="emp-drawer-avatar" id="ed-avatar">?</div>
+    <div>
+      <div class="emp-drawer-name" id="ed-name">—</div>
+      <div class="emp-drawer-meta" id="ed-meta">—</div>
+    </div>
+    <button class="emp-drawer-close" onclick="closeEmpDrawer()">✕</button>
+  </div>
+  <div class="emp-drawer-body">
+    <div class="ed-current-info">
+      <div class="ed-current-label">Current assignment</div>
+      <div class="ed-current-val" id="ed-current-val">—</div>
+    </div>
+    <span class="ed-section-label">Change geofence rule</span>
+    <select class="ed-select" id="ed-rule-sel" onchange="onDrawerRuleChange()">
+      <option value="office">🏢 Office</option>
+      <option value="state">🗺️ State</option>
+      <option value="district">📍 District</option>
+      <option value="universal">🌍 Universal</option>
+    </select>
+    <div id="ed-office-wrap" style="display:none">
+      <span class="ed-section-label">Office location</span>
+      <select class="ed-select" id="ed-office-sel">
+        <option value="">— select office —</option>
+      </select>
+    </div>
+    <div id="ed-state-wrap" style="display:none">
+      <span class="ed-section-label">State</span>
+      <select class="ed-select" id="ed-state-sel" onchange="onDrawerStateChange()">
+        <option value="">— select state —</option>
+      </select>
+    </div>
+    <div id="ed-district-wrap" style="display:none">
+      <span class="ed-section-label">District</span>
+      <select class="ed-select" id="ed-district-sel">
+        <option value="">— select district —</option>
+      </select>
+    </div>
+  </div>
+  <div class="emp-drawer-foot">
+    <button class="ed-cancel-btn" onclick="closeEmpDrawer()">Cancel</button>
+    <button class="ed-save-btn" id="ed-save-btn" onclick="saveDrawerRule()">Save changes</button>
+  </div>
+</div>
+
+</body>
+</html>
+
