@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Project Budget Tracking</title>
+<script>document.addEventListener('DOMContentLoaded',function(){if(window.CFG?.clientName)document.getElementById('page-title').textContent=window.CFG.clientName+' — Project Budget Tracking';});</script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script>
+(function(){
+  var C = window.CFG;
+  var t = document.getElementById('page-title');
+  if(t) t.textContent = C.clientName + ' - ' + t.textContent;
+  var lt = document.getElementById('sidebar-logo-text');
+  if(lt) lt.innerHTML = C.logoHtml || C.clientName;
+  var cs = document.getElementById('sidebar-company-short');
+  if(cs) cs.textContent = C.companyShortName || '';
+})();
+</script>
+<link rel="stylesheet" href="style.css">
+<style>
+/* ── Project-specific styles ───────────────────────────── */
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:22px; }
+.kpi-card { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius); padding:18px 20px; }
+.kpi-label { font-size:11.5px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+.kpi-val   { font-size:26px; font-weight:800; color:var(--text); line-height:1.1; }
+.kpi-sub   { font-size:11.5px; color:var(--muted2); margin-top:3px; }
+.kpi-card.green { border-color:var(--green); background:var(--green-l); }
+.kpi-card.red   { border-color:var(--red);   background:var(--red-l); }
+.kpi-card.yellow{ border-color:var(--yellow); background:var(--yellow-l); }
+.kpi-card.purple{ border-color:var(--purple); background:var(--purple-l); }
+
+.proj-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; }
+.proj-card {
+  background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius);
+  padding:20px; cursor:pointer; transition:all .18s;
+}
+.proj-card:hover { border-color:var(--accent); box-shadow:var(--shadow-md); transform:translateY(-2px); }
+.proj-card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+.proj-name  { font-size:15px; font-weight:700; color:var(--text); }
+.proj-code  { font-size:11px; font-weight:600; color:var(--muted2); margin-top:1px; }
+.proj-client{ font-size:12px; color:var(--muted); margin-bottom:12px; }
+.status-badge { font-size:10.5px; font-weight:700; padding:3px 10px; border-radius:20px; text-transform:uppercase; white-space:nowrap; }
+.status-badge.active    { background:var(--green-l);  color:var(--green-d); }
+.status-badge.completed { background:var(--purple-l); color:var(--purple-d); }
+.status-badge.on_hold   { background:var(--yellow-l); color:var(--yellow-d); }
+
+.budget-bar-wrap { margin:12px 0 6px; }
+.budget-bar-label{ display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-bottom:4px; }
+.budget-bar { height:8px; border-radius:10px; background:var(--border); overflow:hidden; }
+.budget-fill { height:100%; border-radius:10px; background:var(--accent); transition:width .5s; }
+.budget-fill.warning { background:var(--yellow); }
+.budget-fill.danger  { background:var(--red); }
+
+.cost-pills { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+.cost-pill { font-size:10.5px; font-weight:600; padding:3px 9px; border-radius:8px; }
+.cost-pill.salary { background:#e0f2fe; color:#0369a1; }
+.cost-pill.advance { background:var(--orange-l); color:var(--orange-d); }
+.cost-pill.reimbursement { background:var(--purple-l); color:var(--purple-d); }
+
+/* ── Project Detail Panel ── */
+.detail-panel {
+  position:fixed; top:0; right:-720px; width:720px; max-width:100vw; height:100vh;
+  background:var(--surface); box-shadow:var(--shadow-xl); z-index:1200;
+  transition:right .3s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; overflow:hidden;
+}
+.detail-panel.open { right:0; }
+.panel-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:1199;
+  display:none; backdrop-filter:blur(2px);
+}
+.panel-overlay.open { display:block; }
+.panel-header {
+  padding:20px 24px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+}
+.panel-title { font-size:18px; font-weight:800; color:var(--text); }
+.panel-body   { flex:1; overflow-y:auto; padding:24px; }
+.panel-close  { background:none; border:none; cursor:pointer; font-size:22px; color:var(--muted); padding:4px 8px; border-radius:8px; }
+.panel-close:hover { background:var(--border); }
+
+.panel-tabs   { display:flex; gap:4px; margin-bottom:20px; background:var(--bg); border-radius:12px; padding:4px; }
+.panel-tab    { flex:1; padding:8px 12px; border:none; background:none; border-radius:9px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; transition:all .15s; }
+.panel-tab.active { background:var(--surface); color:var(--accent); box-shadow:var(--shadow-xs); }
+
+/* ── Forms ── */
+.form-row  { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.form-row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+.form-group { display:flex; flex-direction:column; gap:5px; margin-bottom:14px; }
+.form-group label { font-size:12px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.4px; }
+.form-group input, .form-group select, .form-group textarea {
+  border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:9px 12px;
+  font-size:13.5px; font-family:inherit; color:var(--text); background:var(--bg);
+  transition:border-color .15s; width:100%; box-sizing:border-box;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color:var(--accent); outline:none; background:var(--surface);
+}
+.form-group textarea { resize:vertical; min-height:80px; }
+
+/* ── Employee table ── */
+.emp-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
+.emp-row:last-child { border-bottom:none; }
+.emp-avatar { width:34px; height:34px; border-radius:50%; background:var(--accent-l); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:var(--accent); flex-shrink:0; }
+.emp-info   { flex:1; min-width:0; }
+.emp-name   { font-size:13.5px; font-weight:600; color:var(--text); }
+.emp-meta   { font-size:11.5px; color:var(--muted2); }
+
+/* ── Expenditure table ── */
+.exp-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+.exp-table th { text-align:left; padding:8px 10px; background:var(--bg); color:var(--muted); font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.4px; }
+.exp-table td { padding:9px 10px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.exp-table tr:hover td { background:var(--bg); }
+.type-badge { font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:6px; }
+.type-badge.salary        { background:#e0f2fe; color:#0369a1; }
+.type-badge.advance       { background:var(--orange-l); color:var(--orange-d); }
+.type-badge.reimbursement { background:var(--purple-l); color:var(--purple-d); }
+.type-badge.other         { background:var(--border); color:var(--muted); }
+
+/* ── Progress report cards ── */
+.rpt-card { border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:16px; margin-bottom:12px; }
+.rpt-period { font-size:12px; font-weight:700; color:var(--accent); margin-bottom:8px; }
+.rpt-section { margin-bottom:8px; }
+.rpt-section label { font-size:10.5px; font-weight:700; text-transform:uppercase; color:var(--muted); letter-spacing:.4px; display:block; margin-bottom:2px; }
+.rpt-section p { font-size:12.5px; color:var(--text); margin:0; }
+.ach-bar-wrap { margin-top:8px; }
+.ach-pct { font-size:22px; font-weight:800; color:var(--green); }
+
+/* Progress report form */
+.rpt-form { background:var(--bg); border-radius:var(--radius); padding:20px; margin-top:8px; }
+
+/* ── All modals must appear above the side panel (z-index:1200) ── */
+.modal-backdrop { z-index:1400 !important; }
+.modal          { z-index:1401 !important; }
+
+/* ── Assign employee modal specifics ── */
+.emp-search-result { max-height:200px; overflow-y:auto; border:1.5px solid var(--border); border-radius:var(--radius-sm); margin-top:6px; }
+.emp-search-item { padding:10px 14px; cursor:pointer; display:flex; align-items:center; gap:10px; transition:background .12s; }
+.emp-search-item:hover { background:var(--bg); }
+.emp-search-item.selected { background:var(--accent-l); }
+
+/* ── Alert biweekly nudge ── */
+.nudge-banner { background:var(--yellow-l); border:1.5px solid var(--yellow); border-radius:var(--radius); padding:12px 16px; margin-bottom:16px; display:flex; align-items:center; gap:12px; }
+.nudge-banner span { font-size:13px; font-weight:600; color:var(--yellow-d); flex:1; }
+
+/* ── Responsive ── */
+@media(max-width:640px) {
+  .form-row, .form-row3 { grid-template-columns:1fr; }
+  .proj-grid { grid-template-columns:1fr; }
+  .detail-panel { width:100vw; }
+  .kpi-grid { grid-template-columns:1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">📊 Project Budget Tracking</div>
+    </div>
+    <div class="topbar-right">
+      <button id="btn-new-proj" class="btn btn-primary btn-sm" onclick="openNewProjectModal()" style="display:none">+ New Project</button>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+
+    <!-- ── Biweekly nudge for PMs ── -->
+    <div id="nudge-banner" class="nudge-banner" style="display:none">
+      ⏰ <span id="nudge-text"></span>
+      <button class="btn btn-sm" style="background:var(--yellow);color:#fff" onclick="openReportModal(null)">Submit Report</button>
+    </div>
+
+    <!-- ── KPI Summary (accounts/admin only) ── -->
+    <div id="kpi-section" style="display:none">
+      <div class="kpi-grid" id="kpi-grid"></div>
+    </div>
+
+    <!-- ── Tabs ── -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('projects', event)">📁 All Projects</button>
+      <button class="tab-btn" id="tab-my-btn" style="display:none" onclick="switchTab('my', event)">👤 My Projects</button>
+      <button class="tab-btn" id="tab-reports-btn" onclick="switchTab('reports', event)">📝 Progress Reports</button>
+    </div>
+
+    <!-- ── Projects Tab ── -->
+    <div id="tab-projects">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Projects</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="status-filter" class="form-control" style="width:140px" onchange="loadProjects()">
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+              <option value="on_hold">On Hold</option>
+            </select>
+            <input id="search-filter" class="form-control" style="width:180px" placeholder="Search projects…" oninput="filterProjects()">
+          </div>
+        </div>
+        <div id="proj-list"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- ── My Projects Tab ── -->
+    <div id="tab-my" style="display:none">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Projects I Manage</div></div>
+        <div id="my-proj-list"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- ── Reports Tab ── -->
+    <div id="tab-reports" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Progress Reports</div>
+          <button class="btn btn-primary btn-sm" onclick="openReportModal(null)">+ Submit Report</button>
+        </div>
+        <div id="global-reports-list"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ PROJECT DETAIL SLIDE PANEL ═══════════════ -->
+<div class="panel-overlay" id="panel-overlay" onclick="closeProjPanel()"></div>
+<div class="detail-panel" id="proj-panel">
+  <div class="panel-header">
+    <div>
+      <div class="panel-title" id="panel-proj-name">—</div>
+      <div style="font-size:12px;color:var(--muted)" id="panel-proj-sub"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button id="panel-export-btn" class="btn btn-sm" onclick="exportProject()" title="Download Excel">⬇️ Excel</button>
+      <button id="panel-edit-btn"   class="btn btn-sm" onclick="editCurrentProject()">✏️ Edit</button>
+      <button id="panel-delete-btn" class="btn btn-sm" style="background:var(--red,#e53935);color:#fff;border-color:var(--red,#e53935)" onclick="deleteCurrentProject()">🗑️ Delete</button>
+      <button class="panel-close" onclick="closeProjPanel()">×</button>
+    </div>
+  </div>
+
+  <div class="panel-body">
+    <!-- Budget overview -->
+    <div id="panel-budget-summary" style="margin-bottom:20px"></div>
+
+    <!-- Tabs -->
+    <div class="panel-tabs">
+      <button class="panel-tab active" onclick="switchPanelTab('overview', this)">Overview</button>
+      <button class="panel-tab" onclick="switchPanelTab('team', this)">Team</button>
+      <button class="panel-tab" onclick="switchPanelTab('expenses', this)">Expenses</button>
+      <button class="panel-tab" onclick="switchPanelTab('progress', this)">Progress Reports</button>
+    </div>
+
+    <div id="panel-overview"><!-- filled dynamically --></div>
+    <div id="panel-team"    style="display:none"><!-- filled dynamically --></div>
+    <div id="panel-expenses" style="display:none"><!-- filled dynamically --></div>
+    <div id="panel-progress" style="display:none"><!-- filled dynamically --></div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODALS ═══════════════ -->
+
+<!-- New/Edit Project Modal -->
+<div class="modal-backdrop" id="proj-modal">
+  <div class="modal" style="max-width:620px;width:100%">
+    <div class="modal-header">
+      <div class="modal-title" id="proj-modal-title">New Project</div>
+      <button class="modal-close" onclick="closeModal('proj-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Project Name *</label>
+          <input id="f-name" type="text" placeholder="e.g. Crop Analytics Phase 1">
+        </div>
+        <div class="form-group">
+          <label>Project Code</label>
+          <input id="f-code" type="text" placeholder="e.g. PRJ-2025-01">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Client Name</label>
+          <input id="f-client" type="text" placeholder="e.g. AgriCorp Ltd">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="f-status">
+            <option value="active">Active</option>
+            <option value="on_hold">On Hold</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Start Date</label>
+          <input id="f-start" type="date">
+        </div>
+        <div class="form-group">
+          <label>End Date</label>
+          <input id="f-end" type="date">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Client Budget (Total ₹)</label>
+          <input id="f-budget" type="number" placeholder="e.g. 5000000" min="0">
+        </div>
+        <div class="form-group">
+          <label>Planned Cost by Org (₹)</label>
+          <input id="f-planned" type="number" placeholder="e.g. 3500000" min="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Project Manager</label>
+        <select id="f-manager"><option value="">-- Select Manager --</option></select>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="f-desc" placeholder="Project overview, objectives…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('proj-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProject()">Save Project</button>
+    </div>
+  </div>
+</div>
+
+<!-- Assign Employee Modal -->
+<div class="modal-backdrop" id="assign-modal">
+  <div class="modal" style="max-width:480px;width:100%">
+    <div class="modal-header">
+      <div class="modal-title">Assign Employee to Project</div>
+      <button class="modal-close" onclick="closeModal('assign-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Project *</label>
+        <select id="assign-proj-select" onchange="_currentProjId = parseInt(this.value)">
+          <option value="">-- Select Project --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Search Employee</label>
+        <input id="emp-search" type="text" placeholder="Search by name or code…" oninput="searchEmployees()">
+        <div id="emp-search-result" class="emp-search-result" style="display:none"></div>
+      </div>
+      <div id="selected-emp-display" style="display:none;margin-top:10px;padding:10px 14px;background:var(--accent-l);border-radius:var(--radius-sm)">
+        <div style="font-weight:700;color:var(--accent)" id="sel-emp-name"></div>
+        <div style="font-size:12px;color:var(--muted)" id="sel-emp-meta"></div>
+      </div>
+      <div class="form-group" style="margin-top:14px">
+        <label>Role in Project</label>
+        <input id="emp-role" type="text" placeholder="e.g. Developer, Analyst, Lead">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('assign-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="assignEmployee()">Assign</button>
+    </div>
+  </div>
+</div>
+
+<!-- Salary Allocation Modal -->
+<div class="modal-backdrop" id="allocation-modal">
+  <div class="modal" style="max-width:560px;width:100%">
+    <div class="modal-header">
+      <div class="modal-title" id="allocation-title">Salary Allocation</div>
+      <button class="modal-close" onclick="closeModal('allocation-modal')">×</button>
+    </div>
+    <div id="allocation-body" style="padding:0 4px"></div>
+  </div>
+</div>
+<div class="modal-backdrop" id="expense-modal">
+  <div class="modal" style="max-width:480px;width:100%">
+    <div class="modal-header">
+      <div class="modal-title">Add Expenditure</div>
+      <button class="modal-close" onclick="closeModal('expense-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Type *</label>
+        <select id="exp-type">
+          <option value="salary">Salary</option>
+          <option value="advance">Advance</option>
+          <option value="reimbursement">Reimbursement</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Employee (optional)</label>
+        <select id="exp-emp"><option value="">-- None / General --</option></select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Amount (₹) *</label>
+          <input id="exp-amount" type="number" min="1" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label>Month</label>
+          <select id="exp-month">
+            <option value="">—</option>
+            <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option>
+            <option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option>
+            <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
+            <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Year</label>
+          <input id="exp-year" type="number" value="2025" min="2020" max="2030">
+        </div>
+        <div class="form-group">
+          <label>Reference ID</label>
+          <input id="exp-ref" type="number" placeholder="Payroll/Advance ID">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input id="exp-desc" type="text" placeholder="e.g. May 2025 Salary">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('expense-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addExpenditure()">Record Expenditure</button>
+    </div>
+  </div>
+</div>
+
+<!-- Progress Report Modal -->
+<div class="modal-backdrop" id="report-modal">
+  <div class="modal" style="max-width:600px;width:100%;max-height:90vh;overflow-y:auto">
+    <div class="modal-header">
+      <div class="modal-title">Biweekly Progress Report</div>
+      <button class="modal-close" onclick="closeModal('report-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Project *</label>
+        <select id="rpt-proj"><option value="">-- Select Project --</option></select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Period Start *</label>
+          <input id="rpt-start" type="date">
+        </div>
+        <div class="form-group">
+          <label>Period End *</label>
+          <input id="rpt-end" type="date">
+        </div>
+      </div>
+
+      <div style="padding:12px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:10px">📋 WHAT WE DID (Last 15 Days)</div>
+        <div class="form-group">
+          <label>Work Done / Summary</label>
+          <textarea id="rpt-done" placeholder="Describe completed work, tasks, deliverables…" rows="3"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Data Count (e.g. tickets, calls)</label>
+            <input id="rpt-datacount" type="text" placeholder='e.g. {"tickets":12,"calls":30}'>
+          </div>
+          <div class="form-group">
+            <label>Achievements</label>
+            <textarea id="rpt-ach" placeholder="Key milestones met…" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Challenges / Blockers</label>
+          <textarea id="rpt-challenges" placeholder="Issues faced, pending dependencies…" rows="2"></textarea>
+        </div>
+      </div>
+
+      <div style="padding:12px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:10px">🎯 NEXT 15 DAYS PLAN</div>
+        <div class="form-group">
+          <label>Plan for Next Period</label>
+          <textarea id="rpt-plan" placeholder="What will be done in the next 15 days…" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Target Metrics (JSON or plain text)</label>
+          <input id="rpt-target" type="text" placeholder='e.g. {"tickets":15,"milestone":"UAT complete"}'>
+        </div>
+      </div>
+
+      <div style="padding:12px;background:var(--bg);border-radius:var(--radius-sm)">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:10px">✅ ACTUAL VS PLANNED (Previous Period Review)</div>
+        <div class="form-group">
+          <label>What was Actually Achieved</label>
+          <textarea id="rpt-actual" placeholder="How much of the plan was achieved…" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Achievement % (0-100)</label>
+          <input id="rpt-pct" type="number" min="0" max="100" placeholder="e.g. 85">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('report-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitReport()">Submit Report</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// PROJECTS.HTML — Main Script
+// ═══════════════════════════════════════════════════════════════════
+
+const _user = Auth.getUser();
+const _role = _user?.role?.toLowerCase().trim();
+const _code = _user?.employee_code;
+const IS_ADMIN    = ['super_admin','admin','accounts'].includes(_role);
+const IS_ACCOUNTS = _role === 'accounts';
+const IS_SUPER    = ['super_admin','admin'].includes(_role);
+
+// Hard-gate: only accounts/admin/super_admin can see this page
+if (!IS_ADMIN) { window.location.href = 'dashboard.html'; }
+
+let _allProjects  = [];
+let _allEmployees = [];
+let _currentProjId = null;
+let _currentProj   = null;
+let _selectedEmpId = null;
+let _editingId     = null;
+
+// ── Init ──────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!Auth.guard()) return;
+  buildSidebar('projects.html');
+  loadNotifBadge();
+
+  // Show admin-only buttons
+  if (IS_ADMIN) {
+    document.getElementById('btn-new-proj').style.display = '';
+    document.getElementById('kpi-section').style.display  = '';
+    loadKPIs();
+  }
+
+  // Manager/PM tab
+  document.getElementById('tab-my-btn').style.display = '';
+
+  await loadEmployees();
+  await loadProjects();
+  checkPendingReports();
+});
+
+// ── KPI Summary ──────────────────────────────────────────────────
+async function loadKPIs() {
+  const r = await api('GET', '/projects/summary');
+  if (!r?.success) return;
+  const d = r.data;
+  const util = d.total_budget > 0 ? ((d.total_actual / d.total_budget) * 100).toFixed(1) : '—';
+  const variance = parseFloat(d.total_budget||0) - parseFloat(d.total_actual||0);
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">Total Projects</div>
+      <div class="kpi-val">${d.total_projects}</div>
+      <div class="kpi-sub">${d.active_projects} active</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Client Budget</div>
+      <div class="kpi-val" style="font-size:18px">${fmt.money(d.total_budget)}</div>
+      <div class="kpi-sub">Total across all projects</div>
+    </div>
+    <div class="kpi-card yellow">
+      <div class="kpi-label">Planned Cost</div>
+      <div class="kpi-val" style="font-size:18px">${fmt.money(d.total_planned)}</div>
+      <div class="kpi-sub">Org planned expenditure</div>
+    </div>
+    <div class="kpi-card ${parseFloat(d.total_actual) > parseFloat(d.total_budget) ? 'red' : 'purple'}">
+      <div class="kpi-label">Actual Spent</div>
+      <div class="kpi-val" style="font-size:18px">${fmt.money(d.total_actual)}</div>
+      <div class="kpi-sub">${util}% utilised · Variance ${fmt.money(Math.abs(variance))}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Salary Cost</div>
+      <div class="kpi-val" style="font-size:16px">${fmt.money(d.total_salary)}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Advance Cost</div>
+      <div class="kpi-val" style="font-size:16px">${fmt.money(d.total_advance)}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Reimbursements</div>
+      <div class="kpi-val" style="font-size:16px">${fmt.money(d.total_reimbursement)}</div>
+    </div>
+  `;
+}
+
+// ── Load all employees (for dropdowns) ───────────────────────────
+async function loadEmployees() {
+  const r = await api('GET', '/employees');
+  if (r?.success) {
+    _allEmployees = r.data || [];
+    populateManagerDropdown();
+    populateExpEmpDropdown();
+    populateRptProjDropdown();
+  }
+}
+
+function populateManagerDropdown() {
+  const sel = document.getElementById('f-manager');
+  sel.innerHTML = '<option value="">-- Select Project Manager --</option>' +
+    _allEmployees.map(e =>
+      `<option value="${e.id}">${e.first_name} ${e.last_name} (${e.employee_code})</option>`
+    ).join('');
+}
+
+function populateExpEmpDropdown() {
+  const sel = document.getElementById('exp-emp');
+  sel.innerHTML = '<option value="">-- None / General --</option>' +
+    _allEmployees.map(e =>
+      `<option value="${e.id}">${e.first_name} ${e.last_name} (${e.employee_code})</option>`
+    ).join('');
+}
+
+async function populateRptProjDropdown() {
+  const r = await api('GET', '/projects');
+  if (!r?.success) return;
+  const mine = r.data.filter(p => p.project_manager_id === _user?.id || IS_ADMIN);
+  const sel  = document.getElementById('rpt-proj');
+  sel.innerHTML = '<option value="">-- Select Project --</option>' +
+    mine.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+}
+
+// ── Projects list ─────────────────────────────────────────────────
+async function loadProjects() {
+  const status = document.getElementById('status-filter').value;
+  const r = await api('GET', `/projects${status ? '?status='+status : ''}`);
+  if (!r?.success) { document.getElementById('proj-list').innerHTML = '<div class="empty-state">Failed to load projects</div>'; return; }
+  _allProjects = r.data || [];
+  renderProjects();
+  renderMyProjects();
+  renderGlobalReports();
+}
+
+function filterProjects() { renderProjects(); }
+
+function renderProjects() {
+  const q = document.getElementById('search-filter').value.toLowerCase();
+  const filtered = _allProjects.filter(p =>
+    !q || p.name.toLowerCase().includes(q) ||
+    (p.code||'').toLowerCase().includes(q) ||
+    (p.client_name||'').toLowerCase().includes(q)
+  );
+
+  if (!filtered.length) {
+    document.getElementById('proj-list').innerHTML = `<div class="empty-state"><div style="font-size:36px;margin-bottom:8px">📁</div><div>No projects found</div></div>`;
+    return;
+  }
+  document.getElementById('proj-list').innerHTML = `<div class="proj-grid">${filtered.map(projCard).join('')}</div>`;
+}
+
+function projCard(p) {
+  const actual   = parseFloat(p.actual_cost  || 0);
+  const budget   = parseFloat(p.total_budget || 0);
+  const planned  = parseFloat(p.planned_cost || 0);
+  const pct      = budget > 0 ? Math.min((actual / budget) * 100, 100) : 0;
+  const fillClass= pct > 90 ? 'danger' : pct > 70 ? 'warning' : '';
+  const variance = budget - actual;
+
+  return `
+  <div class="proj-card" onclick="openProjPanel(${p.id})">
+    <div class="proj-card-header">
+      <div>
+        <div class="proj-name">${p.name}</div>
+        ${p.code ? `<div class="proj-code">${p.code}</div>` : ''}
+      </div>
+      <span class="status-badge ${p.status}">${p.status.replace('_',' ')}</span>
+    </div>
+    ${p.client_name ? `<div class="proj-client">👤 ${p.client_name}</div>` : ''}
+    ${p.project_manager_name ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">📌 PM: ${p.project_manager_name}</div>` : ''}
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px">
+      <span>👥 ${p.employee_count} member${p.employee_count!=1?'s':''}</span>
+      ${p.end_date ? `<span>🗓 ${fmt.date(p.end_date)}</span>` : ''}
+    </div>
+    ${budget > 0 ? `
+    <div class="budget-bar-wrap">
+      <div class="budget-bar-label">
+        <span>Budget Utilisation</span>
+        <span>${pct.toFixed(1)}%</span>
+      </div>
+      <div class="budget-bar"><div class="budget-fill ${fillClass}" style="width:${pct}%"></div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:4px">
+      <span>Spent: <b>${fmt.money(actual)}</b></span>
+      <span>Budget: <b>${fmt.money(budget)}</b></span>
+    </div>
+    <div style="font-size:11px;color:${variance>=0?'var(--green-d)':'var(--red)'};margin-top:2px">
+      ${variance>=0?'Under budget by ':'Over budget by '}<b>${fmt.money(Math.abs(variance))}</b>
+    </div>` : `<div style="font-size:12px;color:var(--muted2);margin-top:8px">No budget set</div>`}
+    <div class="cost-pills">
+      ${parseFloat(p.salary_cost)>0        ? `<span class="cost-pill salary">Salary ${fmt.money(p.salary_cost)}</span>` : ''}
+      ${parseFloat(p.advance_cost)>0        ? `<span class="cost-pill advance">Advance ${fmt.money(p.advance_cost)}</span>` : ''}
+      ${parseFloat(p.reimbursement_cost)>0  ? `<span class="cost-pill reimbursement">Reimb. ${fmt.money(p.reimbursement_cost)}</span>` : ''}
+    </div>
+  </div>`;
+}
+
+function renderMyProjects() {
+  const mine = _allProjects.filter(p => p.project_manager_id === _user?.id);
+  const el   = document.getElementById('my-proj-list');
+  if (!mine.length) {
+    el.innerHTML = `<div class="empty-state"><div style="font-size:36px;margin-bottom:8px">📋</div><div>No projects assigned as PM</div></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="proj-grid">${mine.map(projCard).join('')}</div>`;
+}
+
+// ── Tab switching ──────────────────────────────────────────────────
+function switchTab(tab, event) {
+  ['projects','my','reports'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===tab ? '' : 'none';
+  });
+  document.querySelectorAll('.tabs .tab-btn').forEach(b => b.classList.remove('active'));
+  if (event?.target) event.target.classList.add('active');
+
+  if (tab === 'reports') renderGlobalReports();
+}
+
+// ── Global Reports list ──────────────────────────────────────────
+async function renderGlobalReports() {
+  // Aggregate reports across all projects PM'd by user (or all for admin)
+  const el = document.getElementById('global-reports-list');
+  if (!_allProjects.length) { el.innerHTML = '<div class="empty-state">No projects</div>'; return; }
+
+  const mine = IS_ADMIN ? _allProjects : _allProjects.filter(p => p.project_manager_id === _user?.id);
+  if (!mine.length) { el.innerHTML = '<div class="empty-state">No projects to show reports for</div>'; return; }
+
+  el.innerHTML = mine.map(p => `
+    <div style="margin-bottom:14px">
+      <div style="font-weight:700;color:var(--text);margin-bottom:8px;font-size:14px">
+        ${p.name} <span style="font-size:11px;color:var(--muted2)">${p.code||''}</span>
+        <button class="btn btn-sm" style="margin-left:8px" onclick="openProjPanel(${p.id});setTimeout(()=>switchPanelTab('progress',null),400)">View All</button>
+        <button class="btn btn-primary btn-sm" style="margin-left:6px" onclick="openReportModal(${p.id})">+ Report</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Pending reports nudge ────────────────────────────────────────
+async function checkPendingReports() {
+  const r = await api('GET', '/projects/pending-reports');
+  if (!r?.success || !r.data.length) return;
+  document.getElementById('nudge-banner').style.display = 'flex';
+  document.getElementById('nudge-text').textContent =
+    `Progress report pending for: ${r.data.map(p=>p.name).join(', ')}`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PROJECT DETAIL PANEL
+// ══════════════════════════════════════════════════════════════════
+async function openProjPanel(id) {
+  _currentProjId = id;
+  document.getElementById('panel-overlay').classList.add('open');
+  document.getElementById('proj-panel').classList.add('open');
+  document.getElementById('panel-proj-name').textContent = 'Loading…';
+  document.getElementById('panel-proj-sub').textContent  = '';
+
+  const r = await api('GET', `/projects/${id}`);
+  if (!r?.success) { toast('Failed to load project', 'error'); return; }
+  _currentProj = r.data;
+
+  renderPanelHeader(_currentProj);
+  renderPanelBudget(_currentProj);
+  switchPanelTab('overview', null);
+
+  // Show edit/export only for admin
+  document.getElementById('panel-edit-btn').style.display   = IS_ADMIN ? '' : 'none';
+  document.getElementById('panel-delete-btn').style.display = IS_ADMIN ? '' : 'none';
+  document.getElementById('panel-export-btn').style.display = IS_ACCOUNTS ? '' : 'none';
+}
+
+function closeProjPanel() {
+  document.getElementById('panel-overlay').classList.remove('open');
+  document.getElementById('proj-panel').classList.remove('open');
+  _currentProjId = null;
+  _currentProj   = null;
+}
+
+function renderPanelHeader(p) {
+  document.getElementById('panel-proj-name').textContent = p.name;
+  document.getElementById('panel-proj-sub').textContent  =
+    [p.code, p.client_name, p.project_manager_name ? 'PM: '+p.project_manager_name : ''].filter(Boolean).join(' · ');
+}
+
+function renderPanelBudget(p) {
+  const actual   = parseFloat(p.actual_cost || 0);
+  const budget   = parseFloat(p.total_budget || 0);
+  const planned  = parseFloat(p.planned_cost || 0);
+  const pct      = budget > 0 ? Math.min((actual / budget) * 100, 100) : 0;
+  const fillClass= pct > 90 ? 'danger' : pct > 70 ? 'warning' : '';
+  const variance = budget - actual;
+
+  document.getElementById('panel-budget-summary').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      <div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px;text-align:center">
+        <div style="font-size:11px;color:var(--muted);font-weight:700">CLIENT BUDGET</div>
+        <div style="font-size:18px;font-weight:800;color:var(--text)">${fmt.money(budget)}</div>
+      </div>
+      <div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px;text-align:center">
+        <div style="font-size:11px;color:var(--muted);font-weight:700">PLANNED COST</div>
+        <div style="font-size:18px;font-weight:800;color:var(--text)">${fmt.money(planned)}</div>
+      </div>
+      <div style="background:${actual>budget?'var(--red-l)':'var(--green-l)'};border-radius:var(--radius-sm);padding:12px;text-align:center">
+        <div style="font-size:11px;color:var(--muted);font-weight:700">ACTUAL SPENT</div>
+        <div style="font-size:18px;font-weight:800;color:${actual>budget?'var(--red)':'var(--green)'}">${fmt.money(actual)}</div>
+      </div>
+    </div>
+    ${budget > 0 ? `
+    <div class="budget-bar-wrap">
+      <div class="budget-bar-label">
+        <span>Budget Utilisation · ${variance>=0?'Under by '+fmt.money(variance):'Over by '+fmt.money(Math.abs(variance))}</span>
+        <span style="font-weight:800;color:${pct>90?'var(--red)':pct>70?'var(--yellow-d)':'var(--green)'}">${pct.toFixed(1)}%</span>
+      </div>
+      <div class="budget-bar" style="height:12px"><div class="budget-fill ${fillClass}" style="width:${pct}%"></div></div>
+    </div>
+    <div class="cost-pills" style="margin-top:10px">
+      <span class="cost-pill salary">💰 Salary: ${fmt.money(p.salary_cost)}</span>
+      <span class="cost-pill advance">💸 Advance: ${fmt.money(p.advance_cost)}</span>
+      <span class="cost-pill reimbursement">🧾 Reimb.: ${fmt.money(p.reimbursement_cost)}</span>
+    </div>` : ''}
+  `;
+}
+
+function switchPanelTab(tab, btn) {
+  ['overview','team','expenses','progress'].forEach(t => {
+    document.getElementById('panel-'+t).style.display = t===tab ? '' : 'none';
+  });
+  document.querySelectorAll('.panel-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else {
+    const btns = document.querySelectorAll('.panel-tab');
+    const map  = {overview:0, team:1, expenses:2, progress:3};
+    btns[map[tab]]?.classList.add('active');
+  }
+
+  if (tab === 'overview')  renderPanelOverview(_currentProj);
+  if (tab === 'team')      renderPanelTeam(_currentProj);
+  if (tab === 'expenses')  renderPanelExpenses(_currentProj);
+  if (tab === 'progress')  renderPanelProgress(_currentProj);
+}
+
+function renderPanelOverview(p) {
+  document.getElementById('panel-overview').innerHTML = `
+    <div class="form-row" style="margin-bottom:14px">
+      <div>
+        <div class="kpi-label">Status</div>
+        <span class="status-badge ${p.status}">${p.status.replace('_',' ')}</span>
+      </div>
+      <div>
+        <div class="kpi-label">Team Size</div>
+        <div style="font-weight:700">${(p.employees||[]).length} members</div>
+      </div>
+    </div>
+    ${p.start_date||p.end_date ? `
+    <div class="form-row" style="margin-bottom:14px">
+      <div><div class="kpi-label">Start Date</div><div style="font-weight:600">${fmt.date(p.start_date)}</div></div>
+      <div><div class="kpi-label">End Date</div><div style="font-weight:600">${fmt.date(p.end_date)}</div></div>
+    </div>` : ''}
+    ${p.description ? `
+    <div style="margin-bottom:14px">
+      <div class="kpi-label">Description</div>
+      <div style="font-size:13.5px;color:var(--text);line-height:1.6">${p.description}</div>
+    </div>` : ''}
+    <div style="margin-bottom:14px">
+      <div class="kpi-label">Recent Expenditures</div>
+      ${renderExpTable((p.expenditures||[]).slice(0,5), true)}
+    </div>
+  `;
+}
+
+function renderPanelTeam(p) {
+  const emps = p.employees || [];
+  const isAccounts = ['accounts','super_admin','admin'].includes(_user?.role);
+  document.getElementById('panel-team').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-weight:700;font-size:14px">Team Members (${emps.length})</div>
+      ${IS_ADMIN ? `<button class="btn btn-primary btn-sm" onclick="openAssignModal(${p.id})">+ Assign Employee</button>` : ''}
+    </div>
+    ${!emps.length ? '<div class="empty-state">No employees assigned yet</div>' :
+      emps.map(e => `
+      <div class="emp-row" id="emp-row-${e.employee_id}">
+        <div class="emp-avatar">${(e.first_name||'?')[0]}${(e.last_name||'?')[0]}</div>
+        <div class="emp-info" style="flex:1">
+          <div class="emp-name">${e.first_name} ${e.last_name}</div>
+          <div class="emp-meta">${e.employee_code} · ${e.designation_title||e.role||'—'} · ${e.department_name||'—'}</div>
+          ${e.role_in_project ? `<div style="font-size:11px;color:var(--accent);font-weight:600">Role: ${e.role_in_project}</div>` : ''}
+        </div>
+        ${isAccounts ? `
+        <button class="btn btn-sm" style="color:var(--accent);border-color:var(--accent);margin-right:6px"
+          onclick="openAllocationModal(${e.employee_id},'${e.first_name} ${e.last_name}')">
+          📊 Salary %
+        </button>` : ''}
+        ${IS_ADMIN ? `<button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" onclick="removeEmployee(${e.employee_id})">Remove</button>` : ''}
+      </div>`).join('')
+    }
+  `;
+}
+
+// ── Salary Allocation Modal ───────────────────────────────────────────────────
+let _allocEmpId = null;
+
+async function openAllocationModal(empId, empName) {
+  _allocEmpId = empId;
+  const modal = document.getElementById('allocation-modal');
+  const body  = document.getElementById('allocation-body');
+  const title = document.getElementById('allocation-title');
+  title.textContent = `Salary Allocation — ${empName}`;
+  body.innerHTML = `<div style="text-align:center;padding:20px;color:#888">Loading projects…</div>`;
+  modal.classList.add('open');
+
+  try {
+    const r = await api('GET', `/projects/employees/${empId}/allocation`);
+    if (!r?.success) { body.innerHTML = `<div style="color:red">Failed to load</div>`; return; }
+
+    const rows = r.data;
+    const totalPct = r.total_pct;
+    const isComplete = Math.abs(totalPct - 100) < 0.01;
+
+    body.innerHTML = `
+      <p style="font-size:13px;color:#555;margin-bottom:14px">
+        Set how this employee's salary is split across their projects. <b>Total must equal 100%.</b>
+      </p>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="background:#f5f5f5;font-weight:700">
+            <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #eee">Project</th>
+            <th style="padding:8px 10px;text-align:center;border-bottom:2px solid #eee">Status</th>
+            <th style="padding:8px 10px;text-align:right;border-bottom:2px solid #eee;width:120px">Salary %</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(row => `
+          <tr style="border-bottom:1px solid #f0f0f0">
+            <td style="padding:10px">
+              <div style="font-weight:600">${row.project_name}</div>
+              <div style="font-size:11px;color:#888">${row.project_code||''}</div>
+            </td>
+            <td style="padding:10px;text-align:center">
+              <span style="font-size:11px;background:${row.project_status==='active'?'#dcfce7':'#f3f4f6'};color:${row.project_status==='active'?'#166534':'#555'};padding:2px 8px;border-radius:12px">${row.project_status}</span>
+            </td>
+            <td style="padding:10px;text-align:right">
+              <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px">
+                <input type="number" class="alloc-input" data-pid="${row.project_id}"
+                  value="${parseFloat(row.salary_pct||0)}"
+                  min="0" max="100" step="0.01"
+                  style="width:80px;text-align:right;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:13px"
+                  oninput="updateAllocTotal()"/>
+                <span style="font-size:13px;color:#555">%</span>
+              </div>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot>
+          <tr style="background:#f9fafb;font-weight:700">
+            <td colspan="2" style="padding:10px">Total</td>
+            <td style="padding:10px;text-align:right">
+              <span id="alloc-total" style="font-size:15px;color:${isComplete?'#166534':'#dc2626'}">${totalPct.toFixed(2)}%</span>
+              <span id="alloc-status" style="margin-left:6px;font-size:12px">${isComplete ? '✅' : '⚠️ Must be 100%'}</span>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+      <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="closeModal('allocation-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveAllocation()">💾 Save Allocation</button>
+      </div>
+    `;
+  } catch(e) {
+    body.innerHTML = `<div style="color:red">Error: ${e.message}</div>`;
+  }
+}
+
+function updateAllocTotal() {
+  const inputs = document.querySelectorAll('.alloc-input');
+  let total = 0;
+  inputs.forEach(inp => { total += parseFloat(inp.value || 0); });
+  total = parseFloat(total.toFixed(2));
+  const isOk = Math.abs(total - 100) < 0.01;
+  const el = document.getElementById('alloc-total');
+  const st = document.getElementById('alloc-status');
+  if (el) { el.textContent = total + '%'; el.style.color = isOk ? '#166534' : '#dc2626'; }
+  if (st) { st.textContent = isOk ? '✅' : '⚠️ Must be 100%'; }
+}
+
+async function saveAllocation() {
+  const inputs = document.querySelectorAll('.alloc-input');
+  const allocations = [];
+  let total = 0;
+  inputs.forEach(inp => {
+    const pct = parseFloat(inp.value || 0);
+    total += pct;
+    allocations.push({ project_id: parseInt(inp.dataset.pid), salary_pct: pct });
+  });
+  total = parseFloat(total.toFixed(2));
+  if (Math.abs(total - 100) > 0.01) {
+    toast(`Total must be 100%. Currently ${total}%`, 'error'); return;
+  }
+  const r = await api('PUT', `/projects/employees/${_allocEmpId}/allocation`, { allocations });
+  if (r?.success) {
+    toast('Salary allocation saved!', 'success');
+    closeModal('allocation-modal');
+  } else {
+    toast(r?.message || 'Failed to save', 'error');
+  }
+}
+
+function renderPanelExpenses(p) {
+  const exps = p.expenditures || [];
+  document.getElementById('panel-expenses').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-weight:700;font-size:14px">Expenditures (${exps.length})</div>
+      ${IS_ADMIN ? `<button class="btn btn-primary btn-sm" onclick="openExpenseModal()">+ Add Expenditure</button>` : ''}
+    </div>
+    ${renderExpTable(exps, false)}
+  `;
+}
+
+function renderExpTable(exps, compact) {
+  if (!exps.length) return '<div class="empty-state" style="padding:20px 0">No expenditures recorded</div>';
+  return `
+  <div style="overflow-x:auto">
+  <table class="exp-table">
+    <thead><tr>
+      <th>Date</th><th>Employee</th><th>Type</th>
+      ${!compact ? '<th>Description</th><th>Month/Yr</th>' : ''}
+      <th>Amount</th>
+    </tr></thead>
+    <tbody>
+    ${exps.map(e => `<tr>
+      <td style="white-space:nowrap">${fmt.date(e.recorded_at)}</td>
+      <td>${e.first_name ? `${e.first_name} ${e.last_name}` : '—'}</td>
+      <td><span class="type-badge ${e.type}">${e.type}</span></td>
+      ${!compact ? `<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.description||'—'}</td><td>${e.month?e.month+'/'+e.year:'—'}</td>` : ''}
+      <td style="font-weight:700;color:var(--text)">${fmt.money(e.amount)}</td>
+    </tr>`).join('')}
+    </tbody>
+  </table>
+  </div>`;
+}
+
+function renderPanelProgress(p) {
+  const reports = p.reports || [];
+  const isPM    = p.project_manager_id === _user?.id;
+
+  document.getElementById('panel-progress').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-weight:700;font-size:14px">Progress Reports (${reports.length})</div>
+      ${(isPM || IS_ADMIN) ? `<button class="btn btn-primary btn-sm" onclick="openReportModal(${p.id})">+ New Report</button>` : ''}
+    </div>
+    ${!reports.length ? '<div class="empty-state">No reports submitted yet</div>' :
+      reports.map(rpt => `
+      <div class="rpt-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div class="rpt-period">📅 ${fmt.date(rpt.period_start)} → ${fmt.date(rpt.period_end)}</div>
+          <span class="status-badge ${rpt.status === 'submitted' ? 'active' : 'completed'}">${rpt.status}</span>
+        </div>
+        ${rpt.work_done ? `<div class="rpt-section"><label>Work Done</label><p>${rpt.work_done}</p></div>` : ''}
+        ${rpt.achievements ? `<div class="rpt-section"><label>Achievements</label><p>${rpt.achievements}</p></div>` : ''}
+        ${rpt.challenges ? `<div class="rpt-section"><label>Challenges</label><p>${rpt.challenges}</p></div>` : ''}
+        ${rpt.plan_next ? `<div class="rpt-section"><label>Next 15 Days Plan</label><p>${rpt.plan_next}</p></div>` : ''}
+        ${rpt.actual_achieved ? `<div class="rpt-section"><label>Actual Achieved</label><p>${rpt.actual_achieved}</p></div>` : ''}
+        ${rpt.achievement_pct != null ? `
+        <div class="ach-bar-wrap">
+          <div class="ach-pct">${rpt.achievement_pct}%</div>
+          <div style="font-size:11px;color:var(--muted)">of target achieved</div>
+          <div style="height:6px;background:var(--border);border-radius:6px;margin-top:4px;overflow:hidden">
+            <div style="height:100%;width:${rpt.achievement_pct}%;background:${rpt.achievement_pct>=80?'var(--green)':rpt.achievement_pct>=50?'var(--yellow)':'var(--red)'};border-radius:6px"></div>
+          </div>
+        </div>` : ''}
+        <div style="margin-top:8px;font-size:11px;color:var(--muted2)">
+          Submitted by ${rpt.submitted_by_name||'—'} on ${fmt.date(rpt.submitted_at)}
+        </div>
+        ${rpt.manager_remarks ? `<div style="margin-top:6px;font-size:12px;color:var(--text);background:var(--yellow-l);border-radius:6px;padding:6px 10px"><b>Manager Remarks:</b> ${rpt.manager_remarks}</div>` : ''}
+      </div>`).join('')
+    }
+  `;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ACTIONS — New/Edit Project
+// ══════════════════════════════════════════════════════════════════
+function openNewProjectModal() {
+  _editingId = null;
+  document.getElementById('proj-modal-title').textContent = 'New Project';
+  ['f-name','f-code','f-client','f-desc'].forEach(id => document.getElementById(id).value = '');
+  ['f-budget','f-planned'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-status').value  = 'active';
+  document.getElementById('f-manager').value = '';
+  document.getElementById('f-start').value   = '';
+  document.getElementById('f-end').value     = '';
+  openModal('proj-modal');
+}
+
+function editCurrentProject() {
+  if (!_currentProj) return;
+  const p = _currentProj;
+  _editingId = p.id;
+  document.getElementById('proj-modal-title').textContent = 'Edit Project';
+  document.getElementById('f-name').value    = p.name    || '';
+  document.getElementById('f-code').value    = p.code    || '';
+  document.getElementById('f-client').value  = p.client_name  || '';
+  document.getElementById('f-desc').value    = p.description  || '';
+  document.getElementById('f-budget').value  = p.total_budget || '';
+  document.getElementById('f-planned').value = p.planned_cost || '';
+  document.getElementById('f-status').value  = p.status   || 'active';
+  document.getElementById('f-manager').value = p.project_manager_id || '';
+  document.getElementById('f-start').value   = p.start_date ? p.start_date.slice(0,10) : '';
+  document.getElementById('f-end').value     = p.end_date   ? p.end_date.slice(0,10)   : '';
+  openModal('proj-modal');
+}
+
+async function deleteCurrentProject() {
+  if (!_currentProj) return;
+  const p = _currentProj;
+  const confirmed = confirm(`⚠️ Delete project "${p.name}"?\n\nThis will permanently remove the project and all its expenditure records, employee assignments, and progress reports.\n\nThis action cannot be undone.`);
+  if (!confirmed) return;
+  const r = await api('DELETE', `/projects/${p.id}`);
+  if (r?.success) {
+    toast(r.message || 'Project deleted', 'success');
+    closeProjPanel();
+    loadProjects();
+  } else {
+    toast(r?.message || 'Failed to delete project', 'error');
+  }
+}
+
+async function saveProject() {
+  const body = {
+    name:               document.getElementById('f-name').value.trim(),
+    code:               document.getElementById('f-code').value.trim(),
+    client_name:        document.getElementById('f-client').value.trim(),
+    description:        document.getElementById('f-desc').value.trim(),
+    total_budget:       parseFloat(document.getElementById('f-budget').value) || 0,
+    planned_cost:       parseFloat(document.getElementById('f-planned').value) || 0,
+    status:             document.getElementById('f-status').value,
+    project_manager_id: document.getElementById('f-manager').value || null,
+    start_date:         document.getElementById('f-start').value || null,
+    end_date:           document.getElementById('f-end').value   || null,
+  };
+
+  if (!body.name) { toast('Project name is required', 'error'); return; }
+
+  const r = _editingId
+    ? await api('PUT',  `/projects/${_editingId}`, body)
+    : await api('POST', '/projects', body);
+
+  if (!r?.success) { toast(r?.message || 'Failed to save', 'error'); return; }
+  toast(_editingId ? 'Project updated' : 'Project created', 'success');
+  closeModal('proj-modal');
+  loadProjects();
+  loadKPIs();
+  if (_editingId && _currentProjId === _editingId) openProjPanel(_editingId);
+}
+
+// ── Assign Employee ───────────────────────────────────────────────
+function openAssignModal(projId) {
+  if (projId) _currentProjId = parseInt(projId);
+  _selectedEmpId = null;
+  document.getElementById('emp-search').value = '';
+  document.getElementById('emp-role').value = '';
+  document.getElementById('emp-search-result').style.display = 'none';
+  document.getElementById('selected-emp-display').style.display = 'none';
+
+  // Populate project dropdown
+  const sel = document.getElementById('assign-proj-select');
+  sel.innerHTML = '<option value="">-- Select Project --</option>' +
+    _allProjects.map(p =>
+      `<option value="${p.id}" ${p.id === _currentProjId ? 'selected' : ''}>${p.name}${p.code ? ' ('+p.code+')' : ''}</option>`
+    ).join('');
+
+  // Sync _currentProjId from dropdown in case it wasn't passed
+  if (!_currentProjId && _allProjects.length) {
+    _currentProjId = parseInt(sel.value) || null;
+  }
+
+  openModal('assign-modal');
+}
+
+function searchEmployees() {
+  const q = document.getElementById('emp-search').value.toLowerCase();
+  if (q.length < 2) { document.getElementById('emp-search-result').style.display='none'; return; }
+
+  const results = _allEmployees.filter(e =>
+    `${e.first_name} ${e.last_name} ${e.employee_code}`.toLowerCase().includes(q)
+  ).slice(0,8);
+
+  const el = document.getElementById('emp-search-result');
+  if (!results.length) { el.style.display='none'; return; }
+
+  // Auto-select if only one result
+  if (results.length === 1) {
+    const e = results[0];
+    selectEmployee(e.id, `${e.first_name} ${e.last_name}`, e.employee_code, e.role||'');
+    el.style.display = 'none';
+    return;
+  }
+
+  el.style.display = 'block';
+  el.innerHTML = `<div style="font-size:10.5px;color:var(--muted);padding:6px 14px;font-weight:600;background:var(--bg)">👆 TAP TO SELECT</div>` +
+    results.map(e => `
+    <div class="emp-search-item" onclick="selectEmployee(${e.id}, '${e.first_name} ${e.last_name}', '${e.employee_code}', '${e.role||''}')">
+      <div class="emp-avatar" style="width:28px;height:28px;font-size:11px">${(e.first_name||'?')[0]}${(e.last_name||'?')[0]}</div>
+      <div>
+        <div style="font-size:13px;font-weight:600">${e.first_name} ${e.last_name}</div>
+        <div style="font-size:11px;color:var(--muted2)">${e.employee_code} · ${e.role||''}</div>
+      </div>
+    </div>`).join('');
+}
+
+function selectEmployee(id, name, code, role) {
+  _selectedEmpId = parseInt(id);  // always int
+  document.getElementById('emp-search').value         = name;
+  document.getElementById('emp-search-result').style.display = 'none';
+  document.getElementById('selected-emp-display').style.display = '';
+  document.getElementById('sel-emp-name').textContent  = name;
+  document.getElementById('sel-emp-meta').textContent  = `${code} · ${role}`;
+}
+
+async function assignEmployee() {
+  // Always read project from the dropdown — most reliable source
+  const projIdFromDropdown = parseInt(document.getElementById('assign-proj-select').value);
+  if (projIdFromDropdown) _currentProjId = projIdFromDropdown;
+
+  if (!_currentProjId) { toast('Please select a project', 'error'); return; }
+  if (!_selectedEmpId)  { toast('Please tap an employee from the search results first', 'error'); return; }
+
+  const empName = document.getElementById('emp-search').value.trim();
+
+  const r = await api('POST', `/projects/${_currentProjId}/assign`, {
+    employee_id:     _selectedEmpId,
+    role_in_project: document.getElementById('emp-role').value.trim() || null,
+  });
+
+  if (!r?.success) { toast(r?.message || 'Failed to assign', 'error'); return; }
+  toast('Employee assigned successfully!', 'success');
+  closeModal('assign-modal');
+
+  // Check if this employee is in multiple projects — prompt accounts to set salary allocation
+  try {
+    const allocR = await api('GET', `/projects/employees/${_selectedEmpId}/allocation`);
+    if (allocR?.success && allocR.data?.length > 1) {
+      // Employee is in more than 1 project — show allocation prompt
+      const projectList = allocR.data.map(p => `• ${p.project_name} (${p.project_code||'—'}): ${parseFloat(p.salary_pct||0)}%`).join('\n');
+      const totalPct = allocR.total_pct;
+      const isSet = Math.abs(totalPct - 100) < 0.01;
+
+      if (!isSet) {
+        // Show inline prompt in the panel after reload
+        await openProjPanel(_currentProjId);
+        // Small delay so panel renders first
+        setTimeout(() => {
+          showAllocationPrompt(_selectedEmpId, empName, allocR.data);
+        }, 400);
+        return;
+      }
+    }
+  } catch(_) {}
+
+  openProjPanel(_currentProjId);
+}
+
+function showAllocationPrompt(empId, empName, projects) {
+  const projectList = projects.map(p =>
+    `<li style="margin:4px 0"><b>${p.project_name}</b>${p.project_code ? ` (${p.project_code})` : ''} — currently <b>${parseFloat(p.salary_pct||0)}%</b></li>`
+  ).join('');
+
+  // Create a toast-style banner at the top of the panel
+  const panel = document.getElementById('proj-panel-content') || document.querySelector('.panel-body') || document.body;
+  const banner = document.createElement('div');
+  banner.id = 'alloc-banner';
+  banner.style.cssText = `
+    background:#fffbeb;border:2px solid #f59e0b;border-radius:10px;padding:14px 16px;
+    margin-bottom:16px;position:relative;
+  `;
+  banner.innerHTML = `
+    <div style="font-weight:700;color:#92400e;margin-bottom:6px">⚠️ Salary Allocation Needed — ${empName}</div>
+    <div style="font-size:13px;color:#78350f;margin-bottom:10px">
+      This employee is assigned to <b>${projects.length} projects</b>. Please set salary % so payroll is split correctly:
+      <ul style="margin:8px 0 0 16px;padding:0">${projectList}</ul>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary btn-sm" onclick="document.getElementById('alloc-banner').remove();openAllocationModal(${empId},'${empName}')">
+        📊 Set Salary % Now
+      </button>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('alloc-banner').remove()">Later</button>
+    </div>
+  `;
+
+  // Insert at top of team panel
+  const teamPanel = document.getElementById('panel-team');
+  if (teamPanel) {
+    teamPanel.insertBefore(banner, teamPanel.firstChild);
+    // Switch to team tab
+    document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel-pane').forEach(p => p.classList.remove('active'));
+    const teamTab = document.querySelector('.panel-tab[data-tab="team"]');
+    const teamPane = document.getElementById('panel-team-wrap') || document.getElementById('panel-team')?.closest('.panel-pane');
+    if (teamTab) teamTab.classList.add('active');
+  }
+}
+
+async function removeEmployee(empId) {
+  if (!confirm('Remove this employee from the project?')) return;
+  const r = await api('DELETE', `/projects/${_currentProjId}/employees/${empId}`);
+  if (!r?.success) { toast('Failed to remove', 'error'); return; }
+  toast('Employee removed', 'success');
+  openProjPanel(_currentProjId);
+}
+
+// ── Add Expenditure ───────────────────────────────────────────────
+function openExpenseModal() {
+  document.getElementById('exp-amount').value = '';
+  document.getElementById('exp-desc').value   = '';
+  document.getElementById('exp-ref').value    = '';
+  document.getElementById('exp-month').value  = new Date().getMonth()+1;
+  document.getElementById('exp-year').value   = new Date().getFullYear();
+  openModal('expense-modal');
+}
+
+async function addExpenditure() {
+  const body = {
+    type:         document.getElementById('exp-type').value,
+    employee_id:  document.getElementById('exp-emp').value || null,
+    amount:       parseFloat(document.getElementById('exp-amount').value),
+    description:  document.getElementById('exp-desc').value.trim(),
+    month:        parseInt(document.getElementById('exp-month').value) || null,
+    year:         parseInt(document.getElementById('exp-year').value)  || null,
+    reference_id: parseInt(document.getElementById('exp-ref').value)   || null,
+  };
+
+  if (!body.amount || body.amount <= 0) { toast('Valid amount is required', 'error'); return; }
+
+  const r = await api('POST', `/projects/${_currentProjId}/expenditure`, body);
+  if (!r?.success) { toast(r?.message || 'Failed to add', 'error'); return; }
+  toast('Expenditure recorded', 'success');
+  closeModal('expense-modal');
+  openProjPanel(_currentProjId);
+  loadKPIs();
+}
+
+// ── Progress Report ───────────────────────────────────────────────
+function openReportModal(projId) {
+  // Pre-set today and 15 days ago
+  const today = new Date();
+  const d15   = new Date(today - 15*24*60*60*1000);
+  document.getElementById('rpt-start').value = d15.toISOString().slice(0,10);
+  document.getElementById('rpt-end').value   = today.toISOString().slice(0,10);
+
+  if (projId) document.getElementById('rpt-proj').value = projId;
+
+  // Clear fields
+  ['rpt-done','rpt-ach','rpt-challenges','rpt-plan','rpt-actual','rpt-datacount','rpt-target']
+    .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('rpt-pct').value = '';
+
+  openModal('report-modal');
+}
+
+async function submitReport() {
+  const projId = document.getElementById('rpt-proj').value;
+  if (!projId) { toast('Select a project', 'error'); return; }
+
+  const dcRaw  = document.getElementById('rpt-datacount').value.trim();
+  const tgRaw  = document.getElementById('rpt-target').value.trim();
+  let dataCount = null, targetData = null;
+  try { if(dcRaw) dataCount = JSON.parse(dcRaw); } catch(_) { dataCount = { note: dcRaw }; }
+  try { if(tgRaw) targetData = JSON.parse(tgRaw); } catch(_) { targetData = { note: tgRaw }; }
+
+  const body = {
+    period_start:    document.getElementById('rpt-start').value,
+    period_end:      document.getElementById('rpt-end').value,
+    work_done:       document.getElementById('rpt-done').value.trim() || null,
+    data_count:      dataCount,
+    achievements:    document.getElementById('rpt-ach').value.trim()        || null,
+    challenges:      document.getElementById('rpt-challenges').value.trim() || null,
+    plan_next:       document.getElementById('rpt-plan').value.trim()       || null,
+    target_data:     targetData,
+    actual_achieved: document.getElementById('rpt-actual').value.trim()     || null,
+    achievement_pct: parseFloat(document.getElementById('rpt-pct').value)   || null,
+  };
+
+  if (!body.period_start || !body.period_end) { toast('Period dates are required', 'error'); return; }
+
+  const r = await api('POST', `/projects/${projId}/reports`, body);
+  if (!r?.success) { toast(r?.message || 'Failed to submit', 'error'); return; }
+  toast('Progress report submitted!', 'success');
+  closeModal('report-modal');
+  if (_currentProjId == projId) openProjPanel(_currentProjId);
+}
+
+// ── Export ────────────────────────────────────────────────────────
+function exportProject() {
+  if (!_currentProjId) return;
+  const token = Auth.getToken();
+  const base  = typeof API_BASE !== 'undefined' ? API_BASE : (window.CFG?.apiBase || (window.CFG?.apiBase || ''));
+  window.open(`${base}/projects/${_currentProjId}/export?token=${token}`, '_blank');
+}
+</script>
+</body>
+</html>
