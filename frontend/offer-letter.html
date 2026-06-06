@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="page-title">Offer Letter</title>
+<script src="config.js"></script>
+  <link rel="icon" type="image/x-icon" href="Logo.ico">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* ── page layout ── */
+    .ol-layout { display:flex; gap:24px; align-items:flex-start; }
+    .ol-form-panel { flex:1; min-width:0; }
+    .ol-list-panel { width:340px; flex-shrink:0; }
+
+    /* ── form card ── */
+    .form-card { background:#fff; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.08); padding:24px; }
+    .form-card h3 { margin:0 0 20px; font-size:1.1rem; color:var(--cfg-primary); display:flex; align-items:center; gap:8px; }
+
+    /* ── section headers ── */
+    .section-label {
+      font-size:.78rem; font-weight:700; text-transform:uppercase;
+      letter-spacing:.08em; color:var(--cfg-accent); margin:20px 0 10px;
+      padding-bottom:6px; border-bottom:2px solid var(--cfg-pale);
+    }
+
+    /* ── grid ── */
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .form-grid .full { grid-column:1/-1; }
+    .form-group { display:flex; flex-direction:column; gap:4px; }
+    .form-group label { font-size:.8rem; font-weight:600; color:#555; }
+    .form-group input, .form-group select, .form-group textarea {
+      padding:8px 10px; border:1px solid #ddd; border-radius:8px;
+      font-size:.88rem; transition:border-color .2s;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline:none; border-color:var(--cfg-accent); box-shadow:0 0 0 3px rgba(var(--cfg-accent-rgb),.1);
+    }
+
+    /* ── salary auto-calc note ── */
+    .calc-note { font-size:.75rem; color:#888; margin-top:4px; }
+    .auto-tag { font-size:.7rem; background:var(--cfg-pale); color:var(--cfg-accent); padding:1px 6px; border-radius:4px; font-weight:600; }
+
+    /* ── email chips ── */
+    .chip-box {
+      display:flex; flex-wrap:wrap; gap:6px; align-items:center;
+      border:1px solid #ddd; border-radius:8px; padding:6px 10px; min-height:38px;
+      cursor:text;
+    }
+    .chip-box:focus-within { border-color:var(--cfg-accent); box-shadow:0 0 0 3px rgba(var(--cfg-accent-rgb),.1); }
+    .chip {
+      display:inline-flex; align-items:center; gap:4px;
+      background:var(--cfg-pale); border:1px solid var(--cfg-border); border-radius:20px;
+      padding:2px 10px; font-size:.8rem; color:var(--cfg-primary);
+    }
+    .chip button { background:none; border:none; cursor:pointer; color:#666; padding:0 2px; font-size:1rem; line-height:1; }
+    .chip-input { flex:1; min-width:140px; border:none; outline:none; font-size:.85rem; padding:2px 0; }
+
+    /* ── action buttons ── */
+    .btn-row { display:flex; gap:10px; margin-top:20px; flex-wrap:wrap; }
+    .btn { padding:10px 20px; border-radius:8px; border:none; cursor:pointer; font-size:.88rem; font-weight:600; transition:all .2s; }
+    .btn-primary { background:var(--cfg-accent); color:#fff; }
+    .btn-primary:hover { background:var(--cfg-primary); }
+    .btn-secondary { background:#f5f5f5; color:#333; border:1px solid #ddd; }
+    .btn-secondary:hover { background:#e8e8e8; }
+    .btn-preview { background:#1565C0; color:#fff; }
+    .btn-preview:hover { background:#0D47A1; }
+    .btn-send { background:#E65100; color:#fff; }
+    .btn-send:hover { background:#BF360C; }
+    .btn-danger { background:#fff; color:#c62828; border:1px solid #ef9a9a; }
+    .btn-danger:hover { background:#ffebee; }
+
+    /* ── offer list ── */
+    .offer-list { display:flex; flex-direction:column; gap:8px; max-height:75vh; overflow-y:auto; }
+    .offer-card {
+      background:#fff; border:1px solid #eee; border-radius:10px; padding:14px;
+      cursor:pointer; transition:all .2s;
+    }
+    .offer-card:hover { border-color:var(--cfg-accent); box-shadow:0 2px 8px rgba(var(--cfg-accent-rgb),.1); }
+    .offer-card.active { border-color:var(--cfg-accent); background:var(--cfg-active-card); }
+    .offer-card .oc-name { font-weight:700; font-size:.9rem; color:#222; }
+    .offer-card .oc-desig { font-size:.8rem; color:#666; margin-top:2px; }
+    .offer-card .oc-meta { display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; align-items:center; }
+    .badge { padding:2px 8px; border-radius:12px; font-size:.7rem; font-weight:700; }
+    .badge-draft   { background:#FFF3E0; color:#E65100; }
+    .badge-sent    { background:#E3F2FD; color:#1565C0; }
+    .badge-accepted{ background:var(--cfg-pale); color:var(--cfg-accent); }
+    .badge-rejected{ background:#FFEBEE; color:#C62828; }
+
+    /* ── responsive ── */
+    @media(max-width:900px) {
+      .ol-layout { flex-direction:column; }
+      .ol-list-panel { width:100%; }
+      .form-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+  <div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">📄 Offer Letters</div>
+    </div>
+    <div class="topbar-right">
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div></div>
+      <button class="btn btn-secondary" onclick="resetForm()" style="padding:8px 16px;border-radius:8px;border:1px solid #ddd;background:#f5f5f5;cursor:pointer;font-size:.88rem;font-weight:600;">＋ New Letter</button>
+    </div>
+
+    <div class="ol-layout">
+      <!-- ── LEFT: FORM ──────────────────────────────────────────── -->
+      <div class="ol-form-panel">
+        <div class="form-card">
+          <h3 id="form-title">📝 Create Offer Letter</h3>
+          <input type="hidden" id="ol-id">
+
+          <!-- CANDIDATE INFO -->
+          <div class="section-label">👤 Candidate Information</div>
+          <div class="form-grid">
+            <div class="form-group full">
+              <label>Full Name *</label>
+              <input type="text" id="ol-name" placeholder="e.g. Mr. Akshay Rai">
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="ol-email" placeholder="candidate@email.com">
+            </div>
+            <div class="form-group">
+              <label>Mobile</label>
+              <input type="text" id="ol-mobile" placeholder="9876543210">
+            </div>
+            <div class="form-group full">
+              <label>Address</label>
+              <input type="text" id="ol-address" placeholder="City, PIN">
+            </div>
+          </div>
+
+          <!-- POSITION -->
+          <div class="section-label">💼 Position Details</div>
+          <div class="form-grid">
+            <div class="form-group full">
+              <label>Designation *</label>
+              <input type="text" id="ol-designation" placeholder='e.g. Manager-Remote Sensing and GIS'>
+            </div>
+            <div class="form-group">
+              <label>Location</label>
+              <input type="text" id="ol-location" placeholder="City">
+            </div>
+            <div class="form-group">
+              <label>Offer Date</label>
+              <input type="date" id="ol-offer-date">
+            </div>
+            <div class="form-group">
+              <label>Joining Date</label>
+              <input type="date" id="ol-joining-date">
+            </div>
+            <div class="form-group">
+              <label>Offer Valid (days)</label>
+              <input type="number" id="ol-valid-days" value="7" min="1">
+            </div>
+            <div class="form-group">
+              <label>Probation (months)</label>
+              <input type="number" id="ol-probation" value="6" min="0">
+            </div>
+            <div class="form-group">
+              <label>Notice Period (months)</label>
+              <input type="number" id="ol-notice" value="3" min="0">
+            </div>
+          </div>
+
+          <!-- SALARY STRUCTURE -->
+          <div class="section-label">💰 Salary Structure</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label id="lbl-ctc">Annual CTC *</label>
+              <input type="number" id="ol-ctc" placeholder="1250004" oninput="autoCalcSalary()">
+            </div>
+            <div class="form-group">
+              <label id="lbl-basic">Basic (monthly)</label>
+              <input type="number" id="ol-basic" placeholder="25000" oninput="calcGross()">
+            </div>
+            <div class="form-group">
+              <label id="lbl-hra">HRA (monthly) <span class="auto-tag">auto</span></label>
+              <input type="number" id="ol-hra" placeholder="12500" oninput="calcGross()">
+              <span class="calc-note">Auto = 50% of Basic</span>
+            </div>
+            <div class="form-group">
+              <label id="lbl-conv">Conveyance (monthly)</label>
+              <input type="number" id="ol-conv" value="0" oninput="calcGross()">
+            </div>
+            <div class="form-group">
+              <label id="lbl-other">Other Allowance (monthly) <span class="auto-tag">auto</span></label>
+              <input type="number" id="ol-other" placeholder="63515" oninput="calcGross()">
+              <span class="calc-note">Auto = CTC monthly − Basic − HRA − Conv − Gratuity − PF</span>
+            </div>
+            <div class="form-group">
+              <label id="lbl-gratuity">Gratuity (monthly) <span class="auto-tag">auto</span></label>
+              <input type="number" id="ol-gratuity" placeholder="1202" oninput="calcGross()">
+              <span class="calc-note">Auto = Basic × 4.81%</span>
+            </div>
+            <div class="form-group">
+              <label id="lbl-pf-emp">PF Employee (monthly) <span class="auto-tag">auto</span></label>
+              <input type="number" id="ol-pf-emp" placeholder="1800" oninput="calcGross()">
+              <span class="calc-note">Auto = 12% of Basic (max 1800)</span>
+            </div>
+            <div class="form-group">
+              <label id="lbl-pf-er">PF Employer (monthly)</label>
+              <input type="number" id="ol-pf-er" placeholder="1800" oninput="calcGross()">
+            </div>
+            <div class="form-group">
+              <label id="lbl-pf-admin">PF Admin Charges (monthly)</label>
+              <input type="number" id="ol-pf-admin" placeholder="150" oninput="calcGross()">
+            </div>
+          </div>
+
+          <!-- CTC Summary -->
+          <div id="ctc-summary" style="background:var(--cfg-active-card);border-radius:8px;padding:12px;margin-top:12px;font-size:.83rem;display:none;">
+            <div style="font-weight:700;color:var(--cfg-primary);margin-bottom:6px;">📊 Calculated Summary</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+              <div><div style="color:#666;font-size:.75rem;">Gross Monthly</div><div id="s-gross" style="font-weight:700;">—</div></div>
+              <div><div style="color:#666;font-size:.75rem;">Net Monthly</div><div id="s-net" style="font-weight:700;color:#1565C0;">—</div></div>
+              <div><div style="color:#666;font-size:.75rem;">CTC Monthly</div><div id="s-ctc" style="font-weight:700;color:#E65100;">—</div></div>
+            </div>
+          </div>
+
+          <!-- SIGNATURES -->
+          <div class="section-label">✍️ Signatures</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Authorized Signatory Image</label>
+              <input type="file" id="sig1-file" accept="image/*" onchange="loadSigPreview(this,'sig1')" style="padding:4px;">
+              <div id="sig1-preview" style="margin-top:6px;min-height:50px;border:1px dashed #ccc;border-radius:6px;display:flex;align-items:center;justify-content:center;padding:4px;background:#fafafa;">
+                <span style="font-size:.75rem;color:#aaa;">No signature uploaded</span>
+              </div>
+              <input type="hidden" id="ol-sig1">
+              <button type="button" onclick="clearSig('sig1')" style="margin-top:4px;font-size:.75rem;color:#c62828;background:none;border:none;cursor:pointer;text-align:left;display:none;" id="sig1-clear">✕ Remove</button>
+            </div>
+            <div class="form-group">
+              <label>HR Signatory Image</label>
+              <input type="file" id="sig2-file" accept="image/*" onchange="loadSigPreview(this,'sig2')" style="padding:4px;">
+              <div id="sig2-preview" style="margin-top:6px;min-height:50px;border:1px dashed #ccc;border-radius:6px;display:flex;align-items:center;justify-content:center;padding:4px;background:#fafafa;">
+                <span style="font-size:.75rem;color:#aaa;">No signature uploaded</span>
+              </div>
+              <input type="hidden" id="ol-sig2">
+              <button type="button" onclick="clearSig('sig2')" style="margin-top:4px;font-size:.75rem;color:#c62828;background:none;border:none;cursor:pointer;text-align:left;display:none;" id="sig2-clear">✕ Remove</button>
+            </div>
+          </div>
+          <p style="font-size:.75rem;color:#888;margin-top:4px;">Upload PNG/JPG with transparent or white background. Will appear above signature lines in the letter.</p>
+
+          <!-- CUSTOM CLAUSES -->
+          <div class="section-label">📋 Additional Terms (optional)</div>
+          <div class="form-group">
+            <textarea id="ol-clauses" rows="3" placeholder="Any additional terms, conditions, or special clauses..."></textarea>
+          </div>
+
+          <!-- EMAIL MESSAGE -->
+          <div class="section-label">✉️ Email Cover Message</div>
+          <div class="form-group">
+            <label>Message Body <span style="font-weight:400;color:#888;">(sent in email body — offer letter attached as file)</span></label>
+            <textarea id="ol-email-msg" rows="6" placeholder="Dear [Name],&#10;&#10;Please find attached your offer letter for the position of...&#10;&#10;Kindly review and revert with your acceptance within 7 days.&#10;&#10;Warm regards,&#10;HR Team"></textarea>
+            <span class="calc-note">Leave blank to use default message. Candidate opens the attached file in browser → Ctrl+P → Save as PDF.</span>
+          </div>
+
+          <!-- EMAIL CC / BCC -->
+          <div class="section-label">📧 Email Recipients (when sending)</div>
+          <div class="form-grid">
+            <div class="form-group full">
+              <label>CC (press Enter or comma to add)</label>
+              <div class="chip-box" id="cc-box" onclick="document.getElementById('cc-input').focus()">
+                <input type="text" class="chip-input" id="cc-input" placeholder="cc@email.com" onkeydown="addChip(event,'cc')" onblur="addChipOnBlur('cc')" onpaste="setTimeout(()=>addChipOnBlur('cc'),50)">
+              </div>
+            </div>
+            <div class="form-group full">
+              <label>BCC (press Enter or comma to add)</label>
+              <div class="chip-box" id="bcc-box" onclick="document.getElementById('bcc-input').focus()">
+                <input type="text" class="chip-input" id="bcc-input" placeholder="bcc@email.com" onkeydown="addChip(event,'bcc')" onblur="addChipOnBlur('bcc')" onpaste="setTimeout(()=>addChipOnBlur('bcc'),50)">
+              </div>
+            </div>
+          </div>
+
+          <!-- ACTIONS -->
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="saveOL()">💾 Save</button>
+            <button class="btn btn-preview" id="btn-preview" onclick="previewOL()">👁 Preview</button>
+            <button class="btn btn-send"    id="btn-send"    onclick="sendOL()">📤 Send Email</button>
+            <button class="btn btn-secondary" onclick="resetForm()">✕ Clear</button>
+            <button class="btn btn-danger"   id="btn-delete"  onclick="deleteOL()"   style="display:none;">🗑 Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── RIGHT: LIST ─────────────────────────────────────────── -->
+      <div class="ol-list-panel">
+        <div class="form-card">
+          <h3>📋 All Offer Letters</h3>
+          <div class="offer-list" id="offer-list">
+            <div style="text-align:center;padding:30px;color:#aaa;">Loading...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /content -->
+</div><!-- /main -->
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+// ── Apply CFG identity ─────────────────────────────────────────────────────
+document.getElementById('page-title').textContent = 'Offer Letter | ' + window.CFG.clientName;
+document.getElementById('sidebar-logo-text').innerHTML = window.CFG.logoHtml;
+(document.getElementById('sidebar-company-sub')||document.getElementById('sidebar-company-short')||{}).textContent = window.CFG.companyShortName;
+
+// ── Inject accent RGB for rgba() box-shadows in CSS ───────────────────────
+(function() {
+  const hex = (window.CFG.accentColor).replace('#','');
+  const r = parseInt(hex.substring(0,2),16);
+  const g = parseInt(hex.substring(2,4),16);
+  const b = parseInt(hex.substring(4,6),16);
+  document.documentElement.style.setProperty('--cfg-accent-rgb', `${r},${g},${b}`);
+})();
+
+// ── Apply currency symbol to salary labels ────────────────────────────────
+(function() {
+  const sym = window.CFG.currencySymbol;
+  document.getElementById('lbl-ctc').textContent       = `Annual CTC (${sym}) *`;
+  document.getElementById('lbl-basic').textContent     = `Basic (monthly) ${sym}`;
+  document.getElementById('lbl-hra').innerHTML         = `HRA (monthly) ${sym} <span class="auto-tag">auto</span>`;
+  document.getElementById('lbl-conv').textContent      = `Conveyance (monthly) ${sym}`;
+  document.getElementById('lbl-other').innerHTML       = `Other Allowance (monthly) ${sym} <span class="auto-tag">auto</span>`;
+  document.getElementById('lbl-gratuity').innerHTML    = `Gratuity (monthly) ${sym} <span class="auto-tag">auto</span>`;
+  document.getElementById('lbl-pf-emp').innerHTML      = `PF Employee (monthly) ${sym} <span class="auto-tag">auto</span>`;
+  document.getElementById('lbl-pf-er').textContent     = `PF Employer (monthly) ${sym}`;
+  document.getElementById('lbl-pf-admin').textContent  = `PF Admin Charges (monthly) ${sym}`;
+  // Set location input default and placeholder
+  const locInput = document.getElementById('ol-location');
+  locInput.placeholder = window.CFG.companyCity;
+  locInput.value = window.CFG.companyCity;
+})();
+// ── State ──────────────────────────────────────────────────────────────────────
+const ccEmails  = [];
+const bccEmails = [];
+
+// ── On load ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Set today as default offer date
+  document.getElementById('ol-offer-date').value = new Date().toISOString().split('T')[0];
+  loadList();
+});
+
+// ── Chip helpers ──────────────────────────────────────────────────────────────
+function addChip(e, type) {
+  if (e.key !== 'Enter' && e.key !== ',') return;
+  e.preventDefault();
+  const input = document.getElementById(`${type}-input`);
+  const val = input.value.trim().replace(/,+$/, '');
+  if (!val || !val.includes('@')) return;
+  const arr = type === 'cc' ? ccEmails : bccEmails;
+  if (arr.includes(val)) { input.value=''; return; }
+  arr.push(val);
+  const box = document.getElementById(`${type}-box`);
+  const chip = document.createElement('span');
+  chip.className = 'chip';
+  chip.innerHTML = `${val}<button onclick="removeChip(this,'${type}','${val}')" title="Remove">×</button>`;
+  box.insertBefore(chip, input);
+  input.value = '';
+}
+
+function addChipOnBlur(type) {
+  const input = document.getElementById(`${type}-input`);
+  const raw = (input.value || '').trim();
+  if (!raw) return;
+  raw.split(/[\s,;]+/).map(v => v.trim()).filter(v => v.includes('@')).forEach(val => {
+    const arr = type === 'cc' ? ccEmails : bccEmails;
+    if (arr.includes(val)) return;
+    arr.push(val);
+    const box = document.getElementById(`${type}-box`);
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = `${val}<button onclick="removeChip(this,'${type}','${val}')" title="Remove">×</button>`;
+    box.insertBefore(chip, input);
+  });
+  input.value = '';
+}
+function removeChip(btn, type, val) {
+  const arr = type === 'cc' ? ccEmails : bccEmails;
+  const i = arr.indexOf(val);
+  if (i > -1) arr.splice(i, 1);
+  btn.parentElement.remove();
+}
+
+// ── Auto salary calc ──────────────────────────────────────────────────────────
+function autoCalcSalary() {
+  const ctc = parseFloat(document.getElementById('ol-ctc').value) || 0;
+  if (!ctc) return;
+  // From actual offer letter: basic=25000 from ctc=1250004
+  // Ratio: basic ~ 24% of CTC annually
+  const ctcM = ctc / 12;
+  const basic = Math.round(ctc * 0.24 / 12);
+  const hra   = Math.round(basic * 0.5);
+  const pfEmp = Math.min(Math.round(basic * 0.12), 1800);
+  const pfEr  = pfEmp;
+  const pfAdm = Math.round(pfEr * 0.083) || 150;
+  const grat  = Math.round(basic * 0.0481);
+  const gross = ctcM - pfEr - pfAdm;
+  const other = Math.round(gross - basic - hra - grat);
+
+  document.getElementById('ol-basic').value   = basic;
+  document.getElementById('ol-hra').value     = hra;
+  document.getElementById('ol-gratuity').value = grat;
+  document.getElementById('ol-pf-emp').value  = pfEmp;
+  document.getElementById('ol-pf-er').value   = pfEr;
+  document.getElementById('ol-pf-admin').value = pfAdm;
+  document.getElementById('ol-other').value   = Math.max(0, other);
+  calcGross();
+}
+
+function calcGross() {
+  const n = id => parseFloat(document.getElementById(id).value) || 0;
+  const basic = n('ol-basic'), hra = n('ol-hra'), conv = n('ol-conv'),
+        other = n('ol-other'), grat = n('ol-gratuity'), pfEmp = n('ol-pf-emp'),
+        pfEr  = n('ol-pf-er'), pfAdm = n('ol-pf-admin');
+
+  // Auto-fill HRA if empty and basic exists
+  if (!document.getElementById('ol-hra').value && basic) {
+    document.getElementById('ol-hra').value = Math.round(basic * 0.5);
+  }
+  // Auto-fill gratuity
+  if (!document.getElementById('ol-gratuity').value && basic) {
+    document.getElementById('ol-gratuity').value = Math.round(basic * 0.0481);
+  }
+  // Auto-fill PF
+  if (!document.getElementById('ol-pf-emp').value && basic) {
+    const pf = Math.min(Math.round(basic * 0.12), 1800);
+    document.getElementById('ol-pf-emp').value = pf;
+    document.getElementById('ol-pf-er').value  = pf;
+    document.getElementById('ol-pf-admin').value = Math.round(pf * 0.083);
+  }
+
+  const gross = basic + hra + conv + other + grat;
+  const net   = gross - pfEmp;
+  const ctcM  = gross + pfEr + pfAdm;
+
+  const fmt = v => window.CFG.currencySymbol + Math.round(v).toLocaleString(window.CFG.currencyLocale);
+  document.getElementById('s-gross').textContent = fmt(gross);
+  document.getElementById('s-net').textContent   = fmt(net);
+  document.getElementById('s-ctc').textContent   = fmt(ctcM);
+  document.getElementById('ctc-summary').style.display = gross > 0 ? 'block' : 'none';
+}
+
+// ── Load list ─────────────────────────────────────────────────────────────────
+async function loadList() {
+  try {
+    const data = await api('GET', '/offer-letters');
+    const list = document.getElementById('offer-list');
+    if (!data.success || !data.data.length) {
+      list.innerHTML = '<div style="text-align:center;padding:30px;color:#aaa;">No offer letters yet.<br>Create one!</div>';
+      return;
+    }
+    list.innerHTML = data.data.map(ol => `
+      <div class="offer-card" id="card-${ol.id}" onclick="loadForm(${ol.id})">
+        <div class="oc-name">${ol.candidate_name}</div>
+        <div class="oc-desig">${ol.designation}</div>
+        <div class="oc-meta">
+          <span class="badge badge-${ol.status}">${ol.status.toUpperCase()}</span>
+          <span style="font-size:.75rem;color:#999;">${new Date(ol.created_at).toLocaleDateString(window.CFG.currencyLocale)}</span>
+          ${ol.ctc_annual ? `<span style="font-size:.75rem;color:var(--cfg-accent);font-weight:600;">${window.CFG.currencySymbol}${Number(ol.ctc_annual).toLocaleString(window.CFG.currencyLocale)}</span>` : ''}
+        </div>
+      </div>
+    `).join('');
+  } catch(err) {
+    document.getElementById('offer-list').innerHTML = '<div style="color:red;padding:20px">Failed to load</div>';
+  }
+}
+
+// ── Load form from existing offer letter ──────────────────────────────────────
+async function loadForm(id) {
+  document.querySelectorAll('.offer-card').forEach(c => c.classList.remove('active'));
+  document.getElementById(`card-${id}`)?.classList.add('active');
+
+  const data = await api('GET', `/offer-letters/${id}`);
+  if (!data.success) return;
+  const ol = data.data;
+
+  document.getElementById('ol-id').value          = ol.id;
+  document.getElementById('form-title').textContent = `✏️ Edit — ${ol.candidate_name}`;
+  document.getElementById('ol-name').value         = ol.candidate_name;
+  document.getElementById('ol-email').value        = ol.candidate_email || '';
+  document.getElementById('ol-mobile').value       = ol.candidate_mobile || '';
+  document.getElementById('ol-address').value      = ol.candidate_address || '';
+  document.getElementById('ol-designation').value  = ol.designation;
+  document.getElementById('ol-location').value     = ol.location || window.CFG.companyCity;
+  document.getElementById('ol-offer-date').value   = ol.offer_date?.split('T')[0] || '';
+  document.getElementById('ol-joining-date').value = ol.joining_date?.split('T')[0] || '';
+  document.getElementById('ol-valid-days').value   = ol.offer_valid_days || 7;
+  document.getElementById('ol-probation').value    = ol.probation_months || 6;
+  document.getElementById('ol-notice').value       = ol.notice_period_months || 3;
+  document.getElementById('ol-ctc').value          = ol.ctc_annual || '';
+  document.getElementById('ol-basic').value        = ol.basic_monthly || '';
+  document.getElementById('ol-hra').value          = ol.hra_monthly || '';
+  document.getElementById('ol-conv').value         = ol.conveyance_monthly || 0;
+  document.getElementById('ol-other').value        = ol.other_allowance_monthly || '';
+  document.getElementById('ol-gratuity').value     = ol.gratuity_monthly || '';
+  document.getElementById('ol-pf-emp').value       = ol.pf_employee_monthly || '';
+  document.getElementById('ol-pf-er').value        = ol.pf_employer_monthly || '';
+  document.getElementById('ol-pf-admin').value     = ol.pf_admin_monthly || '';
+  document.getElementById('ol-clauses').value      = ol.custom_clauses || '';
+
+  // Load signatures if saved
+  if (ol.sig1_image) setSigPreview('sig1', ol.sig1_image);
+  else clearSig('sig1');
+  if (ol.sig2_image) setSigPreview('sig2', ol.sig2_image);
+  else clearSig('sig2');
+
+  calcGross();
+
+  document.getElementById('btn-preview').disabled = false;
+  document.getElementById('btn-send').disabled    = !ol.candidate_email;
+  document.getElementById('btn-delete').style.display = '';
+}
+
+// ── Save ──────────────────────────────────────────────────────────────────────
+async function saveOL() {
+  const id   = document.getElementById('ol-id').value;
+  const name = document.getElementById('ol-name').value.trim();
+  const desig = document.getElementById('ol-designation').value.trim();
+  if (!name || !desig) return alert('Name and Designation are required.');
+
+  const body = {
+    candidate_name:           name,
+    candidate_email:          document.getElementById('ol-email').value.trim() || null,
+    candidate_mobile:         document.getElementById('ol-mobile').value.trim() || null,
+    candidate_address:        document.getElementById('ol-address').value.trim() || null,
+    designation:              desig,
+    location:                 document.getElementById('ol-location').value.trim() || window.CFG.companyCity,
+    offer_date:               document.getElementById('ol-offer-date').value || null,
+    joining_date:             document.getElementById('ol-joining-date').value || null,
+    offer_valid_days:         parseInt(document.getElementById('ol-valid-days').value) || 7,
+    probation_months:         parseInt(document.getElementById('ol-probation').value) || 6,
+    notice_period_months:     parseInt(document.getElementById('ol-notice').value) || 3,
+    ctc_annual:               parseFloat(document.getElementById('ol-ctc').value) || 0,
+    basic_monthly:            parseFloat(document.getElementById('ol-basic').value) || 0,
+    hra_monthly:              parseFloat(document.getElementById('ol-hra').value) || 0,
+    conveyance_monthly:       parseFloat(document.getElementById('ol-conv').value) || 0,
+    other_allowance_monthly:  parseFloat(document.getElementById('ol-other').value) || 0,
+    gratuity_monthly:         parseFloat(document.getElementById('ol-gratuity').value) || 0,
+    pf_employee_monthly:      parseFloat(document.getElementById('ol-pf-emp').value) || 0,
+    pf_employer_monthly:      parseFloat(document.getElementById('ol-pf-er').value) || 0,
+    pf_admin_monthly:         parseFloat(document.getElementById('ol-pf-admin').value) || 0,
+    custom_clauses:           document.getElementById('ol-clauses').value.trim() || null,
+    sig1_image:               document.getElementById('ol-sig1').value || null,
+    sig2_image:               document.getElementById('ol-sig2').value || null,
+  };
+
+  const method = id ? 'PUT' : 'POST';
+  const url    = id ? `/offer-letters/${id}` : '/offer-letters';
+  const res    = await api(method, url, body);
+  if (!res.success) return alert(res.message || 'Save failed');
+
+  // If new, load the created record
+  if (!id && res.data?.id) {
+    document.getElementById('ol-id').value = res.data.id;
+    document.getElementById('btn-preview').disabled = false;
+    document.getElementById('btn-send').disabled    = !body.candidate_email;
+    document.getElementById('btn-delete').style.display = '';
+    document.getElementById('form-title').textContent = `✏️ Edit — ${name}`;
+  }
+
+  showToast('✅ Offer letter saved!');
+  loadList();
+}
+
+// ── Preview ───────────────────────────────────────────────────────────────────
+async function previewOL() {
+  // Auto-save first so latest changes are reflected
+  const id = document.getElementById('ol-id').value;
+  if (!id) {
+    // Need to save first
+    await saveOL();
+  } else {
+    await saveOL();
+  }
+  const savedId = document.getElementById('ol-id').value;
+  if (!savedId) return;
+  const token = Auth.getToken();
+  window.open(`${API_BASE}/offer-letters/${savedId}/preview?token=${token}`, '_blank');
+}
+
+// ── Send Email ────────────────────────────────────────────────────────────────
+// ── Signature helpers ─────────────────────────────────────────────────────────
+function loadSigPreview(input, key) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const b64 = e.target.result;
+    document.getElementById(`ol-${key}`).value = b64;
+    const preview = document.getElementById(`${key}-preview`);
+    preview.innerHTML = `<img src="${b64}" style="max-height:60px;max-width:100%;object-fit:contain;">`;
+    document.getElementById(`${key}-clear`).style.display = 'inline';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearSig(key) {
+  document.getElementById(`ol-${key}`).value = '';
+  document.getElementById(`${key}-file`).value = '';
+  document.getElementById(`${key}-preview`).innerHTML = '<span style="font-size:.75rem;color:#aaa;">No signature uploaded</span>';
+  document.getElementById(`${key}-clear`).style.display = 'none';
+}
+
+function setSigPreview(key, b64) {
+  if (!b64) return;
+  document.getElementById(`ol-${key}`).value = b64;
+  const preview = document.getElementById(`${key}-preview`);
+  preview.innerHTML = `<img src="${b64}" style="max-height:60px;max-width:100%;object-fit:contain;">`;
+  document.getElementById(`${key}-clear`).style.display = 'inline';
+}
+
+// ── Flush any typed-but-not-chipped emails from inputs ───────────────────────
+function flushChipInputs() {
+  ['cc', 'bcc'].forEach(type => {
+    const input = document.getElementById(`${type}-input`);
+    const val = (input.value || '').trim().replace(/,+$/, '');
+    if (!val) return;
+    const arr = type === 'cc' ? ccEmails : bccEmails;
+    // Add each comma-separated email
+    val.split(',').map(v => v.trim()).filter(v => v.includes('@')).forEach(email => {
+      if (!arr.includes(email)) {
+        arr.push(email);
+        const box = document.getElementById(`${type}-box`);
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.innerHTML = `${email}<button onclick="removeChip(this,'${type}','${email}')" title="Remove">×</button>`;
+        box.insertBefore(chip, input);
+      }
+    });
+    input.value = '';
+  });
+}
+
+async function sendOL() {
+  // Flush any text typed directly (not chip-confirmed) before sending
+  flushChipInputs();
+  // Auto-save first
+  await saveOL();
+  const id = document.getElementById('ol-id').value;
+  if (!id) return;
+  const email = document.getElementById('ol-email').value.trim();
+  if (!email) return alert('No candidate email set. Please add email and save first.');
+  if (!confirm(`Send offer letter email to ${email}?\n\nCC: ${ccEmails.join(', ') || 'none'}\nBCC: ${bccEmails.join(', ') || 'none'}`)) return;
+
+  const res = await api('POST', `/offer-letters/${id}/send`, {
+    cc: ccEmails,
+    bcc: bccEmails,
+    email_message: document.getElementById('ol-email-msg').value.trim() || ''
+  });
+  if (res.success) { showToast('📧 Offer letter sent!'); loadList(); }
+  else alert(res.message || 'Send failed');
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+async function deleteOL() {
+  const id = document.getElementById('ol-id').value;
+  if (!id) return;
+  if (!confirm('Delete this offer letter? This cannot be undone.')) return;
+  const res = await api('DELETE', `/offer-letters/${id}`);
+  if (res.success) { showToast('🗑 Deleted'); resetForm(); loadList(); }
+  else alert(res.message || 'Delete failed');
+}
+
+// ── Reset form ────────────────────────────────────────────────────────────────
+function resetForm() {
+  document.getElementById('ol-id').value = '';
+  document.getElementById('form-title').textContent = '📝 Create Offer Letter';
+  ['ol-name','ol-email','ol-mobile','ol-address','ol-designation','ol-joining-date','ol-clauses','ol-email-msg',
+   'ol-ctc','ol-basic','ol-hra','ol-other','ol-gratuity','ol-pf-emp','ol-pf-er','ol-pf-admin'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('ol-location').value = window.CFG.companyCity;
+  document.getElementById('ol-offer-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('ol-valid-days').value = 7;
+  document.getElementById('ol-probation').value  = 6;
+  document.getElementById('ol-notice').value     = 3;
+  document.getElementById('ol-conv').value       = 0;
+  document.getElementById('ctc-summary').style.display = 'none';
+  clearSig('sig1');
+  clearSig('sig2');
+  document.getElementById('btn-preview').disabled = true;
+  document.getElementById('btn-send').disabled    = true;
+  document.getElementById('btn-delete').style.display = 'none';
+
+  // Clear chips
+  ['cc','bcc'].forEach(type => {
+    const arr = type === 'cc' ? ccEmails : bccEmails;
+    arr.length = 0;
+    const box = document.getElementById(`${type}-box`);
+    box.querySelectorAll('.chip').forEach(c => c.remove());
+  });
+
+  document.querySelectorAll('.offer-card').forEach(c => c.classList.remove('active'));
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:24px;right:24px;background:${window.CFG.primaryColor};color:#fff;padding:12px 20px;border-radius:10px;z-index:9999;font-size:.9rem;box-shadow:0 4px 16px rgba(0,0,0,.2);animation:fadeIn .3s ease`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+// ── HR-only page guard ────────────────────────────────────────────────────────
+(function() {
+  const user = Auth.getUser();
+  if (!user || user.role !== 'hr') {
+    window.location.href = 'dashboard.html';
+  }
+})();
+
+buildSidebar('offer-letter.html');
+loadNotifBadge();
+</script>
+</body>
+</html>
