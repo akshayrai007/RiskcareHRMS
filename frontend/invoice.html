@@ -1,0 +1,1963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Invoice Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<!-- SheetJS for Excel parsing -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- jsPDF for PDF generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- JSZip for zipping multiple PDFs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<style>
+/* ── Page-specific styles ───────────────────────────────── */
+.inv-tabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+.inv-tab {
+  padding:9px 20px; border-radius:var(--radius-sm); font-size:13px; font-weight:600;
+  border:1.5px solid var(--border2); background:var(--surface); color:var(--muted);
+  cursor:pointer; transition:all .2s;
+}
+.inv-tab.active {
+  background:var(--accent); color:#fff; border-color:var(--accent);
+}
+.inv-tab:hover:not(.active) { border-color:var(--accent); color:var(--accent); }
+
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* ── Invoice Template Preview ───────────────────────────── */
+.invoice-preview-wrap {
+  background:#e8e8e8; border-radius:var(--radius); padding:20px;
+  display:flex; justify-content:center;
+}
+.invoice-sheet {
+  background:#fff; width:740px; min-height:960px;
+  padding:40px 44px; box-shadow:0 2px 12px rgba(0,0,0,.12);
+  font-family:'DM Sans',sans-serif; font-size:13px; line-height:1.5;
+  color:#1a1a1a; position:relative;
+}
+
+/* ── Paper invoice styles (no color) ───────────────────── */
+.pi-header { text-align:center; border-bottom:2px solid #222; padding-bottom:12px; margin-bottom:18px; }
+.pi-header h1 { font-size:22px; font-weight:800; letter-spacing:3px; margin:0 0 3px; color:#111; }
+.pi-header p  { font-size:11px; color:#555; margin:0; }
+
+.pi-meta-row { display:flex; justify-content:space-between; margin-bottom:16px; gap:20px; }
+.pi-meta-left { flex:1; }
+.pi-meta-right { min-width:160px; border:1px solid #bbb; padding:10px 12px; }
+.pi-label { font-size:9px; text-transform:uppercase; letter-spacing:.8px; color:#666; font-weight:700; margin-bottom:2px; }
+.pi-value { font-size:13px; font-weight:700; color:#111; }
+.pi-name  { font-size:14px; font-weight:700; color:#111; margin-bottom:4px; }
+.pi-info  { font-size:11.5px; color:#555; line-height:1.7; }
+
+.pi-divider { border:none; border-top:1px solid #ccc; margin:14px 0; }
+.pi-section-label { font-size:9px; text-transform:uppercase; letter-spacing:.8px; color:#555; font-weight:700; margin-bottom:6px; border-bottom:1px solid #ccc; padding-bottom:3px; }
+
+.pi-table { width:100%; border-collapse:collapse; margin-bottom:0; }
+.pi-table thead tr { border-top:1.5px solid #333; border-bottom:1.5px solid #333; }
+.pi-table thead th { padding:8px 10px; font-size:10px; font-weight:700; text-align:left; color:#222; text-transform:uppercase; letter-spacing:.5px; }
+.pi-table thead th:last-child { text-align:right; }
+.pi-table tbody td { padding:10px 10px; font-size:12.5px; border-bottom:1px solid #e0e0e0; vertical-align:top; color:#222; }
+.pi-table tbody td:last-child { text-align:right; font-weight:600; }
+.pi-total-row { border-top:1.5px solid #333; border-bottom:1.5px solid #333; }
+.pi-total-row td { padding:9px 10px; font-size:13px; font-weight:700; color:#111; }
+.pi-total-row td:last-child { text-align:right; }
+
+.pi-words-box { border:1px solid #bbb; padding:9px 12px; font-size:12px; color:#333; margin:14px 0; background:#fafafa; }
+.pi-words-box b { font-weight:700; }
+
+.pi-bank-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px 24px; margin-top:8px; }
+.pi-bank-row { display:flex; gap:8px; font-size:12px; }
+.pi-bank-row .lbl { color:#888; min-width:88px; flex-shrink:0; font-size:11px; }
+.pi-bank-row .val { font-weight:700; color:#111; }
+
+.pi-footer { text-align:center; border-top:1px solid #ccc; padding-top:10px; margin-top:20px; font-size:10px; color:#888; }
+/* ── Manual Form ────────────────────────────────────────── */
+.form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px 20px; }
+.form-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px 20px; }
+@media(max-width:768px){
+  .form-grid-2,.form-grid-3 { grid-template-columns:1fr; }
+  .invoice-sheet { width:100%; padding:24px 16px; }
+}
+
+/* ── Bulk Upload Zone ───────────────────────────────────── */
+.bulk-upload-zone {
+  border:2.5px dashed var(--border2); border-radius:var(--radius);
+  padding:48px 24px; text-align:center; cursor:pointer;
+  transition:all .2s; background:var(--surface2);
+}
+.bulk-upload-zone:hover, .bulk-upload-zone.dragover {
+  border-color:var(--accent); background:var(--accent-l); transform:scale(1.01);
+}
+.bulk-upload-icon { font-size:42px; margin-bottom:10px; }
+.bulk-upload-title { font-size:16px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.bulk-upload-sub { font-size:12.5px; color:var(--muted); margin-bottom:16px; }
+
+.excel-column-map { margin-top:20px; }
+.excel-col-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+.excel-col-table th { background:var(--surface2); padding:8px 12px; text-align:left; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; border-bottom:1.5px solid var(--border); }
+.excel-col-table td { padding:8px 12px; border-bottom:1px solid var(--border); color:var(--text2); }
+.excel-col-table tr:last-child td { border-bottom:none; }
+
+.bulk-result-table { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:16px; }
+.bulk-result-table th { background:var(--surface3); padding:9px 12px; text-align:left; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; border-bottom:1.5px solid var(--border); }
+.bulk-result-table td { padding:9px 12px; border-bottom:1px solid var(--border); color:var(--text2); vertical-align:middle; }
+.bulk-result-table tr:hover td { background:var(--accent-l); }
+
+.status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
+.dot-ok   { background:#22c55e; }
+.dot-warn { background:#f59e0b; }
+.dot-err  { background:#ef4444; }
+
+.progress-wrap { background:var(--border); border-radius:99px; height:8px; overflow:hidden; margin-top:8px; }
+.progress-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:99px; transition:width .3s; }
+
+/* ── Template download badge ─────────────────────────────── */
+.template-badge {
+  display:inline-flex; align-items:center; gap:8px;
+  background:var(--surface3); border:1.5px solid var(--border2);
+  border-radius:var(--radius-sm); padding:10px 16px;
+  font-size:12.5px; font-weight:600; color:var(--accent); cursor:pointer;
+  transition:all .15s; text-decoration:none;
+}
+.template-badge:hover { background:var(--accent-l); border-color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><script>document.addEventListener("DOMContentLoaded",function(){var el=document.getElementById("sidebar-logo-text");if(el&&window.CFG?.logoHtml)el.innerHTML=window.CFG.logoHtml;})</script><div class="logo-sub" id="sidebar-logo-sub"></div><script>document.addEventListener("DOMContentLoaded",function(){var s=document.getElementById("sidebar-logo-sub");if(s&&window.CFG?.companyShortName)s.textContent=window.CFG.companyShortName;})</script></div>
+      <div class="logo-sub">Enterprise Edition</div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">Invoice Generator</div>
+    </div>
+    <div class="topbar-right">
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+
+    <!-- Page Header -->
+    <div class="card" style="padding:18px 22px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:2px">📄 Invoice Generator</div>
+        <div style="font-size:12.5px;color:var(--muted)">Create individual invoices manually or generate bulk invoices from Excel</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="downloadTemplate()">⬇ Download Excel Template</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="inv-tabs">
+      <button class="inv-tab active" onclick="switchTab('manual')">✏️ Create Invoice</button>
+      <button class="inv-tab" onclick="switchTab('bulk')">📊 Bulk from Excel</button>
+      <button class="inv-tab" onclick="switchTab('history')">📋 Invoice History</button>
+    </div>
+
+    <!-- ═══════════════════════ TAB: MANUAL ═══════════════════════ -->
+    <div class="tab-panel active" id="tab-manual">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+        
+        <!-- Left: Form -->
+        <div>
+          <div class="card" style="padding:22px">
+            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:18px;padding-bottom:12px;border-bottom:1.5px solid var(--border)">👤 Payee Details</div>
+            <div class="form-grid-2" style="margin-bottom:14px">
+              <div>
+                <label class="form-label">Full Name *</label>
+                <input class="form-control" id="f-name" placeholder="e.g. SHARATH KUMAR M" oninput="updatePreview()">
+              </div>
+              <div>
+                <label class="form-label">Mobile No *</label>
+                <input class="form-control" id="f-mob" placeholder="9113667105" oninput="updatePreview()">
+              </div>
+              <div>
+                <label class="form-label">Aadhar No</label>
+                <input class="form-control" id="f-aadhar" placeholder="660416340649" oninput="updatePreview()">
+              </div>
+              <div>
+                <label class="form-label">PAN No</label>
+                <input class="form-control" id="f-pan" placeholder="KPRPS5557C" oninput="updatePreview()">
+              </div>
+              <div style="grid-column:1/-1">
+                <label class="form-label">Address *</label>
+                <textarea class="form-control" id="f-address" rows="2" placeholder="S/O ..., Village, Taluk, District" oninput="updatePreview()"></textarea>
+              </div>
+            </div>
+
+            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:18px;padding-bottom:12px;border-bottom:1.5px solid var(--border)">🧾 Invoice Details</div>
+            <div class="form-grid-2" style="margin-bottom:14px">
+              <div>
+                <label class="form-label">Invoice No *</label>
+                <input class="form-control" id="f-invno" placeholder="25-26/S/17" oninput="updatePreview()">
+              </div>
+              <div>
+                <label class="form-label">Date *</label>
+                <input class="form-control" id="f-date" type="date" oninput="updatePreview()">
+              </div>
+              <div style="grid-column:1/-1">
+                <label class="form-label">Description / Particulars *</label>
+                <textarea class="form-control" id="f-desc" rows="3" placeholder="e.g. PMFBY Crop Cutting Experiments in Field Level in hassan district..." oninput="updatePreview()"></textarea>
+              </div>
+              <div>
+                <label class="form-label">Amount (₹) *</label>
+                <input class="form-control" id="f-amount" type="number" placeholder="10750" oninput="updatePreview()">
+              </div>
+            </div>
+
+            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:18px;padding-bottom:12px;border-bottom:1.5px solid var(--border)">🏦 Bank Details</div>
+            <div class="form-grid-2">
+              <div>
+                <label class="form-label">Bank Name *</label>
+                <input class="form-control" id="f-bank" placeholder="POSTAL BANK" oninput="updatePreview()">
+              </div>
+              <div>
+                <label class="form-label">Branch Name</label>
+                <input class="form-control" id="f-branch" placeholder="MUDUDI" oninput="updatePreview()">
+              </div>
+              <div>
+                <label class="form-label">Account No *</label>
+                <input class="form-control" id="f-accno" placeholder="023810042502" oninput="updatePreview()">
+              </div>
+              <div>
+                <label class="form-label">IFSC Code *</label>
+                <input class="form-control" id="f-ifsc" placeholder="IPOS0000001" oninput="updatePreview()">
+              </div>
+            </div>
+
+            <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-primary" onclick="downloadSinglePDF()" style="flex:1">
+                ⬇ Download Invoice PDF
+              </button>
+              <button class="btn btn-outline" onclick="printPreview()">
+                🖨 Print
+              </button>
+              <button class="btn btn-outline" onclick="clearForm()">
+                🗑 Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Live Preview -->
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px;text-align:center">📋 Live Preview</div>
+          <div class="invoice-preview-wrap">
+            <div class="invoice-sheet" id="invoice-preview">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════ TAB: BULK ═══════════════════════ -->
+    <div class="tab-panel" id="tab-bulk">
+      <div class="card" style="padding:22px;margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div style="font-size:14px;font-weight:700;color:var(--text)">📊 Bulk Invoice Generator</div>
+          <button class="template-badge" onclick="downloadTemplate()">
+            📥 Download Excel Template
+          </button>
+        </div>
+
+        <!-- Excel column format reference -->
+        <div class="card" style="background:var(--surface2);padding:14px 16px;margin-bottom:18px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Required Excel Columns</div>
+          <table class="excel-col-table">
+            <thead><tr><th>Column</th><th>Example</th><th>Required</th></tr></thead>
+            <tbody>
+              <tr><td><b>Name</b></td><td>SHARATH KUMAR M</td><td><span class="badge badge-active">Yes</span></td></tr>
+              <tr><td><b>Mobile</b></td><td>9113667105</td><td><span class="badge badge-active">Yes</span></td></tr>
+              <tr><td><b>Aadhar</b></td><td>660416340649</td><td><span class="badge" style="background:var(--yellow-l);color:var(--yellow-d)">Optional</span></td></tr>
+              <tr><td><b>PAN</b></td><td>KPRPS5557C</td><td><span class="badge" style="background:var(--yellow-l);color:var(--yellow-d)">Optional</span></td></tr>
+              <tr><td><b>Address</b></td><td>S/O ..., Village, Taluk</td><td><span class="badge badge-active">Yes</span></td></tr>
+              <tr><td><b>Invoice_No</b></td><td>25-26/S/17</td><td><span class="badge badge-active">Yes</span></td></tr>
+              <tr><td><b>Date</b></td><td>29-08-2025</td><td><span class="badge badge-active">Yes</span></td></tr>
+              <tr><td><b>Description</b></td><td>PMFBY Crop Cutting Experiments...</td><td><span class="badge badge-active">Yes</span></td></tr>
+              <tr><td><b>Amount</b></td><td>10750</td><td><span class="badge badge-active">Yes</span></td></tr>
+              <tr><td><b>Bank_Name</b></td><td>POSTAL BANK</td><td><span class="badge badge-active">Yes</span></td></tr>
+              <tr><td><b>Branch</b></td><td>MUDUDI</td><td><span class="badge" style="background:var(--yellow-l);color:var(--yellow-d)">Optional</span></td></tr>
+              <tr><td><b>Account_No</b></td><td>023810042502</td><td><span class="badge badge-active">Yes</span></td></tr>
+              <tr><td><b>IFSC</b></td><td>IPOS0000001</td><td><span class="badge badge-active">Yes</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Upload Zone -->
+        <div class="bulk-upload-zone" id="bulk-drop-zone"
+             onclick="document.getElementById('excel-file-input').click()"
+             ondragover="handleDragOver(event)"
+             ondragleave="handleDragLeave(event)"
+             ondrop="handleDrop(event)">
+          <div class="bulk-upload-icon">📂</div>
+          <div class="bulk-upload-title">Drop your Excel file here</div>
+          <div class="bulk-upload-sub">or click to browse — .xlsx / .xls files supported</div>
+          <button class="btn btn-primary" onclick="event.stopPropagation();document.getElementById('excel-file-input').click()">Select Excel File</button>
+          <input type="file" id="excel-file-input" accept=".xlsx,.xls" style="display:none" onchange="handleExcelFile(this.files[0])">
+        </div>
+
+        <!-- Processing status -->
+        <div id="bulk-processing" style="display:none;margin-top:16px">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px" id="bulk-status-text">Processing...</div>
+          <div class="progress-wrap"><div class="progress-fill" id="bulk-progress-fill" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <!-- Results table -->
+      <div class="card" style="padding:22px;display:none" id="bulk-results-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--text)" id="bulk-results-title">Records Ready</div>
+            <div style="font-size:12px;color:var(--muted)" id="bulk-results-sub"></div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-outline btn-sm" onclick="previewBulkRecord(0)">👁 Preview First</button>
+            <button class="btn btn-primary" onclick="generateAllPDFs()" id="bulk-generate-btn">
+              📦 Generate All PDFs (ZIP)
+            </button>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="bulk-result-table" id="bulk-result-table">
+            <thead><tr>
+              <th>#</th><th>Invoice No</th><th>Name</th><th>Date</th><th>Amount</th><th>Status</th><th>Action</th>
+            </tr></thead>
+            <tbody id="bulk-result-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════ TAB: HISTORY ═══════════════════════ -->
+    <div class="tab-panel" id="tab-history">
+      <div class="card" style="padding:22px">
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px">📋 Generated Invoice History</div>
+        <div id="history-list">
+          <div class="empty-state">
+            <div class="empty-icon">📄</div>
+            <p>No invoices generated yet in this session.<br>Create one using the <b>Create Invoice</b> or <b>Bulk from Excel</b> tab.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- Print only area (hidden) -->
+<div id="print-area" style="display:none"></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+Auth.guard();
+buildSidebar('invoice.html');
+typeof loadNotifBadge === 'function' && loadNotifBadge();
+
+// ── Utility: number to Indian words ───────────────────
+function numToWords(n) {
+  const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine',
+    'Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+  const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+  if (n === 0) return 'Zero';
+  function two(n) {
+    if (n < 20) return ones[n];
+    return tens[Math.floor(n/10)] + (n%10 ? ' ' + ones[n%10] : '');
+  }
+  function three(n) {
+    if (n < 100) return two(n);
+    return ones[Math.floor(n/100)] + ' Hundred' + (n%100 ? ' ' + two(n%100) : '');
+  }
+  let str = '', rem = Math.abs(Math.floor(n));
+  const cr = Math.floor(rem/10000000); rem %= 10000000;
+  const lk = Math.floor(rem/100000); rem %= 100000;
+  const th = Math.floor(rem/1000); rem %= 1000;
+  const hu = rem;
+  if (cr) str += three(cr) + ' Crore ';
+  if (lk) str += three(lk) + ' Lakh ';
+  if (th) str += three(th) + ' Thousand ';
+  if (hu) str += three(hu);
+  return str.trim();
+}
+
+// ── Company fixed info ─────────────────────────────────
+const COMPANY = {
+  name: (window.CFG?.companyFullName || 'Company'),
+  addr: '617, 6th Floor, Hub Town Viva, Western Express Highway,\nShankarwadi, Jogeshwari (East), Mumbai - 400060.',
+  gst:  '27AAFCK7320M1Z9',
+  pan:  'AAFCK7320M',
+};
+
+// ── Render invoice HTML (used for preview & PDF) ──────
+function renderInvoiceHTML(d) {
+  const amtWords = numToWords(Number(d.amount) || 0);
+  const dateStr  = d.date || '—';
+  const amt      = Number(d.amount||0).toLocaleString('en-IN');
+  return `
+    <div class="pi-header">
+      <h1>INVOICE</h1>
+      <p>${COMPANY.name}</p>
+    </div>
+
+    <div class="pi-meta-row">
+      <div class="pi-meta-left">
+        <div class="pi-section-label">Bill From</div>
+        <div class="pi-name">${d.name || '—'}</div>
+        <div class="pi-info">
+          ${d.mob    ? 'Mob: ' + d.mob + '<br>' : ''}
+          ${d.aadhar ? 'Aadhar: ' + d.aadhar + '<br>' : ''}
+          ${d.pan    ? 'PAN: ' + d.pan + '<br>' : ''}
+          ${(d.address||'').replace(/\n/g,'<br>')}
+        </div>
+      </div>
+      <div class="pi-meta-right">
+        <div class="pi-label">Invoice No</div>
+        <div class="pi-value" style="font-size:15px;margin-bottom:10px">${d.invoiceNo || '—'}</div>
+        <div class="pi-label">Date</div>
+        <div class="pi-value" style="font-size:12px">${dateStr}</div>
+      </div>
+    </div>
+
+    <hr class="pi-divider">
+
+    <div style="margin-bottom:16px">
+      <div class="pi-section-label">Bill To</div>
+      <div style="font-weight:700;font-size:13px;margin-bottom:3px">${COMPANY.name}</div>
+      <div class="pi-info">${COMPANY.addr.replace(/\n/g,'<br>')}</div>
+      <div class="pi-info" style="margin-top:3px"><b>GSTIN:</b> ${COMPANY.gst} &nbsp; <b>PAN:</b> ${COMPANY.pan}</div>
+    </div>
+
+    <hr class="pi-divider">
+
+    <table class="pi-table">
+      <thead>
+        <tr>
+          <th style="width:36px">#</th>
+          <th>Particulars</th>
+          <th style="width:110px">Amount (Rs.)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>${d.description || '—'}</td>
+          <td>${amt}</td>
+        </tr>
+      </tbody>
+      <tr class="pi-total-row">
+        <td colspan="2" style="text-align:right;font-size:12px">Total (Rs.)</td>
+        <td>Rs. ${amt}</td>
+      </tr>
+    </table>
+
+    <div class="pi-words-box">
+      <b>Amount in Words:</b> Rupees ${amtWords} Only
+    </div>
+
+    <hr class="pi-divider">
+
+    <div class="pi-section-label">Payment / Bank Details</div>
+    <div class="pi-bank-grid">
+      <div class="pi-bank-row"><span class="lbl">Account Name</span><span class="val">${d.name || '—'}</span></div>
+      <div class="pi-bank-row"><span class="lbl">Bank Name</span><span class="val">${d.bankName || '—'}</span></div>
+      ${d.branch ? '<div class="pi-bank-row"><span class="lbl">Branch</span><span class="val">'+d.branch+'</span></div>' : ''}
+      <div class="pi-bank-row"><span class="lbl">Account No</span><span class="val">${d.accountNo || '—'}</span></div>
+      <div class="pi-bank-row"><span class="lbl">IFSC Code</span><span class="val">${d.ifsc || '—'}</span></div>
+    </div>
+
+    <div class="pi-footer">
+      This is a computer generated invoice. &nbsp;|&nbsp; ${COMPANY.name}
+    </div>
+  `;
+}
+
+// ── Form → data object ─────────────────────────────────
+function getFormData() {
+  return {
+    name:        document.getElementById('f-name').value.trim(),
+    mob:         document.getElementById('f-mob').value.trim(),
+    aadhar:      document.getElementById('f-aadhar').value.trim(),
+    pan:         document.getElementById('f-pan').value.trim(),
+    address:     document.getElementById('f-address').value.trim(),
+    invoiceNo:   document.getElementById('f-invno').value.trim(),
+    date:        document.getElementById('f-date').value,
+    description: document.getElementById('f-desc').value.trim(),
+    amount:      document.getElementById('f-amount').value.trim(),
+    bankName:    document.getElementById('f-bank').value.trim(),
+    branch:      document.getElementById('f-branch').value.trim(),
+    accountNo:   document.getElementById('f-accno').value.trim(),
+    ifsc:        document.getElementById('f-ifsc').value.trim(),
+  };
+}
+
+// ── Live preview ───────────────────────────────────────
+function updatePreview() {
+  const d = getFormData();
+  // Format date for display
+  if (d.date) {
+    const dt = new Date(d.date);
+    d.date = dt.toLocaleDateString('en-IN', {day:'2-digit',month:'2-digit',year:'numeric'});
+  }
+  document.getElementById('invoice-preview').innerHTML = renderInvoiceHTML(d);
+}
+
+// ── Tab switching ──────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.inv-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── Clear form ─────────────────────────────────────────
+function clearForm() {
+  ['f-name','f-mob','f-aadhar','f-pan','f-address','f-invno','f-date',
+   'f-desc','f-amount','f-bank','f-branch','f-accno','f-ifsc'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  updatePreview();
+}
+
+// ── PDF generation using jsPDF ─────────────────────────
+// ══════════════════════════════════════════════════════════════
+//  20 UNIQUE INVOICE TEMPLATES  (Word-doc style: no color fills,
+//  uniqueness via layout / font-size / borders / spacing)
+// ══════════════════════════════════════════════════════════════
+
+// Shared helper: draw a single horizontal rule
+function _rule(doc, x1, y, x2, lw=0.4, gray=180){
+  doc.setDrawColor(gray,gray,gray);
+  doc.setLineWidth(lw);
+  doc.line(x1, y, x2, y);
+}
+// Shared helper: box (stroke only)
+function _box(doc, x, y, w, h, lw=0.4, gray=180){
+  doc.setDrawColor(gray,gray,gray);
+  doc.setLineWidth(lw);
+  doc.rect(x, y, w, h);
+}
+// Shared helper: wrapped text with return new Y
+function _wtext(doc, txt, x, y, maxW, lineH=4.5){
+  const lines = doc.splitTextToSize(String(txt||'—'), maxW);
+  doc.text(lines, x, y);
+  return y + lines.length * lineH;
+}
+
+// ── TEMPLATE BUILDERS (1-20) ─────────────────────────────────
+
+function _tpl1(doc, d, M, W, CW) {
+  // Classic centered header, double top border
+  let y = M;
+  _rule(doc,M,y,W-M,0.8,60); y+=2;
+  _rule(doc,M,y,W-M,0.3,60); y+=6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(30,30,30);
+  doc.text('INVOICE', W/2, y+5, {align:'center'}); y+=10;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(80,80,80);
+  doc.text(COMPANY.name, W/2, y, {align:'center'}); y+=5;
+  _rule(doc,M,y,W-M,0.3,60); y+=2;
+  _rule(doc,M,y,W-M,0.8,60); y+=8;
+  // Meta row
+  doc.setFontSize(8); doc.setTextColor(100,100,100);
+  doc.text('Invoice No:', M, y); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20); doc.text(d.invoiceNo||'—', M+22, y);
+  doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100);
+  doc.text('Date:', W-M-35, y); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20); doc.text(d.date||'—', W-M-23, y);
+  y+=7;
+  _rule(doc,M,y,W-M,0.3,200); y+=6;
+  // FROM / TO columns
+  doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(80,80,80);
+  doc.text('FROM', M, y); doc.text('TO', W/2+5, y); y+=4;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
+  doc.text(d.name||'—', M, y); doc.text(COMPANY.name.split('Pvt')[0].trim(), W/2+5, y); y+=5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(70,70,70);
+  if(d.mob) { doc.text('Mob: '+d.mob, M, y); y+=4; }
+  if(d.aadhar) { doc.text('Aadhar: '+d.aadhar, M, y); y+=4; }
+  if(d.pan) { doc.text('PAN: '+d.pan, M, y); y+=4; }
+  y = _wtext(doc,d.address,M,y,85); y+=2;
+  doc.setFontSize(7.5); doc.setTextColor(70,70,70);
+  doc.text('Pvt. Ltd., '+COMPANY.addr.slice(0,50), W/2+5, y-12, {maxWidth:80});
+  doc.text('GSTIN: '+COMPANY.gst, W/2+5, y-4);
+  doc.text('PAN: '+COMPANY.pan, W/2+5, y);
+  y+=6;
+  _rule(doc,M,y,W-M,0.4,160); y+=6;
+  // Table
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(40,40,40);
+  doc.text('SL', M+2, y+5); doc.text('PARTICULARS', M+14, y+5); doc.text('AMOUNT (RS.)', W-M-3, y+5, {align:'right'});
+  _rule(doc,M,y+6.5,W-M,0.5,80); y+=8;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(30,30,30);
+  doc.text('1', M+2, y+4);
+  const dl = doc.splitTextToSize(d.description||'—',110);
+  doc.text(dl, M+14, y+4);
+  doc.setFont('helvetica','bold');
+  doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'), W-M-3, y+4, {align:'right'});
+  y += Math.max(10, dl.length*4.5+4);
+  _rule(doc,M,y,W-M,0.4,160); y+=5;
+  doc.setFontSize(9); doc.setFont('helvetica','bold');
+  doc.text('Total', W-M-42, y); doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'), W-M-3, y, {align:'right'}); y+=8;
+  _rule(doc,M,y,W-M,0.3,200); y+=5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(50,50,50);
+  doc.text('Amount in Words: Rupees '+numToWords(Number(d.amount)||0)+' Only', M, y); y+=8;
+  _rule(doc,M,y,W-M,0.3,200); y+=6;
+  // Bank
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  doc.text('BANK / PAYMENT DETAILS', M, y); y+=4;
+  _rule(doc,M,y,W-M,0.3,200); y+=5;
+  const br=[['Account Name',d.name||'—'],['Bank',d.bankName||'—'],['Account No',d.accountNo||'—'],['IFSC',d.ifsc||'—']];
+  doc.setFontSize(8.5);
+  for(let i=0;i<br.length;i++){
+    const cx=i%2===0?M:W/2+5, cy=y+Math.floor(i/2)*6;
+    doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100); doc.text(br[i][0]+': ',cx,cy);
+    doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20); doc.text(br[i][1],cx+25,cy);
+  }
+  y+=Math.ceil(br.length/2)*6+6;
+  _rule(doc,M,y,W-M,0.6,80); y+=4;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(120,120,120);
+  doc.text('Computer generated invoice — ' + (window.CFG?.companyFullName || 'HRMS'), W/2, y, {align:'center'});
+  return doc;
+}
+
+function _tpl2(doc, d, M, W, CW) {
+  // Right-aligned header, clean minimal
+  let y = M;
+  doc.setFont('helvetica','bold'); doc.setFontSize(26); doc.setTextColor(20,20,20);
+  doc.text('INVOICE', W-M, y+8, {align:'right'}); y+=12;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(100,100,100);
+  doc.text(COMPANY.name, W-M, y, {align:'right'}); y+=6;
+  _rule(doc,M,y,W-M,0.5,40); y+=8;
+  // Two columns: sender left, invoice info right
+  const rCol=W-M-55;
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(30,30,30);
+  doc.text(d.name||'—', M, y);
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80);
+  if(d.mob){ doc.text('M: '+d.mob, M, y+5); }
+  if(d.aadhar){ doc.text('Aadhar: '+d.aadhar, M, y+10); }
+  if(d.pan){ doc.text('PAN: '+d.pan, M, y+15); }
+  const al=doc.splitTextToSize(d.address||'',80); doc.text(al, M, y+20);
+  // Right box
+  _box(doc,rCol,y-2,55,24,0.5,150);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(100,100,100);
+  doc.text('Invoice No', rCol+3, y+3); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(20,20,20);
+  doc.text(d.invoiceNo||'—', rCol+3, y+8);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(100,100,100);
+  doc.text('Date', rCol+3, y+14); doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(20,20,20);
+  doc.text(d.date||'—', rCol+3, y+19);
+  y+=32;
+  _rule(doc,M,y,W-M,0.4,180); y+=6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  doc.text('BILL TO', M, y); y+=4;
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(20,20,20);
+  doc.text(COMPANY.name, M, y); y+=5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  y=_wtext(doc,COMPANY.addr,M,y,CW,4); y+=2;
+  doc.text('GSTIN: '+COMPANY.gst+'   PAN: '+COMPANY.pan, M, y); y+=8;
+  // Table header with thick bottom border
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(20,20,20);
+  doc.text('NO.', M, y+5); doc.text('DESCRIPTION', M+14, y+5); doc.text('TOTAL (RS.)', W-M-3, y+5,{align:'right'});
+  _rule(doc,M,y+6,W-M,0.8,40); y+=9;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(30,30,30);
+  doc.text('01', M, y+4);
+  const dl=doc.splitTextToSize(d.description||'—',108); doc.text(dl,M+14,y+4);
+  doc.setFont('helvetica','bold'); doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y+4,{align:'right'});
+  y+=Math.max(10,dl.length*4.5+4);
+  _rule(doc,M,y,W-M,0.4,160); y+=5;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text('TOTAL', W-M-42, y); doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y,{align:'right'}); y+=8;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(70,70,70);
+  doc.text('In Words: Rupees '+numToWords(Number(d.amount)||0)+' Only', M, y); y+=8;
+  _rule(doc,M,y,W-M,0.5,160); y+=6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(60,60,60);
+  doc.text('PAYMENT DETAILS', M, y); y+=5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+  doc.text('Account Holder: ', M, y); doc.setFont('helvetica','bold'); doc.text(d.name||'—', M+32, y); y+=5;
+  doc.setFont('helvetica','normal'); doc.text('Bank: ', M, y); doc.setFont('helvetica','bold'); doc.text(d.bankName||'—', M+32, y);
+  doc.setFont('helvetica','normal'); doc.text('A/C No: ', M+90, y); doc.setFont('helvetica','bold'); doc.text(d.accountNo||'—', M+105, y); y+=5;
+  doc.setFont('helvetica','normal'); doc.text('IFSC: ', M, y); doc.setFont('helvetica','bold'); doc.text(d.ifsc||'—', M+32, y); y+=8;
+  _rule(doc,M,y,W-M,0.5,40);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(130,130,130);
+  doc.text('This is a system-generated invoice — ' + (window.CFG?.companyFullName || 'HRMS'), W/2, 290, {align:'center'});
+  return doc;
+}
+
+function _tpl3(doc, d, M, W, CW) {
+  // Left sidebar accent line, large invoice number top-right
+  let y=M;
+  // Thick left margin line
+  doc.setDrawColor(40,40,40); doc.setLineWidth(3);
+  doc.line(M, M, M, 280);
+  const lx=M+6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(22); doc.setTextColor(20,20,20);
+  doc.text('INVOICE', lx, y+8);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(100,100,100);
+  doc.text(COMPANY.name, lx, y+14); y+=22;
+  // Invoice number box top-right
+  _box(doc,W-M-60,M,60,18,0.6,80);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(90,90,90);
+  doc.text('INVOICE NUMBER', W-M-57, M+5);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
+  doc.text(d.invoiceNo||'—', W-M-57, M+12);
+  doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(90,90,90);
+  doc.text('DATE: '+(d.date||'—'), W-M-57, M+17);
+  _rule(doc,lx,y,W-M,0.4,180); y+=6;
+  // Billed by / to
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(100,100,100);
+  doc.text('BILLED BY', lx, y); doc.text('BILLED TO', W/2+5, y); y+=5;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
+  doc.text(d.name||'—', lx, y);
+  const bto=COMPANY.name; doc.setFontSize(9); doc.text(bto, W/2+5, y); y+=5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(70,70,70);
+  const infoL=[]; if(d.mob) infoL.push('Mob: '+d.mob); if(d.aadhar) infoL.push('Aadhar: '+d.aadhar); if(d.pan) infoL.push('PAN: '+d.pan);
+  infoL.forEach(t=>{doc.text(t,lx,y);y+=4.5;});
+  const al=doc.splitTextToSize(d.address||'',80); doc.text(al,lx,y); y+=al.length*4.5;
+  doc.setFontSize(7.5);
+  doc.text(COMPANY.addr.slice(0,55), W/2+5, y-al.length*4.5+0);
+  doc.text('GSTIN: '+COMPANY.gst, W/2+5, y-al.length*4.5+5);
+  doc.text('PAN: '+COMPANY.pan, W/2+5, y-al.length*4.5+10);
+  y+=5;
+  _rule(doc,lx,y,W-M,0.5,80); y+=7;
+  // Table
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(40,40,40);
+  doc.text('#', lx+1, y+4); doc.text('PARTICULARS / DESCRIPTION', lx+10, y+4); doc.text('AMOUNT', W-M-3, y+4, {align:'right'});
+  _rule(doc,lx,y+5,W-M,0.5,80); y+=9;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30,30,30);
+  doc.text('1', lx+1, y+4);
+  const dl=doc.splitTextToSize(d.description||'—',106); doc.text(dl,lx+10,y+4);
+  doc.setFont('helvetica','bold'); doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y+4,{align:'right'});
+  y+=Math.max(10,dl.length*4.8+4);
+  _rule(doc,lx,y,W-M,0.3,200); y+=5;
+  doc.setFontSize(10); doc.text('Total Amount', W-M-55, y); doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y,{align:'right'}); y+=8;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(70,70,70);
+  doc.text('Rupees '+numToWords(Number(d.amount)||0)+' Only', lx, y); y+=8;
+  _rule(doc,lx,y,W-M,0.5,80); y+=6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(60,60,60);
+  doc.text('BANK DETAILS', lx, y); y+=5;
+  const br=[['Name',d.name||'—'],['Bank',d.bankName||'—'],['Branch',d.branch||'—'],['A/C',d.accountNo||'—'],['IFSC',d.ifsc||'—']];
+  doc.setFontSize(8.5);
+  br.forEach((row,i)=>{
+    const cx=i%2===0?lx:W/2+5, cy=y+Math.floor(i/2)*6;
+    doc.setFont('helvetica','normal'); doc.setTextColor(110,110,110); doc.text(row[0]+': ',cx,cy);
+    doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20); doc.text(row[1],cx+22,cy);
+  });
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(140,140,140);
+  doc.text('Computer-generated document — ' + (window.CFG?.companyFullName || 'HRMS'), W/2, 290, {align:'center'});
+  return doc;
+}
+
+function _tpl4(doc, d, M, W, CW) {
+  // Boxed layout — everything in bordered sections
+  let y=M;
+  // Full top box for header
+  _box(doc,M,y,CW,16,0.8,40);
+  doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(20,20,20);
+  doc.text('TAX INVOICE', W/2, y+7, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  doc.text(COMPANY.name, W/2, y+13, {align:'center'}); y+=22;
+  // Meta box right
+  _box(doc,W-M-65,y,65,20,0.5,150);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(90,90,90);
+  doc.text('Invoice No:', W-M-62, y+5);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(20,20,20);
+  doc.text(d.invoiceNo||'—', W-M-62, y+10);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(90,90,90);
+  doc.text('Date: '+(d.date||'—'), W-M-62, y+17);
+  // From box left
+  _box(doc,M,y,CW-70,20,0.5,150);
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  doc.text('FROM', M+3, y+5);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(20,20,20);
+  doc.text(d.name||'—', M+3, y+11);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  if(d.mob) doc.text('Mob: '+d.mob+  (d.pan?' | PAN: '+d.pan:''), M+3, y+17);
+  y+=26;
+  // Bill To box
+  _box(doc,M,y,CW,22,0.5,150);
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  doc.text('BILL TO', M+3, y+5);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(20,20,20);
+  doc.text(COMPANY.name, M+3, y+11);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  const ta=doc.splitTextToSize(COMPANY.addr+' | GSTIN: '+COMPANY.gst+' | PAN: '+COMPANY.pan, CW-6);
+  doc.text(ta, M+3, y+16);
+  y+=28;
+  // Table box
+  _box(doc,M,y,CW,10,0.5,100);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+  doc.text('SR', M+3, y+6.5); doc.text('PARTICULARS', M+15, y+6.5); doc.text('AMOUNT (RS.)', W-M-3, y+6.5, {align:'right'});
+  y+=10;
+  _box(doc,M,y,CW,16,0.4,180);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(30,30,30);
+  doc.text('1', M+3, y+6);
+  const dl=doc.splitTextToSize(d.description||'—',110); doc.text(dl,M+15,y+5);
+  doc.setFont('helvetica','bold'); doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y+6,{align:'right'});
+  y+=Math.max(16,dl.length*4.5+4);
+  _rule(doc,M+CW-65,y,W-M,0.8,80);
+  y+=4; doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
+  doc.text('TOTAL: Rs.'+Number(d.amount||0).toLocaleString('en-IN'), W-M-3, y+4, {align:'right'}); y+=10;
+  // Words + bank in box
+  _box(doc,M,y,CW,10,0.4,200);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(50,50,50);
+  doc.text('In Words: Rupees '+numToWords(Number(d.amount)||0)+' Only', M+3, y+6.5); y+=14;
+  _box(doc,M,y,CW,26,0.5,150);
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  doc.text('BANK DETAILS', M+3, y+5);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(30,30,30);
+  doc.text('Name: ', M+3, y+11); doc.setFont('helvetica','bold'); doc.text(d.name||'—', M+18, y+11);
+  doc.setFont('helvetica','normal'); doc.text('Bank: ', W/2, y+11); doc.setFont('helvetica','bold'); doc.text(d.bankName||'—', W/2+14, y+11);
+  doc.setFont('helvetica','normal'); doc.text('A/C No: ', M+3, y+18); doc.setFont('helvetica','bold'); doc.text(d.accountNo||'—', M+22, y+18);
+  doc.setFont('helvetica','normal'); doc.text('IFSC: ', W/2, y+18); doc.setFont('helvetica','bold'); doc.text(d.ifsc||'—', W/2+14, y+18);
+  y+=32;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(140,140,140);
+  doc.text('System Generated Invoice — ' + (window.CFG?.companyFullName || 'HRMS'), W/2, 290, {align:'center'});
+  return doc;
+}
+
+function _tpl5(doc, d, M, W, CW) {
+  // Large bold invoice no, minimal lines
+  let y=M;
+  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(20,20,20);
+  doc.text(COMPANY.name.toUpperCase(), M, y+5);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(100,100,100);
+  doc.text(COMPANY.addr.slice(0,60), M, y+10);
+  doc.text('GSTIN: '+COMPANY.gst+'  |  PAN: '+COMPANY.pan, M, y+15);
+  doc.setFont('helvetica','bold'); doc.setFontSize(28); doc.setTextColor(30,30,30);
+  doc.text(d.invoiceNo||'INV', W-M, y+8, {align:'right'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(100,100,100);
+  doc.text('INVOICE', W-M, y+14, {align:'right'});
+  doc.text(d.date||'—', W-M, y+19, {align:'right'});
+  y+=25; _rule(doc,M,y,W-M,1,30); y+=8;
+  // From section
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(100,100,100); doc.text('INVOICED BY',M,y); y+=4;
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(20,20,20); doc.text(d.name||'—',M,y); y+=6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(70,70,70);
+  const inL=[]; if(d.mob) inL.push('Mob: '+d.mob); if(d.aadhar) inL.push('Aadhar: '+d.aadhar); if(d.pan) inL.push('PAN: '+d.pan);
+  if(inL.length){doc.text(inL.join('   '),M,y);y+=5;}
+  y=_wtext(doc,d.address,M,y,120,4.5); y+=5;
+  _rule(doc,M,y,W-M,0.4,180); y+=6;
+  // Table – no fill, just lines
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(40,40,40);
+  doc.text('DESCRIPTION', M, y+4); doc.text('AMOUNT (RS.)', W-M-3, y+4, {align:'right'});
+  y+=5; _rule(doc,M,y,W-M,0.6,60); y+=5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30,30,30);
+  const dl=doc.splitTextToSize(d.description||'—',CW-30); doc.text(dl,M,y+4);
+  doc.setFont('helvetica','bold'); doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y+4,{align:'right'});
+  y+=Math.max(10,dl.length*5+4); _rule(doc,M,y,W-M,0.4,160); y+=5;
+  doc.setFontSize(11); doc.text('GRAND TOTAL',M,y); doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y,{align:'right'}); y+=6;
+  _rule(doc,M,y,W-M,1,30); y+=6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(60,60,60);
+  doc.text('In Words: Rupees '+numToWords(Number(d.amount)||0)+' Only', M, y); y+=8;
+  _rule(doc,M,y,W-M,0.3,200); y+=6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(80,80,80); doc.text('PAYMENT INFORMATION',M,y); y+=5;
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(30,30,30);
+  doc.text('Account Holder: ', M, y); doc.setFont('helvetica','bold'); doc.text(d.name||'—', M+34, y); y+=5;
+  doc.setFont('helvetica','normal'); doc.text('Bank Name: ', M, y); doc.setFont('helvetica','bold'); doc.text(d.bankName||'—', M+26, y);
+  doc.setFont('helvetica','normal'); doc.text('Branch: ', M+75, y); doc.setFont('helvetica','bold'); doc.text(d.branch||'—', M+92, y); y+=5;
+  doc.setFont('helvetica','normal'); doc.text('Account No: ', M, y); doc.setFont('helvetica','bold'); doc.text(d.accountNo||'—', M+26, y);
+  doc.setFont('helvetica','normal'); doc.text('IFSC: ', M+75, y); doc.setFont('helvetica','bold'); doc.text(d.ifsc||'—', M+89, y); y+=10;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(140,140,140);
+  doc.text('This is a computer-generated invoice — ' + (window.CFG?.companyFullName || 'HRMS'), W/2, 290, {align:'center'});
+  return doc;
+}
+
+function _tpl6(doc, d, M, W, CW) {
+  // Centered formal — like a certificate
+  let y=M;
+  _rule(doc,M,y,W-M,1.2,30); y+=3; _rule(doc,M,y,W-M,0.4,80); y+=8;
+  doc.setFont('helvetica','bold'); doc.setFontSize(20); doc.setTextColor(20,20,20);
+  doc.text('INVOICE', W/2, y+6, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(70,70,70);
+  doc.text(COMPANY.name, W/2, y+13, {align:'center'});
+  doc.setFontSize(7.5); doc.text('GSTIN: '+COMPANY.gst+'  |  PAN: '+COMPANY.pan, W/2, y+18, {align:'center'}); y+=24;
+  _rule(doc,M,y,W-M,0.4,80); y+=3; _rule(doc,M,y,W-M,1.2,30); y+=10;
+  // Invoice ref row
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(30,30,30);
+  doc.text('Invoice No: ', M, y); doc.setFont('helvetica','normal'); doc.text(d.invoiceNo||'—', M+24, y);
+  doc.setFont('helvetica','bold'); doc.text('Date: ', W-M-38, y); doc.setFont('helvetica','normal'); doc.text(d.date||'—', W-M-24, y); y+=8;
+  _rule(doc,M,y,W-M,0.4,180); y+=6;
+  // Sender
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(80,80,80); doc.text('FROM',M,y); y+=4;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20); doc.text(d.name||'—',M,y); y+=5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(70,70,70);
+  const inL=[]; if(d.mob) inL.push('Mob: '+d.mob); if(d.aadhar) inL.push('Aadhar: '+d.aadhar); if(d.pan) inL.push('PAN: '+d.pan);
+  if(inL.length){doc.text(inL.join('   '),M,y);y+=5;}
+  y=_wtext(doc,d.address,M,y,CW,4.5); y+=5;
+  // TO block centered
+  _rule(doc,M,y,W-M,0.3,200); y+=5;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(80,80,80); doc.text('TO',M,y); y+=4;
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(20,20,20); doc.text(COMPANY.name,M,y); y+=5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  y=_wtext(doc,COMPANY.addr,M,y,CW,4); y+=2;
+  doc.text('GSTIN: '+COMPANY.gst+'   PAN: '+COMPANY.pan,M,y); y+=7;
+  // Particulars
+  _rule(doc,M,y,W-M,0.6,80); y+=5;
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+  doc.text('Sl.',M+1,y+4); doc.text('Particulars',M+12,y+4); doc.text('Amount (Rs.)',W-M-3,y+4,{align:'right'});
+  _rule(doc,M,y+5,W-M,0.6,80); y+=10;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(30,30,30);
+  doc.text('1',M+1,y+4);
+  const dl=doc.splitTextToSize(d.description||'—',108); doc.text(dl,M+12,y+4);
+  doc.setFont('helvetica','bold'); doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y+4,{align:'right'});
+  y+=Math.max(10,dl.length*4.5+4);
+  _rule(doc,M,y,W-M,0.6,80); y+=5;
+  doc.setFontSize(10); doc.text('Total',W-M-42,y); doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y,{align:'right'}); y+=8;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(50,50,50);
+  doc.text('Amount in Words: Rupees '+numToWords(Number(d.amount)||0)+' Only',M,y); y+=8;
+  _rule(doc,M,y,W-M,0.4,180); y+=6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(60,60,60); doc.text('BANK / PAYMENT',M,y); y+=5;
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(30,30,30);
+  const br2=[['Account Name',d.name||'—'],['Bank Name',d.bankName||'—'],['Account No',d.accountNo||'—'],['IFSC Code',d.ifsc||'—']];
+  br2.forEach((row,i)=>{const cx=i%2===0?M:W/2; const cy=y+Math.floor(i/2)*6; doc.setFont('helvetica','normal');doc.setTextColor(110,110,110);doc.text(row[0]+': ',cx,cy);doc.setFont('helvetica','bold');doc.setTextColor(20,20,20);doc.text(row[1],cx+28,cy);});
+  y+=Math.ceil(br2.length/2)*6+4;
+  _rule(doc,M,y,W-M,0.4,80); y+=3; _rule(doc,M,y,W-M,1.2,30);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(140,140,140);
+  doc.text('Computer Generated Invoice — ' + (window.CFG?.companyFullName || 'HRMS'), W/2, 290, {align:'center'});
+  return doc;
+}
+
+function _tpl7(doc, d, M, W, CW) {
+  // Tabular dense format, smaller font, packed
+  let y=M;
+  doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(20,20,20);
+  doc.text('INVOICE', M, y+6);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(100,100,100);
+  doc.text(d.date||'—', W-M, y+4, {align:'right'});
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(20,20,20);
+  doc.text(d.invoiceNo||'—', W-M, y+10, {align:'right'}); y+=14;
+  _rule(doc,M,y,W-M,0.7,40); y+=6;
+  // Full-width table for party info
+  const hw=(CW)/2;
+  _box(doc,M,y,hw,30,0.4,160);
+  _box(doc,M+hw,y,hw,30,0.4,160);
+  doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(80,80,80);
+  doc.text('INVOICE FROM', M+2, y+4);
+  doc.text('INVOICE TO', M+hw+2, y+4);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(20,20,20);
+  doc.text(d.name||'—', M+2, y+9);
+  doc.text(COMPANY.name.split('Pvt')[0]+'Pvt. Ltd.', M+hw+2, y+9);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(70,70,70);
+  if(d.mob) doc.text('Mob: '+d.mob, M+2, y+15);
+  if(d.pan) doc.text('PAN: '+d.pan, M+2, y+20);
+  if(d.aadhar) doc.text('Aadhaar: '+d.aadhar, M+2, y+25);
+  const ta2=doc.splitTextToSize(COMPANY.addr.slice(0,60),hw-4); doc.text(ta2, M+hw+2, y+14);
+  doc.text('GSTIN: '+COMPANY.gst, M+hw+2, y+26);
+  y+=36;
+  // Items table
+  const cols=[12,110,58]; // x offsets
+  _box(doc,M,y,CW,8,0.5,100);
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(30,30,30);
+  doc.text('NO', M+2, y+5.5); doc.text('DESCRIPTION OF SERVICE', M+cols[0]+2, y+5.5); doc.text('AMOUNT (RS.)', W-M-2, y+5.5,{align:'right'}); y+=8;
+  _box(doc,M,y,CW,14,0.4,200);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+  doc.text('01', M+2, y+6);
+  const dl=doc.splitTextToSize(d.description||'—',cols[1]-4); doc.text(dl, M+cols[0]+2, y+5);
+  doc.setFont('helvetica','bold'); doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'), W-M-2, y+6,{align:'right'});
+  y+=Math.max(14,dl.length*4+4);
+  _box(doc,M+cols[0],y,CW-cols[0],9,0.5,100);
+  doc.setFontSize(9); doc.text('TOTAL', M+cols[0]+2, y+6); doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'), W-M-2, y+6,{align:'right'}); y+=15;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(60,60,60);
+  doc.text('Amount in Words: Rupees '+numToWords(Number(d.amount)||0)+' Only', M, y); y+=7;
+  _rule(doc,M,y,W-M,0.4,180); y+=5;
+  _box(doc,M,y,CW,26,0.4,180);
+  doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(80,80,80);
+  doc.text('PAYMENT / BANK DETAILS', M+2, y+4);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+  doc.text('Account: ', M+2, y+10); doc.setFont('helvetica','bold'); doc.text(d.name||'—', M+22, y+10);
+  doc.setFont('helvetica','normal'); doc.text('Bank: ', M+2, y+16); doc.setFont('helvetica','bold'); doc.text(d.bankName||'—', M+18, y+16);
+  doc.setFont('helvetica','normal'); doc.text('A/C No: ', M+2, y+22); doc.setFont('helvetica','bold'); doc.text(d.accountNo||'—', M+20, y+22);
+  doc.setFont('helvetica','normal'); doc.text('IFSC: ', W/2, y+16); doc.setFont('helvetica','bold'); doc.text(d.ifsc||'—', W/2+14, y+16);
+  if(d.branch){doc.setFont('helvetica','normal'); doc.text('Branch: ', W/2, y+22); doc.setFont('helvetica','bold'); doc.text(d.branch, W/2+18, y+22);}
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(140,140,140);
+  doc.text('System Generated — ' + (window.CFG?.companyFullName || 'HRMS'), W/2, 290, {align:'center'});
+  return doc;
+}
+
+function _tpl8(doc, d, M, W, CW) {
+  // Landscape-inspired wide layout on portrait, very open spacing
+  let y=M+5;
+  // Company at top left, meta at top right with vertical divider
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(30,30,30);
+  doc.text(COMPANY.name, M, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(90,90,90);
+  doc.text(COMPANY.addr.slice(0,60), M, y+5);
+  doc.text('GSTIN: '+COMPANY.gst+' | PAN: '+COMPANY.pan, M, y+10);
+  doc.setDrawColor(160,160,160); doc.setLineWidth(0.5); doc.line(W-M-45, y-2, W-M-45, y+14);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(90,90,90);
+  doc.text('Invoice No', W-M-42, y+1);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
+  doc.text(d.invoiceNo||'—', W-M-42, y+7);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(90,90,90);
+  doc.text('Dated: '+(d.date||'—'), W-M-42, y+13);
+  y+=22; _rule(doc,M,y,W-M,0.8,40); y+=8;
+  doc.setFont('helvetica','bold'); doc.setFontSize(20); doc.setTextColor(20,20,20);
+  doc.text('INVOICE', M, y+7);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(90,90,90);
+  doc.text('Billed by: '+( d.name||'—'), M, y+14); y+=20;
+  _rule(doc,M,y,W-M,0.3,200); y+=6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  if(d.mob) {doc.text('Mob: '+d.mob, M, y); y+=4.5;}
+  if(d.aadhar){doc.text('Aadhar: '+d.aadhar, M, y); y+=4.5;}
+  if(d.pan){doc.text('PAN: '+d.pan, M, y); y+=4.5;}
+  y=_wtext(doc,d.address,M,y,CW,4); y+=5;
+  _rule(doc,M,y,W-M,0.3,200); y+=5;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(70,70,70); doc.text('DESCRIPTION OF WORK / SERVICES',M,y); y+=5;
+  const dl=doc.splitTextToSize(d.description||'—',CW);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30,30,30);
+  doc.text(dl,M,y); y+=dl.length*5+4;
+  _rule(doc,M,y,W-M,0.4,160); y+=5;
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(20,20,20);
+  doc.text('Amount: Rs. '+Number(d.amount||0).toLocaleString('en-IN'), M, y); y+=6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(70,70,70);
+  doc.text('(Rupees '+numToWords(Number(d.amount)||0)+' Only)', M, y); y+=8;
+  _rule(doc,M,y,W-M,0.8,40); y+=6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(60,60,60); doc.text('BANK DETAILS FOR PAYMENT', M, y); y+=5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(30,30,30);
+  doc.text('Account Holder: ', M, y); doc.setFont('helvetica','bold'); doc.text(d.name||'—', M+32, y); y+=5;
+  doc.setFont('helvetica','normal'); doc.text('Bank: ', M, y); doc.setFont('helvetica','bold'); doc.text(d.bankName||'—', M+14, y);
+  if(d.branch){doc.setFont('helvetica','normal'); doc.text(' | Branch: ', M+14+(d.bankName||'').length*2, y);}
+  doc.setFont('helvetica','normal'); doc.text('A/C No: ', M+80, y); doc.setFont('helvetica','bold'); doc.text(d.accountNo||'—', M+97, y); y+=5;
+  doc.setFont('helvetica','normal'); doc.text('IFSC Code: ', M, y); doc.setFont('helvetica','bold'); doc.text(d.ifsc||'—', M+22, y); y+=8;
+  _rule(doc,M,y,W-M,0.5,160);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(140,140,140);
+  doc.text('Computer Generated Invoice — ' + (window.CFG?.companyFullName || 'HRMS'), W/2, 290, {align:'center'});
+  return doc;
+}
+
+function _tpl9(doc, d, M, W, CW) {
+  // Top-right company block, left side payee
+  let y=M;
+  // Top-right company info block
+  _box(doc,W-M-85,y,85,28,0.5,130);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(20,20,20);
+  doc.text(COMPANY.name.split('Pvt')[0], W-M-82, y+5);
+  doc.text('Pvt. Ltd.', W-M-82, y+10);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(80,80,80);
+  const ta3=doc.splitTextToSize(COMPANY.addr.slice(0,65),82); doc.text(ta3,W-M-82,y+14);
+  doc.text('GSTIN: '+COMPANY.gst, W-M-82, y+24);
+  // Left: big INVOICE title
+  doc.setFont('helvetica','bold'); doc.setFontSize(30); doc.setTextColor(20,20,20);
+  doc.text('INVOICE', M, y+16);
+  y+=35; _rule(doc,M,y,W-M,0.6,60); y+=6;
+  // 3-column meta
+  const c3=CW/3;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(100,100,100);
+  doc.text('INVOICE NO', M, y); doc.text('DATE', M+c3, y); doc.text('FROM', M+c3*2, y); y+=4;
+  doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(20,20,20);
+  doc.text(d.invoiceNo||'—', M, y);
+  doc.setFontSize(8.5); doc.text(d.date||'—', M+c3, y);
+  doc.setFontSize(9); doc.text(d.name||'—', M+c3*2, y); y+=5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  if(d.mob) doc.text('Mob: '+d.mob, M+c3*2, y);
+  if(d.pan) doc.text('PAN: '+d.pan, M+c3*2, y+5);
+  y+=12; _rule(doc,M,y,W-M,0.4,180); y+=6;
+  // Table
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(40,40,40);
+  doc.text('SL', M+1, y+4); doc.text('PARTICULARS', M+12, y+4); doc.text('RS.', W-M-3, y+4,{align:'right'});
+  _rule(doc,M,y+5,W-M,0.5,100); y+=9;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30,30,30);
+  doc.text('1', M+1, y+4);
+  const dl=doc.splitTextToSize(d.description||'—',105); doc.text(dl,M+12,y+4);
+  doc.setFont('helvetica','bold'); doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y+4,{align:'right'});
+  y+=Math.max(10,dl.length*4.8+4); _rule(doc,M,y,W-M,0.3,200); y+=4;
+  doc.setFontSize(10); doc.text('TOTAL', W-M-45, y); doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y,{align:'right'}); y+=7;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(60,60,60);
+  doc.text('In Words: Rupees '+numToWords(Number(d.amount)||0)+' Only', M, y); y+=8;
+  _rule(doc,M,y,W-M,0.5,80); y+=6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(60,60,60); doc.text('REMITTANCE DETAILS',M,y); y+=5;
+  const brs=[['Account Name',d.name||'—'],['Bank',d.bankName||'—'],['Account No',d.accountNo||'—'],['IFSC',d.ifsc||'—']];
+  doc.setFontSize(8.5);
+  brs.forEach((row,i)=>{const cx=i%2===0?M:W/2+5,cy=y+Math.floor(i/2)*6; doc.setFont('helvetica','normal');doc.setTextColor(110,110,110);doc.text(row[0]+':',cx,cy);doc.setFont('helvetica','bold');doc.setTextColor(20,20,20);doc.text(row[1],cx+28,cy);});
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(140,140,140);
+  doc.text('Auto-generated invoice — ' + (window.CFG?.companyFullName || 'HRMS'), W/2, 290, {align:'center'});
+  return doc;
+}
+
+function _tpl10(doc, d, M, W, CW) {
+  // Newspaper column style, compact header
+  let y=M;
+  // Triple rule header
+  _rule(doc,M,y,W-M,1.5,20); y+=3;
+  _rule(doc,M,y,W-M,0.4,80); y+=3;
+  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(20,20,20);
+  doc.text('INVOICE', W/2, y+5, {align:'center'});
+  y+=8; _rule(doc,M,y,W-M,0.4,80); y+=2; _rule(doc,M,y,W-M,1.5,20); y+=7;
+  // Meta strip
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+  doc.text('Ref: '+( d.invoiceNo||'—'), M, y);
+  doc.text('Dated: '+(d.date||'—'), W/2, y);
+  y+=7; _rule(doc,M,y,W-M,0.3,180); y+=6;
+  // Two-col: left content area, right sidebar
+  const mainW=CW*0.62, sideW=CW*0.34, sideX=W-M-sideW;
+  _rule(doc,sideX-3,y,sideX-3,160,0.3,180);
+  // Main col
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(80,80,80); doc.text('BILLED BY', M, y); y+=5;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20); doc.text(d.name||'—', M, y); y+=5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(70,70,70);
+  if(d.mob){doc.text('Mob: '+d.mob,M,y);y+=4.5;}
+  if(d.aadhar){doc.text('Aadhar: '+d.aadhar,M,y);y+=4.5;}
+  if(d.pan){doc.text('PAN: '+d.pan,M,y);y+=4.5;}
+  y=_wtext(doc,d.address,M,y,mainW-5,4); y+=5;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(80,80,80); doc.text('BILLED TO',M,y); y+=4;
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(20,20,20); doc.text(COMPANY.name.split('Pvt')[0].trim(),M,y); y+=4;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(70,70,70);
+  y=_wtext(doc,COMPANY.addr,M,y,mainW-5,4); y+=2;
+  doc.text('GSTIN: '+COMPANY.gst,M,y); y+=5;
+  // Right sidebar
+  let sy=y-60;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(80,80,80); doc.text('SUMMARY', sideX, sy); sy+=4;
+  _rule(doc,sideX,sy,W-M,0.4,160); sy+=4;
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(20,20,20);
+  doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'), sideX, sy+5); sy+=10;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(80,80,80);
+  doc.text('Rupees', sideX, sy); sy+=4;
+  doc.text(numToWords(Number(d.amount)||0), sideX, sy, {maxWidth:sideW}); sy+=12;
+  _rule(doc,sideX,sy,W-M,0.4,160); sy+=4;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.text('BANK', sideX, sy); sy+=4;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+  doc.text('Name: ', sideX, sy); doc.setFont('helvetica','bold'); doc.text(d.name||'—', sideX+14, sy); sy+=4;
+  doc.setFont('helvetica','normal'); doc.text('Bank: ', sideX, sy); doc.setFont('helvetica','bold'); doc.text(d.bankName||'—', sideX+12, sy); sy+=4;
+  doc.setFont('helvetica','normal'); doc.text('A/C: ', sideX, sy); doc.setFont('helvetica','bold'); doc.text(d.accountNo||'—', sideX+10, sy); sy+=4;
+  doc.setFont('helvetica','normal'); doc.text('IFSC: ', sideX, sy); doc.setFont('helvetica','bold'); doc.text(d.ifsc||'—', sideX+12, sy);
+  // Table below
+  y+=4; _rule(doc,M,y,W-M,0.5,80); y+=5;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(40,40,40);
+  doc.text('PARTICULARS', M, y+4); doc.text('RS.', W-M-3, y+4, {align:'right'});
+  _rule(doc,M,y+5,W-M,0.5,100); y+=9;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  const dl=doc.splitTextToSize(d.description||'—',CW-25); doc.text(dl,M,y+4);
+  doc.setFont('helvetica','bold'); doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y+4,{align:'right'});
+  y+=Math.max(10,dl.length*4.8+4); _rule(doc,M,y,W-M,0.4,160); y+=4;
+  doc.setFontSize(9); doc.text('TOTAL', W-M-38, y); doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y,{align:'right'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(140,140,140);
+  doc.text('Computer Generated — ' + (window.CFG?.companyFullName || 'HRMS'), W/2, 290, {align:'center'});
+  return doc;
+}
+
+// Templates 11-20: further structural variations
+function _tpl11(doc,d,M,W,CW){
+  // Underline-only, no boxes
+  let y=M;
+  doc.setFont('helvetica','bold');doc.setFontSize(24);doc.setTextColor(20,20,20);
+  doc.text('TAX INVOICE',M,y+8); y+=14;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(90,90,90);
+  doc.text(COMPANY.name+' | GSTIN: '+COMPANY.gst,M,y); y+=5;
+  doc.text(COMPANY.addr.slice(0,70),M,y); y+=8;
+  _rule(doc,M,y,W-M,0.8,40); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
+  doc.text('Invoice No: ',M,y);doc.setFont('helvetica','normal');doc.text(d.invoiceNo||'—',M+25,y);
+  doc.setFont('helvetica','bold');doc.text('Date: ',W-M-44,y);doc.setFont('helvetica','normal');doc.text(d.date||'—',W-M-30,y); y+=8;
+  _rule(doc,M,y,W-M,0.4,160); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(80,80,80);doc.text('FROM',M,y); y+=4;
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(20,20,20);doc.text(d.name||'—',M,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(70,70,70);
+  if(d.mob){doc.text('Mob: '+d.mob,M,y);y+=4;}
+  if(d.aadhar){doc.text('Aadhar: '+d.aadhar,M,y);y+=4;}
+  if(d.pan){doc.text('PAN: '+d.pan,M,y);y+=4;}
+  y=_wtext(doc,d.address,M,y,CW,4); y+=4;
+  _rule(doc,M,y,W-M,0.4,160); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(80,80,80);doc.text('TO',M,y); y+=4;
+  doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(20,20,20);doc.text(COMPANY.name,M,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(80,80,80);
+  y=_wtext(doc,COMPANY.addr,M,y,CW,4); y+=2;
+  doc.text('GSTIN: '+COMPANY.gst+'  PAN: '+COMPANY.pan,M,y); y+=7;
+  _rule(doc,M,y,W-M,0.6,60); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(30,30,30);
+  doc.text('Description',M,y+4);doc.text('Amount (Rs.)',W-M-3,y+4,{align:'right'});
+  _rule(doc,M,y+5,W-M,0.4,160); y+=9;
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(30,30,30);
+  const dl=doc.splitTextToSize(d.description||'—',CW-25);doc.text(dl,M,y+4);
+  doc.setFont('helvetica','bold');doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y+4,{align:'right'});
+  y+=Math.max(10,dl.length*4.8+4); _rule(doc,M,y,W-M,0.6,60); y+=5;
+  doc.setFontSize(11);doc.text('Total (Rs.)',W-M-50,y);doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y,{align:'right'}); y+=7;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(60,60,60);
+  doc.text('In Words: Rupees '+numToWords(Number(d.amount)||0)+' Only',M,y); y+=8;
+  _rule(doc,M,y,W-M,0.6,60); y+=6;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(60,60,60);doc.text('BANK DETAILS',M,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  doc.text('Name: ',M,y);doc.setFont('helvetica','bold');doc.text(d.name||'—',M+14,y);
+  doc.setFont('helvetica','normal');doc.text('  |  Bank: ',M+14+(d.name||'').length*2.2,y);doc.setFont('helvetica','bold');doc.text(d.bankName||'—',M+14+(d.name||'').length*2.2+16,y); y+=5;
+  doc.setFont('helvetica','normal');doc.text('A/C: ',M,y);doc.setFont('helvetica','bold');doc.text(d.accountNo||'—',M+12,y);
+  doc.setFont('helvetica','normal');doc.text('  |  IFSC: ',M+12+(d.accountNo||'').length*2.2,y);doc.setFont('helvetica','bold');doc.text(d.ifsc||'—',M+12+(d.accountNo||'').length*2.2+16,y); y+=8;
+  _rule(doc,M,y,W-M,0.8,40);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(140,140,140);
+  doc.text('Auto-generated — ' + (window.CFG?.companyFullName || 'HRMS'),W/2,290,{align:'center'});
+  return doc;
+}
+
+function _tpl12(doc,d,M,W,CW){
+  // Minimalist — only data, max whitespace, signature line
+  let y=M+8;
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(120,120,120);
+  doc.text('INVOICE',M,y);
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(30,30,30);
+  doc.text(d.invoiceNo||'—',M+18,y);doc.text(d.date||'—',W-M,y,{align:'right'}); y+=12;
+  _rule(doc,M,y,W-M,0.3,200); y+=7;
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(20,20,20);
+  doc.text(d.name||'—',M,y); y+=7;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(80,80,80);
+  if(d.mob){doc.text(d.mob,M,y);y+=5;}
+  if(d.aadhar){doc.text('Aadhaar: '+d.aadhar,M,y);y+=5;}
+  if(d.pan){doc.text('PAN: '+d.pan,M,y);y+=5;}
+  y=_wtext(doc,d.address,M,y,CW,4); y+=8;
+  _rule(doc,M,y,W-M,0.3,200); y+=7;
+  doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(20,20,20);
+  doc.text('Bill To',M,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(60,60,60);
+  doc.text(COMPANY.name,M,y); y+=5;
+  y=_wtext(doc,COMPANY.addr,M,y,CW,4); y+=2;
+  doc.text('GSTIN: '+COMPANY.gst+'  PAN: '+COMPANY.pan,M,y); y+=10;
+  _rule(doc,M,y,W-M,0.3,200); y+=7;
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(60,60,60);
+  y=_wtext(doc,d.description||'—',M,y,CW,4.5); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(20,20,20);
+  doc.text('Rs. '+Number(d.amount||0).toLocaleString('en-IN'),M,y); y+=6;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(80,80,80);
+  doc.text('(Rupees '+numToWords(Number(d.amount)||0)+' Only)',M,y); y+=10;
+  _rule(doc,M,y,W-M,0.3,200); y+=7;
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(80,80,80);doc.text('Payment Details',M,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  doc.text(d.name||'—',M,y); y+=5;
+  doc.text((d.bankName||'—')+(d.branch?' — '+d.branch:''),M,y); y+=5;
+  doc.text('A/C: '+(d.accountNo||'—')+'   IFSC: '+(d.ifsc||'—'),M,y); y+=14;
+  // Signature area
+  _rule(doc,W-M-50,y,W-M,0.5,80);
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(100,100,100);
+  doc.text('Authorised Signatory',W-M-50,y+4);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(150,150,150);
+  doc.text('Auto-generated — ' + (window.CFG?.companyFullName || 'HRMS'),W/2,290,{align:'center'});
+  return doc;
+}
+
+function _tpl13(doc,d,M,W,CW){
+  // Tabular with outer border around full document
+  _box(doc,M,M,CW,265,0.6,80);
+  let y=M+6;
+  // Header row inside box
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(20,20,20);
+  doc.text('INVOICE',W/2,y+5,{align:'center'}); y+=12;
+  _rule(doc,M,y,W-M,0.4,150); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(90,90,90);
+  doc.text(COMPANY.name,W/2,y,{align:'center'}); y+=4;
+  doc.text('GSTIN: '+COMPANY.gst+' | PAN: '+COMPANY.pan,W/2,y,{align:'center'}); y+=7;
+  _rule(doc,M,y,W-M,0.4,150); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  doc.text('Invoice No:',M+4,y);doc.setFont('helvetica','normal');doc.text(d.invoiceNo||'—',M+28,y);
+  doc.setFont('helvetica','bold');doc.text('Date:',W-M-30,y);doc.setFont('helvetica','normal');doc.text(d.date||'—',W-M-18,y); y+=7;
+  _rule(doc,M,y,W-M,0.4,150); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(80,80,80);doc.text('PAYEE DETAILS',M+4,y); y+=4;
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(20,20,20);doc.text(d.name||'—',M+4,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(70,70,70);
+  if(d.mob){doc.text('Mob: '+d.mob,M+4,y);y+=4;}
+  if(d.aadhar){doc.text('Aadhar: '+d.aadhar,M+4,y);y+=4;}
+  if(d.pan){doc.text('PAN: '+d.pan,M+4,y);y+=4;}
+  y=_wtext(doc,d.address,M+4,y,CW-8,4); y+=4;
+  _rule(doc,M,y,W-M,0.4,150); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(80,80,80);doc.text('PARTICULARS',M+4,y+4);doc.text('AMOUNT (RS.)',W-M-4,y+4,{align:'right'});
+  _rule(doc,M,y+5,W-M,0.4,150); y+=9;
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  const dl=doc.splitTextToSize(d.description||'—',CW-30);doc.text(dl,M+4,y+4);
+  doc.setFont('helvetica','bold');doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-4,y+4,{align:'right'});
+  y+=Math.max(10,dl.length*4.5+4); _rule(doc,M,y,W-M,0.4,150); y+=5;
+  doc.setFontSize(10);doc.text('TOTAL (Rs.)',W-M-50,y);doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-4,y,{align:'right'}); y+=7;
+  _rule(doc,M,y,W-M,0.4,150); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(60,60,60);
+  doc.text('Amount in Words: Rupees '+numToWords(Number(d.amount)||0)+' Only',M+4,y); y+=7;
+  _rule(doc,M,y,W-M,0.4,150); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(80,80,80);doc.text('BANK DETAILS',M+4,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  doc.text('Account Holder: ',M+4,y);doc.setFont('helvetica','bold');doc.text(d.name||'—',M+36,y); y+=5;
+  doc.setFont('helvetica','normal');doc.text('Bank: ',M+4,y);doc.setFont('helvetica','bold');doc.text(d.bankName||'—',M+18,y);
+  doc.setFont('helvetica','normal');doc.text('A/C No: ',W/2,y);doc.setFont('helvetica','bold');doc.text(d.accountNo||'—',W/2+18,y); y+=5;
+  doc.setFont('helvetica','normal');doc.text('IFSC: ',M+4,y);doc.setFont('helvetica','bold');doc.text(d.ifsc||'—',M+16,y);
+  if(d.branch){doc.setFont('helvetica','normal');doc.text('Branch: ',W/2,y);doc.setFont('helvetica','bold');doc.text(d.branch,W/2+16,y);}
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(150,150,150);
+  doc.text('Computer Generated — ' + (window.CFG?.companyFullName || 'HRMS'),W/2,290,{align:'center'});
+  return doc;
+}
+
+function _tpl14(doc,d,M,W,CW){
+  // Watermark-style title, side-by-side detailed blocks
+  let y=M;
+  // Light watermark
+  doc.setFont('helvetica','bold');doc.setFontSize(60);doc.setTextColor(230,230,230);
+  doc.text('INVOICE',W/2,155,{align:'center'});
+  // Real content
+  doc.setFontSize(9);doc.setTextColor(20,20,20);
+  doc.text(COMPANY.name,M,y+5);
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(100,100,100);
+  doc.text(COMPANY.addr.slice(0,65),M,y+10);
+  doc.text('GSTIN: '+COMPANY.gst+' | PAN: '+COMPANY.pan,M,y+15);
+  doc.setFont('helvetica','bold');doc.setFontSize(22);doc.setTextColor(20,20,20);
+  doc.text('INVOICE',W-M,y+10,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(100,100,100);
+  doc.text('No: '+(d.invoiceNo||'—'),W-M,y+16,{align:'right'});
+  doc.text('Date: '+(d.date||'—'),W-M,y+21,{align:'right'});
+  y+=28; _rule(doc,M,y,W-M,0.6,60); y+=7;
+  // Sender
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(80,80,80);doc.text('SENDER',M,y); y+=4;
+  doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(20,20,20);doc.text(d.name||'—',M,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(70,70,70);
+  if(d.mob){doc.text('Mob: '+d.mob,M,y);y+=4;}
+  if(d.aadhar){doc.text('Aadhar: '+d.aadhar,M,y);y+=4;}
+  if(d.pan){doc.text('PAN: '+d.pan,M,y);y+=4;}
+  y=_wtext(doc,d.address,M,y,CW,4); y+=6;
+  // Recipient
+  _rule(doc,M,y,W-M,0.3,200); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(80,80,80);doc.text('RECIPIENT',M,y); y+=4;
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(20,20,20);doc.text(COMPANY.name,M,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(80,80,80);
+  y=_wtext(doc,COMPANY.addr,M,y,CW,4); y+=2;
+  doc.text('GSTIN: '+COMPANY.gst+'   PAN: '+COMPANY.pan,M,y); y+=8;
+  // Invoice table
+  _rule(doc,M,y,W-M,0.5,80); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(30,30,30);
+  doc.text('Particulars',M,y+4);doc.text('Amount',W-M-3,y+4,{align:'right'});
+  _rule(doc,M,y+5,W-M,0.5,80); y+=9;
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);
+  const dl=doc.splitTextToSize(d.description||'—',CW-25);doc.text(dl,M,y+4);
+  doc.setFont('helvetica','bold');doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y+4,{align:'right'});
+  y+=Math.max(10,dl.length*4.8+4); _rule(doc,M,y,W-M,0.5,80); y+=5;
+  doc.setFontSize(10);doc.text('Total',W-M-40,y);doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y,{align:'right'}); y+=7;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(60,60,60);
+  doc.text('In Words: Rupees '+numToWords(Number(d.amount)||0)+' Only',M,y); y+=8;
+  _rule(doc,M,y,W-M,0.3,200); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(60,60,60);doc.text('PAYMENT',M,y); y+=4;
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  doc.text('Holder: ',M,y);doc.setFont('helvetica','bold');doc.text(d.name||'—',M+16,y);
+  doc.setFont('helvetica','normal');doc.text('Bank: ',W/2,y);doc.setFont('helvetica','bold');doc.text(d.bankName||'—',W/2+12,y); y+=5;
+  doc.setFont('helvetica','normal');doc.text('A/C: ',M,y);doc.setFont('helvetica','bold');doc.text(d.accountNo||'—',M+12,y);
+  doc.setFont('helvetica','normal');doc.text('IFSC: ',W/2,y);doc.setFont('helvetica','bold');doc.text(d.ifsc||'—',W/2+12,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(150,150,150);
+  doc.text('Auto-generated — ' + (window.CFG?.companyFullName || 'HRMS'),W/2,290,{align:'center'});
+  return doc;
+}
+
+function _tpl15(doc,d,M,W,CW){
+  // Stripe-style: alternating label rows
+  let y=M;
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(20,20,20);
+  doc.text((window.CFG?.companyFullName || 'Company').toUpperCase(),M,y+5);
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(100,100,100);
+  doc.text(COMPANY.addr.slice(0,70),M,y+10);
+  doc.text('GSTIN: '+COMPANY.gst+' | PAN: '+COMPANY.pan,M,y+15); y+=22;
+  _rule(doc,M,y,W-M,1,30); y+=4;
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(20,20,20);
+  doc.text('INVOICE',M,y+5);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(80,80,80);
+  doc.text('#'+(d.invoiceNo||'—'),W-M,y+5,{align:'right'}); y+=12;
+  _rule(doc,M,y,W-M,0.4,160); y+=5;
+  // Info rows with alternating background
+  const rows2=[
+    ['Billed By', d.name||'—'],
+    ['Mobile', d.mob||'—'],
+    ['Aadhar', d.aadhar||'—'],
+    ['PAN', d.pan||'—'],
+    ['Address', d.address||'—'],
+    ['Date', d.date||'—'],
+    ['Billed To', COMPANY.name],
+    ['GSTIN', COMPANY.gst+' | PAN: '+COMPANY.pan],
+  ];
+  rows2.forEach((row,i)=>{
+    if(i%2===0){doc.setFillColor(248,248,248);doc.rect(M,y,CW,7,'F');}
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(100,100,100);
+    doc.text(row[0].toUpperCase(),M+2,y+5);
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(20,20,20);
+    const vl=doc.splitTextToSize(row[1],CW-45);doc.text(vl,M+42,y+5);
+    y+=Math.max(7,vl.length*4.5);
+  });
+  y+=3; _rule(doc,M,y,W-M,0.5,80); y+=6;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(30,30,30);
+  doc.text('DESCRIPTION',M,y+4);doc.text('AMOUNT (RS.)',W-M-3,y+4,{align:'right'});
+  _rule(doc,M,y+5,W-M,0.5,80); y+=9;
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);
+  const dl=doc.splitTextToSize(d.description||'—',CW-25);doc.text(dl,M,y+4);
+  doc.setFont('helvetica','bold');doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y+4,{align:'right'});
+  y+=Math.max(10,dl.length*4.8+4); _rule(doc,M,y,W-M,0.5,80); y+=5;
+  doc.setFontSize(10);doc.text('TOTAL',W-M-44,y);doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y,{align:'right'}); y+=7;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(60,60,60);
+  doc.text('Rupees '+numToWords(Number(d.amount)||0)+' Only',M,y); y+=7;
+  _rule(doc,M,y,W-M,0.5,80); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(60,60,60);doc.text('BANK',M,y); y+=4;
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  doc.text('Account: ',M,y);doc.setFont('helvetica','bold');doc.text(d.name||'—',M+20,y); y+=5;
+  doc.setFont('helvetica','normal');doc.text('Bank: ',M,y);doc.setFont('helvetica','bold');doc.text(d.bankName||'—',M+14,y);
+  doc.setFont('helvetica','normal');doc.text('  A/C: ',M+14+(d.bankName||'').length*2.4,y);doc.setFont('helvetica','bold');doc.text(d.accountNo||'—',M+14+(d.bankName||'').length*2.4+14,y); y+=5;
+  doc.setFont('helvetica','normal');doc.text('IFSC: ',M,y);doc.setFont('helvetica','bold');doc.text(d.ifsc||'—',M+13,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(150,150,150);
+  doc.text('System generated invoice — ' + (window.CFG?.companyFullName || 'HRMS'),W/2,290,{align:'center'});
+  return doc;
+}
+
+function _tpl16(doc,d,M,W,CW){
+  // Portrait letter format with reference line
+  let y=M+4;
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(20,20,20);
+  doc.text(COMPANY.name,M,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(90,90,90);
+  doc.text(COMPANY.addr.slice(0,70),M,y+5);
+  doc.text('GSTIN: '+COMPANY.gst+' | PAN: '+COMPANY.pan,M,y+10); y+=18;
+  _rule(doc,M,y,W-M,0.5,80); y+=7;
+  // To address block
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(70,70,70);
+  doc.text('To,',M,y); y+=4;
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(20,20,20);
+  doc.text(d.name||'—',M,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(70,70,70);
+  if(d.mob){doc.text('Mob: '+d.mob,M,y);y+=4;}
+  if(d.aadhar){doc.text('Aadhar: '+d.aadhar,M,y);y+=4;}
+  if(d.pan){doc.text('PAN: '+d.pan,M,y);y+=4;}
+  y=_wtext(doc,d.address,M,y,CW,4); y+=6;
+  // Reference line
+  _rule(doc,M,y,W-M,0.3,180); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(30,30,30);
+  doc.text('Sub: Invoice No '+( d.invoiceNo||'—')+' dated '+(d.date||'—'), M, y); y+=8;
+  // Body text style
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(40,40,40);
+  doc.text('Dear Sir/Madam,', M, y); y+=6;
+  doc.text('We hereby submit our invoice for the services rendered as detailed below:', M, y); y+=8;
+  // Services table
+  _rule(doc,M,y,W-M,0.5,80); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);
+  doc.text('Sr.',M,y+4);doc.text('Particulars',M+12,y+4);doc.text('Amount (Rs.)',W-M-3,y+4,{align:'right'});
+  _rule(doc,M,y+5,W-M,0.5,80); y+=9;
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);
+  doc.text('1',M,y+4);
+  const dl=doc.splitTextToSize(d.description||'—',CW-22);doc.text(dl,M+12,y+4);
+  doc.setFont('helvetica','bold');doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y+4,{align:'right'});
+  y+=Math.max(10,dl.length*4.5+4); _rule(doc,M,y,W-M,0.5,80); y+=5;
+  doc.setFontSize(10);doc.text('Total Amount',W-M-50,y);doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-3,y,{align:'right'}); y+=7;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(60,60,60);
+  doc.text('(Rupees '+numToWords(Number(d.amount)||0)+' Only)',M,y); y+=8;
+  _rule(doc,M,y,W-M,0.3,200); y+=5;
+  doc.text('Kindly arrange payment at the earliest. Bank details are as follows:', M, y); y+=6;
+  doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  doc.text('Account Name: ',M,y);doc.setFont('helvetica','normal');doc.text(d.name||'—',M+34,y); y+=5;
+  doc.setFont('helvetica','bold');doc.text('Bank: ',M,y);doc.setFont('helvetica','normal');doc.text(d.bankName||'—',M+16,y);
+  doc.setFont('helvetica','bold');doc.text('A/C No: ',W/2,y);doc.setFont('helvetica','normal');doc.text(d.accountNo||'—',W/2+20,y); y+=5;
+  doc.setFont('helvetica','bold');doc.text('IFSC: ',M,y);doc.setFont('helvetica','normal');doc.text(d.ifsc||'—',M+14,y);
+  if(d.branch){doc.setFont('helvetica','bold');doc.text('Branch: ',W/2,y);doc.setFont('helvetica','normal');doc.text(d.branch,W/2+16,y);} y+=14;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(40,40,40);
+  doc.text('Yours Sincerely,', M, y); y+=8;
+  doc.setFont('helvetica','bold');doc.text(d.name||'—', M, y);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(150,150,150);
+  doc.text('System generated — ' + (window.CFG?.companyFullName || 'HRMS'),W/2,290,{align:'center'});
+  return doc;
+}
+
+function _tpl17(doc,d,M,W,CW){
+  // Split page: left half details, right half financials separated by vertical line
+  let y=M;
+  // Full vertical line in middle
+  doc.setDrawColor(180,180,180);doc.setLineWidth(0.4);
+  doc.line(W/2-3, M, W/2-3, 275);
+  const lW=W/2-M-5, rX=W/2+2, rW=W-M-rX;
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(20,20,20);
+  doc.text('INVOICE',M,y+7);
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(100,100,100);
+  doc.text(d.invoiceNo||'—',M,y+13); y+=18;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(80,80,80);doc.text('FROM',M,y); y+=4;
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(20,20,20);doc.text(d.name||'—',M,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(70,70,70);
+  if(d.mob){doc.text('Mob: '+d.mob,M,y);y+=4;}
+  if(d.aadhar){doc.text('Aadhar: '+d.aadhar,M,y);y+=4;}
+  if(d.pan){doc.text('PAN: '+d.pan,M,y);y+=4;}
+  const al=doc.splitTextToSize(d.address||'',lW);doc.text(al,M,y);y+=al.length*4+6;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(80,80,80);doc.text('TO',M,y); y+=4;
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(20,20,20);doc.text(COMPANY.name.split('Pvt')[0].trim(),M,y); y+=4;
+  doc.setFont('helvetica','bold');doc.text('Pvt. Ltd.',M,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(80,80,80);
+  const ta=doc.splitTextToSize(COMPANY.addr,lW);doc.text(ta,M,y);y+=ta.length*4+3;
+  doc.text('GSTIN: '+COMPANY.gst,M,y);y+=4;
+  doc.text('PAN: '+COMPANY.pan,M,y);
+  // Right side
+  let ry=M+4;
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(100,100,100);
+  doc.text('Date',rX,ry); ry+=4;
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(20,20,20);
+  doc.text(d.date||'—',rX,ry); ry+=10;
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(100,100,100);doc.text('Particulars',rX,ry); ry+=4;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(30,30,30);
+  const dl=doc.splitTextToSize(d.description||'—',rW);doc.text(dl,rX,ry); ry+=dl.length*4.5+6;
+  _rule(doc,rX,ry,W-M,0.4,160); ry+=4;
+  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(20,20,20);
+  doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),rX,ry+6); ry+=12;
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(80,80,80);
+  const wl=doc.splitTextToSize('Rupees '+numToWords(Number(d.amount)||0)+' Only',rW);
+  doc.text(wl,rX,ry); ry+=wl.length*4+8;
+  _rule(doc,rX,ry,W-M,0.4,160); ry+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(60,60,60);doc.text('BANK',rX,ry); ry+=4;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(30,30,30);
+  doc.text('A/C: ',rX,ry);doc.setFont('helvetica','bold');doc.text(d.name||'—',rX+12,ry); ry+=5;
+  doc.setFont('helvetica','normal');doc.text('Bank: ',rX,ry);doc.setFont('helvetica','bold');doc.text(d.bankName||'—',rX+14,ry); ry+=5;
+  doc.setFont('helvetica','normal');doc.text('No: ',rX,ry);doc.setFont('helvetica','bold');doc.text(d.accountNo||'—',rX+10,ry); ry+=5;
+  doc.setFont('helvetica','normal');doc.text('IFSC: ',rX,ry);doc.setFont('helvetica','bold');doc.text(d.ifsc||'—',rX+14,ry);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(150,150,150);
+  doc.text('Auto-generated — ' + (window.CFG?.companyFullName || 'HRMS'),W/2,290,{align:'center'});
+  return doc;
+}
+
+function _tpl18(doc,d,M,W,CW){
+  // Dense compact official format
+  let y=M;
+  _rule(doc,M,y,W-M,2,20); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(20,20,20);
+  doc.text('INVOICE',W/2,y+4,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(80,80,80);
+  doc.text('(Original for Recipient)',W/2,y+9,{align:'center'}); y+=14;
+  _rule(doc,M,y,W-M,2,20); y+=7;
+  // Reference row
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(30,30,30);
+  doc.text('Invoice No: ',M,y); doc.setFont('helvetica','normal'); doc.text(d.invoiceNo||'—',M+25,y);
+  doc.setFont('helvetica','bold'); doc.text('Date: ',W-M-44,y); doc.setFont('helvetica','normal'); doc.text(d.date||'—',W-M-30,y); y+=8;
+  // Full-border table for parties
+  const hw=(CW)/2;
+  _box(doc,M,y,hw,30,0.5,120); _box(doc,M+hw,y,hw,30,0.5,120);
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(70,70,70);
+  doc.text('SUPPLIER',M+2,y+4); doc.text('RECIPIENT',M+hw+2,y+4);
+  doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(20,20,20);
+  doc.text(d.name||'—',M+2,y+9); doc.text(COMPANY.name.split('Pvt')[0].trim(),M+hw+2,y+9);
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(70,70,70);
+  let lInfo=''; if(d.mob) lInfo+='Mob: '+d.mob; if(d.pan) lInfo+=' | PAN: '+d.pan;
+  doc.text(lInfo,M+2,y+15);
+  if(d.aadhar) doc.text('Aadhaar: '+d.aadhar,M+2,y+20);
+  const al=doc.splitTextToSize(d.address||'',hw-4);doc.text(al.slice(0,2),M+2,y+24);
+  const ta=doc.splitTextToSize(COMPANY.addr.slice(0,60),hw-4);doc.text(ta,M+hw+2,y+14);
+  doc.text('GSTIN: '+COMPANY.gst,M+hw+2,y+26);
+  y+=36;
+  // Items full border table
+  _box(doc,M,y,CW,9,0.5,120);
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(30,30,30);
+  doc.text('Sl.No',M+2,y+6);doc.text('Description of Services',M+18,y+6);doc.text('Amount (Rs.)',W-M-2,y+6,{align:'right'});
+  y+=9;
+  const dl=doc.splitTextToSize(d.description||'—',CW-28);
+  _box(doc,M,y,CW,Math.max(14,dl.length*4.5+4),0.4,180);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  doc.text('1',M+2,y+6);doc.text(dl,M+18,y+5);
+  doc.setFont('helvetica','bold');doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-2,y+6,{align:'right'});
+  y+=Math.max(14,dl.length*4.5+4);
+  _box(doc,M+CW*0.5,y,CW*0.5,9,0.5,120);
+  doc.setFont('helvetica','bold');doc.setFontSize(10);
+  doc.text('Total Amount:',M+CW*0.5+2,y+6);doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-2,y+6,{align:'right'}); y+=14;
+  _box(doc,M,y,CW,8,0.4,200);
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(50,50,50);
+  doc.text('Amount in Words: Rupees '+numToWords(Number(d.amount)||0)+' Only',M+3,y+5.5); y+=12;
+  // Bank details box
+  _box(doc,M,y,CW,26,0.5,120);
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(70,70,70);
+  doc.text('BANK ACCOUNT DETAILS',M+2,y+5);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  doc.text('Account Name: ',M+2,y+11);doc.setFont('helvetica','bold');doc.text(d.name||'—',M+34,y+11);
+  doc.setFont('helvetica','normal');doc.text('Bank Name: ',M+2,y+17);doc.setFont('helvetica','bold');doc.text(d.bankName||'—',M+26,y+17);
+  doc.setFont('helvetica','normal');doc.text('Account No: ',W/2,y+11);doc.setFont('helvetica','bold');doc.text(d.accountNo||'—',W/2+26,y+11);
+  doc.setFont('helvetica','normal');doc.text('IFSC Code: ',W/2,y+17);doc.setFont('helvetica','bold');doc.text(d.ifsc||'—',W/2+24,y+17);
+  if(d.branch){doc.setFont('helvetica','normal');doc.text('Branch: ',M+2,y+23);doc.setFont('helvetica','bold');doc.text(d.branch,M+20,y+23);}
+  y+=32;
+  _rule(doc,M,y,W-M,2,20);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(150,150,150);
+  doc.text('System generated document — ' + (window.CFG?.companyFullName || 'HRMS'),W/2,290,{align:'center'});
+  return doc;
+}
+
+function _tpl19(doc,d,M,W,CW){
+  // Receipt-style narrow card with perforated top effect
+  let y=M;
+  // Dotted top border
+  doc.setLineDashPattern([1,2],0);doc.setDrawColor(150,150,150);doc.setLineWidth(0.5);
+  doc.line(M,y,W-M,y); doc.setLineDashPattern([],0); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
+  doc.text('SERVICE INVOICE',W/2,y+5,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(100,100,100);
+  doc.text(COMPANY.name,W/2,y+11,{align:'center'}); y+=16;
+  doc.setLineDashPattern([1,2],0);doc.line(M,y,W-M,y);doc.setLineDashPattern([],0); y+=6;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(30,30,30);
+  doc.text('Receipt No:',M,y);doc.setFont('helvetica','normal');doc.text(d.invoiceNo||'—',M+26,y);
+  doc.text(d.date||'—',W-M,y,{align:'right'}); y+=8;
+  _rule(doc,M,y,W-M,0.3,200); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(20,20,20);doc.text('Payee: '+( d.name||'—'),M,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(70,70,70);
+  if(d.mob){doc.text('Mob: '+d.mob,M,y);y+=4;}
+  if(d.aadhar){doc.text('Aadhaar: '+d.aadhar,M,y);y+=4;}
+  if(d.pan){doc.text('PAN: '+d.pan,M,y);y+=4;}
+  y=_wtext(doc,d.address,M,y,CW,4); y+=6;
+  _rule(doc,M,y,W-M,0.3,200); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(80,80,80);doc.text('RECEIVED FROM',M,y); y+=4;
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(20,20,20);doc.text(COMPANY.name,M,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(80,80,80);
+  y=_wtext(doc,COMPANY.addr,M,y,CW,4);y+=2;
+  doc.text('GSTIN: '+COMPANY.gst+'  PAN: '+COMPANY.pan,M,y); y+=8;
+  _rule(doc,M,y,W-M,0.4,140); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  const dl=doc.splitTextToSize('For: '+(d.description||'—'),CW);doc.text(dl,M,y+4);
+  y+=Math.max(10,dl.length*4.8+4); _rule(doc,M,y,W-M,0.4,140); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(20,20,20);
+  doc.text('Rs. '+Number(d.amount||0).toLocaleString('en-IN'),M,y); y+=6;
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(80,80,80);
+  doc.text('Rupees '+numToWords(Number(d.amount)||0)+' Only',M,y); y+=8;
+  _rule(doc,M,y,W-M,0.4,140); y+=6;
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(60,60,60);doc.text('PAYMENT DETAILS',M,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(30,30,30);
+  doc.text('A/C Name: ',M,y);doc.setFont('helvetica','bold');doc.text(d.name||'—',M+22,y); y+=5;
+  doc.setFont('helvetica','normal');doc.text('Bank: ',M,y);doc.setFont('helvetica','bold');doc.text(d.bankName||'—',M+14,y);
+  doc.setFont('helvetica','normal');doc.text('A/C No: ',W/2,y);doc.setFont('helvetica','bold');doc.text(d.accountNo||'—',W/2+18,y); y+=5;
+  doc.setFont('helvetica','normal');doc.text('IFSC: ',M,y);doc.setFont('helvetica','bold');doc.text(d.ifsc||'—',M+13,y); y+=10;
+  doc.setLineDashPattern([1,2],0);doc.setDrawColor(150,150,150);doc.setLineWidth(0.5);
+  doc.line(M,y,W-M,y);doc.setLineDashPattern([],0);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(150,150,150);
+  doc.text('Computer Generated Receipt — ' + (window.CFG?.companyFullName || 'HRMS'),W/2,290,{align:'center'});
+  return doc;
+}
+
+function _tpl20(doc,d,M,W,CW){
+  // Government/official form style
+  let y=M;
+  _box(doc,M,y,CW,14,0.8,40);
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(20,20,20);
+  doc.text('INVOICE / BILL',W/2,y+6,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(60,60,60);
+  doc.text('Under PMFBY Scheme — ' + (window.CFG?.companyFullName || 'HRMS'),W/2,y+11.5,{align:'center'}); y+=18;
+  // Form fields style
+  const fld=(label,val,fx,fy,fw)=>{
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(100,100,100);
+    doc.text(label,fx,fy);
+    _rule(doc,fx,fy+1,fx+fw,0.3,160);
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(20,20,20);
+    doc.text(String(val||'—'),fx,fy+6);
+  };
+  fld('Invoice No.',d.invoiceNo,M,y,75); fld('Date',d.date,W/2,y,75); y+=12;
+  fld('Name of Payee',d.name,M,y,CW); y+=12;
+  fld('Mobile',d.mob,M,y,70); fld('PAN',d.pan,M+80,y,70); fld('Aadhaar',d.aadhar,W/2+10,y,65); y+=12;
+  fld('Address',d.address,M,y,CW); y+=12;
+  fld('Billed To',COMPANY.name,M,y,CW); y+=12;
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(100,100,100);
+  doc.text(COMPANY.addr.slice(0,80),M,y); y+=5;
+  doc.text('GSTIN: '+COMPANY.gst+' | PAN: '+COMPANY.pan,M,y); y+=8;
+  _rule(doc,M,y,W-M,0.6,80); y+=5;
+  // Service table
+  _box(doc,M,y,CW,9,0.5,100);
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(30,30,30);
+  doc.text('Sr.',M+2,y+6);doc.text('Nature of Services',M+14,y+6);doc.text('Amount (Rs.)',W-M-2,y+6,{align:'right'}); y+=9;
+  const dl=doc.splitTextToSize(d.description||'—',CW-22);
+  _box(doc,M,y,CW,Math.max(13,dl.length*4.5+3),0.4,180);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  doc.text('1.',M+2,y+6);doc.text(dl,M+14,y+5);
+  doc.setFont('helvetica','bold');doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-2,y+6,{align:'right'});
+  y+=Math.max(13,dl.length*4.5+3);
+  _box(doc,M+CW*0.55,y,CW*0.45,9,0.5,100);
+  doc.setFont('helvetica','bold');doc.setFontSize(9.5);
+  doc.text('Total:',W-M-60,y+6);doc.text('Rs.'+Number(d.amount||0).toLocaleString('en-IN'),W-M-2,y+6,{align:'right'}); y+=13;
+  fld('Amount in Words','Rupees '+numToWords(Number(d.amount)||0)+' Only',M,y,CW); y+=12;
+  _rule(doc,M,y,W-M,0.6,80); y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(60,60,60);doc.text('BANK / PAYMENT DETAILS',M,y); y+=4;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(30,30,30);
+  fld('Account Holder',d.name,M,y,80); fld('Bank Name',d.bankName,W/2,y,75); y+=12;
+  fld('Account Number',d.accountNo,M,y,80); fld('IFSC Code',d.ifsc,W/2,y,75); y+=12;
+  if(d.branch){ fld('Branch',d.branch,M,y,80); y+=12; }
+  _box(doc,M,y,CW,18,0.6,80);
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(80,80,80);
+  doc.text('Declaration: I hereby declare that the above information is true and correct to the best of my knowledge.',M+3,y+5,{maxWidth:CW-6});
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(30,30,30);
+  doc.text('Signature: ___________________',W-M-50,y+14);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(150,150,150);
+  doc.text('System Generated — ' + (window.CFG?.companyFullName || 'HRMS'),W/2,290,{align:'center'});
+  return doc;
+}
+
+// Master dispatcher
+const TEMPLATE_FNS = [
+  _tpl1,_tpl2,_tpl3,_tpl4,_tpl5,_tpl6,_tpl7,_tpl8,_tpl9,_tpl10,
+  _tpl11,_tpl12,_tpl13,_tpl14,_tpl15,_tpl16,_tpl17,_tpl18,_tpl19,_tpl20
+];
+
+async function buildPDF(data, templateIndex) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const M=15, W=210, CW=W-M*2;
+  // Pick template: cycle through 20 for bulk, or use passed index
+  const idx = (templateIndex !== undefined ? templateIndex : 0) % 20;
+  return TEMPLATE_FNS[idx](doc, data, M, W, CW);
+}
+
+// ── Download single PDF ────────────────────────────────
+async function downloadSinglePDF() {
+  const d = getFormData();
+  if (!d.name || !d.invoiceNo || !d.amount) {
+    toast('Please fill Name, Invoice No, and Amount', 'error'); return;
+  }
+  if (d.date) {
+    const dt = new Date(d.date);
+    d.date = dt.toLocaleDateString('en-IN', {day:'2-digit',month:'2-digit',year:'numeric'});
+  }
+  const doc = await buildPDF(d);
+  doc.save(`Invoice_${d.invoiceNo.replace(/\//g,'_')}_${d.name.replace(/\s+/g,'_')}.pdf`);
+  toast('Invoice PDF downloaded!', 'success');
+  addToHistory(d);
+}
+
+// ── Print ──────────────────────────────────────────────
+function printPreview() {
+  const d = getFormData();
+  if (d.date) {
+    const dt = new Date(d.date);
+    d.date = dt.toLocaleDateString('en-IN', {day:'2-digit',month:'2-digit',year:'numeric'});
+  }
+  const w = window.open('', '_blank');
+  w.document.write(`
+    <!DOCTYPE html><html><head>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:'DM Sans',sans-serif;background:#fff}
+      @page{size:A4 portrait;margin:10mm 8mm}
+      ${document.querySelector('style').textContent}
+    </style></head><body>
+    <div class="invoice-sheet" style="box-shadow:none;width:100%">${renderInvoiceHTML(d)}</div>
+    <script>window.onload=()=>{window.print();window.close();}<\/script>
+    </body></html>`);
+  w.document.close();
+}
+
+// ── History ────────────────────────────────────────────
+const sessionHistory = [];
+function addToHistory(d) {
+  sessionHistory.unshift({ ...d, ts: new Date().toLocaleString('en-IN') });
+  renderHistory();
+}
+function renderHistory() {
+  const el = document.getElementById('history-list');
+  if (!sessionHistory.length) return;
+  el.innerHTML = `
+    <table class="bulk-result-table">
+      <thead><tr><th>#</th><th>Invoice No</th><th>Name</th><th>Amount</th><th>Generated</th></tr></thead>
+      <tbody>${sessionHistory.map((h,i) => `
+        <tr>
+          <td>${i+1}</td>
+          <td><b>${h.invoiceNo}</b></td>
+          <td>${h.name}</td>
+          <td>₹ ${Number(h.amount||0).toLocaleString('en-IN')}</td>
+          <td style="font-size:11px;color:var(--muted)">${h.ts}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ══════════════════ BULK EXCEL LOGIC ═══════════════════
+let bulkRecords = [];
+
+function handleDragOver(e) { e.preventDefault(); document.getElementById('bulk-drop-zone').classList.add('dragover'); }
+function handleDragLeave(e) { document.getElementById('bulk-drop-zone').classList.remove('dragover'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('bulk-drop-zone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) handleExcelFile(file);
+}
+
+function handleExcelFile(file) {
+  if (!file) return;
+  const allowed = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                   'application/vnd.ms-excel',''];
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb   = XLSX.read(e.target.result, { type:'array', cellDates:true });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
+      if (!rows.length) { toast('Excel file is empty', 'error'); return; }
+      bulkRecords = rows.map((r, i) => {
+        // Flexible column mapping (case-insensitive)
+        const get = (...keys) => {
+          for (const k of keys) {
+            const found = Object.keys(r).find(rk => rk.trim().toLowerCase() === k.toLowerCase());
+            if (found !== undefined) return String(r[found]).trim();
+          }
+          return '';
+        };
+        let dateVal = get('date','Date','DATE');
+        // Handle Excel date serial
+        if (!isNaN(dateVal) && dateVal !== '') {
+          const d = XLSX.SSF.parse_date_code(Number(dateVal));
+          if (d) dateVal = String(d.d).padStart(2,'0')+'-'+String(d.m).padStart(2,'0')+'-'+d.y;
+        }
+        return {
+          rowIndex: i+2,
+          name:        get('name','Name','NAME'),
+          mob:         get('mobile','Mobile','MOBILE','mob','Mob','phone','Phone'),
+          aadhar:      get('aadhar','Aadhar','AADHAR','aadhaar','Aadhaar'),
+          pan:         get('pan','PAN','Pan'),
+          address:     get('address','Address','ADDRESS','addr'),
+          invoiceNo:   get('invoice_no','Invoice_No','InvoiceNo','Invoice No','invoice no','INVOICE_NO'),
+          date:        dateVal,
+          description: get('description','Description','DESC','desc','particulars','Particulars'),
+          amount:      get('amount','Amount','AMOUNT','total','Total'),
+          bankName:    get('bank_name','Bank_Name','BankName','Bank Name','bank','Bank','BANK_NAME'),
+          branch:      get('branch','Branch','BRANCH','branch_name','Branch_Name'),
+          accountNo:   get('account_no','Account_No','AccountNo','Account No','acc_no','AccNo','account'),
+          ifsc:        get('ifsc','IFSC','ifsc_code','IFSC_Code'),
+          _valid:      true,
+          _errors:     [],
+        };
+      });
+
+      // Validate
+      bulkRecords.forEach(r => {
+        const missing = [];
+        if (!r.name)        missing.push('Name');
+        if (!r.invoiceNo)   missing.push('Invoice_No');
+        if (!r.amount)      missing.push('Amount');
+        if (!r.accountNo)   missing.push('Account_No');
+        if (missing.length) { r._valid = false; r._errors = missing; }
+      });
+
+      renderBulkTable();
+      toast(`Loaded ${bulkRecords.length} records from Excel`, 'success');
+    } catch(err) {
+      toast('Error reading Excel file: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderBulkTable() {
+  const card  = document.getElementById('bulk-results-card');
+  const tbody = document.getElementById('bulk-result-tbody');
+  const valid = bulkRecords.filter(r => r._valid).length;
+  const errs  = bulkRecords.length - valid;
+
+  card.style.display = 'block';
+  document.getElementById('bulk-results-title').textContent = `${bulkRecords.length} Records Loaded`;
+  document.getElementById('bulk-results-sub').textContent =
+    `${valid} ready to generate${errs ? ' · ' + errs + ' with errors' : ''}`;
+
+  tbody.innerHTML = bulkRecords.map((r, i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td><b>${r.invoiceNo || '—'}</b></td>
+      <td>${r.name || '—'}</td>
+      <td>${r.date || '—'}</td>
+      <td>₹ ${Number(r.amount||0).toLocaleString('en-IN')}</td>
+      <td>
+        ${r._valid
+          ? '<span class="status-dot dot-ok"></span><span style="font-size:12px;color:#16a34a">Ready</span>'
+          : `<span class="status-dot dot-err"></span><span style="font-size:12px;color:#dc2626">Missing: ${r._errors.join(', ')}</span>`}
+      </td>
+      <td>
+        <button class="btn btn-outline btn-sm" style="padding:4px 10px;font-size:11px" onclick="previewBulkRecord(${i})">👁 Preview</button>
+      </td>
+    </tr>`).join('');
+}
+
+function previewBulkRecord(idx) {
+  const r = bulkRecords[idx];
+  if (!r) return;
+  // Switch to manual tab and fill form for preview
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.inv-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-manual').classList.add('active');
+  document.querySelectorAll('.inv-tab')[0].classList.add('active');
+
+  document.getElementById('f-name').value    = r.name;
+  document.getElementById('f-mob').value     = r.mob;
+  document.getElementById('f-aadhar').value  = r.aadhar;
+  document.getElementById('f-pan').value     = r.pan;
+  document.getElementById('f-address').value = r.address;
+  document.getElementById('f-invno').value   = r.invoiceNo;
+  document.getElementById('f-desc').value    = r.description;
+  document.getElementById('f-amount').value  = r.amount;
+  document.getElementById('f-bank').value    = r.bankName;
+  document.getElementById('f-branch').value  = r.branch;
+  document.getElementById('f-accno').value   = r.accountNo;
+  document.getElementById('f-ifsc').value    = r.ifsc;
+  updatePreview();
+  toast(`Previewing record #${idx+1}`, 'info');
+}
+
+async function generateAllPDFs() {
+  const validRecs = bulkRecords.filter(r => r._valid);
+  if (!validRecs.length) { toast('No valid records to generate', 'error'); return; }
+
+  const btn = document.getElementById('bulk-generate-btn');
+  btn.disabled = true; btn.textContent = '⏳ Generating...';
+
+  const prog    = document.getElementById('bulk-processing');
+  const fill    = document.getElementById('bulk-progress-fill');
+  const statTxt = document.getElementById('bulk-status-text');
+  prog.style.display = 'block';
+
+  const zip = new JSZip();
+  for (let i = 0; i < validRecs.length; i++) {
+    const r = validRecs[i];
+    statTxt.textContent = `Generating ${i+1} / ${validRecs.length}: ${r.invoiceNo}`;
+    fill.style.width = Math.round((i / validRecs.length) * 100) + '%';
+    const doc = await buildPDF(r, i);
+    const fname = `Invoice_${(r.invoiceNo||'').replace(/\//g,'_')}_${(r.name||'').replace(/\s+/g,'_')}.pdf`;
+    zip.file(fname, doc.output('arraybuffer'));
+    addToHistory(r);
+    // Yield to UI
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+
+  fill.style.width = '100%';
+  statTxt.textContent = 'Zipping files...';
+  const blob = await zip.generateAsync({ type:'blob', compression:'DEFLATE', compressionOptions:{level:6} });
+  saveAs(blob, `Invoices_${(window.CFG?.companyShortName||'Company').replace(/\s+/g,'')}_${new Date().toLocaleDateString('en-IN').replace(/\//g,'-')}.zip`);
+
+  btn.disabled = false; btn.textContent = '📦 Generate All PDFs (ZIP)';
+  prog.style.display = 'none';
+  toast(`${validRecs.length} invoices zipped & downloaded!`, 'success');
+}
+
+// ── Download Excel Template ────────────────────────────
+function downloadTemplate() {
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['Name','Mobile','Aadhar','PAN','Address','Invoice_No','Date','Description','Amount','Bank_Name','Branch','Account_No','IFSC'],
+    ['SHARATH KUMAR M','9113667105','660416340649','KPRPS5557C','S/O MALLIKAARJUN, MUDUDI VILLAGE, ARSIKERE TQ & HASSAN DISTRIC','25-26/S/17','29-08-2025','PMFBY Crop Cutting Experiments in Field Level in hassan district of Karnataka State- crops insured with OICL Kharif 2025','10750','POSTAL BANK','MUDUDI','023810042502','IPOS0000001'],
+  ]);
+  // Style header row
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const cell = ws[XLSX.utils.encode_cell({r:0, c})];
+    if (cell) cell.s = { font:{bold:true}, fill:{fgColor:{rgb:'1B5E20'}} };
+  }
+  ws['!cols'] = [
+    {wch:22},{wch:14},{wch:16},{wch:14},{wch:50},{wch:16},{wch:14},{wch:80},{wch:12},{wch:18},{wch:14},{wch:18},{wch:14}
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Invoices');
+  XLSX.writeFile(wb, (window.CFG?.companyShortName||'Company').replace(/\s+/g,'')+'_Invoice_Template.xlsx');
+  toast('Template downloaded!', 'success');
+}
+
+// ── Init preview with empty data ──────────────────────
+updatePreview();
+
+// ── Set today's date ───────────────────────────────────
+document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+updatePreview();
+</script>
+</body>
+</html>
+
