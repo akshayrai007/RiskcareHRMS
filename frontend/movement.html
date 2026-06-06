@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Movement</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232563eb'/><text y='24' x='6' font-size='22' fill='white'>🌾</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<!-- Google Maps API (replaces Leaflet) -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlfD24fvfHS4agCYkrxg4v_SQWgnYuNxA&libraries=geometry,marker&v=weekly"></script>
+<style>
+  #mv-route-map { border-radius: 8px; }
+  .gm-style { font-family: 'DM Sans', sans-serif; }
+  /* Map type toggle buttons */
+  .map-type-btns { display: flex; gap: 8px; margin-bottom: 10px; }
+  .map-type-btn {
+    padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    border: 1.5px solid #e5e7eb; background: #fff; cursor: pointer; transition: all .15s;
+  }
+  .map-type-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-logo-sub">nagement</div></div>
+      <div class="logo-sub">Enterprise Edition</div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">📍 Employee Movement</div>
+    </div>
+    <div class="topbar-right">
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+
+    <!-- Filters -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header">
+        <div class="section-title" style="margin:0">Employee Movement Tracker</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:12px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Employee</label>
+          <select id="mv-emp" class="form-control">
+            <option value="">All Employees</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">From Date</label>
+          <input id="mv-from" type="date" class="form-control">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">To Date</label>
+          <input id="mv-to" type="date" class="form-control">
+        </div>
+        <button class="btn btn-primary" onclick="loadMovementSummary()" style="height:38px;white-space:nowrap">🔍 Search</button>
+      </div>
+    </div>
+
+    <!-- Summary Table -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+        <div class="section-title" style="margin:0">📊 Movement Summary</div>
+        <button class="btn btn-outline" onclick="exportMovementCSV()" style="font-size:12px;padding:6px 14px">⬇ Export CSV</button>
+      </div>
+      <div id="mv-summary-wrap" style="margin-top:12px">
+        <div style="text-align:center;padding:40px;color:#9ca3af;font-size:14px">
+          Select filters and click Search to view movement data
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail map/timeline -->
+    <div class="card" id="mv-detail-card" style="display:none;margin-bottom:16px">
+      <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+        <div class="section-title" id="mv-detail-title" style="margin:0">🗺 Route Detail</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <a id="mv-gmaps-link" href="#" target="_blank" class="btn btn-outline" style="font-size:12px;padding:5px 12px;text-decoration:none">🌐 Google Maps</a>
+          <button onclick="closeMvDetail()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280">✕</button>
+        </div>
+      </div>
+      <div id="mv-stats-bar" style="display:flex;gap:24px;padding:12px 0;flex-wrap:wrap"></div>
+
+      <!-- Analytics + Alerts panel -->
+      <div id="mv-analytics-panel" style="display:none;margin-bottom:12px"></div>
+
+      <!-- Legend -->
+      <div id="mv-legend" style="display:none;gap:20px;align-items:center;padding:8px 0;flex-wrap:wrap;font-size:12px;color:#374151">
+        <span><span style="display:inline-block;width:24px;height:4px;background:#2563eb;border-radius:2px;vertical-align:middle;margin-right:4px"></span>Verified Movement</span>
+        <span><span style="display:inline-block;width:24px;height:0;border-top:3px dashed #f97316;vertical-align:middle;margin-right:4px"></span>Estimated Route (Tracking Gap)</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:#16a34a;border-radius:50%;vertical-align:middle;margin-right:4px"></span>S = Tracking Start</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:#dc2626;border-radius:50%;vertical-align:middle;margin-right:4px"></span>E = Tracking Lost</span>
+      </div>
+
+      <!-- Map type toggle -->
+      <div class="map-type-btns" id="mv-map-type-btns" style="display:none">
+        <button class="map-type-btn" onclick="setMapType('roadmap')">🗺 Road</button>
+        <button class="map-type-btn" onclick="setMapType('satellite')">🛰 Satellite</button>
+        <button class="map-type-btn active" onclick="setMapType('hybrid')">🌍 Hybrid</button>
+        <button class="map-type-btn" onclick="setMapType('terrain')">⛰ Terrain</button>
+      </div>
+
+      <div id="mv-route-map" style="height:calc(100vh - 320px);min-height:500px;width:100%;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:12px"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0 4px;border-bottom:1px solid #f3f4f6">
+        <span style="font-size:12px;font-weight:600;color:#374151">📋 Point Timeline</span>
+        <span id="mv-pt-count" style="font-size:12px;color:#6b7280"></span>
+      </div>
+      <div id="mv-timeline" style="max-height:300px;overflow-y:auto"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+Auth.guard();
+loadNotifBadge();
+buildSidebar('movement.html');
+  loadNotifBadge();
+
+const user = Auth.getUser();
+const allowed = ['admin','super_admin','hr','manager','tl'];
+if (!user || !allowed.includes(user.role)) window.location.href = 'attendance.html';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const todayIST = () => new Intl.DateTimeFormat('en-CA', {
+  timeZone: window.CFG?.timezone || 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit'
+}).format(new Date());
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(async function init() {
+  const isCooUser = user && user.employee_code === (window.CFG?.cooEmployeeCode || 'RC001');
+  const seeAll  = (user.employee_code === (window.CFG?.cooEmployeeCode||'')) || ['super_admin','hr'].includes(user.role);
+  const endpoint = seeAll
+    ? '/employees?active=true&limit=500'
+    : `/employees?active=true&reporting_manager_id=${user.id}&limit=500`;
+  const res = await api('GET', endpoint);
+  if (res?.success) {
+    const sel = document.getElementById('mv-emp');
+    (res.data || []).forEach(e => {
+      const o = document.createElement('option');
+      o.value = e.id;
+      o.textContent = `${e.first_name} ${e.last_name} (${e.employee_code})`;
+      sel.appendChild(o);
+    });
+  }
+  const today = todayIST();
+  document.getElementById('mv-from').value = today;
+  document.getElementById('mv-to').value   = today;
+  loadMovementSummary();
+})();
+
+// ── Summary ───────────────────────────────────────────────────────────────────
+async function loadMovementSummary() {
+  const empId = document.getElementById('mv-emp').value  || '';
+  const fromD = document.getElementById('mv-from').value || '';
+  const toD   = document.getElementById('mv-to').value   || '';
+  const wrap  = document.getElementById('mv-summary-wrap');
+  if (!fromD || !toD) { toast('Please select date range', 'error'); return; }
+  wrap.innerHTML = '<div style="text-align:center;padding:30px;color:#6b7280">Loading…</div>';
+  let url = `/attendance/movement/summary?from_date=${fromD}&to_date=${toD}`;
+  if (empId) url += `&employee_id=${empId}`;
+  const res = await api('GET', url);
+  if (!res?.success) { wrap.innerHTML = '<div style="text-align:center;padding:30px;color:#ef4444">Failed to load data</div>'; return; }
+  const rows = res.data || [];
+  if (!rows.length) { wrap.innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;font-size:14px">No movement data found for selected filters</div>'; return; }
+
+  let html = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="background:#f9fafb;border-bottom:2px solid #e5e7eb">
+      <th style="padding:10px 12px;text-align:left;font-weight:600;color:#374151">Employee</th>
+      <th style="padding:10px 12px;text-align:left;font-weight:600;color:#374151">Code</th>
+      <th style="padding:10px 12px;text-align:left;font-weight:600;color:#374151">Date</th>
+      <th style="padding:10px 12px;text-align:right;font-weight:600;color:#374151">Points</th>
+      <th style="padding:10px 12px;text-align:right;font-weight:600;color:#374151">Total KM</th>
+      <th style="padding:10px 12px;text-align:center;font-weight:600;color:#374151">Action</th>
+    </tr></thead><tbody>`;
+  rows.forEach((r, i) => {
+    const km = r.total_km;
+    const kmColor = km > 50 ? '#16a34a' : km > 20 ? '#d97706' : '#374151';
+    const notTracked = r.point_count === 0;
+    html += `<tr style="border-bottom:1px solid #f3f4f6;${notTracked ? 'background:#fff7ed' : (i%2===0?'':'background:#fafafa')}">
+      <td style="padding:10px 12px;font-weight:500">${r.emp_name}</td>
+      <td style="padding:10px 12px;color:#6b7280;font-size:12px">${r.employee_code}</td>
+      <td style="padding:10px 12px">${String(r.date).split('T')[0]}</td>
+      <td style="padding:10px 12px;text-align:right;${notTracked ? 'color:#f59e0b;font-weight:600' : 'color:#6b7280'}">${notTracked ? '⚠ 0' : r.point_count}</td>
+      <td style="padding:10px 12px;text-align:right;font-weight:700;color:${kmColor}">${km.toFixed(2)} km</td>
+      <td style="padding:10px 12px;text-align:center">
+        ${notTracked
+          ? '<span style="font-size:11px;color:#f59e0b;font-weight:600">Not Tracking</span>'
+          : `<button class="btn btn-outline" style="font-size:11px;padding:4px 10px"
+              onclick="loadMovementDetail(${r.employee_id},'${String(r.date).split('T')[0]}','${r.emp_name}')">
+              🗺 Route
+            </button>`
+        }
+      </td>
+    </tr>`;
+  });
+  const totalKm = rows.reduce((s, r) => s + r.total_km, 0);
+  html += `</tbody></table></div>
+    <div style="padding:10px 12px;font-size:12px;color:#6b7280;border-top:1px solid #e5e7eb;text-align:right">
+      ${rows.length} record(s) &nbsp;|&nbsp; Total distance: <strong>${totalKm.toFixed(2)} km</strong>
+    </div>`;
+  wrap.innerHTML = html;
+  window._mvSummaryData = rows;
+}
+
+function closeMvDetail() {
+  document.getElementById('mv-detail-card').style.display = 'none';
+  document.getElementById('mv-map-type-btns').style.display = 'none';
+  document.getElementById('mv-analytics-panel').style.display = 'none';
+  document.getElementById('mv-legend').style.display = 'none';
+  if (_mvInfoWindow) { _mvInfoWindow.close(); _mvInfoWindow = null; }
+  if (_mvMarkers.length) { _mvMarkers.forEach(m => m.setMap(null)); _mvMarkers = []; }
+  if (_mvPolyline) { _mvPolyline.setMap(null); _mvPolyline = null; }
+  if (_mvGoogleMap) { _mvGoogleMap = null; }
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let _mvGoogleMap    = null;
+let _mvInfoWindow   = null;
+let _mvMarkers      = [];
+let _mvPolyline     = null;
+let _mvCurrentType  = 'hybrid';
+const MAPS_KEY      = 'AIzaSyBlfD24fvfHS4agCYkrxg4v_SQWgnYuNxA';
+
+function setMapType(type) {
+  _mvCurrentType = type;
+  if (_mvGoogleMap) _mvGoogleMap.setMapTypeId(type);
+  document.querySelectorAll('.map-type-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase().includes(
+      type === 'roadmap' ? 'road' : type === 'hybrid' ? 'hybrid' : type === 'satellite' ? 'sat' : 'terr'
+    ));
+  });
+}
+
+// ── Main load ─────────────────────────────────────────────────────────────────
+async function loadMovementDetail(employeeId, date, empName) {
+  date = String(date).split('T')[0];
+
+  // Reset map state cleanly before loading new data
+  if (_mvInfoWindow) { _mvInfoWindow.close(); _mvInfoWindow = null; }
+  if (_mvMarkers.length) { _mvMarkers.forEach(m => m.setMap(null)); _mvMarkers = []; }
+  if (_mvPolyline) { _mvPolyline.setMap(null); _mvPolyline = null; }
+  _mvGoogleMap = null;
+
+  document.getElementById('mv-detail-card').style.display = 'block';
+  document.getElementById('mv-detail-title').textContent  = `🗺 ${empName} — ${date}`;
+  document.getElementById('mv-stats-bar').innerHTML        = '<span style="color:#6b7280;font-size:13px">Loading…</span>';
+  document.getElementById('mv-analytics-panel').style.display = 'none';
+  document.getElementById('mv-legend').style.display       = 'none';
+  document.getElementById('mv-route-map').innerHTML        = '';
+  document.getElementById('mv-timeline').innerHTML         = '';
+  document.getElementById('mv-pt-count').textContent       = '';
+  document.getElementById('mv-map-type-btns').style.display = 'none';
+
+  // Scroll to detail card
+  document.getElementById('mv-detail-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  try {
+    // Use the shared api() helper from app.js — handles auth, base URL, retries
+    const json = await api('GET', `/attendance/movement/segmented?employee_id=${employeeId}&date=${date}`);
+
+    if (!json || !json.success || !json.data)
+      return (document.getElementById('mv-stats-bar').innerHTML = `<span style="color:#ef4444">Failed to load data</span>`);
+
+    const { segments, events, analytics, alerts } = json.data;
+
+    // Collect all tracked points for stats/timeline
+    const allTrackedPts = segments
+      .filter(s => s.type === 'verified')
+      .flatMap(s => s.points);
+
+    if (!allTrackedPts.length)
+      return (document.getElementById('mv-stats-bar').innerHTML = '<span style="color:#6b7280;font-size:13px">No GPS data for this day</span>');
+
+    // ── Stats bar ─────────────────────────────────────────────────────────
+    const a = analytics || {};
+    document.getElementById('mv-stats-bar').innerHTML = `
+      <div style="text-align:center"><div style="font-size:16px;font-weight:700;color:#2563eb">${a.verified_km ?? '–'}</div><div style="font-size:11px;color:#6b7280">Verified KM</div></div>
+      <div style="text-align:center"><div style="font-size:16px;font-weight:700;color:#f97316">${a.estimated_km ?? '–'}</div><div style="font-size:11px;color:#6b7280">Estimated KM</div></div>
+      <div style="text-align:center"><div style="font-size:16px;font-weight:700;color:#374151">${allTrackedPts.length}</div><div style="font-size:11px;color:#6b7280">GPS Points</div></div>
+      <div style="text-align:center"><div style="font-size:16px;font-weight:700;color:#059669">${a.first_point ?? '–'}</div><div style="font-size:11px;color:#6b7280">First Point</div></div>
+      <div style="text-align:center"><div style="font-size:16px;font-weight:700;color:#dc2626">${a.last_point ?? '–'}</div><div style="font-size:11px;color:#6b7280">Last Point</div></div>
+      <div style="text-align:center"><div style="font-size:16px;font-weight:700;color:#7c3aed">${a.tracking_pct ?? 100}%</div><div style="font-size:11px;color:#6b7280">Tracked</div></div>`;
+
+    // ── Analytics panel ───────────────────────────────────────────────────
+    const interruptionColor = (a.interruptions || 0) > 5 ? '#dc2626' : '#374151';
+    const downtimeLabel = a.downtime_min > 60
+      ? `${Math.floor(a.downtime_min/60)}h ${a.downtime_min%60}m`
+      : `${a.downtime_min ?? 0}m`;
+
+    let alertsHtml = '';
+    if (alerts && alerts.length) {
+      alertsHtml = `<div style="margin-top:10px;padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px">
+        <div style="font-weight:700;font-size:12px;color:#ea580c;margin-bottom:6px">⚠️ Security Alerts</div>
+        ${alerts.map(al => `<div style="font-size:12px;color:#9a3412;margin-bottom:3px">• ${al.msg}</div>`).join('')}
+      </div>`;
+    }
+
+    document.getElementById('mv-analytics-panel').style.display = 'block';
+    document.getElementById('mv-analytics-panel').innerHTML = `
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px">
+        <div style="font-weight:700;font-size:12px;color:#374151;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">📊 Tracking Analytics</div>
+        <div style="display:flex;flex-wrap:wrap;gap:16px">
+          <div style="min-width:130px"><div style="font-size:11px;color:#6b7280">Tracking Availability</div><div style="font-weight:700;color:#059669">${a.tracking_pct ?? 100}%</div></div>
+          <div style="min-width:130px"><div style="font-size:11px;color:#6b7280">Total Downtime</div><div style="font-weight:700;color:#f97316">${downtimeLabel}</div></div>
+          <div style="min-width:130px"><div style="font-size:11px;color:#6b7280">Interruptions</div><div style="font-weight:700;color:${interruptionColor}">${a.interruptions ?? 0}</div></div>
+          <div style="min-width:130px"><div style="font-size:11px;color:#6b7280">Longest Gap</div><div style="font-weight:700;color:#374151">${a.longest_gap_min ?? 0}m</div></div>
+          <div style="min-width:130px"><div style="font-size:11px;color:#6b7280">GPS Off Duration</div><div style="font-weight:700;color:#374151">${a.gps_off_min ?? 0}m</div></div>
+          <div style="min-width:130px"><div style="font-size:11px;color:#6b7280">Internet Off Duration</div><div style="font-weight:700;color:#374151">${a.net_off_min ?? 0}m</div></div>
+        </div>
+        ${alertsHtml}
+      </div>`;
+
+    // ── Show legend ───────────────────────────────────────────────────────
+    document.getElementById('mv-legend').style.display = 'flex';
+
+    // ── Build map ─────────────────────────────────────────────────────────
+    const mapDiv = document.getElementById('mv-route-map');
+    document.getElementById('mv-map-type-btns').style.display = 'flex';
+
+    _mvGoogleMap = new google.maps.Map(mapDiv, {
+      center:    { lat: allTrackedPts[0].lat, lng: allTrackedPts[0].lng },
+      zoom:      14,
+      mapTypeId: _mvCurrentType,
+      mapId:     'DEMO_MAP_ID',   // required for AdvancedMarkerElement
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: true,
+    });
+    _mvInfoWindow = new google.maps.InfoWindow();
+
+    const allPolylines = [];
+    const allMarkers   = [];
+    const allBounds    = new google.maps.LatLngBounds();
+
+    // ── Draw each segment ─────────────────────────────────────────────────
+    for (const seg of segments) {
+      if (seg.type === 'verified') {
+        // Show ALL points — no distance filtering
+        // Every 30-second ping is shown in timeline even if employee is stationary
+        const smoothedPts = seg.points;
+        // ── BLUE solid polyline ──
+        const path = smoothedPts.map(p => ({ lat: p.lat, lng: p.lng }));
+        path.forEach(p => allBounds.extend(p));
+
+        const poly = new google.maps.Polyline({
+          path, geodesic: true,
+          strokeColor: '#2563eb', strokeOpacity: 0.9, strokeWeight: 5,
+          map: _mvGoogleMap
+        });
+        allPolylines.push(poly);
+
+        // Road-snap in background
+        roadSnapSegment(path).then(snapped => {
+          if (snapped && snapped.length >= 2) poly.setPath(snapped);
+        });
+
+        // Blue dot markers for intermediate points (use smoothed points — no jitter web)
+        smoothedPts.forEach((pt, idx) => {
+          if (idx === 0 || idx === smoothedPts.length - 1) return; // S/E markers handle endpoints
+          const dotEl = document.createElement('div');
+          dotEl.style.cssText = 'width:10px;height:10px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 0 0 1.5px #3b82f6;cursor:pointer';
+          const dot = new google.maps.marker.AdvancedMarkerElement({
+            position: { lat: pt.lat, lng: pt.lng }, map: _mvGoogleMap,
+            content: dotEl, zIndex: 5
+          });
+          dot.addListener('click', () => {
+            _mvInfoWindow.setContent(buildPointTooltip(pt, 'verified'));
+            _mvInfoWindow.open(_mvGoogleMap, dot);
+          });
+          allMarkers.push(dot);
+        });
+
+        // S{n} green pin
+        allMarkers.push(makePinMarker(seg.points[0], seg.startLabel, '#16a34a', 'Tracking Started'));
+        // E{n} — red pin if ended, pulsing NOW if still live
+        if (seg.is_live) {
+          // Live segment — show single pulsing NOW marker, no red end pin
+          allMarkers.push(makeNowMarker(seg.points[seg.points.length-1]));
+        } else {
+          allMarkers.push(makePinMarker(seg.points[seg.points.length-1], seg.endLabel, '#dc2626', 'Tracking Lost'));
+        }
+
+      } else if (seg.type === 'gap') {
+        // ── ORANGE dashed polyline — Directions API ──
+        const fromPt = { lat: seg.from.lat, lng: seg.from.lng };
+        const toPt   = { lat: seg.to.lat,   lng: seg.to.lng   };
+        allBounds.extend(fromPt);
+        allBounds.extend(toPt);
+
+        // Dashed placeholder immediately
+        const orangePoly = new google.maps.Polyline({
+          path: [fromPt, toPt], geodesic: true,
+          strokeColor: '#f97316', strokeOpacity: 0, strokeWeight: 5,
+          icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.85, scale: 3.5,
+                            strokeColor: '#f97316' }, offset: '0', repeat: '12px' }],
+          map: _mvGoogleMap
+        });
+        allPolylines.push(orangePoly);
+
+        // Gap label
+        const mid = { lat: (seg.from.lat+seg.to.lat)/2, lng: (seg.from.lng+seg.to.lng)/2 };
+        const labelText = `⏸ Tracking Gap  ${seg.from.time_label} – ${seg.to.time_label}  (${seg.dur_label})`;
+        allMarkers.push(makeGapLabel(mid, labelText));
+
+        // Fetch Directions API bike route
+        fetchBikeRoute(fromPt, toPt, seg).then(routePath => {
+          if (routePath && routePath.length >= 2) {
+            orangePoly.setPath(routePath);
+            // Update label to midpoint of actual route
+            const midIdx = Math.floor(routePath.length / 2);
+            // label is already placed — position is approximate, that's fine
+          }
+        });
+      }
+    }
+
+    // Set polyline wrapper for cleanup
+    _mvPolyline = { setMap: (m) => { allPolylines.forEach(p => p.setMap(m)); allMarkers.forEach(mk => mk.setMap(m)); _mvMarkers.forEach(mk => mk.setMap(m)); } };
+    _mvMarkers = allMarkers;
+
+    // Fit bounds
+    if (!allBounds.isEmpty()) _mvGoogleMap.fitBounds(allBounds);
+
+    // Google Maps link
+    const firstPt = allTrackedPts[0], lastPt = allTrackedPts[allTrackedPts.length-1];
+    document.getElementById('mv-gmaps-link').href =
+      `https://www.google.com/maps/dir/${firstPt.lat},${firstPt.lng}/${lastPt.lat},${lastPt.lng}`;
+
+    // ── Point count ───────────────────────────────────────────────────────
+    const verifiedSegs = segments.filter(s => s.type === 'verified');
+    const gapSegs      = segments.filter(s => s.type === 'gap');
+    document.getElementById('mv-pt-count').textContent =
+      `${allTrackedPts.length} tracked pts · ${verifiedSegs.length} segment${verifiedSegs.length!==1?'s':''} · ${gapSegs.length} gap${gapSegs.length!==1?'s':''}`;
+
+    // ── Timeline ──────────────────────────────────────────────────────────
+    buildTimeline(segments);
+
+  } catch(e) {
+    console.error('[loadMovementDetail]', e);
+    document.getElementById('mv-stats-bar').innerHTML = `<span style="color:#ef4444">Error: ${e.message}</span>`;
+  }
+}
+
+// ── Build point tooltip HTML ──────────────────────────────────────────────────
+function buildPointTooltip(pt, type) {
+  const typeLabel = type === 'verified'
+    ? '<span style="color:#2563eb;font-weight:700">✅ Verified</span>'
+    : '<span style="color:#f97316;font-weight:700">⏸ Gap</span>';
+  return `<div style="font-family:'DM Sans',sans-serif;padding:4px;min-width:160px">
+    <div style="font-weight:700;font-size:13px">${pt.time_label}</div>
+    ${typeLabel}
+    <div style="font-size:11px;color:#6b7280;margin-top:4px">${pt.lat.toFixed(6)}, ${pt.lng.toFixed(6)}</div>
+    ${pt.accuracy ? `<div style="font-size:11px;color:#6b7280">GPS ±${Math.round(pt.accuracy)}m</div>` : ''}
+    ${pt.battery  ? `<div style="font-size:11px;color:#6b7280">🔋 ${pt.battery}%</div>` : ''}
+  </div>`;
+}
+
+// ── S/E pin marker ────────────────────────────────────────────────────────────
+function makePinMarker(pt, label, color, tooltip) {
+  const el = document.createElement('div');
+  el.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="38" height="48" style="display:block;cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))">
+      <path d="M19 0C8.5 0 0 8.5 0 19C0 32 19 48 19 48C19 48 38 32 38 19C38 8.5 29.5 0 19 0Z"
+            fill="${color}" stroke="white" stroke-width="2.5"/>
+      <text x="19" y="23" text-anchor="middle" font-family="DM Sans,Arial,sans-serif"
+            font-size="12" font-weight="800" fill="white">${label}</text>
+    </svg>`;
+  el.style.cssText = 'transform:translateY(-48px)'; // anchor bottom of pin to coordinate
+
+  const m = new google.maps.marker.AdvancedMarkerElement({
+    position: { lat: pt.lat, lng: pt.lng }, map: _mvGoogleMap,
+    content: el, zIndex: 30,
+    title: `${label} — ${pt.time_label}`
+  });
+  m.addListener('click', () => {
+    _mvInfoWindow.setContent(`
+      <div style="font-family:'DM Sans',sans-serif;padding:4px 2px">
+        <div style="font-weight:800;font-size:14px;color:${color}">${label}</div>
+        <div style="font-size:12px;color:#374151;margin-top:3px">${tooltip}</div>
+        <div style="font-size:12px;font-weight:600;color:#374151;margin-top:3px">${pt.time_label}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px">${pt.lat.toFixed(6)}, ${pt.lng.toFixed(6)}</div>
+      </div>`);
+    _mvInfoWindow.open(_mvGoogleMap, m);
+  });
+  return m;
+}
+
+// ── NOW pulsing marker (live current position) ───────────────────────────────
+function makeNowMarker(pt) {
+  const el = document.createElement('div');
+  el.innerHTML = `
+    <div style="position:relative;width:48px;height:48px">
+      <div style="position:absolute;inset:0;border-radius:50%;background:rgba(220,38,38,0.25);animation:nowPulse 1.5s ease-out infinite"></div>
+      <div style="position:absolute;inset:8px;border-radius:50%;background:#dc2626;border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center">
+        <span style="color:white;font-size:9px;font-weight:800;font-family:DM Sans,Arial,sans-serif">NOW</span>
+      </div>
+    </div>`;
+  // Add pulse animation if not already added
+  if (!document.getElementById('now-pulse-style')) {
+    const style = document.createElement('style');
+    style.id = 'now-pulse-style';
+    style.textContent = '@keyframes nowPulse{0%{transform:scale(1);opacity:0.6}100%{transform:scale(2.2);opacity:0}}';
+    document.head.appendChild(style);
+  }
+  const m = new google.maps.marker.AdvancedMarkerElement({
+    position: { lat: pt.lat, lng: pt.lng }, map: _mvGoogleMap,
+    content: el, zIndex: 50,
+    title: `NOW — ${pt.time_label}`
+  });
+  return m;
+}
+
+// ── Orange gap label pill ─────────────────────────────────────────────────────
+function makeGapLabel(pos, label) {
+  const el = document.createElement('div');
+  el.style.cssText = `
+    background:#f97316;color:white;font-family:'DM Sans',Arial,sans-serif;
+    font-size:11px;font-weight:600;padding:4px 12px;border-radius:13px;
+    white-space:nowrap;cursor:default;opacity:0.95;
+    box-shadow:0 2px 6px rgba(0,0,0,.25);
+    transform:translate(-50%,-50%);
+  `;
+  el.textContent = label;
+  return new google.maps.marker.AdvancedMarkerElement({
+    position: pos, map: _mvGoogleMap, zIndex: 20,
+    content: el, title: label
+  });
+}
+
+// ── Road-snap a blue segment (Roads API) ──────────────────────────────────────
+async function roadSnapSegment(rawPath) {
+  if (rawPath.length < 2) return rawPath;
+  const MAX = 100, snapped = [];
+  for (let s = 0; s < rawPath.length; s += MAX) {
+    const chunk   = rawPath.slice(s, s + MAX);
+    const pathStr = chunk.map(p => `${p.lat},${p.lng}`).join('|');
+    try {
+      const r = await fetch(
+        `https://roads.googleapis.com/v1/snapToRoads?path=${pathStr}&interpolate=true&key=${MAPS_KEY}`
+      );
+      const d = await r.json();
+      if (d.snappedPoints?.length) {
+        d.snappedPoints.forEach(sp => snapped.push({ lat: sp.location.latitude, lng: sp.location.longitude }));
+      } else chunk.forEach(p => snapped.push(p));
+    } catch { chunk.forEach(p => snapped.push(p)); }
+  }
+  return snapped;
+}
+
+// ── Directions API for gap (bike route) ──────────────────────────────────────
+function fetchBikeRoute(from, to, seg) {
+  return new Promise(resolve => {
+    if (!google.maps.DirectionsService) { resolve(null); return; }
+    const svc = new google.maps.DirectionsService();
+    svc.route({
+      origin: new google.maps.LatLng(from.lat, from.lng),
+      destination: new google.maps.LatLng(to.lat, to.lng),
+      travelMode: google.maps.TravelMode.TWO_WHEELER,
+      provideRouteAlternatives: false
+    }, (result, status) => {
+      if (status === 'OK' && result.routes[0]) {
+        resolve(result.routes[0].overview_path.map(ll => ({ lat: ll.lat(), lng: ll.lng() })));
+      } else {
+        // Fallback: DRIVING
+        svc.route({
+          origin: new google.maps.LatLng(from.lat, from.lng),
+          destination: new google.maps.LatLng(to.lat, to.lng),
+          travelMode: google.maps.TravelMode.DRIVING
+        }, (r2, s2) => {
+          if (s2 === 'OK' && r2.routes[0]) {
+            resolve(r2.routes[0].overview_path.map(ll => ({ lat: ll.lat(), lng: ll.lng() })));
+          } else resolve(null);
+        });
+      }
+    });
+  });
+}
+
+// ── Timeline builder ──────────────────────────────────────────────────────────
+function buildTimeline(segments) {
+  let html = '';
+  for (const seg of segments) {
+    if (seg.type === 'verified') {
+      // Section header
+      html += `<div style="padding:8px 0 4px;font-weight:700;font-size:12px;color:#2563eb;border-bottom:2px solid #dbeafe;margin-top:8px">
+        🔵 ${seg.startLabel}→${seg.endLabel}  |  ${seg.start_time} – ${seg.end_time}  |  ${seg.km} km
+      </div>`;
+      // Points
+      seg.points.forEach((pt, idx) => {
+        const isFirst = idx === 0, isLast = idx === seg.points.length - 1;
+        const dotColor = isFirst ? '#16a34a' : isLast ? '#dc2626' : '#3b82f6';
+        const badge = isFirst
+          ? `<span style="background:#dcfce7;color:#16a34a;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700">${seg.startLabel}</span>`
+          : isLast
+          ? seg.is_live
+            ? `<span style="background:#fef2f2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700">📍 NOW</span>`
+            : `<span style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700">${seg.endLabel}</span>`
+          : '';
+        html += `<div style="display:flex;align-items:flex-start;padding:7px 0;gap:12px;cursor:pointer;border-bottom:1px solid #f9fafb"
+          onclick="panMapTo(${pt.lat},${pt.lng})">
+          <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding-top:3px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${dotColor};border:2px solid #fff;box-shadow:0 0 0 1.5px ${dotColor}"></div>
+            ${!isLast?'<div style="width:2px;flex:1;min-height:16px;background:#e5e7eb;margin:2px auto"></div>':''}
+          </div>
+          <div style="flex:1">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+              <span style="font-weight:600;font-size:13px">${pt.time_label}</span>${badge}
+            </div>
+            <div style="font-size:11px;color:#6b7280">${pt.lat.toFixed(6)}, ${pt.lng.toFixed(6)}
+              ${pt.accuracy ? ` · ±${Math.round(pt.accuracy)}m` : ''}
+              ${pt.battery  ? ` · 🔋${pt.battery}%` : ''}
+            </div>
+          </div>
+        </div>`;
+      });
+    } else if (seg.type === 'gap') {
+      html += `<div style="padding:8px 12px;margin:6px 0;background:#fff7ed;border-left:3px solid #f97316;border-radius:4px;font-size:12px;color:#c2410c">
+        ⏸ <strong>Tracking Gap</strong> <span style="font-size:11px;color:#92400e">(app closed / signal lost)</span> &nbsp;${seg.from.time_label} → ${seg.to.time_label}&nbsp;
+        <span style="background:#fed7aa;padding:1px 8px;border-radius:10px;font-weight:700">${seg.dur_label}</span>
+        <span style="color:#6b7280;margin-left:6px">~${seg.straight_km} km straight-line</span>
+      </div>`;
+    }
+  }
+  document.getElementById('mv-timeline').innerHTML = html || '<p style="color:#6b7280;font-size:13px;padding:8px">No data</p>';
+}
+
+// ── Pan map to point ──────────────────────────────────────────────────────────
+function panMapTo(lat, lng) {
+  if (!_mvGoogleMap) return;
+  _mvGoogleMap.panTo({ lat, lng });
+  _mvGoogleMap.setZoom(17);
+}
+
+// ── Export CSV ────────────────────────────────────────────────────────────────
+function exportMovementCSV() {
+  const data = window._mvSummaryData;
+  if (!data || !data.length) { toast('No data to export', 'error'); return; }
+  const csv = ['Employee,Code,Date,Points,Total KM',
+    ...data.map(r => `"${r.emp_name}",${r.employee_code},${r.date},${r.point_count},${r.total_km.toFixed(2)}`)
+  ].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = `movement_${document.getElementById('mv-from').value || 'data'}.csv`;
+  a.click();
+}
+</script>
+</body>
+</html>
+
