@@ -25,7 +25,7 @@ const CONFIG = {
   tagline:           "Servicing All Risks",
 
   // ── 🌐 Backend / API ───────────────────────────────────────────────────────
-  backendUrl:        "https://riskcarehr.onrender.com",
+  backendUrl:        'https://riskcarehrms.onrender.com',
   apiBasePath:       "/api",
 
   // ── 🖥️ Frontend / App URLs ─────────────────────────────────────────────────
