@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Provision Confirmation</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+.prov-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 22px;margin-bottom:12px;border-left:4px solid var(--yellow);transition:.15s}
+.prov-card:hover{border-color:var(--accent)}
+.prov-card.confirmed{border-left-color:var(--green)}
+.prov-card.rejected{border-left-color:var(--red)}
+.prov-card.manager_approved{border-left-color:#4361ee}
+.prov-card.overdue{border-left-color:#ef4444}
+.status-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.3px}
+.badge-pending{background:rgba(245,158,11,.15);color:#f59e0b}
+.badge-manager_approved{background:rgba(67,97,238,.15);color:#4361ee}
+.badge-confirmed{background:rgba(16,185,129,.15);color:#10b981}
+.badge-rejected{background:rgba(239,68,68,.15);color:#ef4444}
+.badge-not_initiated{background:rgba(107,114,128,.12);color:#6b7280}
+.badge-overdue{background:rgba(239,68,68,.12);color:#ef4444}
+.chain-step{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface2);border-radius:10px;margin-bottom:8px}
+.chain-level{width:36px;height:36px;border-radius:9px;background:rgba(67,97,238,.12);color:#4361ee;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;letter-spacing:.3px;text-align:center;line-height:1.2}
+.chain-level.approved{background:rgba(16,185,129,.15);color:#10b981}
+.chain-level.rejected{background:rgba(239,68,68,.15);color:#ef4444}
+.chain-level.pending{background:rgba(245,158,11,.15);color:#f59e0b}
+.leave-pill{display:inline-flex;flex-direction:column;align-items:center;padding:8px 16px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);min-width:64px}
+.leave-pill .lp-val{font-size:18px;font-weight:800;color:var(--accent)}
+.leave-pill .lp-lbl{font-size:10px;color:var(--muted);font-weight:600;margin-top:2px}
+.emp-avatar{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;flex-shrink:0}
+.info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 18px;margin:12px 0}
+.info-grid .ig-item{font-size:12px}
+.info-grid .ig-lbl{color:var(--muted);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.info-grid .ig-val{font-weight:600;color:var(--text)}
+.days-chip{display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700}
+.days-chip.ok{background:rgba(16,185,129,.12);color:#10b981}
+.days-chip.warn{background:rgba(245,158,11,.12);color:#f59e0b}
+.days-chip.overdue{background:rgba(239,68,68,.12);color:#ef4444}
+.action-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal-box{background:var(--surface);border-radius:20px;padding:28px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal-box h3{margin:0 0 18px;font-size:17px;font-weight:800}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.form-group textarea,.form-group input,.form-group select{width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;box-sizing:border-box}
+.form-group textarea:focus,.form-group input:focus{outline:none;border-color:var(--accent)}
+.modal-actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
+.summary-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.sum-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;text-align:center}
+.sum-card .sv{font-size:26px;font-weight:800;color:var(--accent)}
+.sum-card .sl{font-size:11px;color:var(--muted);font-weight:600;margin-top:2px}
+@media(max-width:600px){.info-grid{grid-template-columns:1fr 1fr}.summary-bar{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">⏳ Provision Confirmations</div>
+    </div>
+    <div class="topbar-right">
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+
+    <!-- Summary bar (HR/admin only) -->
+    <div class="summary-bar" id="summary-bar" style="display:none">
+      <div class="sum-card"><div class="sv" id="sum-total">—</div><div class="sl">Total Provision</div></div>
+      <div class="sum-card"><div class="sv" id="sum-overdue" style="color:#ef4444">—</div><div class="sl">Overdue / Ended</div></div>
+      <div class="sum-card"><div class="sv" id="sum-pending" style="color:#f59e0b">—</div><div class="sl">Awaiting Approval</div></div>
+      <div class="sum-card"><div class="sv" id="sum-confirmed" style="color:#10b981">—</div><div class="sl">Confirmed This Year</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-btn-provision" onclick="switchTab('provision')">👥 Provision Employees</button>
+      <button class="tab-btn" id="tab-btn-approvals" style="display:none" onclick="switchTab('approvals')">✅ My Approvals <span id="approval-count-badge" style="background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;display:none"></span></button>
+    </div>
+
+    <!-- Provision Employees Tab -->
+    <div id="tab-provision">
+      <div id="provision-list"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- My Approvals Tab (manager view) -->
+    <div id="tab-approvals" style="display:none">
+      <div id="approvals-list"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Initiate Modal -->
+<div class="modal-overlay" id="initiate-modal" style="display:none">
+  <div class="modal-box">
+    <h3>🚀 Initiate Confirmation</h3>
+    <p style="color:var(--muted);font-size:13px;margin:-10px 0 18px">Starting confirmation workflow for <b id="initiate-emp-name" style="color:var(--text)"></b>. Manager will be notified to review.</p>
+    <div class="form-group">
+      <label>Notes (optional)</label>
+      <textarea id="initiate-notes" rows="3" placeholder="Any remarks for the manager..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('initiate-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitInitiate()">🚀 Initiate</button>
+    </div>
+  </div>
+</div>
+
+<!-- Approve / Reject Modal -->
+<div class="modal-overlay" id="approve-modal" style="display:none">
+  <div class="modal-box">
+    <h3 id="approve-modal-title">✅ Approve Confirmation</h3>
+    <p style="color:var(--muted);font-size:13px;margin:-10px 0 18px">Employee: <b id="approve-emp-name" style="color:var(--text)"></b></p>
+    <div class="form-group">
+      <label>Remarks (optional)</label>
+      <textarea id="approve-remarks" rows="3" placeholder="Any remarks..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('approve-modal')">Cancel</button>
+      <button class="btn btn-danger" id="reject-btn-modal" onclick="submitApproval('reject')">✗ Reject</button>
+      <button class="btn btn-success" id="approve-btn-modal" onclick="submitApproval('approve')">✓ Approve</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+// ── Identity init ──────────────────────────────────────────────────────────
+(function(){
+  const C = window.CFG;
+  document.getElementById('page-title').textContent = C.clientName + ' - Provision Confirmation';
+  document.getElementById('sidebar-logo-text').innerHTML = C.logoHtml || C.clientName;
+  var cs2 = document.getElementById('sidebar-company-sub') || document.getElementById('sidebar-company-short'); if(cs2) cs2.textContent = C.companyShortName || '';
+})();
+const API = window.API_BASE || '';
+let currentUser = null;
+let activeTab = 'provision';
+let selectedEmpId = null;
+let allProvision = [];
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  Auth.guard();
+  loadNotifBadge();
+buildSidebar('provision.html');
+  loadNotifBadge();
+  currentUser = Auth.getUser();
+
+  const isHR    = ['hr','admin','super_admin'].includes(currentUser.role);
+  const isMgr   = ['manager','tl'].includes(currentUser.role);
+
+  if (isHR) {
+    document.getElementById('summary-bar').style.display = 'grid';
+  }
+  if (isMgr || isHR) {
+    document.getElementById('tab-btn-approvals').style.display = '';
+  }
+
+  await loadProvisionList();
+});
+
+// ── Tab switch ────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('tab-provision').style.display  = tab === 'provision'  ? '' : 'none';
+  document.getElementById('tab-approvals').style.display  = tab === 'approvals'  ? '' : 'none';
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-btn-' + tab)?.classList.add('active');
+  if (tab === 'approvals') loadApprovals();
+}
+
+// ── Load provision list ───────────────────────────────────────────────────────
+async function loadProvisionList() {
+  document.getElementById('provision-list').innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  let data;
+  try { data = await api('GET', '/provision'); } catch(e) { data = null; }
+  if (!data || !data.success) {
+    document.getElementById('provision-list').innerHTML = `<div class="empty-state">⚠️ ${data?.message || 'Failed to load. Please refresh.'}</div>`;
+    return;
+  }
+  allProvision = data.data || [];
+  renderProvisionList(allProvision);
+  updateSummary(allProvision);
+}
+
+function updateSummary(list) {
+  const total     = list.length;
+  const overdue   = list.filter(e => e.days_remaining !== null && e.days_remaining <= 0 && e.overall_status !== 'confirmed').length;
+  const pending   = list.filter(e => ['pending','manager_approved'].includes(e.overall_status)).length;
+  const confirmed = list.filter(e => e.overall_status === 'confirmed').length;
+  document.getElementById('sum-total').textContent     = total;
+  document.getElementById('sum-overdue').textContent   = overdue;
+  document.getElementById('sum-pending').textContent   = pending;
+  document.getElementById('sum-confirmed').textContent = confirmed;
+}
+
+function renderProvisionList(list) {
+  const isHR  = currentUser.role === 'hr'; // Only actual HR can do HR approval step
+  const el    = document.getElementById('provision-list');
+  if (!list.length) {
+    el.innerHTML = '<div class="empty-state">🎉 No provision employees found</div>';
+    return;
+  }
+
+  el.innerHTML = list.map(emp => {
+    const initials  = ((emp.first_name?.[0] || '') + (emp.last_name?.[0] || '')).toUpperCase();
+    const status    = emp.overall_status || 'not_initiated';
+    const dr        = emp.days_remaining;
+    let daysHtml    = '';
+    if (dr !== null && dr !== undefined) {
+      if (dr > 30)      daysHtml = `<span class="days-chip ok">${dr}d left</span>`;
+      else if (dr > 0)  daysHtml = `<span class="days-chip warn">⚠ ${dr}d left</span>`;
+      else              daysHtml = `<span class="days-chip overdue">🔴 ${Math.abs(dr)}d overdue</span>`;
+    }
+
+    const statusBadge = statusBadgeHtml(status);
+
+    // Action buttons
+    let actions = '';
+    if (isHR && status === 'not_initiated') {
+      actions += `<button class="btn btn-primary btn-sm" onclick="openInitiate(${emp.id},'${emp.first_name} ${emp.last_name}')">🚀 Initiate</button>`;
+    }
+    if (isHR && status === 'manager_approved') {
+      actions += `<button class="btn btn-success btn-sm" onclick="openApprove(${emp.id},'${emp.first_name} ${emp.last_name}','hr')">✅ HR Approve</button>`;
+      actions += `<button class="btn btn-danger btn-sm" onclick="openApprove(${emp.id},'${emp.first_name} ${emp.last_name}','hr_reject')">✗ Reject</button>`;
+    }
+    if (['pending','manager_approved','confirmed','rejected'].includes(status)) {
+      actions += `<button class="btn btn-ghost btn-sm" onclick="openStatusModal(${emp.id})">📋 View Status</button>`;
+    }
+
+    const cardClass = (dr !== null && dr <= 0 && status !== 'confirmed') ? 'prov-card overdue' : `prov-card ${status}`;
+
+    return `
+    <div class="${cardClass}">
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <div class="emp-avatar" style="background:${avatarColor(emp.first_name)}">${initials}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+            <span style="font-weight:800;font-size:15px">${emp.first_name} ${emp.last_name}</span>
+            <span style="font-size:12px;color:var(--muted)">${emp.employee_code}</span>
+            ${statusBadge}
+            ${daysHtml}
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${emp.designation_title || ''} · ${emp.department_name || ''}</div>
+          <div class="info-grid">
+            <div class="ig-item"><div class="ig-lbl">Joining Date</div><div class="ig-val">${fmtDate(emp.joining_date)}</div></div>
+            <div class="ig-item"><div class="ig-lbl">Provision Ends</div><div class="ig-val">${fmtDate(emp.provision_end_date)}</div></div>
+            <div class="ig-item"><div class="ig-lbl">Reporting To</div><div class="ig-val">${emp.manager_name || '—'}</div></div>
+          </div>
+          <div class="action-row">${actions}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Load manager approvals ────────────────────────────────────────────────────
+async function loadApprovals() {
+  document.getElementById('approvals-list').innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  let data;
+  try { data = await api('GET', '/provision'); } catch(e) { data = null; }
+  if (!data || !data.success) {
+    document.getElementById('approvals-list').innerHTML = `<div class="empty-state">⚠️ ${data?.message || 'Failed to load.'}</div>`;
+    return;
+  }
+
+    const isMgr = ['manager','tl'].includes(currentUser.role);
+    const isHR  = ['hr','admin','super_admin'].includes(currentUser.role);
+
+    // Manager/TL sees: employees where status is 'pending' (their direct reports)
+    // Admin/super_admin who is the actual reporting_manager_id also sees 'pending' to approve as manager
+    // HR sees: 'manager_approved' (needs HR final approval)
+    let mine = data.data.filter(e => {
+      if (isMgr && !isHR) return e.overall_status === 'pending';
+      if (currentUser.role === 'hr') {
+        // HR sees items awaiting their approval
+        return e.overall_status === 'manager_approved';
+      }
+      if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
+        // Admin/super_admin can only approve as MANAGER if they are the reporting manager
+        const adminIsReportingMgr = e.reporting_manager_id === currentUser.id
+                                    && e.overall_status === 'pending';
+        return adminIsReportingMgr; // They CANNOT approve at HR step
+      }
+      return false;
+    });
+
+    const badge = document.getElementById('approval-count-badge');
+    if (mine.length) { badge.textContent = mine.length; badge.style.display = ''; }
+    else               badge.style.display = 'none';
+
+    const el = document.getElementById('approvals-list');
+    if (!mine.length) {
+      el.innerHTML = '<div class="empty-state">✅ No pending approvals</div>';
+      return;
+    }
+
+    el.innerHTML = mine.map(emp => {
+      const initials = ((emp.first_name?.[0]||'') + (emp.last_name?.[0]||'')).toUpperCase();
+      const dr = emp.days_remaining;
+      let daysHtml = '';
+      if (dr !== null && dr !== undefined) {
+        if (dr > 0) daysHtml = `<span class="days-chip warn">⚠ ${dr}d left</span>`;
+        else        daysHtml = `<span class="days-chip overdue">🔴 ${Math.abs(dr)}d overdue</span>`;
+      }
+      const adminIsReportingMgr = (currentUser.role === 'admin' || currentUser.role === 'super_admin')
+                                   && emp.reporting_manager_id === currentUser.id
+                                   && emp.overall_status === 'pending';
+      const role = adminIsReportingMgr ? 'manager' : (currentUser.role === 'hr' ? 'hr' : 'manager');
+      return `
+      <div class="prov-card pending">
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div class="emp-avatar" style="background:${avatarColor(emp.first_name)}">${initials}</div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+              <span style="font-weight:800;font-size:15px">${emp.first_name} ${emp.last_name}</span>
+              <span style="font-size:12px;color:var(--muted)">${emp.employee_code}</span>
+              ${daysHtml}
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${emp.designation_title||''} · ${emp.department_name||''}</div>
+            <div class="info-grid">
+              <div class="ig-item"><div class="ig-lbl">Joining Date</div><div class="ig-val">${fmtDate(emp.joining_date)}</div></div>
+              <div class="ig-item"><div class="ig-lbl">Provision Ends</div><div class="ig-val">${fmtDate(emp.provision_end_date)}</div></div>
+              <div class="ig-item"><div class="ig-lbl">Reporting To</div><div class="ig-val">${emp.manager_name||'—'}</div></div>
+            </div>
+            <div class="action-row">
+              <button class="btn btn-success btn-sm" onclick="openApprove(${emp.id},'${emp.first_name} ${emp.last_name}','${role}')">✅ Approve</button>
+              <button class="btn btn-danger btn-sm" onclick="openApprove(${emp.id},'${emp.first_name} ${emp.last_name}','${role}_reject')">✗ Reject</button>
+              <button class="btn btn-ghost btn-sm" onclick="openStatusModal(${emp.id})">📋 View Status</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+}
+
+// ── Initiate Modal ────────────────────────────────────────────────────────────
+function openInitiate(empId, empName) {
+  selectedEmpId = empId;
+  document.getElementById('initiate-emp-name').textContent = empName;
+  document.getElementById('initiate-notes').value = '';
+  document.getElementById('initiate-modal').style.display = 'flex';
+}
+
+async function submitInitiate() {
+  const notes = document.getElementById('initiate-notes').value.trim();
+  let data;
+  try { data = await api('POST', `/provision/${selectedEmpId}/initiate`, { notes }); } catch(e) { data = null; }
+  if (!data || !data.success) { toast(data?.message || 'Failed to initiate.', 'error'); return; }
+  closeModal('initiate-modal');
+  toast(data.message || 'Confirmation initiated!');
+  loadProvisionList();
+}
+
+// ── Approve / Reject Modal ────────────────────────────────────────────────────
+let approvalAction = 'approve';
+
+function openApprove(empId, empName, mode) {
+  selectedEmpId   = empId;
+  approvalAction  = mode.includes('reject') ? 'reject' : 'approve';
+  const isReject  = approvalAction === 'reject';
+  document.getElementById('approve-modal-title').textContent = isReject ? '✗ Reject Confirmation' : '✅ Approve Confirmation';
+  document.getElementById('approve-emp-name').textContent    = empName;
+  document.getElementById('approve-remarks').value           = '';
+  document.getElementById('approve-btn-modal').style.display = isReject ? 'none' : '';
+  document.getElementById('reject-btn-modal').style.display  = isReject ? '' : '';
+  document.getElementById('approve-modal').style.display     = 'flex';
+}
+
+async function submitApproval(action) {
+  const remarks = document.getElementById('approve-remarks').value.trim();
+  let data;
+  try { data = await api('POST', `/provision/${selectedEmpId}/approve`, { action, remarks }); } catch(e) { data = null; }
+  if (!data || !data.success) { toast(data?.message || 'Action failed.', 'error'); return; }
+  closeModal('approve-modal');
+  toast(data.message || 'Done!');
+  loadProvisionList();
+  if (activeTab === 'approvals') loadApprovals();
+}
+
+// ── Status Modal (read-only workflow view) ────────────────────────────────────
+async function openStatusModal(empId) {
+  let data;
+  try { data = await api('GET', `/provision/${empId}/status`); } catch(e) { data = null; }
+  if (!data || !data.success) { toast(data?.message || 'Failed to load status.', 'error'); return; }
+  const d = data.data;
+
+    const steps = [
+      { label: 'HR', sublabel: 'Initiated',  status: d.initiated_at  ? 'approved' : 'pending', date: d.initiated_at,      name: '' },
+      { label: 'MGR', sublabel: 'Manager',   status: d.manager_status || 'pending',             date: d.manager_approved_at, name: d.manager_name || '' },
+      { label: 'HR',  sublabel: 'HR Final',  status: d.hr_status     || 'pending',              date: d.hr_approved_at,      name: d.hr_name || '' },
+    ];
+
+    const stepsHtml = steps.map(s => `
+      <div class="chain-step">
+        <div class="chain-level ${s.status}">${s.label}</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:13px">${s.sublabel}</div>
+          <div style="font-size:12px;color:var(--muted)">${s.name ? s.name + ' · ' : ''}${s.date ? fmtDate(s.date) : '—'}</div>
+        </div>
+        <span class="status-badge badge-${s.status}">${s.status.toUpperCase()}</span>
+      </div>`).join('');
+
+    // Prorated leaves if confirmed
+    let leavesHtml = '';
+    if (d.overall_status === 'confirmed' && d.confirmed_date) {
+      const cd  = new Date(d.confirmed_date);
+      const yr  = cd.getFullYear(), mo = cd.getMonth()+1;
+      const total = new Date(yr, mo, 0).getDate();
+      const rem   = total - cd.getDate() + 1;
+      const frac  = rem / total;
+      const el    = (1.5 * frac).toFixed(2);
+      const sl    = (0.5 * frac).toFixed(2);
+      const cl    = (0.5 * frac).toFixed(2);
+      leavesHtml  = `
+        <div style="margin-top:16px">
+          <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Prorated Leaves Credited</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div class="leave-pill"><span class="lp-val">${el}</span><span class="lp-lbl">EL</span></div>
+            <div class="leave-pill"><span class="lp-val">${sl}</span><span class="lp-lbl">SL</span></div>
+            <div class="leave-pill"><span class="lp-val">${cl}</span><span class="lp-lbl">CL</span></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px">Confirmed on ${fmtDate(d.confirmed_date)} · ${rem}/${total} days in month</div>
+        </div>`;
+    }
+
+    const html = `
+      <div class="modal-overlay" id="status-modal" style="display:flex" onclick="if(event.target===this)closeModal('status-modal')">
+        <div class="modal-box" style="max-width:520px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h3 style="margin:0">📋 Confirmation Status</h3>
+            <button class="btn btn-ghost btn-sm" onclick="closeModal('status-modal')">✕</button>
+          </div>
+          <div style="margin-bottom:14px">
+            <div style="font-weight:800;font-size:16px">${d.first_name} ${d.last_name}</div>
+            <div style="font-size:12px;color:var(--muted)">${d.employee_code} · Joined ${fmtDate(d.joining_date)}</div>
+          </div>
+          <div style="margin-bottom:14px">${statusBadgeHtml(d.overall_status)}</div>
+          ${stepsHtml}
+          ${leavesHtml}
+          ${d.overall_status==='confirmed' ? `<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:12px 16px;margin-top:14px;font-size:13px;color:#10b981;font-weight:600">🎉 Employee is now Permanent from ${fmtDate(d.confirmed_date)}</div>` : ''}
+          <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('status-modal')">Close</button></div>
+        </div>
+      </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'none';
+  // Remove dynamically inserted modals
+  const sm = document.getElementById('status-modal');
+  if (sm) sm.remove();
+}
+
+function statusBadgeHtml(status) {
+  const map = {
+    'not_initiated':   ['badge-not_initiated','○ Not Initiated'],
+    'pending':         ['badge-pending','⏳ Pending Manager'],
+    'manager_approved':['badge-manager_approved','👍 Manager Approved'],
+    'confirmed':       ['badge-confirmed','✅ Confirmed'],
+    'rejected':        ['badge-rejected','✗ Rejected'],
+  };
+  const [cls, label] = map[status] || ['badge-not_initiated', status];
+  return `<span class="status-badge ${cls}">${label}</span>`;
+}
+
+function avatarColor(name) {
+  const colors = ['#4361ee','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899'];
+  let h = 0;
+  for (let i = 0; i < (name||'').length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return colors[Math.abs(h) % colors.length];
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString(window.CFG?.currencyLocale || 'en-IN', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+// toast() is global from app.js
+
+// Close modals on overlay click
+document.addEventListener('click', e => {
+  if (e.target.id === 'initiate-modal') closeModal('initiate-modal');
+  if (e.target.id === 'approve-modal')  closeModal('approve-modal');
+});
+</script>
+</body>
+</html>
