@@ -1,0 +1,2361 @@
+<!-- white-label: RiskCareHR -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Dashboard</title>
+<script src="config.js"></script>
+<script>
+(function(){
+  var C = window.CFG;
+  // Page title
+  var t = document.getElementById('page-title');
+  if(t) t.textContent = C.clientName + ' - ' + t.textContent;
+  // Sidebar logo text
+  var lt = document.getElementById('sidebar-logo-text');
+  if(lt) lt.innerHTML = C.logoHtml || C.clientName;
+  // Sidebar company short name
+  var cs = document.getElementById('sidebar-company-short');
+  if(cs) cs.textContent = C.companyShortName || '';
+  var ed = document.getElementById('sidebar-edition');
+  if(ed) ed.textContent = C.appEdition || '';
+})();
+</script>
+<script>document.querySelector("head").insertAdjacentHTML("beforeend",'<script src="https://maps.googleapis.com/maps/api/js?key='+window.CFG.googleMapsApiKey+'&libraries=geometry"><\/script>')</script>
+<!-- Font loaded dynamically by config.js -->
+<link rel="stylesheet" href="style.css">
+
+
+<style>
+  /* ── 2-Column Dashboard Grid ─────────────────────────────── */
+  .dash-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .dash-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── GK Upload Sidebar ───────────────────────────────────── */
+  #gk-sidebar-overlay {
+    display: none; position: fixed; inset: 0; z-index: 280;
+    background: rgba(26,46,10,.45); backdrop-filter: blur(4px);
+  }
+  #gk-sidebar {
+    position: fixed; top: 0; right: -460px; width: 440px; height: 100vh;
+    background: var(--surface); z-index: 290; box-shadow: var(--shadow-xl);
+    transition: right .3s cubic-bezier(.4,0,.2,1);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  #gk-sidebar.open { right: 0; }
+  .gk-sidebar-header {
+    padding: 20px 22px 16px;
+    background: linear-gradient(135deg, var(--cfg-primary), var(--cfg-accent));
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .gk-sidebar-body { flex: 1; overflow-y: auto; padding: 20px 22px; }
+  .gk-upload-zone {
+    border: 2px dashed var(--border2); border-radius: var(--radius);
+    padding: 32px 20px; text-align: center; cursor: pointer;
+    transition: all .2s; background: var(--surface2); margin-bottom: 18px;
+  }
+  .gk-upload-zone:hover { border-color: var(--accent); background: var(--accent-l); }
+  .gk-upload-zone.dragover { border-color: var(--accent); background: var(--accent-l); transform: scale(1.01); }
+  .format-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+  .format-table th { background: var(--surface2); padding: 6px 10px; text-align: left; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); }
+  .format-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); color: var(--text2); }
+  .format-table tr:last-child td { border-bottom: none; }
+  .upload-progress { display: none; margin-top: 14px; }
+  .upload-progress.show { display: block; }
+  .progress-bar-wrap { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; margin-top: 8px; }
+  .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; transition: width .3s; }
+
+  /* ── Thought card compact ────────────────────────────────── */
+  .thought-card {
+    background: linear-gradient(135deg, var(--cfg-primary) 0%, var(--cfg-accent) 60%, var(--cfg-light) 100%);
+    border-radius: var(--radius); padding: 18px 20px; margin-bottom: 16px;
+    position: relative; overflow: hidden;
+  }
+  .thought-card::after {
+    content: '"'; position: absolute; right: 14px; bottom: -10px;
+    font-size: 80px; color: rgba(255,255,255,.07); font-family: Georgia, serif; line-height: 1;
+  }
+
+  /* ── Leaderboard scroll ──────────────────────────────────── */
+  #gk-leaderboard-body::-webkit-scrollbar { width: 4px; }
+  #gk-leaderboard-body::-webkit-scrollbar-track { background: transparent; }
+  #gk-leaderboard-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  /* ── Team Today scroll ───────────────────────────────────── */
+  #team-today-list div::-webkit-scrollbar { width: 4px; }
+  #team-today-list div::-webkit-scrollbar-track { background: transparent; }
+  #team-today-list div::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  /* Auto-scroll wrap — hide native scrollbar, show fade mask */
+  #team-scroll-wrap { scrollbar-width: none; -ms-overflow-style: none; }
+  #team-scroll-wrap::-webkit-scrollbar { display: none; }
+  #team-scroll-wrap::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 40px;
+    background: linear-gradient(transparent, var(--surface));
+    pointer-events: none;
+    border-radius: 0 0 8px 8px;
+  }
+
+  /* ── Stats row 6-col ─────────────────────────────────────── */
+  .stats-row { display: grid; grid-template-columns: repeat(6,1fr); gap: 13px; margin-bottom: 20px; }
+  @media (max-width: 1100px) { .stats-row { grid-template-columns: repeat(3,1fr); } }
+
+  /* ── GK Modal animation ──────────────────────────────────── */
+  @keyframes gkModalIn {
+    from { opacity:0; transform: scale(.88) translateY(14px); }
+    to   { opacity:1; transform: scale(1)   translateY(0); }
+  }
+  .gk-opt-btn {
+    padding:10px 13px;border-radius:10px;border:1.5px solid var(--border);
+    background:var(--surface);cursor:pointer;font-size:13px;font-weight:500;
+    display:flex;align-items:center;gap:10px;transition:all .15s;text-align:left;width:100%;
+  }
+  .gk-opt-btn:hover:not(:disabled) { border-color:var(--accent);background:var(--accent-l);transform:translateX(3px); }
+  .gk-opt-btn:disabled { cursor:default; }
+  .gk-opt-label {
+    width:24px;height:24px;border-radius:7px;background:var(--accent-l);color:var(--accent);
+    display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;
+  }
+  @keyframes gkTimerPulse {
+    0%,100% { transform:scale(1); }
+    50%      { transform:scale(1.12); }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div>
+      <div class="logo-sub" id="sidebar-edition" style="display:none"></div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title" id="page-greeting">Good morning 👋</div>
+    </div>
+    <div class="topbar-right">
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications" onclick="openNotifications()">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+
+    <!-- PUNCH STATUS BAR -->
+    <div class="punch-bar state-not-punched" id="punch-bar">
+      <div class="flex gap-3" style="align-items:center">
+        <div id="punch-status-dot" class="punch-status-dot"></div>
+        <div>
+          <div id="punch-status-text" style="font-weight:700;font-size:14.5px;color:var(--text)">Loading…</div>
+          <div id="punch-time-text" class="text-muted mt-1" style="font-size:12.5px"></div>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-success btn-sm" id="punch-in-btn" onclick="openMapPunch('in')" style="display:none">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+          Punch In
+        </button>
+        <button class="btn btn-danger btn-sm" id="punch-out-btn" onclick="openMapPunch('out')" style="display:none">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="8" y1="8" x2="16" y2="16"/><line x1="16" y1="8" x2="8" y2="16"/></svg>
+          Punch Out
+        </button>
+      </div>
+    </div>
+
+    <!-- STATS ROW -->
+    <div class="stats-row" id="stats-row">
+      <div class="loader"><div class="spinner"></div></div>
+    </div>
+
+    <!-- 2-COLUMN GRID -->
+    <div class="dash-grid">
+
+      <!-- ══ LEFT COLUMN ═══════════════════════════════════ -->
+      <div class="dash-col-left">
+
+        <!-- Leave Balances -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-title-icon">◫</span>
+              Leave Balance — <span id="bal-year"></span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="location.href='leaves.html'">Apply →</button>
+          </div>
+          <div id="balance-cards"><div class="loader"><div class="spinner"></div></div></div>
+        </div>
+
+        <!-- Thought of the Day -->
+        <div class="thought-card" id="thought-card" style="margin-bottom:16px">
+          <div style="font-size:9.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:8px">💡 Thought of the Day</div>
+          <div id="thought-text" style="font-family:'DM Serif Display',serif;font-size:14px;line-height:1.7;color:#fff;margin-bottom:8px">Loading...</div>
+          <div id="thought-author" style="font-size:11px;color:rgba(255,255,255,.6);font-style:italic"></div>
+        </div>
+
+        <!-- Monthly GK Challenge -->
+        <div class="card" id="gk-card" style="margin-bottom:16px;display:none">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">🧠</span> Daily GK Question</div>
+            <span id="gk-month-lbl" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+          <div style="padding:14px 16px" id="gk-body"></div>
+        </div>
+
+        <!-- GK QUESTION MODAL OVERLAY -->
+        <div id="gk-modal-overlay" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);align-items:center;justify-content:center">
+          <div id="gk-modal" style="background:var(--surface);border-radius:18px;width:min(520px,94vw);box-shadow:0 24px 80px rgba(0,0,0,.35);overflow:hidden;animation:gkModalIn .28s cubic-bezier(.34,1.56,.64,1)">
+            <!-- Modal Header -->
+            <div style="background:linear-gradient(135deg,var(--cfg-primary),var(--cfg-accent) 70%,var(--cfg-light));padding:18px 22px 14px;display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-size:22px">🧠</span>
+                <div>
+                  <div style="color:#fff;font-weight:700;font-size:15px">Daily GK Question</div>
+                  <div style="color:rgba(255,255,255,.7);font-size:11px" id="gk-modal-date"></div>
+                </div>
+              </div>
+              <!-- Timer Ring -->
+              <div style="position:relative;width:54px;height:54px">
+                <svg width="54" height="54" viewBox="0 0 54 54" style="transform:rotate(-90deg)">
+                  <circle cx="27" cy="27" r="23" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="4"/>
+                  <circle id="gk-timer-ring" cx="27" cy="27" r="23" fill="none" stroke="#fff" stroke-width="4"
+                    stroke-dasharray="144.51" stroke-dashoffset="0" stroke-linecap="round"
+                    style="transition:stroke-dashoffset .9s linear,stroke .5s"/>
+                </svg>
+                <div id="gk-timer-num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:17px">30</div>
+              </div>
+            </div>
+            <!-- Question -->
+            <div style="padding:20px 22px 0">
+              <div id="gk-modal-question" style="font-size:14px;font-weight:600;color:var(--text);line-height:1.65;padding:13px 15px;background:var(--surface2);border-radius:11px;border-left:3px solid var(--accent);margin-bottom:14px"></div>
+              <!-- Options -->
+              <div id="gk-modal-opts" style="display:flex;flex-direction:column;gap:8px"></div>
+            </div>
+            <!-- Footer result -->
+            <div id="gk-modal-result" style="display:none;margin:14px 22px;padding:11px 14px;border-radius:10px;font-size:13px;font-weight:600"></div>
+            <div style="height:18px"></div>
+          </div>
+        </div>
+
+        <!-- GK Leaderboard -->
+        <div class="card" style="margin-bottom:16px" id="gk-leaderboard-card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">🏆</span> GK Leaderboard</div>
+          </div>
+          <!-- Period Tabs -->
+          <div style="display:flex;gap:6px;padding:8px 16px 0">
+            <button onclick="loadGKLeaderboard('month')" id="lb-tab-month"
+              style="flex:1;padding:6px 0;font-size:11px;font-weight:700;border-radius:8px;border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .2s">
+              📅 Monthly
+            </button>
+            <button onclick="loadGKLeaderboard('year')" id="lb-tab-year"
+              style="flex:1;padding:6px 0;font-size:11px;font-weight:700;border-radius:8px;border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .2s">
+              📆 Yearly
+            </button>
+            <button onclick="loadGKLeaderboard('all')" id="lb-tab-all"
+              style="flex:1;padding:6px 0;font-size:11px;font-weight:700;border-radius:8px;border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .2s">
+              🏅 All Time
+            </button>
+          </div>
+          <div style="padding:10px 16px"><div id="gk-leaderboard-body" style="max-height:320px;overflow-y:auto;padding-right:4px"><div class="loader"><div class="spinner"></div></div></div></div>
+        </div>
+
+        <!-- Upcoming Holidays -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-title-icon">📅</span>
+              Holidays 2026
+            </div>
+            <span id="holiday-count-badge" style="font-size:11px;background:#f0fdf4;color:#15803d;padding:2px 8px;border-radius:20px;font-weight:700"></span>
+          </div>
+          <div style="display:inline-flex;margin:0 16px 12px;border:1.5px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+            <button id="hol-btn-upcoming" onclick="toggleHolidayView('upcoming')" style="padding:6px 18px;border:none;border-right:1.5px solid #e2e8f0;font-size:12px;font-weight:600;cursor:pointer;background:var(--cfg-accent);color:#fff;">Upcoming</button>
+            <button id="hol-btn-all" onclick="toggleHolidayView('all')" style="padding:6px 18px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:#f8fafc;color:#1e293b;">All</button>
+          </div>
+          <div id="holidays-list"><div class="loader"><div class="spinner"></div></div></div>
+        </div>
+
+        <!-- GK Upload trigger (admin/hr only) -->
+        <div id="gk-import-trigger" style="display:none;margin-bottom:16px">
+          <button class="btn btn-outline btn-sm" style="width:100%;justify-content:center;gap:8px;padding:10px;font-size:12px;color:var(--muted);border-style:dashed" onclick="openGKSidebar()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload GK & Daily Thoughts Excel
+          </button>
+        </div>
+
+      </div>
+
+      <!-- ══ RIGHT COLUMN ═══════════════════════════════════ -->
+      <div class="dash-col-right">
+
+        <!-- Team Today (manager+) -->
+        <div class="card" id="team-card" style="display:none;margin-bottom:16px">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">👥</span> Team Today</div>
+            <button class="btn btn-outline btn-sm" onclick="location.href='attendance.html'">Full View →</button>
+          </div>
+          <div id="team-summary"></div>
+          <div id="team-today-list" style="margin-top:12px"></div>
+        </div>
+
+        <!-- Pending Approvals (manager+) -->
+        <div class="card" id="approvals-card" style="display:none;margin-bottom:16px">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">✅</span> Pending Approvals</div>
+            <button class="btn btn-outline btn-sm" onclick="location.href='leaves.html#approvals'">View All →</button>
+          </div>
+          <div id="pending-list"><div class="loader"><div class="spinner"></div></div></div>
+        </div>
+
+        <!-- Upcoming Birthdays -->
+        <div id="birthdays-card" style="display:none;margin-bottom:16px;border-radius:18px;overflow:hidden;border:0.5px solid rgba(46,125,50,0.2);background:var(--surface);">
+          <div style="position:relative;background:linear-gradient(135deg,var(--cfg-primary),var(--cfg-accent),var(--cfg-light));padding:16px 20px;overflow:hidden;">
+            <svg style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0.15" viewBox="0 0 400 72" preserveAspectRatio="none">
+              <circle cx="20" cy="14" r="4" fill="#fff"/><circle cx="60" cy="8" r="3" fill="#ffd700"/>
+              <circle cx="105" cy="20" r="5" fill="#fff"/><circle cx="160" cy="6" r="3" fill="#ffd700"/>
+              <circle cx="200" cy="16" r="4" fill="#fff"/><circle cx="250" cy="9" r="3" fill="#ffd700"/>
+              <circle cx="300" cy="18" r="5" fill="#fff"/><circle cx="350" cy="7" r="3" fill="#ffd700"/>
+              <rect x="38" y="32" width="7" height="7" rx="2" fill="#fff" transform="rotate(30 38 32)"/>
+              <rect x="130" y="38" width="6" height="6" rx="2" fill="#ffd700" transform="rotate(45 130 38)"/>
+              <rect x="220" y="35" width="7" height="7" rx="2" fill="#fff" transform="rotate(20 220 35)"/>
+            </svg>
+            <div style="position:relative;z-index:1;display:flex;align-items:center;gap:12px;">
+              <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;font-size:18px;">🎂</div>
+              <div>
+                <div style="color:#fff;font-weight:600;font-size:15px;">Upcoming Birthdays</div>
+                <div style="color:rgba(255,255,255,0.78);font-size:11px;">Wishing our team members</div>
+              </div>
+            </div>
+          </div>
+          <div id="birthdays-list" style="padding:12px;"></div>
+        </div>
+
+        <!-- Work Anniversaries -->
+        <div id="anniversaries-card" style="display:none;margin-bottom:16px;border-radius:18px;overflow:hidden;border:0.5px solid rgba(46,125,50,0.2);background:var(--surface);">
+          <div style="position:relative;background:linear-gradient(135deg,var(--cfg-primary),var(--cfg-accent),var(--cfg-light));padding:16px 20px;overflow:hidden;">
+            <svg style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0.15" viewBox="0 0 400 72" preserveAspectRatio="none">
+              <circle cx="20" cy="14" r="4" fill="#fff"/><circle cx="60" cy="8" r="3" fill="#ffd700"/>
+              <circle cx="105" cy="20" r="5" fill="#fff"/><circle cx="160" cy="6" r="3" fill="#ffd700"/>
+              <circle cx="200" cy="16" r="4" fill="#fff"/><circle cx="250" cy="9" r="3" fill="#ffd700"/>
+              <circle cx="300" cy="18" r="5" fill="#fff"/><circle cx="350" cy="7" r="3" fill="#ffd700"/>
+              <rect x="38" y="32" width="7" height="7" rx="2" fill="#fff" transform="rotate(30 38 32)"/>
+              <rect x="130" y="38" width="6" height="6" rx="2" fill="#ffd700" transform="rotate(45 130 38)"/>
+              <rect x="220" y="35" width="7" height="7" rx="2" fill="#fff" transform="rotate(20 220 35)"/>
+            </svg>
+            <div style="position:relative;z-index:1;display:flex;align-items:center;gap:12px;">
+              <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;font-size:18px;">🎉</div>
+              <div>
+                <div style="color:#fff;font-weight:600;font-size:15px;">Work Anniversaries</div>
+                <div style="color:rgba(255,255,255,0.78);font-size:11px;">Celebrating milestones</div>
+              </div>
+            </div>
+          </div>
+          <div id="anniversaries-list" style="padding:12px;"></div>
+        </div>
+
+        <!-- Announcements -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header" style="flex-wrap:wrap;gap:8px">
+            <div class="card-title"><span class="card-title-icon">📢</span> Announcements</div>
+            <span id="announce-admin-btn"></span>
+          </div>
+          <div style="padding:10px 16px 0;" id="ann-filter-tabs">
+            <div style="display:inline-flex;border:1.5px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+              <button onclick="filterDashAnn('all',this)" style="padding:6px 16px;border:none;border-right:1.5px solid #e2e8f0;font-size:12px;font-weight:600;cursor:pointer;background:var(--cfg-accent);color:#fff;">All</button>
+              <button onclick="filterDashAnn('general',this)" style="padding:6px 16px;border:none;border-right:1.5px solid #e2e8f0;font-size:12px;font-weight:600;cursor:pointer;background:#f8fafc;color:#1e293b;">General</button>
+              <button onclick="filterDashAnn('event',this)" style="padding:6px 16px;border:none;border-right:1.5px solid #e2e8f0;font-size:12px;font-weight:600;cursor:pointer;background:#f8fafc;color:#1e293b;">Events</button>
+              <button onclick="filterDashAnn('policy',this)" style="padding:6px 16px;border:none;border-right:1.5px solid #e2e8f0;font-size:12px;font-weight:600;cursor:pointer;background:#f8fafc;color:#1e293b;">Policy</button>
+              <button onclick="filterDashAnn('urgent',this)" style="padding:6px 16px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:#f8fafc;color:#1e293b;">Urgent</button>
+            </div>
+          </div>
+          <div id="announcements-list" style="padding:0 14px 8px"><div class="loader"><div class="spinner"></div></div></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAP PUNCH MODAL (ported from attendance.html)
+     ═══════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="map-punch-backdrop">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="map-modal-title">📍 Punch In — Verify Location</div>
+      <button class="modal-close" onclick="document.getElementById('map-punch-backdrop').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="map-status loading" id="map-status">📡 Getting your location…</div>
+      <div id="punch-map" style="width:100%;height:420px;border-radius:12px;border:1.5px solid var(--border);margin:12px 0 8px"></div>
+      <div class="map-acc" id="map-acc"></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">🟢 Green circle = office buffer zone &nbsp;|&nbsp; 🔵 Blue dot = your location</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="document.getElementById('map-punch-backdrop').classList.remove('open')">Cancel</button>
+      <button class="btn btn-primary" id="confirm-punch-btn" onclick="confirmPunch()" disabled>Confirm Punch</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     GK UPLOAD SIDEBAR
+     ═══════════════════════════════════════════════════════════ -->
+<div id="gk-sidebar-overlay" onclick="closeGKSidebar()"></div>
+<div id="gk-sidebar">
+  <div class="gk-sidebar-header">
+    <div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:4px">Admin Tool</div>
+      <div style="font-size:16px;font-weight:700;color:#fff">📚 GK & Daily Thoughts</div>
+    </div>
+    <button onclick="closeGKSidebar()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">✕</button>
+  </div>
+  <div class="gk-sidebar-body">
+
+    <p style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6">
+      Upload your Excel files to populate <strong>daily thoughts</strong> and <strong>daily GK questions</strong> for all employees. Use the <a href="gk.html" style="color:#fff;text-decoration:underline">GK & Engagement</a> page for full import.
+    </p>
+
+    <!-- Drop Zone -->
+    <div class="gk-upload-zone" id="gk-drop-zone"
+         onclick="document.getElementById('gk-file-input').click()"
+         ondragover="event.preventDefault();this.classList.add('dragover')"
+         ondragleave="this.classList.remove('dragover')"
+         ondrop="handleGKDrop(event)">
+      <div style="font-size:32px;margin-bottom:10px">📊</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Drop Excel file here</div>
+      <div style="font-size:12px;color:var(--muted)">or click to browse · .xlsx / .xls</div>
+      <input type="file" id="gk-file-input" accept=".xlsx,.xls" style="display:none" onchange="uploadGKFile(this)">
+    </div>
+
+    <!-- Progress -->
+    <div class="upload-progress" id="gk-progress">
+      <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600">
+        <span id="gk-progress-label">Uploading…</span>
+        <span id="gk-progress-pct"></span>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="gk-progress-bar" style="width:0%"></div></div>
+    </div>
+
+    <!-- Status message -->
+    <div id="gk-upload-status" style="font-size:13px;margin-top:10px;min-height:20px"></div>
+
+    <div style="margin: 20px 0 10px; border-top: 1px solid var(--border); padding-top: 18px;">
+      <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Expected File Format</div>
+      <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--muted);font-family:monospace">
+        4_thoughts_of_day_and_gk_2026.xlsx
+      </div>
+      <table class="format-table">
+        <thead><tr><th>Column</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>day_number</code></td><td>1–365 day of year</td></tr>
+          <tr><td><code>thought_content</code></td><td>The thought text</td></tr>
+          <tr><td><code>author</code></td><td>Author name</td></tr>
+          <tr><td><code>gk_month</code></td><td>Month number (1–12)</td></tr>
+          <tr><td><code>gk_question</code></td><td>Question text</td></tr>
+          <tr><td><code>opt_a / opt_b / opt_c / opt_d</code></td><td>Answer options</td></tr>
+          <tr><td><code>correct_answer</code></td><td>A, B, C, or D</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:16px;background:var(--yellow-l);border-radius:var(--radius-sm);padding:10px 13px;border-left:3px solid var(--yellow)">
+      <div style="font-size:11px;font-weight:700;color:var(--yellow-d);margin-bottom:3px">⚠ Note</div>
+      <div style="font-size:12px;color:#92400e;line-height:1.5">Uploading will replace existing thoughts and GK questions. Make sure the file is complete before uploading.</div>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATIONS PANEL -->
+<div id="notif-overlay" style="display:none;position:fixed;inset:0;z-index:190" onclick="closeNotifications()"></div>
+<div id="notif-panel">
+  <div class="flex-between" style="margin-bottom:20px">
+    <div class="card-title">Notifications</div>
+    <div class="flex gap-2">
+      <button class="btn btn-ghost btn-sm" onclick="markAllRead()">Mark all read</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeNotifications()" style="padding:6px 8px">✕</button>
+    </div>
+  </div>
+  <div id="notif-list"></div>
+</div>
+
+<!-- ADD ANNOUNCEMENT MODAL -->
+<div class="modal-backdrop" id="announce-modal">
+  <div class="modal" style="width:480px">
+    <div class="modal-header">
+      <div class="modal-title">Post Announcement</div>
+      <button class="modal-close" onclick="closeModal('announce-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Title</label>
+        <input id="ann-title" class="form-control" placeholder="Announcement title">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Content</label>
+        <textarea id="ann-content" class="form-control" rows="4" placeholder="Write your announcement…"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select id="ann-type" class="form-control">
+            <option value="general">General</option>
+            <option value="hr">HR</option>
+            <option value="policy">Policy</option>
+            <option value="event">Event</option>
+            <option value="urgent">🚨 Urgent</option>
+            <option value="achievement">🏆 Achievement</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Expires On</label>
+          <input id="ann-expires" class="form-control" type="date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Image / Poster (optional)</label>
+        <input id="ann-image" class="form-control" type="file" accept="image/*" onchange="previewAnnImage(this,'ann-img-preview')">
+        <img id="ann-img-preview" src="" alt="" style="display:none;width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-top:8px;">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('announce-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="postAnnouncement()">Post Announcement</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+  <script src="app.js"></script>
+<script>
+Auth.guardDashboard();
+buildSidebar('dashboard.html');
+
+const user  = Auth.getUser();
+const today = new Date();
+const hour  = today.getHours();
+document.getElementById('page-greeting').textContent =
+  (hour<12?'Good morning':hour<17?'Good afternoon':'Good evening') + `, ${user.first_name} 👋`;
+document.getElementById('bal-year').textContent = today.getFullYear();
+
+if (Role.isAdminOrHR()) {
+  document.getElementById('announce-admin-btn').innerHTML =
+    `<button class="btn btn-primary btn-sm" onclick="openModal('announce-modal')">+ Post</button>`;
+}
+
+// Show GK upload trigger for admin/super_admin/hr
+if (['admin','super_admin','hr'].includes(user?.role)) {
+  document.getElementById('gk-import-trigger').style.display = '';
+}
+
+loadDashboard();
+loadNotifBadge();
+setInterval(loadNotifBadge, 30000);
+
+async function loadDashboard() {
+  const [dash, balance, compoff, holidays, feed, birthdays, anniversaries] = await Promise.all([
+    api('GET', '/dashboard'),
+    api('GET', '/leave/balance'),
+    api('GET', '/compoff/balance').catch(() => null),
+    api('GET', '/holidays?year=' + today.getFullYear()),
+    api('GET', '/announcements/feed'),
+    api('GET', '/birthdays/upcoming'),
+    api('GET', '/anniversaries/upcoming'),
+  ]);
+
+  // Punch bar — always render something (never leave it as "Loading…")
+  if (dash?.success) {
+    renderDash(dash.data);
+  } else {
+    // API failed / server cold-starting — show a recoverable error state
+    document.getElementById('punch-bar').className = 'punch-bar state-not-punched';
+    document.getElementById('punch-status-text').textContent = 'Unable to load — tap to retry';
+    document.getElementById('punch-time-text').textContent = dash?.message || 'Server may be starting up, please wait a moment';
+    document.getElementById('stats-row').innerHTML =
+      `<div style="grid-column:1/-1;text-align:center;padding:18px;color:var(--muted);font-size:13px">
+        ⚠ Could not load stats — <a href="javascript:loadDashboard()" style="color:var(--accent);font-weight:600">Retry</a>
+      </div>`;
+  }
+
+  // Leave balance — clear spinner if API failed
+  if (balance?.success) {
+    renderBalance(balance.data, compoff?.data || null);
+  } else {
+    document.getElementById('balance-cards').innerHTML =
+      `<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center">
+        Could not load balances. <a href="javascript:loadDashboard()" style="color:var(--accent)">Retry</a>
+      </div>`;
+  }
+
+  if (holidays?.success)      renderHolidays(holidays.data);
+  else document.getElementById('holidays-list').innerHTML =
+    `<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center">Could not load holidays.</div>`;
+
+  if (birthdays?.success)      renderBirthdays(birthdays.data || []);
+  if (anniversaries?.success)  renderAnniversaries(anniversaries.data || []);
+
+  if (feed?.success) {
+    const { announcements } = feed.data;
+    _dashAnnAll = announcements || [];
+    renderAnnouncements(_dashAnnAll);
+  } else {
+    const ann = await api('GET', '/announcements');
+    if (ann?.success) {
+      _dashAnnAll = ann.data;
+      renderAnnouncements(_dashAnnAll);
+    } else {
+      document.getElementById('announcements-list').innerHTML =
+        `<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center">Could not load announcements.</div>`;
+    }
+  }
+
+  // New daily thought + daily GK
+  const todayStr = today.toISOString().split('T')[0];
+  const [thoughtRes, gkRes] = await Promise.all([
+    api('GET', `/gk/thought?date=${todayStr}`),
+    api('GET', `/gk/question?date=${todayStr}`)
+  ]);
+  renderThoughtOfDay(thoughtRes?.data || null);
+  renderGKQuestion(gkRes?.data || null);
+  loadGKLeaderboard();
+
+  if (Role.isManagerUp() || Role.is('tl')) {
+    document.getElementById('team-card').style.display      = '';
+    document.getElementById('approvals-card').style.display = '';
+    loadTeamToday();
+    loadPendingApprovals();
+  }
+}
+
+function renderDash(d) {
+  const att     = d.today_attendance;
+  const bar     = document.getElementById('punch-bar');
+  const dot     = document.getElementById('punch-status-dot');
+  const txt     = document.getElementById('punch-status-text');
+  const timetxt = document.getElementById('punch-time-text');
+  const inBtn   = document.getElementById('punch-in-btn');
+  const outBtn  = document.getElementById('punch-out-btn');
+
+  if (!att || !att.punch_in) {
+    bar.className = 'punch-bar state-not-punched';
+    dot.className = 'punch-status-dot';
+    txt.textContent = 'Not punched in today';
+    timetxt.textContent = 'Tap Punch In to mark your attendance';
+    inBtn.style.display = 'flex';
+  } else if (att.punch_in && !att.punch_out) {
+    bar.className = 'punch-bar state-working';
+    dot.className = 'punch-status-dot active';
+    txt.textContent = 'Currently working 🟠';
+    timetxt.textContent = `Punched in at ${fmt.time(att.punch_in)}`;
+    outBtn.style.display = 'flex';
+  } else {
+    // FIX: compute hours from punch times if working_hours is null/NaN
+    let hrs = parseFloat(att.working_hours);
+    if (isNaN(hrs) || hrs <= 0) {
+      // Calculate from punch_in / punch_out strings e.g. "07:29:00" → "07:40:00"
+      try {
+        const [inH, inM]   = String(att.punch_in).slice(0,5).split(':').map(Number);
+        const [outH, outM] = String(att.punch_out).slice(0,5).split(':').map(Number);
+        hrs = (outH * 60 + outM - (inH * 60 + inM)) / 60;
+        if (isNaN(hrs) || hrs < 0) hrs = 0;
+      } catch(e) { hrs = 0; }
+    }
+    bar.className = 'punch-bar state-done';
+    dot.className = 'punch-status-dot done';
+    const workedMins = Math.round(hrs * 60);
+    const workedH = Math.floor(workedMins / 60);
+    const workedM = workedMins % 60;
+    txt.textContent = `Done for the day ✅ · ${workedH}h ${workedM}m worked`;
+    timetxt.textContent = `${fmt.time(att.punch_in)} → ${fmt.time(att.punch_out)}`;
+  }
+
+  const ms = d.monthly_summary || {};
+  const stats = [
+    { icon:'🕐', val: att?.punch_in  ? fmt.time(att.punch_in)  : '—', lbl:'Punch In',       cls:'blue'   },
+    { icon:'🕔', val: att?.punch_out ? fmt.time(att.punch_out) : '—', lbl:'Punch Out',      cls:'cyan'   },
+    { icon:'✓',  val: ms.present || 0,                                 lbl:'Days Present',   cls:'green'  },
+    { icon:'✗',  val: ms.absent  || 0,                                 lbl:'Days Absent',    cls:'red'    },
+    { icon:'◫',  val: d.pending_leave_approvals || 0,                  lbl:'Pending Leaves', cls:'yellow' },
+    { icon:'⏱',  val: parseFloat(ms.avg_hours||0) > 0 ? (()=>{ const totalM=Math.round(parseFloat(ms.avg_hours)*60); return `${Math.floor(totalM/60)}h ${totalM%60}m`; })() : '—', lbl:'Avg Hours / Day', cls:'purple' },
+  ];
+
+  document.getElementById('stats-row').innerHTML = stats.map(s=>`
+    <div class="stat-card ${s.cls}" style="padding:16px 14px">
+      <div class="stat-icon-wrap" style="width:34px;height:34px;font-size:15px;margin-bottom:10px">${s.icon}</div>
+      <div class="stat-val" style="font-size:20px;letter-spacing:-.5px">${s.val}</div>
+      <div class="stat-lbl" style="font-size:10.5px;margin-top:3px">${s.lbl}</div>
+    </div>`).join('');
+}
+
+function renderBalance(data, compoffData) {
+  const el = document.getElementById('balance-cards');
+  if (!data?.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:20px"><p>No leave balances found.</p></div>';
+    return;
+  }
+  const items = data.filter(b => ['EL','SL','CL'].includes(b.code));
+  const cards = items.map(b => {
+    const avail = parseFloat(b.available||0);
+    const alloc = parseFloat(b.allocated||0) + parseFloat(b.carry_forward||0);
+    const used  = parseFloat(b.used||0);
+    const pct   = alloc > 0 ? Math.max(0, Math.min(100, (used/alloc)*100)) : 0;
+    return `<div class="bal-card">
+      <div class="bal-code">${b.code}</div>
+      <div class="bal-val" style="font-size:30px;margin:4px 0 2px">${fmt.num(avail)}</div>
+      <div class="bal-meta" style="font-size:11px">${b.name}</div>
+      <div class="bal-bar" style="margin:8px 0 5px"><div class="bal-fill" style="width:${pct}%"></div></div>
+      <div class="bal-meta" style="font-size:10px">Used ${fmt.num(used)} / ${fmt.num(alloc)}</div>
+    </div>`;
+  });
+
+  // Append COMPOFF card — always show (use 0 values if API returned nothing)
+  const coAvail = parseFloat(compoffData?.available || 0);
+  const coTotal = parseFloat(compoffData?.total_credited || 0);
+  const coUsed  = parseFloat(compoffData?.used || 0);
+  const coPct   = coTotal > 0 ? Math.max(0, Math.min(100, (coUsed/coTotal)*100)) : 0;
+  const coColor = (window.CFG && window.CFG.primaryColor) ? window.CFG.primaryColor : '#ef4444';
+  cards.push(`<div class="bal-card" style="border-color:${coColor}">
+    <div class="bal-code" style="color:${coColor}">COMPOFF</div>
+    <div class="bal-val" style="font-size:30px;margin:4px 0 2px">${fmt.num(coAvail)}</div>
+    <div class="bal-meta" style="font-size:11px">Compensatory Off</div>
+    <div class="bal-bar" style="margin:8px 0 5px"><div class="bal-fill" style="width:${coPct}%;background:${coColor}"></div></div>
+    <div class="bal-meta" style="font-size:10px">Used ${fmt.num(coUsed)} / Earned: ${fmt.num(coTotal)}</div>
+  </div>`);
+
+  el.innerHTML = `<div class="bal-grid" style="padding:4px 0 0">${cards.join('')}</div>`;
+}
+
+let _allHolidayData = [];
+function toggleHolidayView(mode) {
+  const btnU = document.getElementById('hol-btn-upcoming');
+  const btnA = document.getElementById('hol-btn-all');
+  if (btnU) { btnU.style.background = mode==='upcoming'?window.CFG.accentColor:'#f8fafc'; btnU.style.color = mode==='upcoming'?'#fff':'#1e293b'; }
+  if (btnA) { btnA.style.background = mode==='all'?window.CFG.accentColor:'#f8fafc'; btnA.style.color = mode==='all'?'#fff':'#1e293b'; }
+  renderHolidayList(_allHolidayData, mode);
+}
+
+function renderHolidays(data) {
+  _allHolidayData = data || [];
+  const badge     = document.getElementById('holiday-count-badge');
+  const todayStr  = new Date().toISOString().split('T')[0];
+  const upcoming  = _allHolidayData.filter(h => h.date >= todayStr);
+  if (badge) badge.textContent = upcoming.length + ' remaining';
+  renderHolidayList(_allHolidayData, 'upcoming');
+}
+
+function renderHolidayList(data, mode) {
+  const el      = document.getElementById('holidays-list');
+  const todayStr = new Date().toISOString().split('T')[0];
+  const allHols  = (data||[]).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const filtered = mode === 'upcoming' ? allHols.filter(h => h.date >= todayStr) : allHols;
+
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div><p>No holidays found.</p></div>';
+    return;
+  }
+
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const typeColor  = {
+    'National':['#fff7ed','#c2410c'], 'national':['#fff7ed','#c2410c'],
+    'Regional':['#f0fdf4','#15803d'], 'regional':['#f0fdf4','#15803d'],
+    'Optional':['#ede9fe','#7c3aed'],
+  };
+
+  const byMonth = {};
+  filtered.forEach(h => {
+    const m = new Date(h.date+'T12:00:00').getMonth();
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(h);
+  });
+
+  let html = '<div style="max-height:320px;overflow-y:auto">';
+  Object.keys(byMonth).sort((a,b)=>a-b).forEach(m => {
+    html += `<div style="font-size:9px;font-weight:800;color:var(--muted2);text-transform:uppercase;letter-spacing:1.2px;padding:9px 16px 3px">${monthNames[m]}</div>`;
+    byMonth[m].forEach(h => {
+      const isPast  = h.date < todayStr;
+      const isToday = h.date === todayStr;
+      const d       = new Date(h.date + 'T12:00:00');
+      const dayNum  = d.getDate();
+      const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+      const [bg,col] = typeColor[h.type] || ['#f1f5f9','#64748b'];
+      const boxBg   = isToday ? '#16a34a' : isPast ? '#e5e7eb' : 'var(--surface2)';
+      const boxCol  = isToday ? '#fff' : isPast ? '#9ca3af' : 'var(--accent)';
+      html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 16px;${isPast?'opacity:.38;':''}${isToday?'background:#f0fdf4;border-left:3px solid #16a34a;':''}">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:40px;height:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:${boxBg};border-radius:8px;flex-shrink:0">
+            <span style="font-size:15px;font-weight:800;color:${boxCol};line-height:1">${dayNum}</span>
+            <span style="font-size:8px;font-weight:700;color:${isToday?'rgba(255,255,255,.75)':isPast?'#9ca3af':'var(--muted)'};text-transform:uppercase;letter-spacing:.4px">${dayName}</span>
+          </div>
+          <div>
+            <div style="font-size:12.5px;font-weight:${isPast?'400':'600'};color:${isPast?'#9ca3af':'var(--text)'}">${h.name}</div>
+            ${isToday?'<div style="font-size:10px;color:#16a34a;font-weight:700">Today</div>':''}
+          </div>
+        </div>
+        <span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:${bg};color:${col};white-space:nowrap;flex-shrink:0">${h.type||'Holiday'}</span>
+      </div>`;
+    });
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+let _dashAnnAll = [];
+function filterDashAnn(type, btn) {
+  document.querySelectorAll('#ann-filter-tabs button').forEach(b => {
+    b.style.background = '#f8fafc';
+    b.style.color = '#1e293b';
+  });
+  btn.style.background = window.CFG.accentColor;
+  btn.style.color = '#fff';
+  const filtered = type === 'all' ? _dashAnnAll : _dashAnnAll.filter(a => a.type === type);
+  renderAnnouncements(filtered);
+}
+
+function renderAnnouncements(data) {
+  const el = document.getElementById('announcements-list');
+  if (!data?.length) {
+    el.innerHTML = '<div style="text-align:center;padding:32px 16px;color:var(--muted)"><div style="font-size:36px;margin-bottom:8px">📢</div><p style="font-size:13px">No announcements yet</p></div>';
+    return;
+  }
+  _dashAnnAll = data.length > _dashAnnAll.length ? data : _dashAnnAll;
+  const TYPE_CLASSES = {general:'#E3F2FD:#1565C0',event:'#FFF3E0:#E65100',policy:'#F3E5F5:#6A1B9A',urgent:'#FFEBEE:#B71C1C',achievement:'#FFF8E1:#F57F17',hr:'#d1fae5:#059669'};
+  const canAdmin = ['admin','super_admin','hr','accounts'].includes(user?.role);
+  const myId = (() => { try { return JSON.parse(localStorage.getItem(window.CFG.userKey)||'null')?.id; } catch(e){ return null; } })();
+  el.innerHTML = data.map(a => {
+    const [bg,col] = (TYPE_CLASSES[a.type]||TYPE_CLASSES.general).split(':');
+    const typeLabel = (a.type||'general').toUpperCase().replace('_',' ');
+    return `
+    <div style="border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:14px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+      <div style="padding:16px 18px;">
+        <div style="display:flex;align-items:center;margin-bottom:12px;gap:8px;">
+          <div style="flex:1;height:1px;background:var(--border)"></div>
+          <span style="font-size:10px;font-weight:700;padding:3px 12px;border-radius:99px;background:${bg};color:${col};letter-spacing:0.5px;white-space:nowrap;">${typeLabel}</span>
+          <div style="flex:1;height:1px;background:var(--border)"></div>
+        </div>
+        <div style="font-size:16px;font-weight:700;color:var(--text);text-align:center;margin-bottom:4px;line-height:1.3">${a.title}</div>
+        ${a.content ? `<div style="font-size:13px;color:var(--muted);text-align:center;line-height:1.6;margin-bottom:10px;">${a.content}</div>` : ''}
+        ${a.image_url ? `<img src="${a.image_url}" style="width:100%;max-height:320px;object-fit:contain;border-radius:10px;margin-bottom:10px;display:block;" onerror="this.style.display='none'">` : ''}
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;padding-top:8px;border-top:1px solid var(--border);margin-bottom:8px;">
+          <div style="font-size:11px;color:var(--muted2)">By ${a.posted_by_name||'HR'} · ${fmt.ago(a.created_at)}</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            ${a.link_url ? `<a href="${a.link_url}" target="_blank" style="font-size:12px;color:#fff;font-weight:600;text-decoration:none;background:linear-gradient(135deg,var(--cfg-accent),var(--cfg-light));padding:5px 14px;border-radius:99px;">${a.link_label||'View'} →</a>` : ''}
+            ${(myId == a.posted_by || user?.role === 'super_admin') ? `<button onclick="deleteDashAnn(${a.id})" style="border:none;background:none;color:#dc2626;font-size:11px;cursor:pointer;padding:0">🗑 Delete</button>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="dash-like-btn-${a.id}" onclick="toggleDashAnnLike(${a.id})"
+            style="border:1px solid ${a.i_liked?'#fca5a5':'var(--border)'};border-radius:20px;padding:4px 12px;cursor:pointer;font-size:12px;
+                   background:${a.i_liked?'#fee2e2':'#f8fafc'};color:${a.i_liked?'#dc2626':'#64748b'};display:flex;align-items:center;gap:4px;">
+            ❤️ <span id="dash-like-count-${a.id}">${a.like_count||0}</span>
+          </button>
+          <button onclick="toggleDashComments(${a.id})"
+            style="border:1px solid var(--border);border-radius:20px;padding:4px 12px;cursor:pointer;font-size:12px;background:#f8fafc;color:#64748b;display:flex;align-items:center;gap:4px;">
+            💬 <span id="dash-comment-count-${a.id}">${a.comment_count||0}</span> Comments
+          </button>
+        </div>
+        <div id="dash-comments-${a.id}" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">
+          <div id="dash-comments-list-${a.id}" style="margin-bottom:8px;"></div>
+          <div style="display:flex;gap:8px;">
+            <input id="dash-comment-input-${a.id}" type="text" placeholder="Write a comment…"
+              style="flex:1;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;background:#fff;"
+              onkeydown="if(event.key==='Enter')submitDashComment(${a.id})">
+            <button onclick="submitDashComment(${a.id})"
+              style="background:var(--cfg-accent);color:#fff;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:12px;">Post</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function toggleDashAnnLike(annId) {
+  try {
+    const res  = await fetch(`${API_BASE}/announcements/${annId}/like`, { method:'POST', headers:{ 'Authorization':`Bearer ${localStorage.getItem(window.CFG.tokenKey)}`, 'Content-Type':'application/json' } });
+    const data = await res.json();
+    if (!data.success) return;
+    const liked = data.liked;
+    const btn   = document.getElementById(`dash-like-btn-${annId}`);
+    const count = document.getElementById(`dash-like-count-${annId}`);
+    if (btn) {
+      btn.style.background   = liked ? '#fee2e2' : '#f8fafc';
+      btn.style.color        = liked ? '#dc2626' : '#64748b';
+      btn.style.borderColor  = liked ? '#fca5a5' : 'var(--border)';
+    }
+    if (count) count.textContent = liked
+      ? parseInt(count.textContent||0) + 1
+      : Math.max(0, parseInt(count.textContent||0) - 1);
+  } catch(e) {}
+}
+
+async function toggleDashComments(annId) {
+  const section = document.getElementById(`dash-comments-${annId}`);
+  if (!section) return;
+  const isOpen = section.style.display !== 'none';
+  if (isOpen) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  await loadDashComments(annId);
+}
+
+async function loadDashComments(annId) {
+  const listEl = document.getElementById(`dash-comments-list-${annId}`);
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="color:#64748b;font-size:12px;">Loading…</div>';
+  try {
+    const res  = await fetch(`${API_BASE}/announcements/${annId}/comments`, { headers:{ 'Authorization':`Bearer ${localStorage.getItem(window.CFG.tokenKey)}` } });
+    const data = await res.json();
+    if (!data.success || !data.data.length) {
+      listEl.innerHTML = '<div style="color:#94a3b8;font-size:12px;padding:4px 0;">No comments yet.</div>';
+      return;
+    }
+    const myId = (() => { try { return JSON.parse(localStorage.getItem(window.CFG.userKey)||'null')?.id; } catch(e){ return null; } })();
+    listEl.innerHTML = data.data.map(c => `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);">
+        <div style="flex:1;">
+          <span style="font-weight:600;font-size:12px;color:var(--text);">${c.employee_name}</span>
+          <span style="font-size:10px;color:#94a3b8;margin-left:6px;">${new Date(c.created_at).toLocaleDateString(window.CFG.currencyLocale)}</span>
+          <div style="font-size:12px;color:#475569;margin-top:2px;">${c.comment}</div>
+        </div>
+        ${myId == c.employee_id ? `<button onclick="deleteDashComment(${annId},${c.id})" style="border:none;background:none;color:#94a3b8;cursor:pointer;font-size:18px;padding:0 4px;line-height:1;" title="Delete">×</button>` : ''}
+      </div>`).join('');
+  } catch(e) {}
+}
+
+async function deleteDashComment(annId, commentId) {
+  if (!confirm('Delete this comment?')) return;
+  try {
+    const res  = await fetch(`${API_BASE}/announcements/${annId}/comments/${commentId}`, {
+      method:'DELETE',
+      headers:{ 'Authorization':`Bearer ${localStorage.getItem(window.CFG.tokenKey)}` }
+    });
+    const data = await res.json();
+    if (data.success) {
+      await loadDashComments(annId);
+      const countEl = document.getElementById(`dash-comment-count-${annId}`);
+      if (countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent||'0') - 1);
+    }
+  } catch(e) {}
+}
+
+async function submitDashComment(annId) {
+  const input = document.getElementById(`dash-comment-input-${annId}`);
+  const text  = input?.value?.trim();
+  if (!text) return;
+  try {
+    const res  = await fetch(`${API_BASE}/announcements/${annId}/comments`, {
+      method:'POST',
+      headers:{ 'Authorization':`Bearer ${localStorage.getItem(window.CFG.tokenKey)}`, 'Content-Type':'application/json' },
+      body: JSON.stringify({ comment: text })
+    });
+    const data = await res.json();
+    if (data.success) {
+      input.value = '';
+      await loadDashComments(annId);
+      const countEl = document.getElementById(`dash-comment-count-${annId}`);
+      if (countEl) countEl.textContent = parseInt(countEl.textContent||'0') + 1;
+    }
+  } catch(e) {}
+}
+
+async function deleteDashAnn(annId) {
+  if (!confirm('Delete this announcement?')) return;
+  const res = await api('DELETE', `/announcements/${annId}`);
+  if (res?.success) { toast('Deleted ✅'); loadDashboard(); }
+  else toast(res?.message||'Failed','error');
+}
+
+async function loadTeamToday() {
+  const data = await api('GET', '/attendance/team-today');
+  if (!data?.success) return;
+  const list   = data.data || [];
+  const counts = list.reduce((a,e) => { a[e.status]=(a[e.status]||0)+1; return a; }, {});
+
+  document.getElementById('team-summary').innerHTML = `
+    <div class="team-stat-grid">
+      <div class="team-stat-item ts-present"><div class="team-stat-num">${counts['present']||0}</div><div class="team-stat-lbl">Present</div></div>
+      <div class="team-stat-item ts-absent"><div class="team-stat-num">${counts['absent']||0}</div><div class="team-stat-lbl">Absent</div></div>
+      <div class="team-stat-item ts-on-leave"><div class="team-stat-num">${counts['on-leave']||0}</div><div class="team-stat-lbl">On Leave</div></div>
+      <div class="team-stat-item ts-late"><div class="team-stat-num">${counts['late']||0}</div><div class="team-stat-lbl">Late</div></div>
+    </div>`;
+
+  const teamRows = list.map(e=>`
+    <div class="flex-between team-today-row" style="padding:8px 0;border-bottom:1px solid var(--border)">
+      <div class="flex gap-2" style="align-items:center">
+        <div class="avatar" style="width:32px;height:32px;font-size:12px;flex-shrink:0">${e.employee_name?.[0]||'?'}</div>
+        <div>
+          <div style="font-weight:600;font-size:12.5px;line-height:1.2">${e.employee_name}</div>
+          <div class="text-muted" style="font-size:11px">${e.designation_title||'—'}</div>
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <span class="badge badge-${e.status||'absent'}" style="font-size:9.5px">${e.status||'absent'}</span>
+        <div class="text-muted" style="font-size:10px;margin-top:2px">${e.punch_in?fmt.time(e.punch_in)+(e.punch_out?' → '+fmt.time(e.punch_out):''):''}</div>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('team-today-list').innerHTML =
+    `<div id="team-scroll-wrap" style="max-height:320px;overflow:hidden;padding-right:4px;position:relative">
+      <div id="team-scroll-inner">${teamRows}</div>
+      <div id="team-scroll-clone" aria-hidden="true">${teamRows}</div>
+    </div>`;
+
+  // Auto-scroller: only activate if content overflows
+  const wrap  = document.getElementById('team-scroll-wrap');
+  const inner = document.getElementById('team-scroll-inner');
+  const clone = document.getElementById('team-scroll-clone');
+
+  requestAnimationFrame(() => {
+    const contentH = inner.scrollHeight;
+    if (contentH <= 320) {
+      // Not enough content to scroll — show static list with scrollbar
+      wrap.style.overflowY = 'auto';
+      clone.style.display = 'none';
+      return;
+    }
+
+    // Seamless infinite scroll
+    let pos = 0;
+    const SPEED = 0.5; // px per frame
+    let paused = false;
+
+    wrap.addEventListener('mouseenter', () => paused = true);
+    wrap.addEventListener('mouseleave', () => paused = false);
+
+    function tick() {
+      if (!paused) {
+        pos += SPEED;
+        if (pos >= contentH) pos = 0;
+        wrap.scrollTop = pos;
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+async function loadPendingApprovals() {
+  const isRegApprover = Role.is('admin','super_admin','manager','tl');
+  const isODWFHApprover = Role.is('hr','admin','super_admin','manager','tl');
+  const isProvApprover = Role.is('hr','admin','super_admin','manager','tl');
+
+  const fetches = [
+    api('GET', '/leave/applications?status=pending'),
+    api('GET', '/advance?status=pending'),
+    isRegApprover   ? api('GET', '/attendance/regularizations?status=pending') : Promise.resolve(null),
+    isODWFHApprover ? api('GET', '/attendance/od?status=pending')              : Promise.resolve(null),
+    isODWFHApprover ? api('GET', '/attendance/wfh?status=pending')             : Promise.resolve(null),
+    isProvApprover  ? api('GET', '/provision')                                 : Promise.resolve(null),
+  ];
+  const [leaveData, advData, regData, odData, wfhData, provData] = await Promise.all(fetches);
+
+  const el = document.getElementById('pending-list');
+
+  const leaveItems = (leaveData?.data || [])
+    .filter(a => a.employee_id !== user.id)  // exclude own leaves
+    .filter(a => !a.current_approver_code || a.current_approver_code === user.employee_code || Role.is('hr','super_admin'))
+    .slice(0,4).map(a => `
+    <div class="req-card" style="cursor:pointer;border-left:3px solid #f59e0b" onclick="location.href='leaves.html#approvals'">
+      <div class="req-top">
+        <div>
+          <div class="req-name">${a.employee_name} <span style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:20px;font-weight:700">LEAVE</span></div>
+          <div class="req-meta">${a.leave_type_code} · ${fmt.date(a.from_date)} → ${fmt.date(a.to_date)} · ${a.days_requested??a.total_days??'?'} day(s)</div>
+          <div class="req-meta" style="margin-top:3px;font-style:italic">${a.reason||''}</div>
+        </div>
+        <span class="badge badge-pending">Pending</span>
+      </div>
+    </div>`);
+
+  const advItems = (advData?.data||[]).filter(a=>a.status==='pending' && a.employee_id !== user.id && a.current_approver_code === user.employee_code).slice(0,3).map(a=>`
+    <div class="req-card" style="cursor:pointer;border-left:3px solid #6366f1" onclick="location.href='advance.html#pending'">
+      <div class="req-top">
+        <div>
+          <div class="req-name">${a.employee_name} <span style="font-size:10px;background:#ede9fe;color:#4338ca;padding:2px 6px;border-radius:20px;font-weight:700">ADVANCE</span></div>
+          <div class="req-meta">${fmt.money(a.amount)} · Reason: ${a.reason||'—'}</div>
+        </div>
+        <span class="badge badge-pending">Pending</span>
+      </div>
+    </div>`);
+
+  const regItems = isRegApprover ? (regData?.data||[]).slice(0,4).map(r => {
+    const pIn  = r.punch_in  || '';
+    const pOut = r.punch_out || '';
+    return `
+    <div class="req-card" style="cursor:pointer;border-left:3px solid #22a855" onclick="location.href='attendance.html#regularize:${r.id}'">
+      <div class="req-top">
+        <div>
+          <div class="req-name">${r.emp_name} <span style="font-size:10px;background:#d1fae5;color:#065f46;padding:2px 6px;border-radius:20px;font-weight:700">REGULARIZATION</span></div>
+          <div class="req-meta">${r.dept||'—'} · ${fmt.date(r.date)}</div>
+          <div class="req-meta" style="margin-top:3px;font-style:italic">${r.regularization_reason||r.reason||''}</div>
+          ${pIn ? `<div class="req-meta">Requested: ${fmt.time(pIn)} → ${fmt.time(pOut)}</div>` : ''}
+        </div>
+        <span class="badge badge-pending">Pending</span>
+      </div>
+    </div>`;
+  }) : [];
+
+  // ── OD requests — grouped by employee+reason+location ───────────────────
+  function groupOdRows(rows) {
+    const sorted = [...rows].sort((a,b) =>
+      a.employee_code===b.employee_code ? a.date.localeCompare(b.date) : (a.employee_code||'').localeCompare(b.employee_code||'')
+    );
+    const groups = [];
+    for (const row of sorted) {
+      const last = groups[groups.length-1];
+      const sameEmp = last && last.employee_code===row.employee_code;
+      const sameReason = last && last.reason===row.reason;
+      const sameLoc = last && last.location===row.location;
+      const dayAfter = last && (()=>{
+        const d=new Date(last.to_date); d.setDate(d.getDate()+1);
+        if(d.getDay()===0) d.setDate(d.getDate()+1);
+        return d.toISOString().split('T')[0]===row.date;
+      })();
+      if (sameEmp&&sameReason&&sameLoc&&dayAfter) {
+        last.to_date=row.date; last.ids.push(row.id); last.days++;
+      } else {
+        groups.push({...row,from_date:row.date,to_date:row.date,ids:[row.id],days:1});
+      }
+    }
+    return groups;
+  }
+
+  const odItems = isODWFHApprover ? groupOdRows(odData?.data||[]).slice(0,4).map(g => {
+    const dateLabel = g.days>1 ? `${fmt.date(g.from_date)} → ${fmt.date(g.to_date)} (${g.days} days)` : fmt.date(g.from_date);
+    const idsJson = JSON.stringify(g.ids);
+    return `
+    <div class="req-card" style="cursor:pointer;border-left:3px solid #8b5cf6" onclick="openApproveODBulk(${idsJson},'${(g.emp_name||'').replace(/'/g,"\'")}','${g.from_date}','${g.to_date}','${(g.reason||'').replace(/'/g,"\'")}','${(g.location||'').replace(/'/g,"\'")}')">
+      <div class="req-top">
+        <div>
+          <div class="req-name">${g.emp_name} <span style="font-size:10px;background:#ede9fe;color:#5b21b6;padding:2px 6px;border-radius:20px;font-weight:700">🚗 OD</span></div>
+          <div class="req-meta">${g.dept||'—'} · ${dateLabel}</div>
+          <div class="req-meta" style="margin-top:3px;font-style:italic">${g.reason||''}</div>
+          ${g.location ? `<div class="req-meta">📍 ${g.location}</div>` : ''}
+        </div>
+        <span class="badge badge-pending">Pending</span>
+      </div>
+    </div>`;
+  }) : [];
+
+
+  // ── WFH requests ───────────────────────────────────────────────────────────
+  const wfhItems = isODWFHApprover ? (wfhData?.data||[]).slice(0,4).map(r => {
+    const wfhDateLabel = (r.from_date && r.to_date && r.from_date !== r.to_date)
+      ? `${fmt.date(r.from_date)} → ${fmt.date(r.to_date)}`
+      : fmt.date(r.from_date || r.date);
+    return `
+    <div class="req-card" style="cursor:pointer;border-left:3px solid #0ea5e9" onclick="openApproveWFH(${r.id},'${(r.emp_name||'').replace(/'/g,"\\'")}','${r.from_date||r.date}','${(r.reason||'').replace(/'/g,"\\'")}','${r.to_date||r.from_date||r.date}')">
+      <div class="req-top">
+        <div>
+          <div class="req-name">${r.emp_name} <span style="font-size:10px;background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:20px;font-weight:700">🏠 WFH</span></div>
+          <div class="req-meta">${r.dept||'—'} · ${wfhDateLabel}</div>
+          <div class="req-meta" style="margin-top:3px;font-style:italic">${r.reason||''}</div>
+        </div>
+        <span class="badge badge-pending">Pending</span>
+      </div>
+    </div>`;
+  }) : [];
+
+  // ── Provision confirmation pending ─────────────────────────────────────────
+  const provItems = isProvApprover ? (provData?.data||[]).filter(p => {
+    // Manager sees their direct reports pending manager approval
+    // HR/admin sees items pending HR approval
+    if (!p.confirmation_id) return false; // not yet initiated
+    if (Role.is('manager','tl') && !Role.is('hr','admin','super_admin')) {
+      return p.overall_status === 'pending'; // waiting for manager
+    }
+    if (Role.is('hr','admin','super_admin')) {
+      return p.overall_status === 'pending' || p.overall_status === 'manager_approved';
+    }
+    return false;
+  }).slice(0,4).map(p => {
+    const daysLeft = p.days_remaining != null ? Math.round(p.days_remaining) : null;
+    const daysLabel = daysLeft != null
+      ? (daysLeft < 0 ? `<span style="color:#dc2626;font-weight:700">⚠️ ${Math.abs(daysLeft)}d overdue</span>` : `${daysLeft}d remaining`)
+      : '';
+    const stepLabel = (p.overall_status === 'manager_approved') ? 'HR Approval Needed' : 'Manager Approval Needed';
+    return `
+    <div class="req-card" style="cursor:pointer;border-left:3px solid #f59e0b" onclick="openProvisionApproveModal(${p.id},'${(p.first_name+' '+p.last_name).replace(/'/g,"\\'")}','${p.employee_code}','${p.overall_status}')">
+      <div class="req-top">
+        <div>
+          <div class="req-name">${p.first_name} ${p.last_name} <span style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:20px;font-weight:700">🎯 CONFIRMATION</span></div>
+          <div class="req-meta">${p.department_name||'—'} · Provision ends ${fmt.date(p.provision_end_date)} ${daysLabel}</div>
+          <div class="req-meta" style="margin-top:3px;color:#d97706;font-weight:600">${stepLabel}</div>
+        </div>
+        <span class="badge badge-pending">Pending</span>
+      </div>
+    </div>`;
+  }) : [];
+
+  const all = [...provItems, ...odItems, ...wfhItems, ...leaveItems, ...advItems, ...regItems];
+  el.innerHTML = all.length
+    ? all.join('')
+    : '<div class="empty-state"><div class="empty-icon">✅</div><p>No pending approvals</p></div>';
+}
+
+// ── Provision Confirmation Approve/Reject Modal ──────────────────────────────
+function openProvisionApproveModal(empId, empName, empCode, status) {
+  document.getElementById('prov-approve-modal')?.remove();
+  const isHRStep = status === 'manager_approved';
+  const stepLabel = isHRStep ? 'HR Final Approval' : 'Manager Approval';
+  const html = `
+    <div id="prov-approve-modal" onclick="if(event.target===this)this.remove()"
+      style="position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999">
+      <div style="background:#fff;border-radius:16px;padding:24px;width:90%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.2)" onclick="event.stopPropagation()">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="font-weight:700;font-size:16px">🎯 Review Confirmation — ${stepLabel}</div>
+          <button onclick="document.getElementById('prov-approve-modal').remove()" style="background:#fee2e2;border:none;color:#dc2626;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer;font-weight:700">✕</button>
+        </div>
+        <div style="background:#f0fdf4;border-radius:10px;padding:14px;margin-bottom:14px;font-size:13px">
+          <div style="font-weight:700;font-size:15px;color:var(--cfg-primary);margin-bottom:4px">${empName}</div>
+          <div style="color:#64748b">Code: ${empCode}</div>
+          ${isHRStep ? `<div style="margin-top:8px;padding:8px;background:#fef3c7;border-radius:8px;color:#92400e;font-size:12px;font-weight:600">
+            ✅ Manager has already approved. This is the <strong>final HR confirmation</strong>.<br>
+            On approval: employee becomes Permanent + prorated EL/SL/CL credited + old PL cleared.
+          </div>` : `<div style="margin-top:8px;padding:8px;background:#eff6ff;border-radius:8px;color:#1e40af;font-size:12px;">
+            After your approval, HR will do the final confirmation step.
+          </div>`}
+        </div>
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Remarks (optional)</label>
+        <textarea id="prov-approve-remarks" rows="2" placeholder="Add remarks..."
+          style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;resize:none;box-sizing:border-box;margin-bottom:14px"></textarea>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button onclick="document.getElementById('prov-approve-modal').remove()" style="padding:8px 18px;border:1px solid var(--border);border-radius:8px;background:#f8fafc;cursor:pointer;font-size:13px">Close</button>
+          <button onclick="actionProvision(${empId},'reject')" style="padding:8px 18px;background:#dc2626;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">❌ Reject</button>
+          <button onclick="actionProvision(${empId},'approve')" style="padding:8px 18px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">✅ Approve</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function actionProvision(empId, action) {
+  const remarks = document.getElementById('prov-approve-remarks')?.value?.trim();
+  const res = await api('POST', `/provision/${empId}/approve`, { action, remarks });
+  document.getElementById('prov-approve-modal')?.remove();
+  if (res?.success) {
+    toast(action === 'approve' ? '✅ Confirmation approved!' : '❌ Confirmation rejected');
+    loadPendingApprovals();
+  } else {
+    toast(res?.message || 'Action failed', 'error');
+  }
+}
+
+// ── OD Approve/Reject Modal ───────────────────────────────────────────────────
+function openApproveODBulk(ids, empName, fromDate, toDate, reason, location) {
+  document.getElementById('od-approve-modal')?.remove();
+  const idArr = Array.isArray(ids) ? ids : [ids];
+  const dateLabel = (toDate && toDate !== fromDate)
+    ? `${fmt.date(fromDate)} → ${fmt.date(toDate)} (${idArr.length} days)`
+    : fmt.date(fromDate);
+  const idsJson = JSON.stringify(idArr);
+  const html = `
+    <div id="od-approve-modal" onclick="if(event.target===this)this.remove()"
+      style="position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999">
+      <div style="background:#fff;border-radius:16px;padding:24px;width:90%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.2)" onclick="event.stopPropagation()">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="font-weight:700;font-size:16px">🚗 Review OD Request</div>
+          <button onclick="document.getElementById('od-approve-modal').remove()" style="background:#fee2e2;border:none;color:#dc2626;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer;font-weight:700">✕</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;font-size:13px">
+          <div><div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Employee</div><div style="font-weight:600">${empName}</div></div>
+          <div><div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Date(s)</div><div style="font-weight:600">${dateLabel}</div></div>
+          <div style="grid-column:1/-1"><div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Reason</div><div>${reason}</div></div>
+          ${location ? `<div style="grid-column:1/-1"><div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Location</div><div>📍 ${location}</div></div>` : ''}
+        </div>
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Remarks (optional)</label>
+        <textarea id="od-approve-remarks" rows="2" placeholder="Add remarks..."
+          style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;resize:none;box-sizing:border-box;margin-bottom:14px"></textarea>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button onclick="document.getElementById('od-approve-modal').remove()" style="padding:8px 18px;border:1px solid var(--border);border-radius:8px;background:#f8fafc;cursor:pointer;font-size:13px">Close</button>
+          <button onclick="actionODRequestBulk(${idsJson},'reject')" style="padding:8px 18px;background:#dc2626;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">❌ Reject</button>
+          <button onclick="actionODRequestBulk(${idsJson},'approve')" style="padding:8px 18px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">✅ Approve</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function actionODRequestBulk(ids, action) {
+  const remarks = document.getElementById('od-approve-remarks')?.value?.trim();
+  const idArr = Array.isArray(ids) ? ids : [ids];
+  const res = idArr.length === 1
+    ? await api('POST', `/attendance/od/${idArr[0]}/action`, { action, remarks })
+    : await api('POST', '/attendance/od/bulk-action', { ids: idArr, action, remarks });
+  document.getElementById('od-approve-modal')?.remove();
+  if (res?.success) { toast(`OD ${action}d ✅`); loadPendingApprovals(); }
+  else toast(res?.message || 'Failed', 'error');
+}
+
+// ── WFH Approve/Reject Modal ──────────────────────────────────────────────────
+function openApproveWFH(id, empName, fromDate, reason, toDate) {
+  document.getElementById('wfh-approve-modal')?.remove();
+  const dateLabel = (toDate && toDate !== fromDate)
+    ? `${fmt.date(fromDate)} → ${fmt.date(toDate)}`
+    : fmt.date(fromDate);
+  const html = `
+    <div id="wfh-approve-modal" onclick="if(event.target===this)this.remove()"
+      style="position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999">
+      <div style="background:#fff;border-radius:16px;padding:24px;width:90%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.2)" onclick="event.stopPropagation()">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="font-weight:700;font-size:16px">🏠 Review WFH Request</div>
+          <button onclick="document.getElementById('wfh-approve-modal').remove()" style="background:#fee2e2;border:none;color:#dc2626;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer;font-weight:700">✕</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;font-size:13px">
+          <div><div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Employee</div><div style="font-weight:600">${empName}</div></div>
+          <div><div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Date(s)</div><div style="font-weight:600">${dateLabel}</div></div>
+          <div style="grid-column:1/-1"><div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Reason</div><div>${reason}</div></div>
+        </div>
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Remarks (optional)</label>
+        <textarea id="wfh-approve-remarks" rows="2" placeholder="Add remarks..."
+          style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;resize:none;box-sizing:border-box;margin-bottom:14px"></textarea>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button onclick="document.getElementById('wfh-approve-modal').remove()" style="padding:8px 18px;border:1px solid var(--border);border-radius:8px;background:#f8fafc;cursor:pointer;font-size:13px">Close</button>
+          <button onclick="actionWFHRequest(${id},'reject')" style="padding:8px 18px;background:#dc2626;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">❌ Reject</button>
+          <button onclick="actionWFHRequest(${id},'approve')" style="padding:8px 18px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">✅ Approve</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function actionWFHRequest(id, action) {
+  const remarks = document.getElementById('wfh-approve-remarks')?.value?.trim();
+  const res = await api('POST', `/attendance/wfh/${id}/action`, { action, remarks });
+  document.getElementById('wfh-approve-modal')?.remove();
+  if (res?.success) { toast(`WFH ${action}d ✅`); loadPendingApprovals(); }
+  else toast(res?.message || 'Failed', 'error');
+}
+
+// ── MAP PUNCH (ported from attendance.html) ─────────────────────
+let _map = null, _mapMarker = null, _mapCircles = [], _mapInfoWindow = null,
+    _punchType = 'in', _pLat = null, _pLng = null;
+
+function openMapPunch(type) {
+  _punchType = type; _pLat = null; _pLng = null;
+  document.getElementById('map-punch-backdrop').classList.add('open');
+  document.getElementById('map-modal-title').textContent = type === 'in' ? '📍 Punch In — Verify Location' : '📍 Punch Out — Verify Location';
+  document.getElementById('map-status').className = 'map-status loading';
+  document.getElementById('map-status').innerHTML = '📡 Getting your location…';
+  document.getElementById('map-status').dataset.distText = '';
+  document.getElementById('map-acc').textContent = '';
+  document.getElementById('confirm-punch-btn').disabled = true;
+
+  setTimeout(() => {
+    if (_map) { _map = null; }
+    document.getElementById('punch-map').innerHTML = '';
+    // zoom:5 India center — fitBounds overrides once GPS + boundary both ready
+    _map = new google.maps.Map(document.getElementById('punch-map'), {
+      zoom: 5, center: { lat: 22.5, lng: 80.0 },
+      mapTypeId: 'roadmap', streetViewControl: false, mapTypeControl: true,
+      mapTypeControlOptions: { style: google.maps.MapTypeControlStyle.DROPDOWN_MENU },
+      gestureHandling: 'greedy'
+    });
+    _mapInfoWindow = new google.maps.InfoWindow();
+    _mapCircles = [];
+
+    if (!navigator.geolocation) {
+      setMapStatus('fail', '⚠ GPS not supported. You can still punch manually.');
+      document.getElementById('confirm-punch-btn').disabled = false;
+      loadOfficeBuffers().catch(() => {});
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async pos => {
+      _pLat = pos.coords.latitude; _pLng = pos.coords.longitude;
+      document.getElementById('map-acc').textContent = `GPS accuracy: ±${Math.round(pos.coords.accuracy)}m`;
+      if (_mapMarker) _mapMarker.setMap(null);
+      _mapMarker = new google.maps.Marker({
+        position: { lat: _pLat, lng: _pLng }, map: _map, title: 'Your Location',
+        icon: {
+          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"><circle cx="9" cy="9" r="7" fill="#4361ee" stroke="white" stroke-width="2.5"/></svg>'),
+          scaledSize: new google.maps.Size(18, 18), anchor: new google.maps.Point(9, 9)
+        }
+      });
+      _mapMarker.addListener('click', () => { _mapInfoWindow.setContent('<b>Your Location</b>'); _mapInfoWindow.open(_map, _mapMarker); });
+      // Load boundary AFTER GPS — single fitBounds call, no jump
+      await loadOfficeBuffers();
+      validateGeo(_pLat, _pLng);
+    }, () => {
+      setMapStatus('fail', '⚠ Location access denied. Punch will be recorded without GPS.');
+      document.getElementById('confirm-punch-btn').disabled = false;
+      document.getElementById('map-acc').textContent = 'No GPS — punch will be recorded without location data.';
+      loadOfficeBuffers().catch(() => {});
+    }, { timeout: 15000, enableHighAccuracy: true });
+  }, 150);
+}
+
+async function loadOfficeBuffers() {
+  _mapCircles.forEach(c => { if (c.setMap) c.setMap(null); });
+  _mapCircles = [];
+  const user = Auth.getUser();
+  if (!user) return;
+  const ruleData = await api('GET', `/geofence/buffer-rules/${user.id}`);
+  const rule = ruleData?.data;
+  if (!rule) return;
+
+  if (rule.rule_type === 'district' && rule.state && rule.district) {
+    await drawDistrictPolygon(rule.state, rule.district);
+  } else if (rule.rule_type === 'state' && rule.state) {
+    await drawStatePolygon(rule.state);
+  } else if (rule.rule_type === 'universal') {
+    setMapStatus('ok', '✓ Universal access — punch allowed from anywhere');
+    document.getElementById('confirm-punch-btn').disabled = false;
+    if (_pLat && _pLng) { _map.panTo({ lat: _pLat, lng: _pLng }); _map.setZoom(14); }
+  } else {
+    // office rule — blue border + pink fill + dotted line to nearest circle edge
+    const locData = await api('GET', '/geofence/my-locations');
+    const officeBounds = new google.maps.LatLngBounds();
+    let closestOfficeDist = Infinity;
+    let closestOfficeEdgePt = null;
+
+    (locData?.data || []).forEach(loc => {
+      if (!loc.latitude || loc.radius_meters >= 10000) return;
+      const lat = +loc.latitude, lng = +loc.longitude, r = loc.radius_meters;
+      const circle = new google.maps.Circle({
+        map: _map, center: { lat, lng }, radius: r,
+        strokeColor: '#1d4ed8', strokeOpacity: 1.0, strokeWeight: 3,
+        fillColor: '#ec4899', fillOpacity: 0.15
+      });
+      _mapCircles.push(circle);
+      officeBounds.union(circle.getBounds());
+
+      // Track nearest circle edge for dotted line
+      if (_pLat && _pLng) {
+        const userPt   = new google.maps.LatLng(_pLat, _pLng);
+        const centerPt = new google.maps.LatLng(lat, lng);
+        const distToCenter = google.maps.geometry.spherical.computeDistanceBetween(userPt, centerPt);
+        const distToEdge   = Math.abs(distToCenter - r);
+        if (distToEdge < closestOfficeDist) {
+          closestOfficeDist = distToEdge;
+          const heading = google.maps.geometry.spherical.computeHeading(centerPt, userPt);
+          closestOfficeEdgePt = google.maps.geometry.spherical.computeOffset(centerPt, r, heading);
+        }
+      }
+    });
+
+    if (_pLat && _pLng) officeBounds.extend({ lat: _pLat, lng: _pLng });
+    if (!officeBounds.isEmpty()) _map.fitBounds(officeBounds, { top: 60, bottom: 60, left: 60, right: 60 });
+    else if (_pLat && _pLng) { _map.panTo({ lat: _pLat, lng: _pLng }); _map.setZoom(14); }
+
+    // Draw dotted line from user to nearest circle edge
+    if (_pLat && _pLng && closestOfficeEdgePt) {
+      const dottedLine = new google.maps.Polyline({
+        path: [new google.maps.LatLng(_pLat, _pLng), closestOfficeEdgePt],
+        map: _map,
+        strokeColor: '#1d4ed8', strokeOpacity: 0, strokeWeight: 2,
+        icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.8, strokeColor: '#1d4ed8', strokeWeight: 2, scale: 3 }, offset: '0', repeat: '12px' }]
+      });
+      _mapCircles.push(dottedLine);
+      const dTxt = closestOfficeDist < 1000
+        ? `${Math.round(closestOfficeDist)} m from boundary`
+        : `${(closestOfficeDist/1000).toFixed(1)} km from boundary`;
+      const el = document.getElementById('map-status');
+      if (el) el.dataset.distText = `&nbsp;|&nbsp; 📏 <b>${dTxt}</b>`;
+    }
+  }
+}
+
+async function drawDistrictPolygon(state, district) {
+  try {
+    const res = await api('GET', `/geofence/boundary?state=${encodeURIComponent(state)}&district=${encodeURIComponent(district)}`);
+    const coords = res?.data?.coordinates;
+    if (!coords || !coords[0]) return;
+    const ring = coords[0].map(pt => ({ lat: pt[1], lng: pt[0] }));
+    new google.maps.Polygon({
+      paths: ring, map: _map,
+      strokeColor: '#1d4ed8', strokeOpacity: 1.0, strokeWeight: 4,
+      fillColor: '#ec4899', fillOpacity: 0.35
+    });
+    // fitBounds auto-calculates the tightest zoom that fits both points.
+    // No manual zoom override needed — Google Maps handles it perfectly.
+    const bounds = new google.maps.LatLngBounds();
+    ring.forEach(p => bounds.extend(p));
+    if (_pLat && _pLng) bounds.extend({ lat: _pLat, lng: _pLng });
+    _map.fitBounds(bounds, { top: 60, bottom: 60, left: 60, right: 60 });
+
+    // Distance calculation + dotted line from user to nearest boundary point
+    if (_pLat && _pLng) {
+      const u = new google.maps.LatLng(_pLat, _pLng);
+      let minDist = Infinity;
+      let nearestPt = null;
+      for (let i = 0; i < ring.length; i++) {
+        const a = new google.maps.LatLng(ring[i].lat, ring[i].lng);
+        const b2 = new google.maps.LatLng(ring[(i+1)%ring.length].lat, ring[(i+1)%ring.length].lng);
+        const t = Math.max(0, Math.min(1,
+          ((u.lat()-a.lat())*(b2.lat()-a.lat()) + (u.lng()-a.lng())*(b2.lng()-a.lng())) /
+          ((b2.lat()-a.lat())**2 + (b2.lng()-a.lng())**2)
+        ));
+        const near = new google.maps.LatLng(
+          a.lat() + t*(b2.lat()-a.lat()),
+          a.lng() + t*(b2.lng()-a.lng())
+        );
+        const d = google.maps.geometry.spherical.computeDistanceBetween(u, near);
+        if (d < minDist) { minDist = d; nearestPt = near; }
+      }
+      // Distance in status bar
+      const dTxt = minDist < 1000
+        ? `${Math.round(minDist)} m from boundary`
+        : `${(minDist/1000).toFixed(1)} km from boundary`;
+      const el = document.getElementById('map-status');
+      if (el) el.dataset.distText = `&nbsp;|&nbsp; 📏 <b>${dTxt}</b>`;
+
+      // Draw dotted line: user → nearest boundary point
+      if (nearestPt) {
+        const dottedLine = new google.maps.Polyline({
+          path: [u, nearestPt],
+          map: _map,
+          strokeColor: '#1d4ed8',
+          strokeOpacity: 0,        // must be 0 for icons/dash to show
+          strokeWeight: 2,
+          icons: [{
+            icon: {
+              path: 'M 0,-1 0,1',  // vertical tick = dash segment
+              strokeOpacity: 0.8,
+              strokeColor: '#1d4ed8',
+              strokeWeight: 2,
+              scale: 3
+            },
+            offset: '0',
+            repeat: '12px'
+          }]
+        });
+        _mapCircles.push(dottedLine);
+      }
+    }
+  } catch(e) { console.error('drawDistrictBoundary:', e); }
+}
+
+
+async function drawStatePolygon(state) {
+  try {
+    const res = await api('GET', `/geofence/boundary?state=${encodeURIComponent(state)}`);
+    if (!res?.data) return;
+    const districts = Array.isArray(res.data) ? res.data : [res.data];
+    const bounds = new google.maps.LatLngBounds();
+    districts.forEach(d => {
+      if (!d.coordinates) return;
+      const ring = d.coordinates[0].map(([lng, lat]) => ({ lat, lng }));
+      new google.maps.Polygon({
+        paths: ring, map: _map,
+        strokeColor: '#1d4ed8', strokeOpacity: 0.85, strokeWeight: 2,
+        fillColor: '#ec4899', fillOpacity: 0.08
+      });
+      ring.forEach(p => bounds.extend(p));
+    });
+    // Fit to state only
+    if (!bounds.isEmpty()) _map.fitBounds(bounds, { top: 40, bottom: 40, left: 40, right: 40 });
+  } catch(e) { console.error('drawStatePolygon error', e); }
+}
+
+async function validateGeo(lat, lng) {
+  const data = await api('POST', '/geofence/validate-buffer', { latitude: lat, longitude: lng });
+  if (!data) { setMapStatus('loading', '⚠ Could not validate — proceeding anyway'); document.getElementById('confirm-punch-btn').disabled = false; return; }
+  if (data.valid) { setMapStatus('ok', '✓ ' + data.message); document.getElementById('confirm-punch-btn').disabled = false; }
+  else            { setMapStatus('fail', '✗ ' + data.message); document.getElementById('confirm-punch-btn').disabled = true; }
+}
+
+function setMapStatus(type, msg) {
+  const el = document.getElementById('map-status');
+  el.className = 'map-status ' + type;
+  const dist = el.dataset.distText || '';
+  el.innerHTML = msg + (dist ? ' ' + dist : '');
+}
+
+async function confirmPunch() {
+  const btn = document.getElementById('confirm-punch-btn');
+  btn.disabled = true; btn.textContent = 'Confirming…';
+  const body = {};
+
+  // FIX: Send IST time so backend (UTC server) records correct time
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const istParts = {};
+  new Intl.DateTimeFormat(window.CFG.currencyLocale, {
+    timeZone: window.CFG.timezone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).formatToParts(now).forEach(({ type, value }) => { istParts[type] = value; });
+  body.punch_time = `${istParts.hour}:${istParts.minute}:${istParts.second}`;
+  body.punch_date = `${istParts.year}-${istParts.month}-${istParts.day}`;
+
+  if (_pLat && _pLng) {
+    body.location_lat = _pLat;
+    body.location_lng = _pLng;
+    body[`punch_${_punchType}_location`] = `GPS: ${_pLat.toFixed(4)},${_pLng.toFixed(4)}`;
+  } else {
+    body[`punch_${_punchType}_location`] = 'No GPS';
+  }
+  const data = await api('POST', `/attendance/punch-${_punchType}`, body);
+  if (data?.success) {
+    toast(data.message, 'success');
+    document.getElementById('map-punch-backdrop').classList.remove('open');
+    setTimeout(() => location.reload(), 1000);
+  } else {
+    toast(data?.message || 'Failed', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Confirm Punch';
+  }
+}
+
+// ── GK UPLOAD SIDEBAR ───────────────────────────────────────────
+function openGKSidebar() {
+  document.getElementById('gk-sidebar').classList.add('open');
+  document.getElementById('gk-sidebar-overlay').style.display = 'block';
+}
+function closeGKSidebar() {
+  document.getElementById('gk-sidebar').classList.remove('open');
+  document.getElementById('gk-sidebar-overlay').style.display = 'none';
+}
+
+function handleGKDrop(e) {
+  e.preventDefault();
+  document.getElementById('gk-drop-zone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadGKFileObj(file);
+}
+
+function uploadGKFile(input) {
+  const file = input.files[0];
+  if (file) uploadGKFileObj(file);
+  input.value = '';
+}
+
+async function uploadGKFileObj(file) {
+  const progressWrap = document.getElementById('gk-progress');
+  const progressLbl  = document.getElementById('gk-progress-label');
+  const progressBar  = document.getElementById('gk-progress-bar');
+  const statusEl     = document.getElementById('gk-upload-status');
+
+  progressWrap.style.display = '';
+  progressBar.style.width    = '0%';
+  progressLbl.textContent    = 'Uploading…';
+  statusEl.innerHTML         = '';
+
+  const token = Auth.getToken();
+
+  async function postToEndpoint(endpoint, pct) {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+      body: fd
+    });
+    progressBar.style.width = pct + '%';
+    return res.json();
+  }
+
+  try {
+    // Step 1: import thoughts (50%)
+    progressLbl.textContent = 'Importing thoughts…';
+    const thoughtsData = await postToEndpoint('/gk/thoughts/import', 50);
+
+    // Step 2: import questions (100%)
+    progressLbl.textContent = 'Importing GK questions…';
+    const questionsData = await postToEndpoint('/gk/questions/import', 100);
+
+    progressLbl.textContent = '✅ Upload complete!';
+
+    const ti = thoughtsData?.data?.imported ?? 0;
+    const qi = questionsData?.data?.imported ?? 0;
+    const ts = thoughtsData?.data?.skipped  ?? 0;
+    const qs = questionsData?.data?.skipped  ?? 0;
+
+    statusEl.innerHTML = `<span style="color:var(--green);font-weight:700">
+      💭 ${ti} thoughts${ts ? ', '+ts+' skipped' : ''}<br>
+      🧠 ${qi} GK questions${qs ? ', '+qs+' skipped' : ''}
+    </span>`;
+
+    toast(`Imported: ${ti} thoughts, ${qi} questions`);
+    loadDashboard();
+  } catch(e) {
+    progressLbl.textContent = '❌ Upload failed';
+    statusEl.innerHTML = `<span style="color:var(--red)">Network error — check console</span>`;
+    console.error(e);
+  }
+}
+
+// ── NOTIFICATIONS ───────────────────────────────────────────────
+async function openNotifications() {
+  document.getElementById('notif-panel').style.right = '0';
+  document.getElementById('notif-overlay').style.display = 'block';
+  const data = await api('GET', '/notifications');
+  if (!data?.success) return;
+  const el = document.getElementById('notif-list');
+  el.innerHTML = data.data.length ? data.data.map(n => {
+    const link = notifLink(n);
+    return `<div class="notif-item ${n.is_read?'':'unread'}" style="cursor:${link?'pointer':'default'}" onclick="${link?`markReadAndGo(${n.id},'${link}')`:''}" >
+      <div style="font-weight:600;font-size:13px">${n.title}${link?' <span style=\'font-size:10px;color:var(--accent)\'>→</span>':''}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.55">${n.message}</div>
+      <div class="text-muted2" style="margin-top:6px">${fmt.ago(n.created_at)}</div>
+    </div>`;
+  }).join('') : '<div class="empty-state"><div class="empty-icon">🔔</div><p>No notifications</p></div>';
+  document.getElementById('notif-badge').style.display = 'none';
+}
+
+function notifLink(n) {
+  // FIX: DB stores "type" column — reference_type does not exist, so always check n.type first
+  const t = (n.type || n.reference_type || '').toLowerCase();
+
+  // Type-based routing (primary — works for all notifications)
+  if (t === 'leave' || t === 'leave_approved' || t === 'leave_rejected' || t === 'leave_application')
+    return 'leaves.html#approvals';
+  if (t === 'advance' || t === 'advance_salary')
+    return 'advance.html#pending';
+  if (t === 'regularization' || t === 'attendance_regularization')
+    return `attendance.html#regularize:${n.reference_id || n.referenceId || ''}`;
+  if (t === 'separation')
+    return 'separation.html';
+  if (t === 'announcement')
+    return 'announcements.html';
+  if (t === 'od')
+    return 'attendance.html#od';
+  if (t === 'wfh')
+    return 'attendance.html#wfh';
+  if (t === 'birthday' || t === 'anniversary')
+    return 'dashboard.html';
+  if (t === 'payroll')
+    return 'payslip.html';
+  if (t === 'provision')
+    return 'dashboard.html';
+
+  // Title-based fallback (for legacy notifications with no type set)
+  const title = (n.title || '').toLowerCase();
+  if (title.includes('regulariz'))  return `attendance.html#regularize:${n.reference_id || ''}`;
+  if (title.includes('leave'))      return 'leaves.html#approvals';
+  if (title.includes('advance'))    return 'advance.html#pending';
+  if (title.includes(' od ') || title.includes('outdoor duty')) return 'attendance.html#od';
+  if (title.includes('wfh') || title.includes('work from home')) return 'attendance.html#wfh';
+  if (title.includes('separation') || title.includes('resign')) return 'separation.html';
+  if (title.includes('payslip') || title.includes('salary slip')) return 'payslip.html';
+  if (title.includes('birthday') || title.includes('anniversary')) return 'dashboard.html';
+  if (title.includes('confirmation') || title.includes('provision')) return 'dashboard.html';
+  return null;
+}
+
+async function markReadAndGo(id, url) {
+  await api('PATCH', `/notifications/${id}/read`);
+  closeNotifications();
+  window.location.href = url;
+}
+
+function closeNotifications() {
+  document.getElementById('notif-panel').style.right = '-400px';
+  document.getElementById('notif-overlay').style.display = 'none';
+}
+
+async function markAllRead() {
+  await api('PUT', '/notifications/read-all');
+  document.getElementById('notif-badge').style.display = 'none';
+  toast('All notifications marked read');
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── THOUGHT OF DAY ──────────────────────────────────────────────
+function renderThoughtOfDay(thought) {
+  const textEl   = document.getElementById('thought-text');
+  const authorEl = document.getElementById('thought-author');
+  if (!thought) {
+    textEl.textContent   = 'Every day is a new opportunity to grow. Keep moving forward! 🌱';
+    authorEl.textContent = '';
+    return;
+  }
+  textEl.textContent   = thought.thought || thought.content || thought.title || '';
+  authorEl.textContent = thought.author ? '— ' + thought.author : '';
+}
+
+// ── BIRTHDAYS ───────────────────────────────────────────────────
+function renderBirthdays(birthdays) {
+  const card = document.getElementById('birthdays-card');
+  const el   = document.getElementById('birthdays-list');
+  if (!birthdays?.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const colors = ['#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#FFEAA7','#DDA0DD','#98D8C8'];
+
+  // Compute today's MM-DD in IST directly in browser — don't trust days_until type from backend
+  const _nowIST  = new Date(new Date().toLocaleString('en-US', { timeZone: window.CFG.timezone }));
+  const _todayMD = String(_nowIST.getMonth()+1).padStart(2,'0') + '-' + String(_nowIST.getDate()).padStart(2,'0');
+
+  el.innerHTML = birthdays.map(b => {
+    const initials  = ((b.full_name||'??').split(' ').map(w=>w[0]).join('').slice(0,2)).toUpperCase();
+    const isToday   = b.birth_md === _todayMD;   // MM-DD match — 100% reliable
+    const daysUntil = parseInt(b.days_until) || 0;
+    const daysText  = isToday
+      ? '<span style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:99px;font-weight:700;margin-left:6px">🎉 TODAY!</span>'
+      : `<span style="font-size:10px;color:var(--muted);margin-left:6px">in ${daysUntil} day${daysUntil!==1?'s':''}</span>`;
+    const likedStyle  = b.i_liked  ? 'background:#fee2e2;color:#dc2626;border-color:#fca5a5'  : 'background:var(--surface);color:var(--muted);border-color:var(--border)';
+    const wishedStyle = b.i_wished ? 'background:#dcfce7;color:#16a34a;border-color:#86efac' : 'background:var(--surface);color:var(--muted);border-color:var(--border)';
+
+    const greenAvatars = [('linear-gradient(135deg,'+window.CFG.primaryColor+','+window.CFG.lightColor+')'),('linear-gradient(135deg,'+window.CFG.accentColor+','+window.CFG.lightColor+')'),('linear-gradient(135deg,'+window.CFG.lightColor+','+window.CFG.accentColor+')'),('linear-gradient(135deg,'+window.CFG.primaryColor+','+window.CFG.accentColor+')'),('linear-gradient(135deg,'+window.CFG.darkerColor+','+window.CFG.accentColor+')')];
+    const avatarBg = greenAvatars[b.id % greenAvatars.length];
+    const daysLabel = !isToday ? `<span style="background:#f0fdf4;color:#166534;font-size:9px;padding:2px 7px;border-radius:99px;font-weight:500;border:0.5px solid #bbf7d0;">in ${daysUntil}d</span>` : '';
+    return `
+    <div id="bday-${b.id}" style="background:var(--surface);border-radius:14px;padding:13px 14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(46,125,50,0.08);border:0.5px solid rgba(46,125,50,0.1);transition:box-shadow .2s,transform .2s;" onmouseover="this.style.boxShadow='0 6px 20px rgba(46,125,50,0.15)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(46,125,50,0.08)';this.style.transform='translateY(0)'">
+      <div style="width:46px;height:46px;border-radius:50%;background:${avatarBg};color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:500;flex-shrink:0;">${initials}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:500;font-size:14px;color:var(--text-primary);display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:3px;">
+          ${b.full_name}
+          ${isToday ? '<span style="background:#fee2e2;color:#dc2626;font-size:10px;padding:2px 8px;border-radius:99px;font-weight:500;">🎂 TODAY!</span>' : daysLabel}
+        </div>
+        <div style="font-size:11px;color:var(--muted);">${b.birth_display||''} · ${b.designation_title||b.department_name||''} · ${b.employee_code}</div>
+      </div>
+      ${isToday ? `<div style="display:flex;gap:6px;flex-shrink:0;align-items:center;">
+        <button onclick="toggleBirthdayLike(${b.id},this)" style="border:0.5px solid ${b.i_liked?'#fca5a5':'var(--border)'};border-radius:99px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:4px;background:${b.i_liked?'#fee2e2':'var(--bg)'};color:${b.i_liked?'#dc2626':'var(--muted)'};">❤️ <span class="like-count-${b.id}">${b.like_count||0}</span></button>
+        <button onclick="openBirthdayWish(${b.id},'${b.full_name.replace(/'/g,"\'")}')" style="border:none;border-radius:99px;padding:6px 13px;cursor:pointer;font-size:12px;font-weight:500;background:${b.i_wished?'#dcfce7':'linear-gradient(135deg,'+window.CFG.accentColor+','+window.CFG.lightColor+')'};color:${b.i_wished?'#166534':'#fff'};box-shadow:${b.i_wished?'none':'0 3px 10px rgba(46,125,50,0.25)'};">🎂 Wish ${b.wish_count>0?`(${b.wish_count})`:''}</button>
+      </div>` : ''}
+      ${isToday ? `<div id="bday-wishes-${b.id}" style="width:100%;margin-top:6px;padding-left:58px;"></div>` : ''}
+    </div>`;
+    }).join('');
+
+  // Auto-load wishes for today's birthdays
+  birthdays.filter(b => b.birth_md === _todayMD).forEach(b => loadBirthdayWishes(b.id));
+}
+
+function renderAnniversaries(anniversaries) {
+  const card = document.getElementById('anniversaries-card');
+  const el   = document.getElementById('anniversaries-list');
+  if (!anniversaries?.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  const _nowIST  = new Date(new Date().toLocaleString('en-US', { timeZone: window.CFG.timezone }));
+  const _todayMD = String(_nowIST.getMonth()+1).padStart(2,'0') + '-' + String(_nowIST.getDate()).padStart(2,'0');
+
+  // Milestone labels — every year gets a badge
+  const milestoneLabel = (years) => {
+    if (years === 1)  return { emoji: '🌱', label: '1 Year',    color: '#16a34a', bg: '#dcfce7' };
+    if (years === 2)  return { emoji: '⭐', label: '2 Years',   color: '#2563eb', bg: '#dbeafe' };
+    if (years === 3)  return { emoji: '🌟', label: '3 Years',   color: '#7c3aed', bg: '#ede9fe' };
+    if (years === 4)  return { emoji: '🔥', label: '4 Years',   color: '#ea580c', bg: '#fff7ed' };
+    if (years === 5)  return { emoji: '🏅', label: '5 Years',   color: '#d97706', bg: '#fef3c7' };
+    if (years === 6)  return { emoji: '💫', label: '6 Years',   color: '#0891b2', bg: '#cffafe' };
+    if (years === 7)  return { emoji: '🎯', label: '7 Years',   color: '#be185d', bg: '#fce7f3' };
+    if (years === 8)  return { emoji: '🚀', label: '8 Years',   color: '#1d4ed8', bg: '#eff6ff' };
+    if (years === 9)  return { emoji: '💪', label: '9 Years',   color: '#15803d', bg: '#f0fdf4' };
+    if (years === 10) return { emoji: '🏆', label: '10 Years',  color: '#dc2626', bg: '#fee2e2' };
+    if (years === 11) return { emoji: '🌈', label: '11 Years',  color: '#7c3aed', bg: '#f3e8ff' };
+    if (years === 12) return { emoji: '🎖️', label: '12 Years',  color: '#0369a1', bg: '#e0f2fe' };
+    if (years === 13) return { emoji: '⚡', label: '13 Years',  color: '#b45309', bg: '#fffbeb' };
+    if (years === 14) return { emoji: '🌊', label: '14 Years',  color: '#0f766e', bg: '#f0fdfa' };
+    if (years === 15) return { emoji: '💎', label: '15 Years',  color: '#0891b2', bg: '#cffafe' };
+    if (years === 20) return { emoji: '👑', label: '20 Years',  color: '#7c3aed', bg: '#f3e8ff' };
+    if (years === 25) return { emoji: '🥇', label: '25 Years',  color: '#d97706', bg: '#fef3c7' };
+    // Any other year
+    return { emoji: '🎊', label: `${years} Years`, color: '#64748b', bg: '#f1f5f9' };
+  };
+
+  const colors = ['#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#FFEAA7','#DDA0DD','#98D8C8'];
+
+  el.innerHTML = anniversaries.map(a => {
+    const isToday   = a.join_md === _todayMD;
+    const years     = parseInt(a.years_completed) || 0;
+    const daysUntil = parseInt(a.days_until) || 0;
+    const milestone = milestoneLabel(years);
+    const initials  = ((a.full_name||'??').split(' ').map(w=>w[0]).join('').slice(0,2)).toUpperCase();
+
+    const daysText = isToday
+      ? `<span style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:99px;font-weight:700;margin-left:6px">🎉 TODAY!</span>`
+      : `<span style="font-size:10px;color:var(--muted);margin-left:6px">in ${daysUntil} day${daysUntil!==1?'s':''}</span>`;
+
+    const likedStyle  = a.i_liked  ? 'background:#fee2e2;color:#dc2626;border-color:#fca5a5'  : 'background:var(--surface);color:var(--muted);border-color:var(--border)';
+    const wishedStyle = a.i_wished ? 'background:#dcfce7;color:#16a34a;border-color:#86efac' : 'background:var(--surface);color:var(--muted);border-color:var(--border)';
+
+    const gAvatars = [('linear-gradient(135deg,'+window.CFG.primaryColor+','+window.CFG.lightColor+')'),('linear-gradient(135deg,'+window.CFG.accentColor+','+window.CFG.lightColor+')'),('linear-gradient(135deg,'+window.CFG.lightColor+','+window.CFG.accentColor+')'),('linear-gradient(135deg,'+window.CFG.primaryColor+','+window.CFG.accentColor+')'),('linear-gradient(135deg,'+window.CFG.darkerColor+','+window.CFG.accentColor+')')];
+    const aAvatarBg = gAvatars[a.id % gAvatars.length];
+    const aDaysLabel = !isToday ? `<span style="background:#f0fdf4;color:#166534;font-size:9px;padding:2px 7px;border-radius:99px;font-weight:500;border:0.5px solid #bbf7d0;">in ${daysUntil}d</span>` : '';
+    return `
+    <div id="anniv-${a.id}" style="background:var(--surface);border-radius:14px;padding:13px 14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(46,125,50,0.08);border:0.5px solid rgba(46,125,50,0.1);transition:box-shadow .2s,transform .2s;" onmouseover="this.style.boxShadow='0 6px 20px rgba(46,125,50,0.15)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(46,125,50,0.08)';this.style.transform='translateY(0)'">
+      <div style="width:46px;height:46px;border-radius:50%;background:${aAvatarBg};color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:500;flex-shrink:0;">${initials}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:500;font-size:14px;color:var(--text-primary);display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:3px;">
+          ${a.full_name}
+          <span style="background:#fef9c3;color:#854d0e;font-size:10px;padding:2px 8px;border-radius:99px;font-weight:500;">${milestone.emoji} ${milestone.label}</span>
+          ${isToday ? '<span style="background:#fee2e2;color:#dc2626;font-size:10px;padding:2px 8px;border-radius:99px;font-weight:500;">🎉 TODAY!</span>' : aDaysLabel}
+        </div>
+        <div style="font-size:11px;color:var(--muted);">Joined ${a.join_display||''} · ${a.department_name||''} · ${a.employee_code}</div>
+      </div>
+      ${isToday ? `<div style="display:flex;gap:6px;flex-shrink:0;align-items:center;">
+        <button onclick="toggleBirthdayLike(${a.id},this)" style="border:0.5px solid ${a.i_liked?'#fca5a5':'var(--border)'};border-radius:99px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:4px;background:${a.i_liked?'#fee2e2':'var(--bg)'};color:${a.i_liked?'#dc2626':'var(--muted)'};">❤️ <span class="like-count-${a.id}">${a.like_count||0}</span></button>
+        <button onclick="openBirthdayWish(${a.id},'${(a.full_name||'').replace(/'/g,"\'")}')" style="border:none;border-radius:99px;padding:6px 13px;cursor:pointer;font-size:12px;font-weight:500;background:${a.i_wished?'#dcfce7':'linear-gradient(135deg,'+window.CFG.accentColor+','+window.CFG.lightColor+')'};color:${a.i_wished?'#166534':'#fff'};box-shadow:${a.i_wished?'none':'0 3px 10px rgba(46,125,50,0.25)'};">🏆 Wish ${a.wish_count>0?`(${a.wish_count})`:''}</button>
+      </div>` : ''}
+      ${isToday ? `<div id="bday-wishes-${a.id}" style="width:100%;margin-top:6px;padding-left:58px;"></div>` : ''}
+    </div>`;
+    }).join('');
+
+  // Auto-load wishes for today's anniversaries
+  anniversaries.filter(a => a.join_md === _todayMD).forEach(a => loadBirthdayWishes(a.id));
+}
+
+async function toggleBirthdayLike(empId, btn) {
+  const res = await api('POST', `/birthdays/${empId}/like`);
+  if (!res?.success) return;
+  const countEl = document.querySelector(`.like-count-${empId}`);
+  if (res.liked) {
+    btn.style.cssText += ';background:#fee2e2;color:#dc2626;border-color:#fca5a5';
+    if (countEl) countEl.textContent = parseInt(countEl.textContent||0) + 1;
+  } else {
+    btn.style.cssText += ';background:var(--surface);color:var(--muted);border-color:var(--border)';
+    if (countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent||0) - 1);
+  }
+}
+
+let _bdayWishTarget = null;
+function openBirthdayWish(empId, name) {
+  _bdayWishTarget = empId;
+  // Remove any existing instance first
+  document.getElementById('bday-wish-modal')?.remove();
+  const html = `
+    <div id="bday-wish-modal" onclick="if(event.target===this)this.remove()"
+      style="position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999">
+      <div style="background:var(--bg,#fff);border-radius:16px;padding:24px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.2)" onclick="event.stopPropagation()">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="font-weight:700;font-size:16px">🎂 Wish ${name}</div>
+          <button onclick="document.getElementById('bday-wish-modal').remove()"
+            style="background:#fee2e2;border:none;color:#dc2626;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700">✕</button>
+        </div>
+        <textarea id="bday-wish-msg" rows="3" placeholder="Write your birthday wish... 🎉"
+          style="width:100%;border:1.5px solid var(--border,#e2e8f0);border-radius:10px;padding:10px 12px;font-size:14px;resize:none;font-family:inherit;box-sizing:border-box"></textarea>
+        <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+          <button onclick="document.getElementById('bday-wish-modal').remove()"
+            style="padding:8px 16px;border:1px solid var(--border,#e2e8f0);border-radius:8px;background:var(--surface,#f8fafc);cursor:pointer;font-size:13px">Cancel</button>
+          <button onclick="submitBirthdayWish()"
+            style="padding:8px 18px;background:#3a8c4a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">Send Wish 🎉</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  setTimeout(() => document.getElementById('bday-wish-msg')?.focus(), 100);
+}
+
+async function submitBirthdayWish() {
+  const msg = document.getElementById('bday-wish-msg')?.value?.trim();
+  if (!msg) { toast('Please write a wish!','error'); return; }
+  const res = await api('POST', `/birthdays/${_bdayWishTarget}/wish`, { message: msg });
+  if (res?.success) {
+    toast(res.message || 'Wish sent! 🎉');
+    document.getElementById('bday-wish-modal')?.remove();
+    loadBirthdayWishes(_bdayWishTarget);
+  } else toast(res?.message || 'Failed','error');
+}
+
+async function loadBirthdayWishes(empId) {
+  const res = await api('GET', `/birthdays/${empId}/wishes`);
+  const el  = document.getElementById(`bday-wishes-${empId}`);
+  if (!el || !res?.success || !res.data?.length) { if(el) el.innerHTML=''; return; }
+  // Get current user id directly from stored user object
+  const myId = (() => { try { return JSON.parse(localStorage.getItem(window.CFG.userKey) || 'null')?.id; } catch(e){ return null; } })();
+  el.innerHTML = res.data.map(w => `
+    <div id="wish-row-${w.id}" style="background:var(--surface2,#f8fafc);border-radius:8px;padding:7px 10px;margin-bottom:5px;font-size:12px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-weight:600;color:var(--text)">${w.from_name}</span>
+        <span style="color:var(--muted);font-size:10px">${w.from_code||''}</span>
+        <span style="color:var(--muted);font-size:10px;margin-left:auto">${bdTimeAgo(w.created_at)}</span>
+        ${w.from_emp_id == myId ? `
+        <button onclick="deleteWish(${w.id},${empId})"
+          style="background:none;border:none;color:#dc2626;font-size:11px;cursor:pointer;padding:0 2px" title="Delete">🗑</button>` : ''}
+      </div>
+      <div style="color:var(--text);margin-top:2px">${w.message}</div>
+      <button onclick="openBirthdayReply(${empId},'${(w.from_name||'').replace(/'/g,"\\'")}')"
+        style="background:none;border:none;color:var(--accent,#3a8c4a);font-size:11px;cursor:pointer;padding:2px 0;margin-top:2px">↩ Reply</button>
+    </div>`).join('');
+}
+
+async function deleteWish(wishId, empId) {
+  if (!confirm('Delete this wish?')) return;
+  const res = await api('DELETE', `/birthdays/wishes/${wishId}`);
+  if (res?.success) { toast('Wish deleted'); loadBirthdayWishes(empId); }
+  else toast(res?.message || 'Failed', 'error');
+}
+
+function openBirthdayReply(empId, replyToName) {
+  openBirthdayWish(empId, replyToName);
+  setTimeout(() => {
+    const ta = document.getElementById('bday-wish-msg');
+    if (ta) { ta.value = `@${replyToName} `; ta.focus(); }
+  }, 150);
+}
+
+function bdTimeAgo(ts) {
+  if (!ts) return '';
+  try {
+    const diff = Date.now() - new Date(ts).getTime();
+    if (diff < 60000)    return 'just now';
+    if (diff < 3600000)  return `${Math.floor(diff/60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
+    return `${Math.floor(diff/86400000)}d ago`;
+  } catch(e) { return ''; }
+}
+
+// ── GK CHALLENGE ────────────────────────────────────────────────
+// State
+let _gkData = null;
+let _gkTimer = null;
+let _gkSecsLeft = 30;
+let _gkSubmitting = false;
+const GK_TIMER_CIRC = 144.51; // 2π × 23
+
+function renderGKQuestion(gk) {
+  const card = document.getElementById('gk-card');
+  if (!gk) { card.style.display = 'none'; return; }
+  _gkData = gk;
+  card.style.display = '';
+  const dateLabel = new Date().toLocaleDateString(window.CFG.currencyLocale,{day:'2-digit',month:'short',year:'numeric'});
+  document.getElementById('gk-month-lbl').textContent = dateLabel;
+
+  const answered = gk.my_answer;
+  const opts = [{k:'A',t:gk.option_a},{k:'B',t:gk.option_b},{k:'C',t:gk.option_c},{k:'D',t:gk.option_d}];
+
+  if (answered) {
+    // Already answered — show result card (no button)
+    const ok = gk.my_is_correct;
+    const isSkip = answered === 'skip';
+    let html = `
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px;line-height:1.6;padding:11px 13px;background:var(--surface2);border-radius:10px;border-left:3px solid var(--accent)">${gk.question}</div>
+      <div style="display:flex;flex-direction:column;gap:7px">`;
+    for (const o of opts) {
+      const isSelected = answered === o.k;
+      const isCorrectOpt = gk.correct_answer === o.k;
+      const bg  = isSelected ? (ok?'#dcfce7':'#fee2e2') : isCorrectOpt && !isSkip ? '#f0fdf4' : 'var(--surface2)';
+      const bdr = isSelected ? (ok?'#16a34a':'#dc2626') : isCorrectOpt && !isSkip ? '#86efac' : 'var(--border)';
+      const lBg = isSelected ? (ok?'#dcfce7':'#fee2e2') : 'var(--surface2)';
+      const lCol= isSelected ? (ok?'#16a34a':'#dc2626') : 'var(--muted)';
+      html += `<div style="padding:9px 12px;border-radius:9px;border:1.5px solid ${bdr};background:${bg};font-size:12.5px;font-weight:500;display:flex;align-items:center;gap:10px">
+        <span style="width:22px;height:22px;border-radius:6px;background:${lBg};color:${lCol};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">${o.k}</span>
+        <span style="flex:1">${o.t||''}</span>
+        ${isSelected?`<span style="font-size:12px;font-weight:700;color:${ok?'#16a34a':'#dc2626'}">${ok?'✓':'✗'}</span>`:''}
+      </div>`;
+    }
+    html += `</div>
+    <div style="margin-top:10px;padding:9px 12px;border-radius:9px;background:${ok?'#f0fdf4':isSkip?'#fffbeb':'#fef2f2'};font-size:12px;font-weight:600;color:${ok?'#15803d':isSkip?'#92400e':'#dc2626'}">
+      ${isSkip?'⏭ Skipped — no score change.':ok?'🎉 Correct! +1.00 point added.':'❌ Wrong. Correct answer: '+gk.correct_answer+'. −0.33 deducted.'}</div>`;
+    document.getElementById('gk-body').innerHTML = html;
+  } else {
+    // Not yet answered — show "Answer Now" button
+    document.getElementById('gk-body').innerHTML = `
+      <div style="text-align:center;padding:10px 0 4px">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5">
+          ⚡ You have <strong>30 seconds</strong> to answer once you open the question.<br>
+          <span style="font-size:11px;color:#dc2626;font-weight:600">Minimising the app will auto-skip your answer.</span>
+        </div>
+        <button onclick="openGKModal()" style="
+          background:linear-gradient(135deg,var(--cfg-primary),var(--cfg-accent));color:#fff;border:none;
+          padding:11px 28px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;
+          box-shadow:0 4px 16px rgba(27,94,32,.35);transition:all .2s;letter-spacing:.01em
+        " onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(27,94,32,.45)'"
+           onmouseout="this.style.transform='';this.style.boxShadow='0 4px 16px rgba(27,94,32,.35)'">
+          🧠 Answer Today's Question
+        </button>
+      </div>`;
+  }
+}
+
+function openGKModal() {
+  if (!_gkData || _gkData.my_answer) return;
+  const gk = _gkData;
+  const overlay = document.getElementById('gk-modal-overlay');
+  overlay.style.display = 'flex';
+
+  // Set date
+  document.getElementById('gk-modal-date').textContent =
+    new Date().toLocaleDateString(window.CFG.currencyLocale,{day:'2-digit',month:'short',year:'numeric'});
+
+  // Set question
+  document.getElementById('gk-modal-question').textContent = gk.question;
+
+  // Build options
+  const opts = [{k:'A',t:gk.option_a},{k:'B',t:gk.option_b},{k:'C',t:gk.option_c},{k:'D',t:gk.option_d}];
+  const optsEl = document.getElementById('gk-modal-opts');
+  optsEl.innerHTML = '';
+  for (const o of opts) {
+    const btn = document.createElement('button');
+    btn.className = 'gk-opt-btn';
+    btn.innerHTML = `<span class="gk-opt-label">${o.k}</span><span style="flex:1">${o.t||''}</span>`;
+    btn.onclick = () => gkModalSubmit(gk.id, o.k);
+    optsEl.appendChild(btn);
+  }
+
+  // Hide result
+  const resultEl = document.getElementById('gk-modal-result');
+  resultEl.style.display = 'none';
+
+  // Start timer
+  _gkSecsLeft = 30;
+  _gkSubmitting = false;
+  _updateGKTimerUI(15);
+  clearInterval(_gkTimer);
+  _gkTimer = setInterval(() => {
+    _gkSecsLeft--;
+    _updateGKTimerUI(_gkSecsLeft);
+    if (_gkSecsLeft <= 0) {
+      clearInterval(_gkTimer);
+      gkModalSubmit(gk.id, 'skip', 'timeout');
+    }
+  }, 1000);
+
+  // Visibility change → auto-skip
+  document.addEventListener('visibilitychange', _gkVisibilityHandler);
+}
+
+function _updateGKTimerUI(secs) {
+  const ring = document.getElementById('gk-timer-ring');
+  const num  = document.getElementById('gk-timer-num');
+  if (!ring || !num) return;
+  const frac = secs / 30;
+  ring.style.strokeDashoffset = GK_TIMER_CIRC * (1 - _gkSecsLeft / 30);
+  num.textContent = secs;
+  // Color: green → orange → red
+  const color = secs > 20 ? '#fff' : secs > 10 ? '#fbbf24' : '#f87171';
+  ring.style.stroke = color;
+  num.style.color = color;
+  if (secs <= 10) {
+    num.style.animation = 'gkTimerPulse .6s ease infinite';
+  } else {
+    num.style.animation = '';
+  }
+}
+
+function _gkVisibilityHandler() {
+  if (document.hidden && _gkData && !_gkData.my_answer && !_gkSubmitting) {
+    clearInterval(_gkTimer);
+    gkModalSubmit(_gkData.id, 'skip', 'hidden');
+  }
+}
+
+async function gkModalSubmit(questionId, answer, reason) {
+  if (_gkSubmitting) return;
+  _gkSubmitting = true;
+  clearInterval(_gkTimer);
+  document.removeEventListener('visibilitychange', _gkVisibilityHandler);
+
+  // Disable all option buttons
+  document.querySelectorAll('.gk-opt-btn').forEach(b => {
+    b.disabled = true;
+    b.style.opacity = '0.5';
+  });
+
+  // If skip by timeout/hidden, show timer as 0
+  if (answer === 'skip') _updateGKTimerUI(0);
+
+  const isSkip = answer === 'skip';
+  const resultEl = document.getElementById('gk-modal-result');
+
+  const data = await api('POST', '/gk/answer', { question_id: questionId, answer });
+
+  if (data?.success) {
+    const ok = data.data?.is_correct;
+    const correctAns = data.data?.correct_answer;
+    const about = data.data?.about;
+
+    // Highlight chosen option and correct option
+    const opts = ['A','B','C','D'];
+    document.querySelectorAll('.gk-opt-btn').forEach((btn, i) => {
+      const k = opts[i];
+      const lbl = btn.querySelector('.gk-opt-label');
+      if (k === answer && !isSkip) {
+        btn.style.background = ok ? '#dcfce7' : '#fee2e2';
+        btn.style.borderColor = ok ? '#16a34a' : '#dc2626';
+        btn.style.opacity = '1';
+        if (lbl) { lbl.style.background = ok?'#dcfce7':'#fee2e2'; lbl.style.color = ok?'#16a34a':'#dc2626'; }
+        btn.innerHTML += `<span style="font-weight:800;font-size:13px;color:${ok?'#16a34a':'#dc2626'}">${ok?'✓':'✗'}</span>`;
+      } else if (k === correctAns && !ok && !isSkip) {
+        btn.style.background = '#f0fdf4';
+        btn.style.borderColor = '#86efac';
+        btn.style.opacity = '1';
+      }
+    });
+
+    const reasonLabel = reason === 'timeout' ? ' (time ran out!)' : reason === 'hidden' ? ' (app minimised)' : '';
+    resultEl.style.display = 'block';
+    if (isSkip) {
+      resultEl.style.background = '#fffbeb'; resultEl.style.color = '#92400e';
+      resultEl.innerHTML = `⏭ Skipped${reasonLabel} — no points. Correct answer was <strong>${correctAns}</strong>.${about?`<br><span style="font-weight:400;font-size:12px">${about}</span>`:''}`;
+    } else if (ok) {
+      resultEl.style.background = '#f0fdf4'; resultEl.style.color = '#15803d';
+      resultEl.innerHTML = `🎉 Correct! +1.00 point added.${about?`<br><span style="font-weight:400;font-size:12px">${about}</span>`:''}`;
+    } else {
+      resultEl.style.background = '#fef2f2'; resultEl.style.color = '#dc2626';
+      resultEl.innerHTML = `❌ Wrong${reasonLabel}. −0.33 deducted. Correct: <strong>${correctAns}</strong>.${about?`<br><span style="font-weight:400;font-size:12px">${about}</span>`:''}`;
+    }
+
+    toast(ok ? '🎉 Correct! +1.00' : isSkip ? '⏭ Skipped' : '❌ Wrong. −0.33', ok ? 'success' : 'error');
+
+    // Close modal after 2.8s and refresh card
+    setTimeout(async () => {
+      document.getElementById('gk-modal-overlay').style.display = 'none';
+      const todayStr = today.toISOString().split('T')[0];
+      const gkRes = await api('GET', `/gk/question?date=${todayStr}`);
+      renderGKQuestion(gkRes?.data || null);
+      loadGKLeaderboard();
+    }, 2800);
+  } else {
+    resultEl.style.display = 'block';
+    resultEl.style.background = '#fef2f2'; resultEl.style.color = '#dc2626';
+    resultEl.innerHTML = `⚠️ ${data?.message || 'Could not submit. Please try again.'}`;
+    _gkSubmitting = false;
+  }
+}
+
+async function submitGKDash(questionId, answer) {
+  // Legacy wrapper kept for safety
+  await gkModalSubmit(questionId, answer);
+}
+
+async function postAnnouncement() {
+  const title   = document.getElementById('ann-title').value.trim();
+  const content = document.getElementById('ann-content').value.trim();
+  const type    = document.getElementById('ann-type').value;
+  const expires = document.getElementById('ann-expires').value;
+  const imgFile = document.getElementById('ann-image')?.files[0];
+  if (!title||!content) { toast('Title and content required','error'); return; }
+
+  const fd = new FormData();
+  fd.append('title', title);
+  fd.append('content', content);
+  fd.append('type', type);
+  if (expires) fd.append('expires_at', expires);
+  if (imgFile) fd.append('image', imgFile);
+
+  try {
+    const token = localStorage.getItem(window.CFG.tokenKey);
+    const res  = await fetch(`${API_BASE}/announcements`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: fd
+    });
+    const data = await res.json();
+    if (data?.success) {
+      toast('Announcement posted ✅');
+      closeModal('announce-modal');
+      document.getElementById('ann-title').value = '';
+      document.getElementById('ann-content').value = '';
+      document.getElementById('ann-image').value = '';
+      document.getElementById('ann-img-preview').style.display = 'none';
+      loadDashboard();
+    } else { toast(data?.message||'Failed','error'); }
+  } catch(e) { toast('Error posting announcement','error'); }
+}
+
+function previewAnnImage(input, previewId) {
+  const preview = document.getElementById(previewId);
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = e => { preview.src = e.target.result; preview.style.display = 'block'; };
+    reader.readAsDataURL(input.files[0]);
+  } else {
+    preview.src = ''; preview.style.display = 'none';
+  }
+}
+
+// ── GK LEADERBOARD ──────────────────────────────────────────────
+async function loadGKLeaderboard(period = 'month') {
+  const el = document.getElementById('gk-leaderboard-body');
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+
+  // Update active tab style
+  ['month','year','all'].forEach(p => {
+    const btn = document.getElementById(`lb-tab-${p}`);
+    if (!btn) return;
+    if (p === period) {
+      btn.style.background = 'var(--accent)';
+      btn.style.color = '#fff';
+      btn.style.borderColor = 'var(--accent)';
+    } else {
+      btn.style.background = 'var(--surface2)';
+      btn.style.color = 'var(--muted)';
+      btn.style.borderColor = 'var(--border)';
+    }
+  });
+
+  const data = await api('GET', `/gk/leaderboard?period=${period}&limit=50`);
+  if (!data?.success) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:16px 0;text-align:center">Could not load leaderboard.<br><a href="javascript:loadGKLeaderboard('${period}')" style="color:var(--accent)">Retry</a></div>`;
+    return;
+  }
+  if (!data.data?.length) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:16px 0;text-align:center">No scores yet.<br><span style="font-size:11px">Answer today's GK question to appear here!</span></div>`;
+    return;
+  }
+
+  const periodLabel = period === 'month' ? '📅 This Month' : period === 'year' ? '📆 This Year' : '🏅 All Time';
+  const medals = ['🥇','🥈','🥉'];
+  el.innerHTML = `
+    <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:4px 2px 8px">${periodLabel}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead>
+        <tr style="border-bottom:2px solid var(--border);color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">
+          <th style="padding:6px 4px;text-align:left">#</th>
+          <th style="padding:6px 4px;text-align:left">Employee</th>
+          <th style="padding:6px 4px;text-align:center">✓ Correct</th>
+          <th style="padding:6px 4px;text-align:center">✗ Wrong</th>
+          <th style="padding:6px 4px;text-align:center">⏭ Skip</th>
+          <th style="padding:6px 4px;text-align:center">🔥 Streak</th>
+          <th style="padding:6px 4px;text-align:right">Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.data.map((e, i) => {
+          const score = parseFloat(e.total_score || 0);
+          const scoreColor = score > 0 ? 'var(--accent)' : score < 0 ? '#ef4444' : 'var(--muted)';
+          const fullName = `${e.first_name||''} ${e.last_name||''}`.trim() || 'Unknown';
+          const initials = ((e.first_name?.[0]||'')+(e.last_name?.[0]||'')).toUpperCase()||'?';
+          const streak = parseInt(e.streak||0);
+          const rowBg = e.is_me ? 'background:#f0fdf4;' : '';
+          return `
+          <tr style="border-bottom:1px solid var(--border);${rowBg}${e.is_me?'font-weight:600':''}">
+            <td style="padding:7px 4px;text-align:left;font-size:${i<3?'15px':'12px'}">${i<3?medals[i]:i+1}</td>
+            <td style="padding:7px 4px">
+              <div style="display:flex;align-items:center;gap:7px">
+                <div style="width:26px;height:26px;border-radius:50%;background:${e.is_me?'var(--accent)':'var(--accent-l)'};color:${e.is_me?'#fff':'var(--accent)'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${initials}</div>
+                <span style="${e.is_me?'color:var(--accent)':''}">${fullName}${e.is_me?' (You)':''}</span>
+              </div>
+            </td>
+            <td style="padding:7px 4px;text-align:center;color:#16a34a;font-weight:600">${e.correct||0}</td>
+            <td style="padding:7px 4px;text-align:center;color:#dc2626;font-weight:600">${e.wrong||0}</td>
+            <td style="padding:7px 4px;text-align:center;color:#92400e">${e.skipped||0}</td>
+            <td style="padding:7px 4px;text-align:center">${streak > 0 ? `🔥${streak}` : '—'}</td>
+            <td style="padding:7px 4px;text-align:right;font-weight:800;color:${scoreColor};font-size:13px">${score.toFixed(2)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+
+async function loadNotifBadge() {
+  const data = await api('GET', '/notifications?unread=true');
+  const badge = document.getElementById('notif-badge');
+  if (!badge) return;
+  const count = data?.data?.filter(n=>!n.is_read)?.length || 0;
+  badge.textContent = count > 0 ? count : '';
+  badge.style.display = count > 0 ? 'flex' : 'none';
+}
+</script>
+</body>
+</html>
