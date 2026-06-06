@@ -33,7 +33,7 @@ window.CFG = {
   googleFontUrl:     "https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap",
 
   // ── 🌐 API ──────────────────────────────────────────────────────────────
-  apiBase:           "https://hrms-riskcare.onrender.com/api",
+  apiBase:           "https://riskcarehrms.onrender.com/api",
 
   // ── 🖥️ Frontend URL (used for meeting links, invite links) ──────────────
   // ✅ Set this to your PRODUCTION Vercel URL — never a preview URL
