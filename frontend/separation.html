@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Separation</title>
+<!-- Font loaded dynamically by config.js -->
+<link rel="stylesheet" href="style.css">
+<style>
+.sep-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px;margin-bottom:14px;border-left:4px solid var(--yellow);transition:.15s}
+.sep-card:hover{border-color:var(--accent)}
+.sep-card.approved{border-left-color:var(--green)}
+.sep-card.rejected{border-left-color:var(--red)}
+.sep-card.withdrawn{border-left-color:var(--muted)}
+.chain-step{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface2);border-radius:10px;margin-bottom:8px}
+.chain-level{width:38px;height:38px;border-radius:10px;background:rgba(67,97,238,.15);color:#4361ee;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;letter-spacing:.3px;text-align:center;line-height:1.2}
+.chain-level.approved{background:rgba(16,185,129,.15);color:#10b981}
+.chain-level.rejected{background:rgba(239,68,68,.15);color:#ef4444}
+.chain-level.pending{background:rgba(245,158,11,.15);color:#f59e0b}
+.timeline{position:relative;padding-left:32px}
+.timeline::before{content:'';position:absolute;left:12px;top:0;bottom:0;width:2px;background:var(--border)}
+.tl-item{position:relative;margin-bottom:16px}
+.tl-dot{position:absolute;left:-26px;top:4px;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--surface);z-index:1}
+.tl-dot.approved{background:var(--green)}
+.tl-dot.rejected{background:var(--red)}
+.tl-dot.pending{background:var(--yellow)}
+.tl-dot.inactive{background:var(--border)}
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">Separation / Resignation</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-danger btn-sm" id="resign-btn" onclick="openModal('resign-modal')" style="display:none">📝 Submit Resignation</button>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+
+    <!-- INFO BANNER FOR EMPLOYEES -->
+    <div id="emp-banner" style="display:none" class="card" style="background:rgba(67,97,238,.05);border-color:rgba(67,97,238,.2);padding:18px 22px;margin-bottom:20px">
+      <div style="display:flex;gap:14px;align-items:flex-start">
+        <div style="font-size:28px">📋</div>
+        <div>
+          <div style="font-weight:800;font-size:15px;margin-bottom:4px">Resignation Process</div>
+          <div style="color:var(--muted);font-size:13px;line-height:1.7">
+            Your resignation will go through a <b style="color:var(--text)">4-level approval chain</b>:<br>
+            <span style="color:#4361ee">L1 Manager</span> → <span style="color:#10b981">L2 HR</span> → <span style="color:#f59e0b">L3 Accounts</span> → <span style="color:#ef4444">L4 Admin/MD</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('my')">My Request</button>
+      <button class="tab-btn" id="pending-tab" style="display:none" onclick="switchTab('pending')">⏳ Pending Approvals <span id="pending-count-badge" style="background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;display:none"></span></button>
+      <button class="tab-btn" id="all-tab" style="display:none" onclick="switchTab('all')">📂 All Separations</button>
+    </div>
+
+    <!-- MY REQUEST TAB -->
+    <div id="tab-my">
+      <div id="my-sep-content"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- PENDING APPROVALS TAB -->
+    <div id="tab-pending" style="display:none">
+      <div id="pending-sep-list"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- ALL SEPARATIONS (admin/hr) -->
+    <div id="tab-all" style="display:none">
+      <div class="card" style="padding:16px 22px;margin-bottom:16px">
+        <div class="flex gap-2" style="flex-wrap:wrap">
+          <select id="all-status-filter" class="form-control" style="width:150px" onchange="loadAll()">
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="withdrawn">Withdrawn</option>
+            <option value="completed">Completed</option>
+          </select>
+          <input id="all-search" class="form-control" style="width:220px" placeholder="Search employee…" oninput="filterAll()">
+        </div>
+      </div>
+      <div id="all-sep-list"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- RESIGN MODAL -->
+<div class="modal-backdrop" id="resign-modal">
+  <div class="modal" style="width:560px">
+    <div class="modal-header">
+      <div class="modal-title">Submit Resignation</div>
+      <button class="modal-close" onclick="closeModal('resign-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:14px;margin-bottom:18px;font-size:13px;color:var(--muted)">
+        ⚠ Once submitted, your resignation will be sent to your manager for approval. You can withdraw it while it's still pending at Level 1.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Type of Separation *</label>
+        <select id="sep-type" class="form-control">
+          <option value="resignation">Resignation (Voluntary)</option>
+          <option value="mutual-separation">Mutual Separation</option>
+          <option value="retirement">Retirement</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Notice Date (today) *</label>
+          <input id="sep-notice" class="form-control" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Last Working Day <span style="color:var(--muted);font-weight:400">(suggested — min: auto-calculated)</span></label>
+          <input id="sep-lwd" class="form-control" type="date" placeholder="Auto-calculated">
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">💡 You can suggest a later date; earlier than notice period is not allowed.</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason for Resignation *</label>
+        <textarea id="sep-reason" class="form-control" rows="4" placeholder="Please explain your reason for leaving. This will be reviewed by your manager and HR."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('resign-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="submitResignation()">📝 Submit Resignation</button>
+    </div>
+  </div>
+</div>
+
+<!-- REVIEW MODAL (for approvers) -->
+<div class="modal-backdrop" id="review-modal">
+  <div class="modal" style="width:580px">
+    <div class="modal-header">
+      <div class="modal-title" id="review-title">Review Resignation</div>
+      <button class="modal-close" onclick="closeModal('review-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="review-content"></div>
+    <div class="modal-footer" id="review-footer">
+      <button class="btn btn-outline" onclick="closeModal('review-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXIT DETAILS MODAL (admin/hr) -->
+<div class="modal-backdrop" id="exit-modal">
+  <div class="modal" style="width:480px">
+    <div class="modal-header">
+      <div class="modal-title">Update Exit Details</div>
+      <button class="modal-close" onclick="closeModal('exit-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Last Working Date</label>
+        <input id="exit-lwd" class="form-control" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Final Settlement Amount (<span id="exit-ccy-sym">₹</span>)</label>
+        <input id="exit-settlement" class="form-control" type="number" placeholder="0">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Exit Interview Done</label>
+          <select id="exit-interview" class="form-control">
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Clearance Done</label>
+          <select id="exit-clearance" class="form-control">
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Exit Feedback</label>
+        <textarea id="exit-feedback" class="form-control" rows="3" placeholder="Notes from exit interview…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('exit-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveExitDetails()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+// Fix: DB timestamps come without 'Z' suffix, so browsers parse them as local time
+// instead of UTC — causing a 5h30m offset for IST users. Patch fmt.ago to force UTC.
+(function() {
+  const _origAgo = fmt.ago.bind(fmt);
+  fmt.ago = function(ts) {
+    if (!ts) return '—';
+    // Append 'Z' if no timezone info present, so it's parsed as UTC
+    const normalized = (typeof ts === 'string' && !ts.endsWith('Z') && !ts.includes('+'))
+      ? ts.replace(' ', 'T') + 'Z'
+      : ts;
+    return _origAgo(normalized);
+  };
+  const _origDate = fmt.date.bind(fmt);
+  fmt.date = function(ts) {
+    if (!ts) return '—';
+    const normalized = (typeof ts === 'string' && !ts.endsWith('Z') && !ts.includes('+') && ts.length > 10)
+      ? ts.replace(' ', 'T') + 'Z'
+      : ts;
+    return _origDate(normalized);
+  };
+})();
+
+Auth.guard();
+buildSidebar('separation.html');
+loadNotifBadge();
+
+// ── White-label identity ──────────────────────────────────────────────
+if (window.CFG) {
+  document.getElementById('page-title').textContent          = (window.CFG.clientName || 'HR') + ' — Separation';
+  document.getElementById('sidebar-logo-text').innerHTML     = window.CFG.logoHtml        || 'HR';
+  var _sc=document.getElementById('sidebar-company-sub')||document.getElementById('sidebar-company-short'); if(_sc) _sc.textContent=window.CFG.companyShortName||'';
+  const ccySym = document.getElementById('exit-ccy-sym');
+  if (ccySym) ccySym.textContent = window.CFG.currencySymbol || '₹';
+}
+
+const user = Auth.getUser();
+let activeSepId = null;
+let allData = [];
+
+// Set default notice date to today
+const today = new Date().toISOString().split('T')[0];
+document.getElementById('sep-notice').value = today;
+
+// Fetch notice period from server and show auto-calculated LWD
+(async () => {
+  const np = await api('GET', '/separations/notice-period');
+  if (np?.success) {
+    const lwd = np.data.if_resigned_today.last_working_date;
+    const lwdEl = document.getElementById('sep-lwd');
+    lwdEl.value = lwd;
+    lwdEl.min   = lwd; // cannot pick earlier than notice period
+    document.getElementById('sep-lwd').placeholder = `${np.data.notice_period_days} days notice (auto)`;
+  }
+})();
+
+// Update LWD preview when notice date changes
+document.getElementById('sep-notice').addEventListener('change', async function() {
+  const np = await api('GET', '/separations/notice-period');
+  if (np?.success) {
+    const d = new Date(this.value);
+    d.setDate(d.getDate() + np.data.notice_period_days);
+    const autoLwd = d.toISOString().split('T')[0];
+    const lwdEl   = document.getElementById('sep-lwd');
+    lwdEl.value   = autoLwd;
+    lwdEl.min     = autoLwd;
+  }
+});
+
+// Show relevant tabs based on role
+if (Role.isAdminOrHR()) {
+  document.getElementById('pending-tab').style.display = '';
+  document.getElementById('all-tab').style.display = '';
+} else if (Role.is('manager','tl','accounts')) {
+  document.getElementById('pending-tab').style.display = '';
+}
+
+// Load pending count badge
+loadPendingCount();
+loadMySeparation();
+
+async function loadPendingCount() {
+  try {
+    const data = await api('GET', '/separations');
+    if (!data?.success) return;
+    const count = (data.data||[]).filter(s => isMyTurn(s)).length;
+    if (count > 0) {
+      const b = document.getElementById('pending-count-badge');
+      b.textContent = count; b.style.display = 'inline';
+    }
+  } catch(e) { /* silently ignore */ }
+}
+
+async function loadMySeparation() {
+  const data = await api('GET', '/separations/my');
+  const el = document.getElementById('my-sep-content');
+
+  // Show resign button only if no active separation
+  const active = (data?.data||[]).find(s => !['rejected','withdrawn','completed'].includes(s.status));
+  if (!active) {
+    document.getElementById('resign-btn').style.display = 'flex';
+    document.getElementById('emp-banner').style.display = 'block';
+  } else {
+    document.getElementById('resign-btn').style.display = 'none';
+    document.getElementById('emp-banner').style.display = 'none';
+  }
+
+  const mySeps = data?.data || [];
+  if (!mySeps.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <p>You have not submitted any resignation yet.</p>
+      <p class="text-muted" style="margin-top:8px">Click <b>"Submit Resignation"</b> in the top right to begin the process.</p>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = mySeps.map(s => renderSepCard(s, false)).join('');
+}
+
+async function loadPendingApprovals() {
+  const el = document.getElementById('pending-sep-list');
+  const data = await api('GET', '/separations');
+  if (!data?.success || !data.data?.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>No pending resignation approvals.</p></div>';
+    return;
+  }
+  const mine = data.data.filter(s => isMyTurn(s));
+  if (!mine.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>No resignations needing your approval.</p></div>';
+    return;
+  }
+  el.innerHTML = mine.map(s => renderSepCard(s, true)).join('');
+}
+
+async function loadAll() {
+  const status = document.getElementById('all-status-filter').value;
+  const data   = await api('GET', '/separations' + (status?'?status='+status:''));
+  allData = data?.data || [];
+  filterAll();
+}
+
+function filterAll() {
+  const q  = document.getElementById('all-search')?.value?.toLowerCase() || '';
+  const el = document.getElementById('all-sep-list');
+  const filtered = allData.filter(s =>
+    !q || `${s.employee_name} ${s.employee_code} ${s.department_name||''}`.toLowerCase().includes(q)
+  );
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📂</div><p>No separations found.</p></div>';
+    return;
+  }
+  el.innerHTML = filtered.map(s => renderSepCard(s, Role.isAdminOrHR())).join('');
+}
+
+function renderSepCard(s, canApprove) {
+  const myTurn = isMyTurn(s);
+  return `
+  <div class="sep-card ${s.status}" onclick="openReview(${s.id})" style="cursor:pointer">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <div class="avatar">${s.employee_name?.[0]||'?'}</div>
+          <div>
+            <div style="font-weight:800;font-size:14px">${s.employee_name} <span class="text-muted fs-sm">${s.employee_code||''}</span></div>
+            <div class="text-muted">${s.department_name||'—'} · ${s.designation_title||'—'}</div>
+          </div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-left:44px">
+          <b style="color:var(--text)">${s.type}</b> · Notice: ${fmt.date(s.notice_date)} · Last Day: ${fmt.date(s.last_working_date)}
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px;margin-left:44px;font-style:italic;max-width:500px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          "${s.reason}"
+        </div>
+
+        <!-- Approval chain pills -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;margin-left:44px">
+          ${renderChainPill('L1 Mgr',  s.manager_actioned_by_name,  s.manager_action  || (s.status==='pending' ? 'pending' : 'waiting'))}
+          <span style="color:var(--muted);font-size:16px;align-self:center">›</span>
+          ${renderChainPill('L2 HR',   s.hr_actioned_by_name,       s.hr_action       || (s.status==='manager_approved' ? 'pending' : ['hr_approved','accounts_approved','completed'].includes(s.status) ? 'approved' : 'waiting'))}
+          <span style="color:var(--muted);font-size:16px;align-self:center">›</span>
+          ${renderChainPill('L3 Acc',  s.accounts_actioned_by_name, s.accounts_action || (s.status==='hr_approved' ? 'pending' : ['accounts_approved','completed'].includes(s.status) ? 'approved' : 'waiting'))}
+          <span style="color:var(--muted);font-size:16px;align-self:center">›</span>
+          ${renderChainPill('L4 Admin',s.admin_actioned_by_name,    s.admin_action    || (s.status==='accounts_approved' ? 'pending' : s.status==='completed' ? 'approved' : 'waiting'))}
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <span class="badge badge-${s.status}">${s.status}</span>
+        <div class="text-muted mt-1 fs-sm">${fmt.ago(s.created_at)}</div>
+      </div>
+    </div>
+
+    <!-- Action row -->
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap" onclick="event.stopPropagation()">
+      ${canApprove && myTurn && s.status==='pending' ? `
+        <button class="btn btn-success btn-sm" onclick="quickAction(${s.id},'approve')">✓ Approve</button>
+        <button class="btn btn-danger btn-sm"  onclick="openReject(${s.id})">✗ Reject</button>` : ''}
+      ${s.employee_id===user.id && s.status==='pending' && !s.manager_action ? `
+        <button class="btn btn-outline btn-sm" onclick="withdrawSep(${s.id})">Withdraw</button>` : ''}
+      ${Role.isAdminOrHR() && s.status==='approved' ? `
+        <button class="btn btn-outline btn-sm" onclick="openExitModal(${s.id},\`${s.last_working_date||''}\`,\`${s.final_settlement_amount||''}\`)">📝 Update Exit Details</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function renderChainPill(level, name, status) {
+  const colors = { approved:'#10b981', rejected:'#ef4444', pending:'#f59e0b' };
+  const c = colors[status] || '#64748b';
+  return `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(${status==='approved'?'16,185,129':status==='rejected'?'239,68,68':'245,158,11'},.12);color:${c}">
+    ${level}: ${name?name.split(' ')[0]:'—'} · ${status}
+  </span>`;
+}
+
+function isMyTurn(s) {
+  if (s.status === 'pending'           && s.manager_id === user.id)               return true;
+  const cfg = window.CFG || {};
+  const l2  = cfg.separationL2Role  || 'hr';
+  const l3  = cfg.separationL3Role  || 'accounts';
+  const l4  = cfg.separationL4Roles || ['admin','super_admin'];
+  if (s.status === 'manager_approved'  && Role.is(l2))               return true;
+  if (s.status === 'hr_approved'       && Role.is(l3))               return true;
+  if (s.status === 'accounts_approved' && Role.is(...l4))            return true;
+  return false;
+}
+
+// Route to the correct backend endpoint based on current separation status
+async function doApprovalAction(id, action, remarks, final_lwd) {
+  const sep = await api('GET', `/separations/${id}`);
+  const status = sep?.data?.status;
+  if (status === 'pending')            return api('POST', `/separations/${id}/manager-action`,  { action, remarks });
+  if (status === 'manager_approved')   return api('POST', `/separations/${id}/hr-action`,       { action, remarks });
+  if (status === 'hr_approved')        return api('POST', `/separations/${id}/accounts-action`, { action, remarks, final_lwd });
+  if (status === 'accounts_approved')  return api('POST', `/separations/${id}/admin-action`,    { action, remarks });
+  return { success: false, message: `No action available for status: ${status}` };
+}
+
+async function openReview(id) {
+  const data = await api('GET', `/separations/${id}`);
+  if (!data?.success) { toast('Could not load details','error'); return; }
+  const s = data.data;
+  activeSepId = id;
+  document.getElementById('review-title').textContent = `Resignation — ${s.employee_name}`;
+
+  document.getElementById('review-content').innerHTML = `
+    <!-- Employee Info -->
+    <div style="display:flex;gap:12px;margin-bottom:18px;padding:14px;background:var(--surface2);border-radius:10px">
+      <div class="avatar" style="width:44px;height:44px;font-size:16px">${s.employee_name?.[0]||'?'}</div>
+      <div>
+        <div style="font-weight:800;font-size:15px">${s.employee_name}</div>
+        <div class="text-muted">${s.employee_code} · ${s.department_name} · ${s.designation_title||'—'}</div>
+        <div class="text-muted">Joined: ${fmt.date(s.joining_date)} · ${s.phone||'—'}</div>
+      </div>
+    </div>
+
+    <!-- Resignation Details -->
+    <div class="form-row" style="margin-bottom:14px">
+      <div><div class="form-label">Type</div><span class="badge" style="background:rgba(239,68,68,.1);color:#ef4444">${s.type}</span></div>
+      <div><div class="form-label">Notice Date</div>${fmt.date(s.notice_date)}</div>
+      <div><div class="form-label">Last Working Day</div><b>${fmt.date(s.last_working_date)}</b></div>
+    </div>
+
+    <div style="margin-bottom:18px">
+      <div class="form-label">Reason for Resignation</div>
+      <div style="background:var(--surface2);border-radius:10px;padding:14px;font-size:13px;line-height:1.7;font-style:italic">"${s.reason}"</div>
+    </div>
+
+    <!-- Approval Timeline -->
+    <div class="form-label" style="margin-bottom:12px">Approval Chain</div>
+    <div class="timeline">
+      ${[
+        { lv:'L1', label:'Manager',  name:s.manager_actioned_by_name,  status:s.manager_action  || (s.status==='pending'?'pending':'waiting'),          remarks:s.manager_remarks,  at:s.manager_actioned_at },
+        { lv:'L2', label:'HR',       name:s.hr_actioned_by_name,       status:s.hr_action       || (s.status==='manager_approved'?'pending':['hr_approved','accounts_approved','completed'].includes(s.status)?'approved':'waiting'), remarks:s.hr_remarks,       at:s.hr_actioned_at },
+        { lv:'L3', label:'Accounts', name:s.accounts_actioned_by_name, status:s.accounts_action || (s.status==='hr_approved'?'pending':['accounts_approved','completed'].includes(s.status)?'approved':'waiting'),                   remarks:s.accounts_remarks, at:s.accounts_actioned_at },
+        { lv:'L4', label:'Admin/MD', name:s.admin_actioned_by_name,    status:s.admin_action    || (s.status==='accounts_approved'?'pending':s.status==='completed'?'approved':'waiting'),                                           remarks:s.admin_remarks,    at:s.admin_actioned_at },
+      ].map(step => `
+        <div class="tl-item">
+          <div class="tl-dot ${step.status}"></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <div style="font-weight:700;font-size:13px">${step.lv}: ${step.name||'—'} <span class="text-muted fs-sm">(${step.label})</span></div>
+              ${step.remarks?`<div class="text-muted fs-sm">Remarks: ${step.remarks}</div>`:''}
+              ${step.at?`<div class="text-muted fs-sm">${fmt.ago(step.at)}</div>`:''}
+            </div>
+            <span class="badge badge-${step.status||'waiting'}">${step.status||'waiting'}</span>
+          </div>
+        </div>`).join('')}
+    </div>
+
+    ${s.final_settlement_amount ? `
+    <div class="divider"></div>
+    <div class="form-row">
+      <div><div class="form-label">Final Settlement</div>${fmt.money(s.final_settlement_amount)}</div>
+      <div><div class="form-label">Exit Interview</div>${s.exit_interview_done?'Done':'Pending'}</div>
+      <div><div class="form-label">Clearance</div>${s.clearance_done?'Done':'Pending'}</div>
+    </div>` : ''}
+
+    <!-- Final LWD override — shown only for Accounts step -->
+    <div id="lwd-section" style="display:none;margin-top:16px">
+      <div class="form-label">Adjust Last Working Day <span style="color:var(--muted);font-weight:400">(optional)</span></div>
+      <input id="review-lwd" class="form-control" type="date" style="margin-top:6px">
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">Leave blank to keep current LWD: <b id="current-lwd-display"></b></div>
+    </div>
+
+    <!-- Reject remarks input (shown when needed) -->
+    <div id="reject-section" style="display:none;margin-top:16px">
+      <div class="form-label">Reason for Rejection *</div>
+      <textarea id="review-remarks" class="form-control" rows="3" placeholder="Provide reason for rejection…"></textarea>
+    </div>`;
+
+  // Footer actions
+  const footer = document.getElementById('review-footer');
+  footer.innerHTML = `<button class="btn btn-outline" onclick="closeModal('review-modal')">Close</button>`;
+  if (isMyTurn(s)) {
+    const stepLabel = {
+      pending: 'L1 Manager', manager_approved: 'L2 HR',
+      hr_approved: 'L3 Accounts', accounts_approved: 'L4 Admin'
+    }[s.status] || '';
+    footer.innerHTML += `
+      <button class="btn btn-danger btn-sm" onclick="showRejectInput()">✗ Reject</button>
+      <button class="btn btn-success btn-sm" id="approve-final-btn" onclick="reviewAction('approve')">✓ Approve (${stepLabel})</button>`;
+    // Show LWD adjuster for Accounts step
+    if (s.status === 'hr_approved' && Role.is('accounts','admin','super_admin')) {
+      document.getElementById('lwd-section').style.display = 'block';
+      document.getElementById('review-lwd').value = s.last_working_date || '';
+      document.getElementById('current-lwd-display').textContent = fmt.date(s.last_working_date);
+    }
+    if (s.status === 'accounts_approved') {
+      footer.innerHTML += `<br><small class="text-muted" style="display:block;margin-top:6px;width:100%;text-align:right">⚠ Final approval — employee will be marked for separation on their LWD</small>`;
+    }
+  }
+  if (s.employee_id===user.id && s.status==='pending' && !s.manager_action) {
+    footer.innerHTML += `<button class="btn btn-outline btn-sm" onclick="withdrawSep(${s.id})">Withdraw Resignation</button>`;
+  }
+  if (Role.isAdminOrHR() && s.status==='completed') {
+    footer.innerHTML += `<button class="btn btn-outline btn-sm" onclick="openExitModal(${s.id},'${s.last_working_date||''}','${s.final_settlement_amount||''}')">📝 Exit Details</button>`;
+  }
+
+  openModal('review-modal');
+}
+
+function showRejectInput() {
+  document.getElementById('reject-section').style.display = 'block';
+  document.getElementById('approve-final-btn').style.display = 'none';
+  const footer = document.getElementById('review-footer');
+  footer.innerHTML = `
+    <button class="btn btn-outline" onclick="closeModal('review-modal')">Cancel</button>
+    <button class="btn btn-danger" onclick="reviewAction('reject')">Confirm Rejection</button>`;
+}
+
+async function reviewAction(action) {
+  const remarks   = document.getElementById('review-remarks')?.value?.trim() || '';
+  const final_lwd = document.getElementById('review-lwd')?.value || '';
+  if (action==='reject' && !remarks) { toast('Please provide a reason for rejection','error'); return; }
+  const data = await doApprovalAction(activeSepId, action, remarks, final_lwd || undefined);
+  if (data?.success) {
+    toast(data.message, 'success');
+    closeModal('review-modal');
+    loadMySeparation(); loadPendingCount();
+    if (document.getElementById('tab-pending').style.display !== 'none') loadPendingApprovals();
+    if (document.getElementById('tab-all').style.display !== 'none') loadAll();
+  } else toast(data?.message||'Failed','error');
+}
+
+async function quickAction(id, action) {
+  activeSepId = id;
+  if (action === 'reject') { openReject(id); return; }
+  const data = await doApprovalAction(id, action, 'Approved');
+  if (data?.success) { toast(data.message); loadMySeparation(); loadPendingApprovals(); loadPendingCount(); }
+  else toast(data?.message||'Failed','error');
+}
+
+
+async function openReject(id) {
+  activeSepId = id;
+  await openReview(id);
+  showRejectInput();
+}
+
+async function withdrawSep(id) {
+  if (!confirm('Are you sure you want to withdraw your resignation?')) return;
+  const data = await api('POST', `/separations/${id}/withdraw`);
+  if (data?.success) {
+    toast('Resignation withdrawn'); closeModal('review-modal');
+    document.getElementById('resign-btn').style.display = 'flex';
+    loadMySeparation();
+  } else toast(data?.message||'Failed','error');
+}
+
+function openExitModal(id, lwd, settlement) {
+  activeSepId = id;
+  document.getElementById('exit-lwd').value = lwd || '';
+  document.getElementById('exit-settlement').value = settlement || '';
+  openModal('exit-modal');
+}
+
+async function saveExitDetails() {
+  const body = {
+    last_working_date:       document.getElementById('exit-lwd').value,
+    final_settlement_amount: parseFloat(document.getElementById('exit-settlement').value)||0,
+    exit_interview_done:     document.getElementById('exit-interview').value==='true',
+    clearance_done:          document.getElementById('exit-clearance').value==='true',
+    exit_feedback:           document.getElementById('exit-feedback').value.trim(),
+  };
+  const data = await api('PUT', `/separations/${activeSepId}/exit`, body);
+  if (data?.success) { toast('Exit details updated'); closeModal('exit-modal'); loadAll(); }
+  else toast(data?.message||'Failed','error');
+}
+
+async function submitResignation() {
+  const notice_date    = document.getElementById('sep-notice').value;
+  const reason         = document.getElementById('sep-reason').value.trim();
+  const suggested_lwd  = document.getElementById('sep-lwd').value;
+  if (!notice_date || !reason) { toast('All fields are required', 'error'); return; }
+
+  const data = await api('POST', '/separations/resign', { reason, notice_date, suggested_lwd });
+  if (data?.success) {
+    toast(data.message,'success');
+    closeModal('resign-modal');
+    document.getElementById('resign-btn').style.display = 'none';
+    document.getElementById('emp-banner').style.display = 'none';
+    loadMySeparation();
+  } else toast(data?.message||'Failed','error');
+}
+
+function switchTab(name) {
+  ['my','pending','all'].forEach(t => document.getElementById('tab-'+t).style.display = t===name?'':'none');
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active',['my','pending','all'].indexOf(name)===i));
+  if (name==='pending') loadPendingApprovals();
+  if (name==='all') loadAll();
+}
+</script>
+</body>
+</html>
