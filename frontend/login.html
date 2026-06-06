@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" type="image/x-icon" href="LOGO.ico">
+<title id="page-title">Sign In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* Brand colors — set dynamically from config.js */
+  --g1:var(--cfg-primary, #333);
+  --g2:var(--cfg-accent, #555);
+  --g3:var(--cfg-light, #888);
+  --g4:#EAF7FC;
+  --text:#0d1f0f;--text2:#1e3a22;--muted:#4a6e4f;--muted2:#7a9e80;
+  --surface:#fff;--border:#B8E4F5;--bg:#EDF4FB;
+  --red:#dc2626;
+}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);color:var(--text);
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* Soft green background blobs */
+.bg-canvas{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.bg-blob{position:absolute;border-radius:50%;filter:blur(100px);opacity:.45}
+.bg-b1{width:650px;height:650px;background:radial-gradient(circle,rgba(232,48,58,.18),transparent 70%);top:-180px;left:-120px}
+.bg-b2{width:500px;height:500px;background:radial-gradient(circle,rgba(0,174,239,.13),transparent 70%);bottom:-120px;right:-80px}
+.bg-b3{width:160px;height:160px;background:radial-gradient(circle,rgba(232,48,58,.09),transparent 70%);top:40%;left:60%}
+.bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(0,174,239,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,174,239,.05) 1px,transparent 1px);background-size:44px 44px;pointer-events:none}
+
+/* Card */
+.card{
+  background:var(--surface);border-radius:26px;
+  padding:48px 44px 40px;width:450px;max-width:96vw;
+  box-shadow:0 8px 48px rgba(192,39,45,.12),0 2px 12px rgba(0,0,0,.05);
+  position:relative;z-index:1;
+  animation:fadeUp .5s ease;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* Logo area */
+.logo-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:22px}
+.logo-img{width:150px;height:auto;border-radius:0;overflow:hidden;margin-bottom:6px;background:transparent;}
+.logo-img img{width:100%;height:100%;object-fit:contain;display:block;}
+.logo-name{
+  font-family:'DM Serif Display',sans-serif;font-size:26px;font-weight:800;
+  letter-spacing:-.5px;color:var(--text);line-height:1;
+}
+.logo-name span{color:var(--g2)}
+.logo-tag{
+  font-size:10.5px;color:var(--muted2);letter-spacing:.12em;
+  margin-top:4px;text-transform:uppercase;font-weight:600;
+}
+
+/* Company bar */
+.company-bar{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--cfg-pale) 60%,#fff),var(--cfg-pale));
+  border:1.5px solid var(--cfg-border);border-radius:14px;
+  padding:14px 20px;margin-bottom:28px;
+  gap:3px;
+}
+.company-icon{display:none}
+.company-name{font-size:13.5px;font-weight:700;color:var(--text2);line-height:1.4}
+.company-sub{font-size:11.5px;color:var(--muted);font-weight:500}
+
+/* Form */
+.form-title{font-size:22px;font-weight:800;text-align:center;margin-bottom:4px;color:var(--text)}
+.form-sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:26px}
+
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px}
+.form-control{
+  width:100%;border:1.5px solid var(--border);border-radius:11px;
+  padding:12px 14px;font-size:14.5px;font-family:inherit;color:var(--text);
+  background:#fafcff;transition:border .2s,box-shadow .2s;outline:none;
+}
+.form-control:focus{border-color:var(--g2);box-shadow:0 0 0 3px rgba(45,158,72,.12);background:#fff}
+.form-control::placeholder{color:var(--muted2)}
+.pw-wrap{position:relative}
+.pw-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px;color:var(--muted2);padding:2px 4px;transition:color .2s}
+.pw-eye:hover{color:var(--g2)}
+
+.forgot-row{text-align:right;margin:-8px 0 18px}
+.forgot-row a{font-size:12.5px;color:var(--g1);text-decoration:none;font-weight:700}
+.forgot-row a:hover{color:var(--g2);text-decoration:underline}
+
+.btn-login{
+  width:100%;
+  background:linear-gradient(135deg,var(--g1) 0%,var(--g2) 50%,var(--g3) 100%);
+  color:#fff;border:none;border-radius:12px;padding:14.5px;
+  font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:opacity .2s,transform .1s,box-shadow .2s;
+  box-shadow:0 5px 20px rgba(192,39,45,.35);
+  letter-spacing:.02em;
+}
+.btn-login:hover{opacity:.91;box-shadow:0 8px 28px rgba(192,39,45,.45)}
+.btn-login:active{transform:scale(.99)}
+.btn-login:disabled{opacity:.6;cursor:not-allowed}
+.spinner{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.error-box{background:#fef2f2;border:1.5px solid #fecaca;border-radius:10px;padding:11px 14px;font-size:13px;color:#dc2626;font-weight:500;margin-bottom:18px;display:none;align-items:center;gap:8px}
+
+.card-footer{margin-top:22px;text-align:center;font-size:11.5px;color:var(--muted2)}
+.card-footer b{color:var(--g2)}
+
+@media(max-width:480px){.card{padding:36px 20px 30px}}
+</style>
+</head>
+<body>
+<div class="bg-canvas">
+  <div class="bg-blob bg-b1"></div>
+  <div class="bg-blob bg-b2"></div>
+  <div class="bg-blob bg-b3"></div>
+</div>
+<div class="bg-grid"></div>
+
+<div class="card">
+  <!-- Logo -->
+  <div class="logo-wrap">
+    <div class="logo-img" id="logo-img-wrap">
+      <img id="logo-img" src="" alt="Logo" style="display:none">
+    </div>
+    <div class="logo-name" id="logo-name"></div>
+    <div class="logo-tag" id="logo-tag"></div>
+  </div>
+
+  <!-- Company bar -->
+  <div class="company-bar">
+    <div class="company-icon">
+      <img id="company-bar-logo" src="" alt="Logo" style="display:none">
+    </div>
+    <div>
+      <div class="company-name" id="company-name"></div>
+      <div class="company-sub"></div>
+    </div>
+  </div>
+
+  <!-- Sign In Form -->
+  <div class="form-title">Welcome back</div>
+  <div class="form-sub">Sign in to your account to continue</div>
+
+  <div id="error-box" class="error-box"></div>
+
+  <div class="form-group">
+    <label class="form-label">Email Address</label>
+    <input id="email" class="form-control" type="email" placeholder="you@company.com" autocomplete="email">
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Password</label>
+    <div class="pw-wrap">
+      <input id="password" class="form-control" type="password" placeholder="••••••••" autocomplete="current-password">
+      <button class="pw-eye" onclick="togglePw()" type="button">👁</button>
+    </div>
+  </div>
+
+  <div class="forgot-row"><a href="forgot-password.html">Forgot Password?</a></div>
+
+  <button class="btn-login" id="login-btn" onclick="doLogin()">
+    <span id="btn-text">Sign In</span>
+    <div class="spinner" id="spinner"></div>
+  </button>
+
+  <div class="card-footer">© <span id="footer-year"></span> <b id="footer-brand"></b></div>
+</div>
+
+<script src="config.js"></script>
+<script>
+// ── Identity init ──────────────────────────────────────────────────────────
+(function(){
+  const C = window.CFG;
+  // Page title
+  document.getElementById('page-title').textContent = C.clientName + ' - Sign In';
+  // Logo image
+  if(C.logoUrl){
+    const img = document.getElementById('logo-img');
+    img.src = C.logoUrl; img.style.display = 'block';
+    const barImg = document.getElementById('company-bar-logo');
+    barImg.src = C.logoUrl; // keep company-icon hidden per CSS display:none
+  }
+  // Logo name HTML + tagline
+  document.getElementById('logo-name').innerHTML = C.logoHtml || C.clientName;
+  if(C.tagline) document.getElementById('logo-tag').textContent = C.tagline;
+  // Company name
+  document.getElementById('company-name').textContent = C.companyFullName;
+  // Footer
+  document.getElementById('footer-year').textContent = new Date().getFullYear();
+  document.getElementById('footer-brand').textContent = C.clientName;
+  // Inject brand CSS vars for --g1..g4 used in this page's palette
+  const r = document.documentElement.style;
+  r.setProperty('--g1', C.primaryColor);
+  r.setProperty('--g2', C.accentColor);
+  r.setProperty('--g3', C.lightColor);
+  r.setProperty('--g4', C.paleColor);
+})();
+
+const API       = window.CFG.apiBase;
+const TOKEN_KEY = window.CFG.tokenKey;
+const USER_KEY  = window.CFG.userKey;
+
+function togglePw(){const f=document.getElementById('password');f.type=f.type==='password'?'text':'password';}
+document.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+async function doLogin(){
+  const email=document.getElementById('email').value.trim();
+  const password=document.getElementById('password').value;
+  const btn=document.getElementById('login-btn');
+  const errBox=document.getElementById('error-box');
+  if(!email||!password){showErr('Please enter email and password');return;}
+  btn.disabled=true;
+  document.getElementById('btn-text').textContent='Signing in…';
+  document.getElementById('spinner').style.display='block';
+  errBox.style.display='none';
+  try{
+    const res=await fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+    const data=await res.json();
+    if(data.success){
+      localStorage.setItem(TOKEN_KEY,data.data.token);
+      localStorage.setItem(USER_KEY,JSON.stringify(data.data.employee));
+      const role = data.data.employee.role;
+      window.location.href = ['admin','super_admin','hr','accounts'].includes(role) ? 'dashboard.html' : 'attendance.html';
+    }else{showErr(data.message||'Invalid email or password');}
+  }catch(e){showErr('Cannot connect to server. Make sure backend is running on port 3000.');}
+  finally{btn.disabled=false;document.getElementById('btn-text').textContent='Sign In';document.getElementById('spinner').style.display='none';}
+}
+function showErr(msg){const e=document.getElementById('error-box');e.innerHTML='⚠ '+msg;e.style.display='flex';}
+if(localStorage.getItem(TOKEN_KEY)){const u=JSON.parse(localStorage.getItem(USER_KEY)||'{}');window.location.href=['admin','super_admin','hr','accounts'].includes(u.role)?'dashboard.html':'attendance.html';}
+</script>
+</body>
+</html>
