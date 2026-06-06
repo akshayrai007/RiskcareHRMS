@@ -37,7 +37,7 @@ window.CFG = {
 
   // ── 🖥️ Frontend URL (used for meeting links, invite links) ──────────────
   // ✅ Set this to your PRODUCTION Vercel URL — never a preview URL
-  frontendUrl:       "https://hrms-riskcare.vercel.app",
+  frontendUrl:       "https://riskcare-hrms.vercel.app",
 
   // ── 🗺️ Google Maps ───────────────────────────────────────────────────────
   googleMapsApiKey:  "AIzaSyBlfD24fvfHS4agCYkrxg4v_SQWgnYuNxA",
