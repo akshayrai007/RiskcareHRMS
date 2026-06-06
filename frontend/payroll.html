@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Payroll</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">Payroll</div>
+    </div>
+    <div class="topbar-right">
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab-btn active" id="upload-tab" onclick="switchTab('upload')">📤 Upload Payroll Excel</button>
+      <button class="tab-btn" id="process-tab" style="display:none" onclick="switchTab('process')">⚙ Process Payroll</button>
+      <button class="tab-btn" id="list-tab"    style="display:none" onclick="switchTab('payroll-list')">📋 Payroll List</button>
+    </div>
+
+
+
+    <!-- UPLOAD PAYROLL EXCEL (Accounts only) -->
+    <div id="tab-upload">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">📤</span>Upload Monthly Payroll Excel</div>
+        </div>
+
+        <!-- How it works -->
+        <div style="background:var(--cfg-pale);border:1px solid var(--cfg-border);border-radius:8px;padding:16px;margin-bottom:20px">
+          <div style="font-weight:700;color:var(--cfg-primary);margin-bottom:10px;font-size:14px">✅ How This Works</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;font-size:13px;color:var(--cfg-dark)">
+            <div>📋 <b>Step 1:</b> Fill the monthly Excel sheet (Present Days per employee)</div>
+            <div>📤 <b>Step 2:</b> Upload it here — system auto-reads all salary data</div>
+            <div>🔔 <b>Step 3:</b> Every employee gets notified instantly on their app</div>
+            <div>💰 <b>Step 4:</b> Employee opens the app → sees payslip automatically</div>
+          </div>
+        </div>
+
+        <!-- Upload form -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+          <div>
+            <div id="drop-zone"
+                 style="border:2px dashed var(--cfg-upload-border);border-radius:12px;padding:32px;text-align:center;cursor:pointer;background:var(--cfg-upload-bg);transition:all .2s"
+                 onclick="document.getElementById('excel-file').click()"
+                 ondragover="event.preventDefault();this.style.background=window.CFG.paleColor"
+                 ondragleave="this.style.background=window.CFG.uploadBgColor"
+                 ondrop="handleDrop(event)">
+              <div style="font-size:40px;margin-bottom:10px">📊</div>
+              <div style="font-weight:700;color:var(--cfg-darker);margin-bottom:6px">Drop Excel file here</div>
+              <div style="color:#666;font-size:13px">or click to browse</div>
+              <div style="color:#999;font-size:11px;margin-top:8px">.xlsx files only</div>
+              <input type="file" id="excel-file" accept=".xlsx,.xls" style="display:none" onchange="handleFileSelect(this)">
+            </div>
+            <div id="selected-file" style="display:none;margin-top:12px;padding:10px 14px;background:var(--cfg-pale);border-radius:8px;font-size:13px;color:var(--cfg-primary);font-weight:600"></div>
+          </div>
+
+          <div>
+            <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:16px;margin-bottom:16px">
+              <div style="font-weight:700;color:#e65100;margin-bottom:8px;font-size:13px">⚠️ Before Uploading — Checklist</div>
+              <div style="font-size:12px;color:#555;line-height:1.8">
+                ✅ Present Days column filled for all employees<br>
+                ✅ Month and Year columns correct<br>
+                ✅ Employee Codes match exactly (<span id="hint-emp-codes"></span>)<br>
+                ✅ Salary data exists in Salary Structure sheet<br>
+                ✅ Any active loans will auto-deduct EMI
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase">Payroll Month</div>
+                <select id="upload-month" class="form-control"></select>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase">Payroll Year</div>
+                <select id="upload-year" class="form-control"></select>
+              </div>
+            </div>
+            <button class="btn btn-primary" id="upload-btn" onclick="uploadPayrollExcel()" style="width:100%;padding:14px;font-size:15px;font-weight:700" disabled>
+              📤 Upload & Generate Payslips
+            </button>
+            <div style="font-size:11px;color:#999;margin-top:8px;text-align:center">
+              All employees will be notified immediately after upload
+            </div>
+          </div>
+        </div>
+
+        <!-- Upload result -->
+        <div id="upload-result" style="display:none;margin-top:24px"></div>
+      </div>
+    </div>
+
+    <!-- PROCESS PAYROLL -->
+    <div id="tab-process" style="display:none">
+      <div class="stats-row" id="payroll-stats"></div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">⚙</span>Process Monthly Payroll</div>
+        </div>
+        <div style="background:var(--yellow-l);border:1px solid rgba(245,158,11,.2);border-radius:var(--radius-sm);padding:15px;margin-bottom:20px">
+          <div style="font-weight:700;color:#d97706;margin-bottom:6px">⚠ Processing Info</div>
+          <p style="color:var(--text2);font-size:13px;line-height:1.7">
+            Processing calculates salaries for all active employees based on their attendance.<br>
+            Includes: <b>Basic, HRA, Special Allowance, PF (12%), ESI (0.75%), TDS</b>, and LOP deductions.
+          </p>
+        </div>
+        <div class="flex gap-3 flex-wrap" style="align-items:flex-end">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Month</label>
+            <select id="proc-month" class="form-control" style="width:140px"></select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Year</label>
+            <select id="proc-year"  class="form-control" style="width:95px"></select>
+          </div>
+          <button class="btn btn-primary" onclick="processPayroll()">▶ Process Payroll</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYROLL LIST -->
+    <div id="tab-payroll-list" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">📋</span>Payroll Records</div>
+          <div class="flex gap-2">
+            <select id="list-month" class="form-control" style="width:140px" onchange="loadPayrollList()"></select>
+            <select id="list-year"  class="form-control" style="width:95px"  onchange="loadPayrollList()"></select>
+          </div>
+        </div>
+        <div id="payroll-list-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px"></div>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>Employee</th><th>Department</th><th>Working Days</th>
+            <th>Present</th><th>LOP</th><th>Gross</th><th>Deductions</th><th>Net Salary</th><th>Status</th><th></th>
+          </tr></thead>
+          <tbody id="payroll-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- PAYSLIP PRINT MODAL -->
+<div class="modal-backdrop" id="payslip-modal">
+  <div class="modal" style="width:660px">
+    <div class="modal-header">
+      <div class="modal-title">Payslip</div>
+      <button class="modal-close" onclick="closeModal('payslip-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="payslip-modal-content"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('payslip-modal')">Close</button>
+      <button class="btn btn-primary" onclick="printPayslip()">🖨 Print</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+// ── Apply CFG identity ─────────────────────────────────────────────────────
+document.getElementById('page-title').textContent = window.CFG.clientName + ' - Payroll';
+document.getElementById('sidebar-logo-text').innerHTML = window.CFG.logoHtml;
+(document.getElementById('sidebar-company-sub')||document.getElementById('sidebar-company-short')||{}).textContent = window.CFG.companyShortName;
+
+// ── Inject extra CSS variables for drop zone colors ────────────────────────
+(function() {
+  const r = document.documentElement.style;
+  r.setProperty('--cfg-upload-border', window.CFG.uploadBorderColor);
+  r.setProperty('--cfg-upload-bg',     window.CFG.uploadBgColor);
+  r.setProperty('--cfg-dark',          window.CFG.darkColor);
+  r.setProperty('--cfg-darker',        window.CFG.darkerColor);
+})();
+
+// ── Populate checklist employee code hint ──────────────────────────────────
+document.getElementById('hint-emp-codes').textContent =
+  `${window.CFG.permanentEmpCodePrefix}0001, ${window.CFG.contractualEmpCodePrefix}8989 etc.`;
+
+Auth.guard();
+// Payroll is confidential — only accounts and super_admin allowed to process
+// hr can view list only
+const _userRole = Auth.getUser()?.role?.toLowerCase().trim();
+if (!['hr','accounts','super_admin'].includes(_userRole)) {
+  window.location.href = 'attendance.html';
+}
+buildSidebar('payroll.html');
+loadNotifBadge();
+
+const user = Auth.getUser();
+if (user) user.role = user.role?.toLowerCase().trim();
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const NOW = new Date();
+
+['ps-month','proc-month','list-month','upload-month'].forEach(id => {
+  const sel = document.getElementById(id);
+  if (sel) MONTHS.forEach((m,i) => sel.innerHTML += `<option value="${i+1}" ${i+1===NOW.getMonth()+1?'selected':''}>${m}</option>`);
+});
+['ps-year','proc-year','list-year','upload-year'].forEach(id => {
+  const sel = document.getElementById(id);
+  if (sel) for (let y=NOW.getFullYear(); y>=2020; y--)
+    sel.innerHTML += `<option value="${y}" ${y===NOW.getFullYear()?'selected':''}>${y}</option>`;
+});
+
+// HR: List only (view payroll, no process/upload)
+if (user && user.role === 'hr') {
+  document.getElementById('list-tab').style.display = '';
+  document.getElementById('upload-tab').style.display = 'none';
+  document.getElementById('process-tab').style.display = 'none';
+  switchTab('list');
+}
+
+// Accounts: Full access — Upload + Process + List
+if (user && user.role === 'accounts') {
+  document.getElementById('upload-tab').style.display = '';
+  document.getElementById('process-tab').style.display = '';
+  document.getElementById('list-tab').style.display = '';
+}
+
+// Super Admin: List only — payroll upload is accounts' job
+if (user && user.role === 'super_admin') {
+  document.getElementById('upload-tab').style.display = 'none';
+  document.getElementById('process-tab').style.display = 'none';
+  document.getElementById('list-tab').style.display = '';
+  switchTab('list');
+}
+
+// ── Excel Upload functions ────────────────────────────────────────────────────
+let selectedFile = null;
+
+function handleFileSelect(input) {
+  if (input.files.length) setFile(input.files[0]);
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').style.background = window.CFG.uploadBgColor;
+  if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+}
+function setFile(file) {
+  if (!file.name.match(/\.xlsx?$/i)) {
+    toast('Please upload an .xlsx file only', 'error'); return;
+  }
+  selectedFile = file;
+  const el = document.getElementById('selected-file');
+  el.style.display = '';
+  el.innerHTML = `📊 <b>${file.name}</b> &nbsp;·&nbsp; ${(file.size/1024).toFixed(1)} KB`;
+  document.getElementById('upload-btn').disabled = false;
+  document.getElementById('upload-result').style.display = 'none';
+}
+
+async function uploadPayrollExcel() {
+  if (!selectedFile) return;
+
+  // Get month/year from UI selectors
+  const uploadMonth = document.getElementById('upload-month') ? document.getElementById('upload-month').value : (new Date().getMonth()+1);
+  const uploadYear  = document.getElementById('upload-year')  ? document.getElementById('upload-year').value  : new Date().getFullYear();
+
+  const btn = document.getElementById('upload-btn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Uploading & Processing...';
+
+  try {
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('month', uploadMonth);
+    formData.append('year',  uploadYear);
+
+    const token = localStorage.getItem(window.CFG.tokenKey);
+    const res   = await fetch(API_BASE + '/payroll/upload', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: formData
+    });
+    const data = await res.json();
+
+    const el = document.getElementById('upload-result');
+    el.style.display = '';
+
+    if (data.success) {
+      el.innerHTML = `
+        <div style="background:var(--cfg-pale);border:1px solid var(--cfg-border);border-radius:10px;padding:20px">
+          <div style="font-size:22px;font-weight:800;color:var(--cfg-primary);margin-bottom:12px">🎉 ${data.message}</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+            <div style="background:#fff;border-radius:8px;padding:14px;text-align:center">
+              <div style="font-size:28px;font-weight:800;color:var(--cfg-primary)">${data.data.processed}</div>
+              <div style="font-size:12px;color:#666">Payslips Generated</div>
+            </div>
+            <div style="background:#fff;border-radius:8px;padding:14px;text-align:center">
+              <div style="font-size:28px;font-weight:800;color:#e65100">${data.data.skipped}</div>
+              <div style="font-size:12px;color:#666">Skipped</div>
+            </div>
+            <div style="background:#fff;border-radius:8px;padding:14px;text-align:center">
+              <div style="font-size:28px;font-weight:800;color:#1565c0">${data.data.month}/${data.data.year}</div>
+              <div style="font-size:12px;color:#666">Month / Year</div>
+            </div>
+          </div>
+          <div style="background:#fff3e0;border-radius:8px;padding:12px;font-size:13px;color:#e65100;font-weight:600">
+            🔔 All ${data.data.processed} employees have been notified on the app!
+          </div>
+          ${data.data.errors?.length ? `
+          <div style="margin-top:12px;background:#ffebee;border-radius:8px;padding:12px">
+            <div style="font-weight:700;color:#c62828;margin-bottom:6px">⚠️ Skipped Employees:</div>
+            ${data.data.errors.map(e=>`<div style="font-size:12px;color:#555">• ${e}</div>`).join('')}
+          </div>` : ''}
+        </div>`;
+      toast('Payslips generated — all employees notified! 🎉', 'success');
+      // Reload payroll list
+      loadPayrollList();
+    } else {
+      el.innerHTML = `
+        <div style="background:#ffebee;border:1px solid #ef9a9a;border-radius:10px;padding:20px;color:#c62828">
+          <b>❌ Upload Failed:</b> ${data.message}
+        </div>`;
+      toast(data.message, 'error');
+    }
+  } catch (err) {
+    toast('Upload failed: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '📤 Upload & Generate Payslips';
+  }
+}
+
+
+async function loadPayslip(empId) {
+  const month = document.getElementById('ps-month').value;
+  const year  = document.getElementById('ps-year').value;
+  const resolvedEmpId = empId || user?.id;
+  const q     = `/payroll/payslip?month=${month}&year=${year}&employee_id=${resolvedEmpId}`;
+  const data  = await api('GET', q);
+  const el    = document.getElementById('payslip-content');
+
+  if (!data?.success) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📄</div>
+      <p>No payslip for ${MONTHS[month-1]} ${year}.</p>
+      ${['accounts','super_admin'].includes(user?.role)?'<p style="margin-top:10px"><button class="btn btn-primary btn-sm" onclick="switchTab(\'process\')">Process Payroll First</button></p>':
+      '<p class="text-muted" style="margin-top:8px">Payroll may not have been processed yet. Please contact HR.</p>'}
+    </div>`;
+    return;
+  }
+  el.innerHTML = renderPayslipHTML(data.data);
+}
+
+function renderPayslipHTML(p) {
+  const earningRows = [
+    ['Basic Salary', p.basic],
+    ['HRA', p.hra],
+    ['Special Allowance', p.special_allowance],
+    ['Travel Allowance', p.travel_allowance],
+    ['Other Allowance', p.other_allowance],
+    ['Bonus', p.bonus],
+  ].filter(([,v]) => parseFloat(v||0) > 0);
+
+  const deductRows = [
+    ['PF — Employee (12%)',        p.pf_employee],
+    ['ESI — Employee (0.75%)',     p.esi_employee],
+    ['Professional Tax',           p.professional_tax],
+    ['TDS',                        p.tds],
+    ['LWF',                        p.lwf],
+    ['EMI Recovery',               p.loan_emi_recovery],
+    ['PF — Employer (12%)',        p.pf_employer],
+    ['PF Admin Charges (0.5%)',    p.pf_admin],
+    ['ESI — Employer (3.25%)',     p.esi_employer],
+  ].filter(([,v]) => parseFloat(v||0) > 0);
+
+  return `
+    <div style="border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden">
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,var(--accent),#7c3aed);padding:24px 28px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-family:'DM Serif Display',sans-serif;font-size:22px;font-weight:800;color:#fff;letter-spacing:-.3px">PAYSLIP</div>
+          <div style="color:rgba(255,255,255,.75);font-size:13px;margin-top:4px">${MONTHS[(p.month||1)-1]} ${p.year}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'DM Serif Display',sans-serif;font-size:17px;font-weight:800;color:#fff">${p.employee_name}</div>
+          <div style="color:rgba(255,255,255,.75);font-size:12px;margin-top:3px">${p.employee_code} · ${p.department_name||'—'}</div>
+          <div style="color:rgba(255,255,255,.65);font-size:12px">${p.designation_title||'—'}</div>
+        </div>
+      </div>
+
+      <!-- Employee meta -->
+      <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr);gap:16px;background:var(--surface2)">
+        ${[['UAN',p.uan_number],['PF No',p.pf_number],['Bank',p.bank_name],['A/C',p.bank_account?'****'+p.bank_account.slice(-4):'—']].map(([l,v])=>`
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">${l}</div>
+            <div style="font-size:13px;font-weight:600;margin-top:3px">${v||'—'}</div>
+          </div>`).join('')}
+      </div>
+
+      <!-- Attendance -->
+      <div style="padding:18px 24px;border-bottom:1px solid var(--border)">
+        <div style="font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Attendance Summary</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
+          ${[['Working Days',p.working_days,'var(--text)'],['Present',p.present_days,'var(--green)'],['Paid Leave',p.paid_leave,'var(--accent)'],['LOP Days',p.lop_days,'var(--red)'],['Status',p.status,'var(--muted)']].map(([l,v,c])=>`
+            <div style="text-align:center;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;border:1px solid var(--border)">
+              <div style="font-family:'DM Serif Display',sans-serif;font-size:20px;font-weight:800;color:${c}">${v}</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:3px">${l}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Earnings & Deductions -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;padding:20px 24px;gap:20px;border-bottom:1px solid var(--border)">
+        <!-- Earnings -->
+        <div>
+          <div style="font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--green);margin-bottom:12px;display:flex;align-items:center;gap:6px">
+            <span style="width:8px;height:8px;background:var(--green);border-radius:50%;display:inline-block"></span> Earnings
+          </div>
+          ${earningRows.map(([l,v])=>`
+            <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">
+              <span style="color:var(--muted)">${l}</span>
+              <span style="font-weight:600">${fmt.money(v)}</span>
+            </div>`).join('')}
+          <div style="display:flex;justify-content:space-between;padding:10px 0;margin-top:4px;font-weight:800;font-size:14px">
+            <span>Gross Salary</span>
+            <span style="color:var(--green)">${fmt.money(p.gross_salary)}</span>
+          </div>
+        </div>
+        <!-- Deductions -->
+        <div>
+          <div style="font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--red);margin-bottom:12px;display:flex;align-items:center;gap:6px">
+            <span style="width:8px;height:8px;background:var(--red);border-radius:50%;display:inline-block"></span> Deductions
+          </div>
+          ${deductRows.map(([l,v])=>`
+            <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">
+              <span style="color:var(--muted)">${l}</span>
+              <span style="font-weight:600;color:var(--red)">- ${fmt.money(v)}</span>
+            </div>`).join('')}
+          <div style="display:flex;justify-content:space-between;padding:10px 0;margin-top:4px;font-weight:800;font-size:14px">
+            <span>Total Deductions</span>
+            <span style="color:var(--red)">- ${fmt.money(p.total_deductions_display || p.total_deductions)}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Net Salary -->
+      <div style="padding:20px 24px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(67,97,238,.06),rgba(124,58,237,.06))">
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Net Take Home Salary</div>
+          <div style="font-family:'DM Serif Display',sans-serif;font-size:32px;font-weight:800;color:var(--text);letter-spacing:-1px">${fmt.money(p.net_salary)}</div>
+        </div>
+        <div style="text-align:right">
+          <span class="badge badge-${p.status}" style="font-size:12px;padding:5px 12px">${p.status?.toUpperCase()}</span>
+          ${p.payment_date?`<div class="text-muted mt-2">Paid: ${fmt.date(p.payment_date)}</div>`:''}
+        </div>
+      </div>
+    </div>
+    <div class="flex gap-2" style="margin-top:14px">
+      <button class="btn btn-outline btn-sm" onclick="showPrintPayslip(${JSON.stringify(p).split('"').join('&quot;')})">🖨 Print / Download</button>
+    </div>`;
+}
+
+function showPrintPayslip(p) {
+  document.getElementById('payslip-modal-content').innerHTML = renderPayslipHTML(p);
+  openModal('payslip-modal');
+}
+
+function printPayslip() { window.print(); }
+
+async function loadPayrollStats() {
+  const data = await api('GET','/payroll/dashboard-stats');
+  if (!data?.success) return;
+  const s = data.data;
+  document.getElementById('payroll-stats').innerHTML = [
+    {icon:'👥', val:s.total_employees||0,         lbl:'Total Processed',  cls:'blue'},
+    {icon:'⏳', val:s.pending_payment||0,          lbl:'Pending Payment',  cls:'yellow'},
+    {icon:'✅', val:s.paid||0,                     lbl:'Paid',             cls:'green'},
+    {icon:'💰', val:fmt.money(s.total_paid||0),    lbl:'Total Paid Out',   cls:'purple'},
+  ].map(s=>`
+    <div class="stat-card ${s.cls}">
+      <div class="stat-icon-wrap">${s.icon}</div>
+      <div class="stat-val">${s.val}</div>
+      <div class="stat-lbl">${s.lbl}</div>
+    </div>`).join('');
+}
+
+async function processPayroll() {
+  const month = document.getElementById('proc-month').value;
+  const year  = document.getElementById('proc-year').value;
+  if (!confirm(`Process payroll for ${MONTHS[month-1]} ${year}?\n\nThis will calculate salaries for ALL active employees.`)) return;
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'Processing…';
+  const data = await api('POST','/payroll/process',{month:parseInt(month),year:parseInt(year)});
+  btn.disabled = false; btn.textContent = '▶ Process Payroll';
+  if (data?.success) {
+    toast(`${data.data?.processed||0} employees processed for ${MONTHS[month-1]} ${year}`,'success');
+    loadPayrollStats();
+  } else toast(data?.message||'Failed','error');
+}
+
+async function loadPayrollList() {
+  const month = document.getElementById('list-month').value;
+  const year  = document.getElementById('list-year').value;
+  const data  = await api('GET',`/payroll?month=${month}&year=${year}`);
+  if (!data?.success) return;
+
+  const list = data.data;
+  const totalGross = list.reduce((a,p)=>a+parseFloat(p.gross_salary||0),0);
+  const totalNet   = list.reduce((a,p)=>a+parseFloat(p.net_salary||0),0);
+  const totalDed   = list.reduce((a,p)=>a+parseFloat(p.total_deductions||0),0);
+
+  document.getElementById('payroll-list-summary').innerHTML = [
+    {label:'Total Employees', val: list.length,           color:'var(--accent)'},
+    {label:'Gross Payable',   val: fmt.money(totalGross), color:'var(--green)'},
+    {label:'Total Deductions',val: fmt.money(totalDed),   color:'var(--red)'},
+    {label:'Net Payable',     val: fmt.money(totalNet),   color:'var(--text)'},
+  ].map(s=>`
+    <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:16px;text-align:center">
+      <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">${s.label}</div>
+      <div style="font-family:'DM Serif Display',sans-serif;font-size:20px;font-weight:800;color:${s.color}">${s.val}</div>
+    </div>`).join('');
+
+  document.getElementById('payroll-tbody').innerHTML = list.map(p=>`
+    <tr>
+      <td>
+        <div style="font-weight:700">${p.employee_name}</div>
+        <div class="text-muted">${p.employee_code}</div>
+      </td>
+      <td>${p.department_name||'—'}</td>
+      <td style="text-align:center;font-weight:600">${p.working_days}</td>
+      <td style="text-align:center;color:var(--green);font-weight:600">${parseFloat(p.present_days||0).toFixed(1)}</td>
+      <td style="text-align:center;color:var(--red);font-weight:600">${parseFloat(p.lop_days||0).toFixed(1)}</td>
+      <td style="font-weight:700">${fmt.money(p.gross_salary)}</td>
+      <td style="color:var(--red)">- ${fmt.money(p.total_deductions_display || p.total_deductions)}</td>
+      <td style="font-weight:800;color:var(--green);font-size:14px">${fmt.money(p.net_salary)}</td>
+      <td><span class="badge badge-${p.status}">${p.status}</span></td>
+      <td>
+        <div class="flex gap-1">
+          <button class="btn btn-ghost btn-xs" onclick="viewPayslipById(${p.employee_id},${p.month},${p.year})">View</button>
+          ${p.status==='processed'&&Role.canUploadPayroll()?`<button class="btn btn-success btn-xs" onclick="markPaid(${p.id})">Pay</button>`:''}
+        </div>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:48px"><div style="font-size:32px;margin-bottom:10px">📋</div>No payroll records. Process payroll first.</td></tr>';
+}
+
+async function viewPayslipById(empId, month, year) {
+  const data = await api('GET', `/payroll/payslip?employee_id=${empId}&month=${month}&year=${year}`);
+  if (!data?.success) { toast('Payslip not found','error'); return; }
+  document.getElementById('payslip-modal-content').innerHTML = renderPayslipHTML(data.data);
+  openModal('payslip-modal');
+}
+
+async function markPaid(id) {
+  const date = prompt('Payment date (YYYY-MM-DD):') || new Date().toISOString().split('T')[0];
+  const ref  = prompt('Transaction reference (optional):') || '';
+  const data = await api('PUT',`/payroll/${id}/mark-paid`,{payment_date:date,transaction_ref:ref,payment_mode:'bank_transfer'});
+  if (data?.success) { toast('Marked as paid'); loadPayrollList(); }
+  else toast(data?.message||'Failed','error');
+}
+
+function switchTab(name) {
+  ['upload','process','payroll-list'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===name?'':'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event?.target?.classList?.add('active');
+  if (name==='process') loadPayrollStats();
+  if (name==='payroll-list') loadPayrollList();
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+</script>
+</body>
+</html>
