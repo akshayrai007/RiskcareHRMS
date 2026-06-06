@@ -1,0 +1,475 @@
+<!-- 
+  GEOFENCE TAB — Replace the Geofence section in employees.html
+  Fixed:
+    - Assigned employees shown with Specific/Universal TOGGLE button
+    - Unassigned employees of SAME CITY shown with checkboxes to add
+-->
+
+<!-- ── GEOFENCE TAB CONTENT ──────────────────────────────────────────────── -->
+<div id="tab-geofence" style="display:none">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+
+    <!-- LEFT: Office Locations -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📍 Office Locations</div>
+        <button class="btn btn-primary btn-sm" onclick="openAddLocation()">+ Add Location</button>
+      </div>
+      <div id="locations-list">
+        <div class="loader"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Assign Buffer to Employees -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">👥 Assign Buffer to Employees</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Select Location</label>
+        <select id="assign-location" class="form-control" onchange="onLocationChange()">
+          <option value="">— Choose a location —</option>
+        </select>
+      </div>
+
+      <div id="geo-employee-list" style="max-height:480px;overflow-y:auto">
+        <div style="padding:30px;text-align:center;color:var(--muted)">Select a location first</div>
+      </div>
+
+      <!-- ADD EMPLOYEES section (checkboxes + buffer type) -->
+      <div id="add-emp-section" style="display:none;margin-top:16px;border-top:1.5px solid var(--border);padding-top:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">
+          Add Employees
+        </div>
+
+        <div style="display:flex;gap:12px;margin-bottom:12px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);flex:1;transition:.15s" id="type-specific-wrap">
+            <input type="radio" name="buffer_type" value="specific" id="type-specific" checked onchange="updateTypeStyle()">
+            <div>
+              <div style="font-weight:700;font-size:12px">Specific</div>
+              <div style="font-size:10px;color:var(--muted)">This location only</div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);flex:1;transition:.15s" id="type-universal-wrap">
+            <input type="radio" name="buffer_type" value="universal" id="type-universal" onchange="updateTypeStyle()">
+            <div>
+              <div style="font-weight:700;font-size:12px">Universal</div>
+              <div style="font-size:10px;color:var(--muted)">Any location</div>
+            </div>
+          </label>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <input id="emp-search-geo" class="form-control" style="width:180px;font-size:12px" placeholder="Search..." oninput="filterGeoEmployees()">
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-outline btn-sm" onclick="selectAllGeo()">All</button>
+            <button class="btn btn-outline btn-sm" onclick="deselectAllGeo()">None</button>
+          </div>
+        </div>
+
+        <div id="geo-checkbox-list" style="max-height:200px;overflow-y:auto;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:4px">
+        </div>
+
+        <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:var(--muted)"><span id="selected-count">0</span> selected</span>
+          <button class="btn btn-primary btn-sm" onclick="assignSelected()">✓ Assign Selected</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT LOCATION MODAL -->
+<div class="modal-backdrop" id="location-modal">
+  <div class="modal" style="width:520px">
+    <div class="modal-header">
+      <div class="modal-title" id="location-modal-title">Add Office Location</div>
+      <button class="modal-close" onclick="closeModal('location-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-loc-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Location Name *</label>
+          <input id="loc-name" class="form-control" placeholder="e.g. ${window.CFG?.companyShortName||''} HQ – Mumbai">
+        </div>
+        <div class="form-group">
+          <label class="form-label">City</label>
+          <input id="loc-city" class="form-control" placeholder="Mumbai">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Address</label>
+        <input id="loc-address" class="form-control" placeholder="${window.CFG?.companyOfficeAddr||''}...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">State</label>
+        <input id="loc-state" class="form-control" placeholder="Maharashtra">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Latitude *</label>
+          <input id="loc-lat" class="form-control" type="number" step="any" placeholder="19.1461390">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Longitude *</label>
+          <input id="loc-lng" class="form-control" type="number" step="any" placeholder="72.8552110">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Geofence Radius (meters)</label>
+        <input id="loc-radius" class="form-control" type="number" placeholder="200" value="200">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">
+          Use 999999 for State/WFH (universal coverage)
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('location-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveLocation()">Save Location</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let allAssignedEmps  = [];   // already assigned to selected location
+let allUnassignedEmps = [];  // same-city, not yet assigned
+let selectedEmpIds   = new Set();
+
+// ── Load Locations ───────────────────────────────────────────────────────────
+async function loadLocations() {
+  const data = await api('GET', '/geofence/locations');
+  const locSel = document.getElementById('assign-location');
+  const prevVal = locSel.value;
+
+  locSel.innerHTML = '<option value="">— Choose a location —</option>';
+
+  const el = document.getElementById('locations-list');
+  if (!data?.success || !data.data?.length) {
+    el.innerHTML = '<div class="empty-state"><p>No locations yet. Click + Add Location.</p></div>';
+    return;
+  }
+
+  el.innerHTML = data.data.map(loc => `
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:10px"
+         id="loc-row-${loc.id}">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <div style="font-weight:700;font-size:14px">${loc.name}</div>
+          <span class="badge badge-${loc.is_active?'present':'absent'}" style="font-size:9px">${loc.is_active?'Active':'Inactive'}</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted)">${loc.address||''}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">
+          Lat: ${loc.latitude} · Lng: ${loc.longitude} · Radius: <b>${loc.radius_meters}m</b>
+        </div>
+        <div style="margin-top:6px">
+          <span style="font-size:11px;background:var(--accent-l);color:var(--accent);padding:2px 8px;border-radius:10px;font-weight:700">
+            ${loc.assigned_count||0} Employee${loc.assigned_count!=1?'s':''}
+          </span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
+        <button class="btn btn-outline btn-sm"
+                onclick="openEditLocation(${loc.id},'${escapeJS(loc.name)}','${escapeJS(loc.address||'')}','${escapeJS(loc.city||'')}','${escapeJS(loc.state||'')}',${loc.latitude},${loc.longitude},${loc.radius_meters})"
+                title="Edit location" style="padding:6px 10px">✏️</button>
+        ${loc.is_active
+          ? `<button class="btn btn-outline btn-sm" onclick="toggleLocationActive(${loc.id}, false)" title="Deactivate" style="padding:6px 10px;color:#b45309;border-color:#b45309">⏸</button>`
+          : `<button class="btn btn-outline btn-sm" onclick="toggleLocationActive(${loc.id}, true)" title="Activate" style="padding:6px 10px;color:#059669;border-color:#059669">▶ Activate</button>`
+        }
+        <button class="btn btn-danger btn-sm" onclick="deleteLocation(${loc.id})" style="padding:6px 10px">🗑</button>
+      </div>
+    </div>
+  `).join('');
+
+  data.data.forEach(loc => {
+    locSel.innerHTML += `<option value="${loc.id}">${loc.name} (${loc.radius_meters}m)</option>`;
+  });
+
+  if (prevVal) locSel.value = prevVal;
+}
+
+function escapeJS(str) {
+  return String(str).replace(/'/g, "\\'").replace(/"/g, '\\"');
+}
+
+// ── Load employees for selected location ─────────────────────────────────────
+async function loadGeoEmployees(locationId) {
+  const el = document.getElementById('geo-employee-list');
+  const addSection = document.getElementById('add-emp-section');
+
+  if (!locationId) {
+    el.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)">Select a location first</div>';
+    addSection.style.display = 'none';
+    return;
+  }
+
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+
+  const data = await api('GET', `/geofence/employees?location_id=${locationId}`);
+  const all = data?.data || [];
+
+  allAssignedEmps   = all.filter(e => e.is_assigned_here);
+  allUnassignedEmps = all.filter(e => !e.is_assigned_here);
+  selectedEmpIds.clear();
+
+  renderAssignedList();
+  renderUnassignedCheckboxes();
+
+  addSection.style.display = allUnassignedEmps.length ? '' : 'none';
+  updateSelectedCount();
+}
+
+// ── Render ASSIGNED employees (with Specific/Universal toggle + Remove) ───────
+function renderAssignedList() {
+  const el = document.getElementById('geo-employee-list');
+  const locId = document.getElementById('assign-location').value;
+
+  if (!allAssignedEmps.length) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">No employees assigned to this location yet</div>';
+    return;
+  }
+
+  el.innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 12px 4px">
+      Assigned (${allAssignedEmps.length})
+    </div>
+    ${allAssignedEmps.map(emp => {
+      const isUniversal = emp.is_universal;
+      return `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);background:${isUniversal ? 'rgba(74,140,28,.05)' : ''}">
+          <div class="avatar" style="width:32px;height:32px;font-size:12px;flex-shrink:0">${(emp.full_name||'?')[0]}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:13px">${emp.full_name}
+              <span style="font-size:10px;color:var(--muted);font-weight:400"> · ${emp.employee_code}</span>
+            </div>
+            <div style="font-size:11px;color:var(--muted)">${emp.department_name||'—'}
+              · <span style="color:${isUniversal ? 'var(--accent)' : '#6b7280'};font-weight:700">${isUniversal ? '🌐 Universal' : '📍 Specific'}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn btn-sm" 
+                    style="font-size:11px;padding:4px 8px;background:${isUniversal ? '#f3f4f6' : 'var(--accent-l)'};color:${isUniversal ? '#374151' : 'var(--accent)'};border:1.5px solid ${isUniversal ? '#e5e7eb' : 'var(--accent)'}"
+                    onclick="toggleUniversal(${emp.id}, ${locId}, ${!isUniversal})"
+                    title="${isUniversal ? 'Switch to Specific' : 'Switch to Universal'}">
+              ${isUniversal ? '📍 Make Specific' : '🌐 Make Universal'}
+            </button>
+            <button class="btn btn-danger btn-sm" style="font-size:11px;padding:4px 8px"
+                    onclick="removeBuffer(${emp.id}, ${locId})">✕</button>
+          </div>
+        </div>`;
+    }).join('')}`;
+}
+
+// ── Render UNASSIGNED employees (checkboxes) ──────────────────────────────────
+function renderUnassignedCheckboxes(filter = '') {
+  const el = document.getElementById('geo-checkbox-list');
+  if (!el) return;
+
+  const filtered = filter
+    ? allUnassignedEmps.filter(e =>
+        e.full_name.toLowerCase().includes(filter) ||
+        e.employee_code.toLowerCase().includes(filter) ||
+        (e.department_name||'').toLowerCase().includes(filter))
+    : allUnassignedEmps;
+
+  if (!filtered.length) {
+    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px">All employees in this location are already assigned</div>';
+    return;
+  }
+
+  el.innerHTML = filtered.map(emp => {
+    const checked = selectedEmpIds.has(emp.id);
+    return `
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 10px;cursor:pointer;border-radius:4px;background:${checked?'rgba(74,140,28,.08)':''}">
+        <input type="checkbox" ${checked?'checked':''} style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0"
+               onchange="onEmpCheck(${emp.id}, this.checked)">
+        <div class="avatar" style="width:28px;height:28px;font-size:11px;flex-shrink:0">${(emp.full_name||'?')[0]}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:12px">${emp.full_name}
+            <span style="font-size:10px;color:var(--muted);font-weight:400"> · ${emp.employee_code}</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted)">${emp.department_name||'—'}</div>
+        </div>
+      </label>`;
+  }).join('');
+}
+
+function filterGeoEmployees() {
+  const q = document.getElementById('emp-search-geo')?.value?.toLowerCase() || '';
+  renderUnassignedCheckboxes(q);
+}
+
+function onEmpCheck(empId, checked) {
+  if (checked) selectedEmpIds.add(empId);
+  else selectedEmpIds.delete(empId);
+  updateSelectedCount();
+}
+
+function updateSelectedCount() {
+  const el = document.getElementById('selected-count');
+  if (el) el.textContent = selectedEmpIds.size;
+}
+
+function selectAllGeo() {
+  allUnassignedEmps.forEach(e => selectedEmpIds.add(e.id));
+  renderUnassignedCheckboxes(document.getElementById('emp-search-geo')?.value?.toLowerCase() || '');
+  updateSelectedCount();
+}
+
+function deselectAllGeo() {
+  selectedEmpIds.clear();
+  renderUnassignedCheckboxes(document.getElementById('emp-search-geo')?.value?.toLowerCase() || '');
+  updateSelectedCount();
+}
+
+function onLocationChange() {
+  const locId = document.getElementById('assign-location').value;
+  selectedEmpIds.clear();
+  updateTypeStyle();
+  loadGeoEmployees(locId);
+}
+
+// ── Toggle Universal/Specific for assigned employee ───────────────────────────
+async function toggleUniversal(empId, locId, makeUniversal) {
+  const data = await api('PATCH', `/geofence/${empId}/${locId}/toggle`, { is_universal: makeUniversal });
+  if (data?.success) {
+    toast(data.message, 'success');
+    await loadGeoEmployees(locId);
+    await loadLocations();
+  } else {
+    toast(data?.message || 'Failed to update', 'error');
+  }
+}
+
+// ── Remove buffer ─────────────────────────────────────────────────────────────
+async function removeBuffer(empId, locId) {
+  if (!confirm('Remove this employee from this location?')) return;
+  const data = await api('DELETE', `/geofence/${empId}/${locId}`);
+  if (data?.success) {
+    toast('Removed', 'success');
+    await loadGeoEmployees(locId);
+    await loadLocations();
+  } else {
+    toast(data?.message || 'Failed', 'error');
+  }
+}
+
+// ── Assign selected unassigned employees ──────────────────────────────────────
+async function assignSelected() {
+  const locId = document.getElementById('assign-location').value;
+  const bufferType = document.querySelector('input[name="buffer_type"]:checked')?.value || 'specific';
+
+  if (!locId)               { toast('Please select a location first', 'error'); return; }
+  if (selectedEmpIds.size === 0) { toast('Select at least one employee', 'error'); return; }
+
+  const isUniversal = bufferType === 'universal';
+  const data = await api('POST', '/geofence/bulk-assign', {
+    employee_ids:       Array.from(selectedEmpIds),
+    office_location_id: parseInt(locId),
+    is_universal:       isUniversal
+  });
+
+  if (data?.success) {
+    toast(data.message, 'success');
+    selectedEmpIds.clear();
+    await loadLocations();
+    await loadGeoEmployees(locId);
+  } else {
+    toast(data?.message || 'Assignment failed', 'error');
+  }
+}
+
+// ── Location CRUD ─────────────────────────────────────────────────────────────
+function openAddLocation() {
+  document.getElementById('edit-loc-id').value = '';
+  document.getElementById('location-modal-title').textContent = 'Add Office Location';
+  ['loc-name','loc-address','loc-city','loc-state','loc-lat','loc-lng'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('loc-radius').value = '200';
+  openModal('location-modal');
+}
+
+function openEditLocation(id, name, address, city, state, lat, lng, radius) {
+  document.getElementById('edit-loc-id').value = id;
+  document.getElementById('location-modal-title').textContent = 'Edit Office Location';
+  document.getElementById('loc-name').value = name;
+  document.getElementById('loc-address').value = address;
+  document.getElementById('loc-city').value = city;
+  document.getElementById('loc-state').value = state;
+  document.getElementById('loc-lat').value = lat;
+  document.getElementById('loc-lng').value = lng;
+  document.getElementById('loc-radius').value = radius;
+  openModal('location-modal');
+}
+
+async function saveLocation() {
+  const id = document.getElementById('edit-loc-id').value;
+  const body = {
+    name:          document.getElementById('loc-name').value.trim(),
+    address:       document.getElementById('loc-address').value.trim(),
+    city:          document.getElementById('loc-city').value.trim(),
+    state:         document.getElementById('loc-state').value.trim(),
+    latitude:      parseFloat(document.getElementById('loc-lat').value),
+    longitude:     parseFloat(document.getElementById('loc-lng').value),
+    radius_meters: parseInt(document.getElementById('loc-radius').value) || 200,
+  };
+  if (!body.name) { toast('Location name is required', 'error'); return; }
+  if (isNaN(body.latitude) || isNaN(body.longitude)) { toast('Valid latitude and longitude required', 'error'); return; }
+
+  const isEdit = !!id;
+  const data = await api(isEdit ? 'PUT' : 'POST',
+    isEdit ? `/geofence/locations/${id}` : '/geofence/locations', body);
+
+  if (data?.success) {
+    toast(isEdit ? 'Location updated' : 'Location added', 'success');
+    closeModal('location-modal');
+    await loadLocations();
+    const locId = document.getElementById('assign-location').value;
+    if (locId) await loadGeoEmployees(locId);
+  } else {
+    toast(data?.message || 'Failed to save location', 'error');
+  }
+}
+
+async function toggleLocationActive(id, activate) {
+  const data = await api('PUT', `/geofence/locations/${id}`, { is_active: activate });
+  if (data?.success) {
+    toast(activate ? 'Location activated ✅' : 'Location deactivated');
+    await loadLocations();
+  } else {
+    toast(data?.message || 'Failed to update location', 'error');
+  }
+}
+
+async function deleteLocation(id) {
+  if (!confirm('Delete this location? Employees assigned here will be unassigned.')) return;
+  const data = await api('DELETE', `/geofence/locations/${id}`);
+  if (data?.success) {
+    toast('Location deleted');
+    await loadLocations();
+  } else {
+    toast(data?.message || 'Delete failed', 'error');
+  }
+}
+
+function updateTypeStyle() {
+  const specific = document.getElementById('type-specific');
+  if (!specific) return;
+  const sWrap = document.getElementById('type-specific-wrap');
+  const uWrap = document.getElementById('type-universal-wrap');
+  if (specific.checked) {
+    sWrap.style.borderColor = 'var(--accent)'; sWrap.style.background = 'var(--accent-l)';
+    uWrap.style.borderColor = 'var(--border)'; uWrap.style.background = '';
+  } else {
+    uWrap.style.borderColor = 'var(--accent)'; uWrap.style.background = 'var(--accent-l)';
+    sWrap.style.borderColor = 'var(--border)'; sWrap.style.background = '';
+  }
+}
+
+// Init geofence tab
+async function initGeofenceTab() {
+  await loadLocations();
+  updateTypeStyle();
+}
+</script>
