@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Advance Salary</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+/* ── Approval Pipeline ─────────────────────────────────────── */
+.pipeline {
+  display: flex; 
+  align-items: center;
+  gap: 0;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.pipeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 90px;
+  position: relative;
+}
+.pipeline-step:not(:last-child)::after {
+  content: '→';
+  position: absolute;
+  right: -10px;
+  top: 14px;
+  color: var(--muted2);
+  font-size: 14px;
+}
+.pipeline-bubble {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.pipeline-bubble.done     { background: #d1fae5; border-color: var(--green); color: var(--green); }
+.pipeline-bubble.active   { background: #fef9c3; border-color: var(--yellow); color: #b45309; }
+.pipeline-bubble.rejected { background: #fee2e2; border-color: var(--red); color: var(--red); }
+.pipeline-bubble.processed{ background: #ede9fe; border-color: #7c3aed; color: #7c3aed; }
+.pipeline-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.pipeline-who {
+  font-size: 10px;
+  color: var(--text);
+  text-align: center;
+  font-weight: 500;
+  margin-top: 2px;
+}
+.pipeline-date {
+  font-size: 9px;
+  color: var(--muted2);
+  text-align: center;
+}
+.pipeline-remarks {
+  font-size: 9px;
+  color: var(--muted);
+  text-align: center;
+  font-style: italic;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.req-card { border: 1.5px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 14px; background: var(--surface); }
+.req-card:hover { border-color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark"><svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+    <div><div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div></div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">💸 Advance Salary</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-primary btn-sm" onclick="openAdvanceModal()">+ Request Advance</button>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+    <div id="stats-row" style="display:none;margin-bottom:20px"></div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('my', event)">💸 My Requests</button>
+      <button class="tab-btn" id="tab-pending-btn" style="display:none" onclick="switchTab('pending', event)">⏳ Pending Approval</button>
+      <button class="tab-btn" id="tab-all-btn"     style="display:none" onclick="switchTab('all', event)">📋 All Requests</button>
+    </div>
+
+    <div id="tab-my">
+      <div class="card">
+        <div class="card-header"><div class="card-title">My Advance Requests</div></div>
+        <div id="my-list"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+    <div id="tab-pending" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Pending Approval</div>
+          <span class="text-muted fs-sm">Requests awaiting your action</span>
+        </div>
+        <div id="pending-list"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+    <div id="tab-all" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">All Advance Requests</div>
+          <select id="status-filter" class="form-control" style="width:150px" onchange="loadAll()">
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="recovered">Recovered</option>
+          </select>
+        </div>
+        <div id="all-list"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REQUEST MODAL -->
+<div class="modal-backdrop" id="req-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Request Advance Salary</div>
+      <button class="modal-close" onclick="closeModal('req-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Amount (${window.CFG.currencySymbol}) *</label>
+        <input id="req-amount" class="form-control" type="number" min="1000" placeholder="e.g. 10000">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Repayment Months <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+        <input id="req-months" class="form-control" type="number" min="1" max="12" placeholder="e.g. 3 (blank = single deduction)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Link to Project <span style="color:var(--muted);font-weight:400">(optional — Accounts can correct at payment)</span></label>
+        <select id="req-project" class="form-control">
+          <option value="">-- No Project --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason *</label>
+        <textarea id="req-reason" class="form-control" rows="3" placeholder="Explain why you need the advance…"></textarea>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('req-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitRequest()">Submit Request</button>
+    </div>
+  </div>
+</div>
+
+<!-- APPROVE MODAL (Levels 1,2,3) -->
+<div class="modal-backdrop" id="approve-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="approve-modal-title">Review Advance Request</div>
+      <button class="modal-close" onclick="closeModal('approve-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="approve-content"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('approve-modal')">Close</button>
+      <button class="btn btn-danger btn-sm" onclick="actionAdvance('reject')">Reject</button>
+      <button class="btn btn-success btn-sm" onclick="actionAdvance('approve')">Approve → Next Level</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAYMENT MODAL (Level 4 — Accounts) -->
+<div class="modal-backdrop" id="payment-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">💸 Process Payment</div>
+      <button class="modal-close" onclick="closeModal('payment-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="payment-content"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('payment-modal')">Close</button>
+      <button class="btn btn-primary" onclick="processPayment()">Mark as Paid</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL (Employee edits their pending request) -->
+<div class="modal-backdrop" id="edit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit Advance Request</div>
+      <button class="modal-close" onclick="closeModal('edit-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Amount (${window.CFG.currencySymbol}) <span style="color:var(--red)">*</span></label>
+        <input type="number" id="edit-amount" class="form-control" min="1" placeholder="Enter amount" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason <span style="color:var(--red)">*</span></label>
+        <textarea id="edit-reason" class="form-control" rows="3" placeholder="Reason for advance"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Repayment Months</label>
+        <input type="number" id="edit-months" class="form-control" min="1" max="12" placeholder="e.g. 3" />
+        <small class="text-muted">Number of monthly EMIs to repay</small>
+      </div>
+      <div class="form-group" style="background:var(--yellow-bg,#fffbeb);border:1px solid var(--yellow);border-radius:8px;padding:10px;font-size:13px;color:var(--yellow-dark,#92400e)">
+        ⚠️ You can only edit your request if no approver has acted on it yet.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function(){
+  var C = window.CFG;
+  // Page title
+  var t = document.getElementById('page-title');
+  if(t) t.textContent = C.clientName + ' - ' + t.textContent;
+  // Sidebar logo text
+  var lt = document.getElementById('sidebar-logo-text');
+  if(lt) lt.innerHTML = C.logoHtml || C.clientName;
+  // Sidebar company short name
+  var cs = document.getElementById('sidebar-company-short');
+  if(cs) cs.textContent = C.companyShortName || '';
+})();
+</script>
+  <script src="app.js"></script>
+<script>
+Auth.guard();
+buildSidebar('advance.html');
+loadNotifBadge();
+
+const user = Auth.getUser();
+let activeAdvId = null;
+
+const LEVELS = {
+  1: { label: 'Manager',   icon: '👤' },
+  2: { label: 'COO',       icon: '🏢' },
+  3: { label: 'MD',        icon: '👑' },
+  4: { label: 'Accounts',  icon: '💸' },
+};
+
+// Employees whose chain is COO → MD → Accounts (3 levels, no manager step)
+const DIRECT_TO_COO = new Set(window.CFG.directToCooEmployeeCodes);
+
+// Map approval_chain codes to level labels
+const CODE_TO_LEVEL = {
+  [window.CFG.cooEmployeeCode]:      { label: 'COO',      icon: '🏢' },
+  [window.CFG.mdEmployeeCode]:       { label: 'MD',       icon: '👑' },
+  [window.CFG.accountsEmployeeCode]: { label: 'Accounts', icon: '💸' },
+};
+
+// ── Tab visibility logic ──────────────────────────────────────────────────────
+// HR can only see their OWN requests — they are NOT in the approval chain
+// Pending Approval tab: only for actual approvers (manager, tl, admin, accounts, super_admin)
+// All Requests tab: only for super_admin and accounts (full visibility roles)
+const isHR         = user.role === 'hr';
+const isSuperAdmin = user.role === 'super_admin';
+const isAccounts   = user.role === 'accounts';
+const isAdmin      = user.role === 'admin';
+const isManagerTL  = ['manager', 'tl'].includes(user.role);
+
+// Show "Pending Approval" tab — approvers only (NOT hr)
+const canSeePending = isAdmin || isSuperAdmin || isAccounts || isManagerTL;
+if (canSeePending) {
+  document.getElementById('tab-pending-btn').style.display = '';
+}
+
+// Show "All Requests" tab — super_admin and accounts only (full oversight)
+const canSeeAll = isSuperAdmin || isAccounts;
+if (canSeeAll) {
+  document.getElementById('tab-all-btn').style.display = '';
+}
+
+// Show stats for admin/super_admin/accounts only
+const showStats = isAdmin || isSuperAdmin || isAccounts;
+if (showStats) {
+  document.getElementById('stats-row').style.display = 'grid';
+  document.getElementById('stats-row').style.cssText += 'grid-template-columns:repeat(3,1fr);gap:16px;';
+  loadStats();
+}
+
+loadMy();
+
+async function loadStats() {
+  const data = await api('GET', '/advance/stats');
+  if (!data?.success) return;
+  const s = data.data;
+  document.getElementById('stats-row').innerHTML = [
+    { icon:'⏳', val: s.pending,                lbl:'Pending Requests',   cls:'yellow' },
+    { icon:'✅', val: s.approved,               lbl:'Approved',           cls:'green'  },
+    { icon:'💰', val: fmt.money(s.outstanding), lbl:'Outstanding Amount', cls:'red'    },
+  ].map(st => `
+    <div class="stat-card ${st.cls}">
+      <div class="stat-icon-wrap">${st.icon}</div>
+      <div class="stat-val">${st.val}</div>
+      <div class="stat-lbl">${st.lbl}</div>
+    </div>`).join('');
+}
+
+function switchTab(name, e) {
+  ['my','pending','all'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t === name ? '' : 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  if (e) e.target.classList.add('active');
+  if (name === 'pending') loadPending();
+  if (name === 'all')     loadAll();
+}
+
+// ── Build dynamic pipeline UI based on actual approval_chain ─────────────────
+function pipelineHTML(adv) {
+  const approvals    = adv.approvals || [];
+  const currentLevel = parseInt(adv.current_level) || 1;
+  const isRejected   = adv.status === 'rejected';
+  const empCode      = adv.employee_code;
+
+  let steps = [];
+  const chain = Array.isArray(adv.approval_chain) ? adv.approval_chain
+    : (() => { try { return JSON.parse(adv.approval_chain); } catch(_) { return []; } })();
+
+  if (DIRECT_TO_COO.has(empCode) || chain.length === 3) {
+    steps = [
+      { lvl: 1, label: 'COO',      icon: '🏢' },
+      { lvl: 2, label: 'MD',       icon: '👑' },
+      { lvl: 3, label: 'Accounts', icon: '💸' },
+    ];
+  } else if (chain.length > 0) {
+    steps = chain.map((code, i) => {
+      const info = CODE_TO_LEVEL[code] || { label: 'Manager', icon: '👤' };
+      return { lvl: i + 1, label: info.label, icon: info.icon };
+    });
+  } else {
+    steps = [
+      { lvl: 1, label: 'Manager',  icon: '👤' },
+      { lvl: 2, label: 'COO',      icon: '🏢' },
+      { lvl: 3, label: 'MD',       icon: '👑' },
+      { lvl: 4, label: 'Accounts', icon: '💸' },
+    ];
+  }
+
+  const stepsHTML = steps.map((step, i) => {
+    const lvl      = step.lvl;
+    const approval = approvals.find(a => a.level === lvl);
+    let bubbleClass = '';
+    let icon = lvl;
+    let who  = '';
+    let date = '';
+    let rem  = '';
+
+    if (approval) {
+      if (approval.action === 'approved')  { bubbleClass = 'done';      icon = '✓'; }
+      if (approval.action === 'rejected')  { bubbleClass = 'rejected';  icon = '✗'; }
+      if (approval.action === 'processed') { bubbleClass = 'processed'; icon = '✓'; }
+      who  = approval.approver_name;
+      date = fmt.date(approval.acted_at);
+      rem  = approval.remarks || '';
+    } else if (!isRejected && lvl === currentLevel && adv.status !== 'recovered') {
+      bubbleClass = 'active';
+    }
+
+    const connector = i < steps.length - 1 ? `<div class="pipeline-connector"></div>` : '';
+    return `
+      <div class="pipeline-step">
+        <div class="pipeline-bubble ${bubbleClass}">${icon}</div>
+        <div class="pipeline-label">${step.icon} ${step.label}</div>
+        ${who  ? `<div class="pipeline-who">${who}</div>` : ''}
+        ${date ? `<div class="pipeline-date">${date}</div>` : ''}
+        ${rem  ? `<div class="pipeline-remarks" title="${rem}">${rem}</div>` : ''}
+      </div>`;
+  }).join('');
+
+  return `<div class="pipeline">${stepsHTML}</div>`;
+}
+
+// ── Advance lookup map (safe alternative to inline onclick with user data) ────
+const _advMap = {};
+
+// ── Advance card ──────────────────────────────────────────────────────────────
+function advanceCard(adv, showActions = false) {
+  _advMap[adv.id] = adv; // store for openApproveById
+  const statusColor = {
+    pending:   'var(--yellow)',
+    approved:  'var(--green)',
+    rejected:  'var(--red)',
+    recovered: 'var(--accent)',
+    cancelled: 'var(--muted)',
+    disbursed: 'var(--green)',
+  }[adv.status] || 'var(--muted)';
+
+  const currentLevel   = parseInt(adv.current_level) || 1;
+  const isAccountsUser = user.role === 'accounts';
+  const isMD           = user.employee_code === window.CFG.mdEmployeeCode;
+  const isCOO          = user.employee_code === window.CFG.cooEmployeeCode;
+
+  let canAct = false;
+  let isPaymentStage = false;
+
+  if (showActions && adv.status === 'pending') {
+    // Match by current_approver_code on the advance record
+    if (adv.current_approver_code && adv.current_approver_code === user.employee_code) {
+      canAct = true;  // This includes MD (KC01/super_admin) when it's his turn in chain
+    }
+  }
+
+  // Payment stage — ONLY accounts processes disbursement (not super_admin)
+  // Payment stage — accounts sees Process Payment for ALL approved advances
+  if (showActions && adv.status === 'approved' && isAccountsUser &&
+      adv.employee_id !== user.id) {
+    isPaymentStage = true;
+  }
+
+  // Block acting on your own request
+  if (adv.employee_id === user.id) {
+    canAct = false;
+    isPaymentStage = false;
+  }
+
+  // Already acted?
+  const alreadyActed = (adv.approvals || []).some(a => a.approver_id === user.id);
+  if (alreadyActed) canAct = false;
+
+  return `
+    <div class="req-card">
+      <div class="req-top">
+        <div style="flex:1">
+          ${showActions ? `<div class="req-name">${adv.employee_name} <span class="text-muted fs-sm">(${adv.employee_code})</span></div>` : ''}
+          <div class="${showActions ? 'req-meta' : 'req-name'}" style="font-size:${showActions?'14':'16'}px;font-weight:700">${fmt.money(adv.amount)}</div>
+          <div class="req-meta">Reason: ${adv.reason || '—'}</div>
+          <div class="req-meta">Requested: ${fmt.date(adv.requested_at)}</div>
+
+          ${pipelineHTML(adv)}
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:16px">
+          <span class="badge" style="background:${statusColor}20;color:${statusColor};margin-bottom:8px;display:block">${adv.status.toUpperCase()}</span>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">
+            Level ${adv.current_level || 1}/${((Array.isArray(adv.approval_chain) ? adv.approval_chain : (() => { try { return JSON.parse(adv.approval_chain); } catch(_) { return []; } })()).length || 4)}
+          </div>
+          ${canAct ? `
+            <button class="btn btn-success btn-sm" data-adv-id="${adv.id}" onclick="openApproveById(this)">
+              Review (L${currentLevel})
+            </button>` : ''}
+          ${isPaymentStage ? `
+            <button class="btn btn-primary btn-sm" onclick="openPayment(${adv.id},'${adv.employee_name}',${adv.amount},${adv.project_id||'null'})">
+              💸 Process Payment
+            </button>` : ''}
+          ${!canAct && !isPaymentStage && showActions && adv.status === 'pending' && alreadyActed ? `
+            <div style="font-size:11px;color:var(--muted)">✓ You acted</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── My Requests — always scoped to current user only ─────────────────────────
+async function loadMy() {
+  const el = document.getElementById('my-list');
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const data = await api('GET', '/advance/mine');
+  if (!data?.success) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>Failed to load. Please refresh.</p></div>';
+    return;
+  }
+  if (!data?.data?.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">💸</div><p>No advance salary requests yet.</p></div>';
+    return;
+  }
+  // Filter out revoked requests
+  const visible = data.data.filter(a => !(a.status === 'rejected' && (a.remarks || '').toLowerCase().includes('revoked by employee')));
+  if (!visible.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">💸</div><p>No advance salary requests yet.</p></div>';
+    return;
+  }
+  el.innerHTML = visible.map(a => myAdvanceCard(a)).join('');
+}
+
+// ── My Advance Card — with Revoke / Edit for pending requests ─────────────────
+function myAdvanceCard(adv) {
+  const isRevoked = adv.status === 'rejected' && (adv.remarks || '').toLowerCase().includes('revoked by employee');
+  const displayStatus = isRevoked ? 'REVOKED'
+    : adv.status === 'approved'  ? '✅ APPROVED — Awaiting Disbursement'
+    : adv.status === 'disbursed' ? '💰 DISBURSED'
+    : adv.status.toUpperCase();
+  const statusColor = {
+    pending:   'var(--yellow)',
+    approved:  'var(--green)',
+    disbursed: 'var(--green)',
+    rejected:  isRevoked ? 'var(--muted)' : 'var(--red)',
+    recovered: 'var(--accent)',
+  }[adv.status] || 'var(--muted)';
+
+  const isPending  = adv.status === 'pending';
+  const isRejected = adv.status === 'rejected' && !isRevoked;
+  // Only allow edit if no approver has acted yet
+  const hasApprovals = adv.approvals && adv.approvals.length > 0;
+  const canEdit    = isPending && !hasApprovals;
+  const canRevoke  = isPending;
+  const canDismiss = isRejected;
+
+  return `
+    <div class="req-card">
+      <div class="req-top">
+        <div style="flex:1">
+          ${(() => {
+            const orig = parseFloat(adv.original_requested_amount) || parseFloat(adv.amount);
+            const curr = parseFloat(adv.amount);
+            const revised = orig > curr;
+            return `<div class="req-name" style="font-size:16px;font-weight:700">
+              ${revised ? `<span style="text-decoration:line-through;color:#aaa;font-size:13px;margin-right:6px">${fmt.money(orig)}</span>` : ''}
+              ${fmt.money(curr)}
+              ${revised ? `<span style="font-size:11px;background:#fff3cd;color:#856404;border-radius:4px;padding:2px 6px;margin-left:4px;font-weight:600">REVISED</span>` : ''}
+            </div>`;
+          })()}
+          <div class="req-meta">Reason: ${adv.reason || '—'}</div>
+          <div class="req-meta">Requested: ${fmt.date(adv.requested_at)}</div>
+
+          ${pipelineHTML(adv)}
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:16px">
+          <span class="badge" style="background:${statusColor}20;color:${statusColor};margin-bottom:8px;display:block">${displayStatus}</span>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">
+            Level ${adv.current_level || 1}/${((Array.isArray(adv.approval_chain) ? adv.approval_chain : (() => { try { return JSON.parse(adv.approval_chain); } catch(_) { return []; } })()).length || 4)}
+          </div>
+          ${canEdit ? `
+            <button class="btn btn-outline btn-sm" style="margin-bottom:6px;width:100%" onclick="openEditModal(${adv.id},${adv.amount},'${(adv.reason||'').replace(/'/g,"\\'")}',${adv.total_installments||1})">
+              ✏️ Edit
+            </button>` : ''}
+          ${canRevoke ? `
+            <button class="btn btn-danger btn-sm" style="width:100%" onclick="revokeAdvance(${adv.id})">
+              🗑 Revoke
+            </button>` : ''}
+          ${canDismiss ? `
+            <button class="btn btn-outline btn-sm" style="width:100%;color:var(--red);border-color:var(--red);margin-top:6px" onclick="dismissAdvance(${adv.id})">
+              🗑 Dismiss
+            </button>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Revoke ─────────────────────────────────────────────────────────────────────
+async function revokeAdvance(id) {
+  if (!confirm('Are you sure you want to revoke this advance request? This cannot be undone.')) return;
+  const data = await api('POST', `/advance/${id}/revoke`);
+  if (data?.success) {
+    toast('Advance request revoked');
+    loadMy();
+    if (showStats) loadStats();
+  } else {
+    toast(data?.message || 'Failed to revoke', 'error');
+  }
+}
+
+// ── Dismiss (remove rejected request from history) ───────────────────────────
+async function dismissAdvance(id) {
+  if (!confirm('Remove this rejected request from your history?')) return;
+  const data = await api('DELETE', `/advance/${id}/dismiss`);
+  if (data?.success) {
+    toast('Request dismissed');
+    loadMy();
+  } else {
+    toast(data?.message || 'Failed to dismiss', 'error');
+  }
+}
+
+// ── Edit Modal ────────────────────────────────────────────────────────────────
+function openEditModal(id, amount, reason, months) {
+  document.getElementById('edit-modal').dataset.advId = id;
+  document.getElementById('edit-amount').value  = amount;
+  document.getElementById('edit-reason').value  = reason;
+  document.getElementById('edit-months').value  = months || 1;
+  openModal('edit-modal');
+}
+
+async function submitEdit() {
+  const id     = document.getElementById('edit-modal').dataset.advId;
+  const amount = parseFloat(document.getElementById('edit-amount').value);
+  const reason = document.getElementById('edit-reason').value.trim();
+  const months = parseInt(document.getElementById('edit-months').value) || 1;
+  if (!id)     { toast('Invalid request ID', 'error'); return; }
+  if (!amount || !reason) { toast('Amount and reason required', 'error'); return; }
+  const data = await api('POST', `/advance/${id}/edit`, { amount, reason, repayment_months: months });
+  if (data?.success) {
+    toast('Advance request updated');
+    closeModal('edit-modal');
+    loadMy();
+    if (showStats) loadStats();
+  } else {
+    toast(data?.message || 'Failed to update', 'error');
+  }
+}
+
+// ── Pending Approval — requests awaiting THIS user's action ──────────────────
+async function loadPending() {
+  const el = document.getElementById('pending-list');
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+
+  const [pendingRes, approvedRes] = await Promise.all([
+    api('GET', '/advance?status=pending'),
+    api('GET', '/advance?status=approved'),
+  ]);
+
+  // Strict frontend filter: only show what this user can actually act on RIGHT NOW
+  // pending: must be current_approver_code match
+  const pending = (pendingRes?.data || []).filter(a =>
+    a.employee_id !== user.id &&
+    a.current_approver_code === user.employee_code
+  );
+
+  // Disbursement queue for Accounts: ALL approved advances regardless of current_approver_code
+  // (can be NULL, empty string, or KC7708 depending on chain position)
+  const approved = isAccounts
+    ? (approvedRes?.data || []).filter(a => a.employee_id !== user.id)
+    : [];
+
+  const all = [...pending, ...approved];
+
+  if (!all.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>No requests pending your action</p></div>';
+    return;
+  }
+  el.innerHTML = all.map(a => advanceCard(a, true)).join('');
+}
+
+// ── All Requests — full list for super_admin / accounts ──────────────────────
+async function loadAll() {
+  const status = document.getElementById('status-filter').value;
+  const data   = await api('GET', '/advance' + (status ? '?status=' + status : ''));
+  const el     = document.getElementById('all-list');
+  if (!data?.success || !data.data?.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>No requests found</p></div>';
+    return;
+  }
+  el.innerHTML = data.data.map(a => advanceCard(a, true)).join('');
+}
+
+async function openAdvanceModal() {
+  // Load active projects for employee to suggest
+  const sel = document.getElementById('req-project');
+  if (sel) {
+    sel.innerHTML = '<option value="">-- No Project --</option>';
+    api('GET', '/projects?status=active').then(r => {
+      if (!r?.success) return;
+      (r.data || []).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name + (p.code ? ` (${p.code})` : '');
+        sel.appendChild(opt);
+      });
+    }).catch(()=>{});
+  }
+  openModal('req-modal');
+}
+
+async function submitRequest() {
+  const amount     = document.getElementById('req-amount').value;
+  const reason     = document.getElementById('req-reason').value.trim();
+  const months     = document.getElementById('req-months')?.value;
+  const project_id = document.getElementById('req-project')?.value;
+  if (!amount || !reason) { toast('Amount and reason required', 'error'); return; }
+  const data = await api('POST', '/advance/apply', {
+    amount: parseFloat(amount), reason,
+    repayment_months: months ? parseInt(months) : null,
+    project_id: project_id ? parseInt(project_id) : null,
+  });
+  if (data?.success) {
+    toast(data.message);
+    closeModal('req-modal');
+    document.getElementById('req-amount').value  = '';
+    document.getElementById('req-reason').value  = '';
+    if (document.getElementById('req-months'))  document.getElementById('req-months').value  = '';
+    if (document.getElementById('req-project')) document.getElementById('req-project').value = '';
+    document.getElementById('req-amount').value = '';
+    document.getElementById('req-reason').value = '';
+    loadMy();
+    if (showStats) loadStats();
+  } else {
+    toast(data?.message || 'Failed', 'error');
+  }
+}
+
+// Safe bridge: reads advance data from _advMap instead of inline onclick args
+function openApproveById(btn) {
+  const id  = parseInt(btn.getAttribute('data-adv-id'));
+  const adv = _advMap[id];
+  if (!adv) { toast('Could not load request data', 'error'); return; }
+  const level        = parseInt(adv.current_level) || 1;
+  const approverCode = adv.current_approver_code || '';
+  openApprove(id, adv.employee_name, adv.amount, adv.reason, level, adv.original_requested_amount, approverCode);
+}
+
+function openApprove(id, name, amount, reason, level, originalAmount, approverCode) {
+  activeAdvId = id;
+  const orig = parseFloat(originalAmount) || parseFloat(amount);
+  const curr = parseFloat(amount);
+  const wasRevised = orig > curr;
+
+  // Determine if current user is Accounts (final approver — project assignment is their authority)
+  const isAccountsFinalApprover = user?.role === 'accounts';
+
+  // Get existing project_id from stored advance
+  const adv = _advMap[id] || {};
+  const existingProjectId = adv.project_id || null;
+
+  // Use the actual approver code to get the correct label (not position-based)
+  const approverInfo = CODE_TO_LEVEL[approverCode] || LEVELS[level] || { label: 'Approver', icon: '👤' };
+  document.getElementById('approve-modal-title').textContent = `Review — Level ${level} (${approverInfo.label})`;
+  document.getElementById('approve-content').innerHTML = `
+    <div class="form-row">
+      <div><div class="form-label">Employee</div><b>${name}</b></div>
+      <div>
+        <div class="form-label">Original Request</div>
+        <b>${fmt.money(orig)}</b>
+      </div>
+    </div>
+    ${wasRevised ? `
+    <div style="background:#fff3cd;border:1.5px solid #ffc107;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:13px">
+      ⚠️ <b>Amount was revised</b> by a previous approver:
+      <span style="text-decoration:line-through;color:#888;margin:0 6px">${fmt.money(orig)}</span>
+      → <b style="color:#e65100">${fmt.money(curr)}</b>
+    </div>` : ''}
+    <div class="form-group mt-2"><div class="form-label">Reason</div>${reason || '—'}</div>
+    <div class="form-group mt-2" style="background:var(--surface-raised,#f8f9fa);border:1.5px solid var(--cfg-accent);border-radius:8px;padding:12px">
+      <label class="form-label" style="color:var(--cfg-accent);font-weight:700">✏️ Override Approved Amount</label>
+      <small style="display:block;margin-bottom:6px;opacity:.75">Leave blank to approve <b>${fmt.money(curr)}</b>. Enter a lower value to further reduce.</small>
+      <input id="app-approved-amount" class="form-control" type="number" min="1" max="${curr}" placeholder="e.g. ${curr}" style="font-size:1.1rem;font-weight:600">
+    </div>
+    <div class="form-group mt-2">
+      <label class="form-label">🗂 ${isAccountsFinalApprover ? '<span style="color:#166534;font-weight:700">Link to Project <span style="background:#dcfce7;color:#166534;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:4px">Accounts — Final Assignment</span></span>' : 'Redirect to Project <span style="color:#888;font-weight:400">(optional — override employee\'s selection)</span>'}</label>
+      ${isAccountsFinalApprover ? '<div style="font-size:11px;color:#555;margin-bottom:6px">The expense will immediately reflect in the project budget upon approval.</div>' : ''}
+      <select id="app-project" class="form-control" style="${isAccountsFinalApprover ? 'border-color:#16a34a;background:#f0fdf4' : ''}">
+        <option value="">-- Keep existing / No Project --</option>
+      </select>
+    </div>
+    <div class="form-group mt-2">
+      <label class="form-label">Remarks</label>
+      <input id="app-remarks" class="form-control" placeholder="Optional remarks…">
+    </div>`;
+
+  // Load projects and pre-select employee's choice
+  api('GET', '/projects?status=active').then(r => {
+    if (!r?.success) return;
+    const sel = document.getElementById('app-project');
+    if (!sel) return;
+    (r.data || []).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name + (p.code ? ` (${p.code})` : '');
+      if (existingProjectId && p.id == existingProjectId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }).catch(() => {});
+
+  openModal('approve-modal');
+}
+
+function openPayment(id, name, amount) {
+  activeAdvId = id;
+  document.getElementById('payment-content').innerHTML = `
+    <div class="form-row">
+      <div><div class="form-label">Employee</div><b>${name}</b></div>
+      <div><div class="form-label">Amount</div><b>${fmt.money(amount)}</b></div>
+    </div>
+    <div class="form-group mt-2">
+      <label class="form-label">Payment Date *</label>
+      <input id="pay-date" class="form-control" type="date" value="${new Date().toISOString().split('T')[0]}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Payment Mode</label>
+      <select id="pay-mode" class="form-control">
+        <option value="bank_transfer">Bank Transfer</option>
+        <option value="cash">Cash</option>
+        <option value="cheque">Cheque</option>
+        <option value="upi">UPI</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Remarks / Reference *</label>
+      <input id="pay-remarks" class="form-control" placeholder="e.g. NEFT Ref: 123456, Done">
+    </div>`;
+  openModal('payment-modal');
+}
+
+async function actionAdvance(action) {
+  const remarks       = document.getElementById('app-remarks')?.value || '';
+  const overrideRaw   = document.getElementById('app-approved-amount')?.value;
+  const approved_amount = overrideRaw ? parseFloat(overrideRaw) : null;
+  const project_id    = document.getElementById('app-project')?.value || null;
+
+  if (action === 'approve' && approved_amount !== null && approved_amount <= 0) {
+    return toast('Approved amount must be greater than zero', 'error');
+  }
+
+  const payload = { action, remarks };
+  if (approved_amount) payload.approved_amount = approved_amount;
+  if (project_id)      payload.project_id = parseInt(project_id);
+
+  const data = await api('POST', `/advance/${activeAdvId}/action`, payload);
+  if (data?.success) {
+    toast(data.message);
+    closeModal('approve-modal');
+    loadPending();
+    if (showStats) loadStats();
+  } else {
+    toast(data?.message || 'Failed', 'error');
+  }
+}
+
+async function processPayment() {
+  const date    = document.getElementById('pay-date')?.value;
+  const mode    = document.getElementById('pay-mode')?.value;
+  const remarks = document.getElementById('pay-remarks')?.value?.trim();
+  if (!date || !remarks) { toast('Payment date and remarks are required', 'error'); return; }
+  const data = await api('POST', `/advance/${activeAdvId}/process-payment`, {
+    payment_date: date, payment_mode: mode, remarks
+  });
+  if (data?.success) {
+    toast(data.message);
+    closeModal('payment-modal');
+    loadPending();
+    loadAll();
+    if (showStats) loadStats();
+  } else {
+    toast(data?.message || 'Failed', 'error');
+  }
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+</script>
+</body>
+</html>
