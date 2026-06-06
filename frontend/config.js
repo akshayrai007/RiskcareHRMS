@@ -14,7 +14,7 @@ window.CFG = {
 
   // ── 🏢 Client Identity ──────────────────────────────────────────────────
   clientName:        "RiskCareHR",
-  companyShortName:  "Risk Care Insurance",
+  companyShortName:  "",
   companyFullName:   "Risk Care Insurance Broking Services Pvt. Ltd.",
   companyCity:       "Mumbai",
   tagline:           "Servicing All Risks",
