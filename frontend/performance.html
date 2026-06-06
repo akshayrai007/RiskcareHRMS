@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Performance</title>
+<script src="config.js"></script>
+<script>
+(function(){
+  var C = window.CFG; if(!C) return;
+  var t = document.getElementById('page-title');
+  if(t && t.textContent.indexOf(C.clientName) === -1) t.textContent = C.clientName + ' — ' + t.textContent;
+  var lt = document.getElementById('sidebar-logo-text');
+  if(lt) lt.innerHTML = C.logoHtml || C.clientName;
+  var cs = document.getElementById('sidebar-company-short');
+  if(cs) cs.textContent = C.companyShortName || '';
+})();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  /* ── Performance-specific styles ── */
+  .perf-stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; margin-bottom:20px; }
+  .perf-stat { background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:18px 20px; }
+  .perf-stat-val { font-size:2rem; font-weight:800; color:var(--primary); line-height:1; margin-bottom:4px; }
+  .perf-stat-lbl { font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+
+  .cycle-card { background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:18px 20px; margin-bottom:12px; display:flex; align-items:center; gap:16px; cursor:pointer; transition:box-shadow .2s,border-color .2s; }
+  .cycle-card:hover { box-shadow:0 4px 18px rgba(0,0,0,.08); border-color:var(--primary); }
+  .cycle-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+  .cycle-dot.active { background:#10b981; }
+  .cycle-dot.draft  { background:#f59e0b; }
+  .cycle-dot.closed { background:#94a3b8; }
+  .cycle-info { flex:1; }
+  .cycle-title { font-weight:700; font-size:15px; margin-bottom:2px; }
+  .cycle-dates { font-size:12px; color:var(--text-muted); }
+  .cycle-progress { text-align:right; }
+  .cycle-pct { font-size:1.3rem; font-weight:800; color:var(--primary); }
+  .cycle-pct-lbl { font-size:11px; color:var(--text-muted); }
+
+  .review-row { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); }
+  .review-row:last-child { border-bottom:none; }
+  .review-avatar { width:36px; height:36px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0; }
+  .review-info { flex:1; }
+  .review-name { font-weight:600; font-size:14px; }
+  .review-sub  { font-size:12px; color:var(--text-muted); }
+  .review-score { font-size:1.1rem; font-weight:800; color:var(--primary); min-width:44px; text-align:right; }
+
+  .rating-stars { display:flex; gap:4px; }
+  .star { font-size:20px; cursor:pointer; transition:transform .15s; color:#d1d5db; }
+  .star.filled { color:#f59e0b; }
+  .star:hover { transform:scale(1.2); }
+
+  .goal-card { background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:16px 18px; margin-bottom:10px; }
+  .goal-header { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .goal-title { font-weight:600; font-size:14px; flex:1; }
+  .goal-weight { background:var(--primary); color:#fff; border-radius:20px; padding:2px 10px; font-size:11px; font-weight:700; }
+  .goal-ratings { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px; }
+  .goal-rating-box { background:var(--bg-card); border-radius:10px; padding:12px 14px; }
+  .goal-rating-lbl { font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; margin-bottom:8px; }
+
+  .progress-bar-wrap { background:var(--border); border-radius:100px; height:8px; margin-top:10px; overflow:hidden; }
+  .progress-bar-fill { height:100%; border-radius:100px; background:linear-gradient(90deg,var(--primary),#22c55e); transition:width .6s ease; }
+
+  .rating-badge { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%; font-weight:800; font-size:13px; }
+  .rating-5 { background:#dcfce7; color:#16a34a; }
+  .rating-4 { background:#d1fae5; color:#059669; }
+  .rating-3 { background:#fef9c3; color:#ca8a04; }
+  .rating-2 { background:#ffedd5; color:#ea580c; }
+  .rating-1 { background:#fee2e2; color:#dc2626; }
+
+  .status-chip { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; text-transform:uppercase; }
+  .status-pending   { background:#fef9c3; color:#854d0e; }
+  .status-submitted { background:#dbeafe; color:#1e40af; }
+  .status-completed { background:#dcfce7; color:#166534; }
+  .status-active    { background:#d1fae5; color:#065f46; }
+  .status-draft     { background:#fef3c7; color:#92400e; }
+  .status-closed    { background:#f1f5f9; color:#475569; }
+
+  .dept-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .dept-row:last-child { border-bottom:none; }
+  .dept-name { flex:1; font-weight:500; font-size:14px; }
+  .dept-bar-wrap { flex:2; background:var(--border); border-radius:100px; height:8px; overflow:hidden; }
+  .dept-bar { height:100%; border-radius:100px; background:linear-gradient(90deg,var(--primary),#22c55e); }
+  .dept-score { font-weight:700; font-size:13px; min-width:36px; text-align:right; }
+
+  #review-detail-section { display:none; }
+
+  @media(max-width:640px) {
+    .goal-ratings { grid-template-columns:1fr; }
+    .perf-stat-grid { grid-template-columns:1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-logo-sub"></div><div class="logo-sub" id="sidebar-edition" style="font-size:10px;opacity:.6;"></div></div>
+</div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">Performance</div>
+    </div>
+    <div class="topbar-right">
+      <span id="admin-create-btn" style="display:none">
+        <button class="btn btn-primary btn-sm" onclick="openModal('cycle-modal')">+ New Cycle</button>
+      </span>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+
+    <!-- ── TABS ── -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-btn-overview" onclick="switchTab('overview')">🎯 Overview</button>
+      <button class="tab-btn" id="tab-btn-my-review" onclick="switchTab('my-review')">📝 My Review</button>
+      <button class="tab-btn" id="tab-btn-team" style="display:none" onclick="switchTab('team')">👥 Team Reviews</button>
+      <button class="tab-btn" id="tab-btn-analytics" style="display:none" onclick="switchTab('analytics')">📊 Analytics</button>
+    </div>
+
+    <!-- ══════════════════════ OVERVIEW TAB ══════════════════════ -->
+    <div id="tab-overview">
+      <!-- Stats (Admin/HR) -->
+      <div id="overview-stats" style="display:none">
+        <div class="perf-stat-grid" id="stats-grid">
+          <div class="perf-stat"><div class="perf-stat-val" id="stat-total">—</div><div class="perf-stat-lbl">Total Reviews</div></div>
+          <div class="perf-stat"><div class="perf-stat-val" id="stat-pending" style="color:#f59e0b">—</div><div class="perf-stat-lbl">Pending</div></div>
+          <div class="perf-stat"><div class="perf-stat-val" id="stat-submitted" style="color:#3b82f6">—</div><div class="perf-stat-lbl">Submitted</div></div>
+          <div class="perf-stat"><div class="perf-stat-val" id="stat-completed" style="color:#10b981">—</div><div class="perf-stat-lbl">Completed</div></div>
+          <div class="perf-stat"><div class="perf-stat-val" id="stat-avg">—</div><div class="perf-stat-lbl">Avg Score</div></div>
+        </div>
+      </div>
+
+      <!-- Cycles List -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">🔄</span>Review Cycles</div>
+          <select id="cycle-filter" class="form-control" style="width:140px" onchange="loadCycles()">
+            <option value="">All Cycles</option>
+            <option value="active">Active</option>
+            <option value="draft">Draft</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+        <div id="cycles-list"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════ MY REVIEW TAB ══════════════════════ -->
+    <div id="tab-my-review" style="display:none">
+
+      <!-- List of my reviews -->
+      <div id="my-reviews-list-section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">📝</span>My Performance Reviews</div>
+          </div>
+          <div id="my-reviews-list"><div class="loader"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+
+      <!-- Detail of a single review -->
+      <div id="review-detail-section">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <button class="btn btn-outline btn-sm" onclick="closeReviewDetail()">← Back</button>
+          <div style="flex:1;font-size:16px;font-weight:700" id="review-detail-title"></div>
+          <span id="review-detail-status"></span>
+        </div>
+
+        <!-- Goals / KRAs -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">🎯</span>Goals & KRAs</div>
+            <div id="add-goal-btn-wrap" style="display:none">
+              <button class="btn btn-primary btn-sm" onclick="openAddGoalModal()">+ Add Goal</button>
+            </div>
+          </div>
+          <div id="goals-list"></div>
+          <div id="goals-empty" style="display:none;padding:24px;text-align:center;color:var(--text-muted)">
+            No goals added yet. HR will set goals for this review cycle.
+          </div>
+        </div>
+
+        <!-- Self Assessment -->
+        <div class="card" id="self-assessment-card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">✍️</span>Self Assessment</div>
+          </div>
+          <div style="margin-bottom:12px">
+            <label class="form-label">Overall Self Comment</label>
+            <textarea id="self-overall-comment" class="form-control" rows="3" placeholder="Share your overall thoughts on your performance this cycle..."></textarea>
+          </div>
+          <button class="btn btn-primary" id="submit-self-btn" onclick="submitSelfReview()">Submit Self Review</button>
+        </div>
+
+        <!-- Manager Feedback (view only for employee) -->
+        <div class="card" id="manager-feedback-card" style="display:none">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">💬</span>Manager Feedback</div>
+          </div>
+          <div id="manager-feedback-content"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════ TEAM REVIEWS TAB ══════════════════════ -->
+    <div id="tab-team" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">👥</span>Team Performance Reviews</div>
+          <div style="display:flex;gap:8px">
+            <select id="team-cycle-filter" class="form-control" style="width:160px" onchange="loadTeamReviews()">
+              <option value="">All Cycles</option>
+            </select>
+            <select id="team-status-filter" class="form-control" style="width:130px" onchange="loadTeamReviews()">
+              <option value="">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="submitted">Submitted</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+        </div>
+        <div id="team-reviews-list"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════ ANALYTICS TAB ══════════════════════ -->
+    <div id="tab-analytics" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="analytics-grid">
+
+        <!-- Top Performers -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">🏆</span>Top Performers</div>
+          </div>
+          <div id="top-performers-list"><div class="loader"><div class="spinner"></div></div></div>
+        </div>
+
+        <!-- Department Scores -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">🏢</span>By Department</div>
+          </div>
+          <div id="dept-scores-list"><div class="loader"><div class="spinner"></div></div></div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- .content -->
+</div><!-- .main -->
+
+
+<!-- ══════════════════════ MODALS ══════════════════════ -->
+
+<!-- Create Cycle Modal -->
+<div class="modal-backdrop" id="cycle-modal" onclick="if(event.target===this)closeModal('cycle-modal')">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <h3 class="modal-title">New Review Cycle</h3>
+      <button class="modal-close" onclick="closeModal('cycle-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Cycle Title *</label>
+        <input type="text" id="cycle-title" class="form-control" placeholder="e.g. Annual Review 2025-26">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Start Date *</label>
+          <input type="date" id="cycle-start" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">End Date *</label>
+          <input type="date" id="cycle-end" class="form-control">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Review Due Date</label>
+        <input type="date" id="cycle-due" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea id="cycle-desc" class="form-control" rows="2" placeholder="Optional description..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('cycle-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createCycle()">Create Cycle</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cycle Detail / Initiate Modal -->
+<div class="modal-backdrop" id="cycle-detail-modal" onclick="if(event.target===this)closeModal('cycle-detail-modal')">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <h3 class="modal-title" id="cycle-detail-modal-title">Cycle Detail</h3>
+      <button class="modal-close" onclick="closeModal('cycle-detail-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="cycle-detail-modal-body">
+      <div class="loader"><div class="spinner"></div></div>
+    </div>
+    <div class="modal-footer" id="cycle-detail-modal-footer"></div>
+  </div>
+</div>
+
+<!-- Add Goal Modal -->
+<div class="modal-backdrop" id="goal-modal" onclick="if(event.target===this)closeModal('goal-modal')">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3 class="modal-title">Add Goal / KRA</h3>
+      <button class="modal-close" onclick="closeModal('goal-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Goal Title *</label>
+        <input type="text" id="goal-title" class="form-control" placeholder="e.g. Client Satisfaction Score">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea id="goal-desc" class="form-control" rows="2" placeholder="Describe what success looks like..."></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Weightage (%)</label>
+          <input type="number" id="goal-weight" class="form-control" value="" min="1" max="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Target</label>
+          <input type="text" id="goal-target" class="form-control" placeholder="e.g. 90">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unit</label>
+          <input type="text" id="goal-unit" class="form-control" placeholder="e.g. %">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('goal-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGoal()">Add Goal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rate Goal Modal -->
+<div class="modal-backdrop" id="rate-modal" onclick="if(event.target===this)closeModal('rate-modal')">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <h3 class="modal-title" id="rate-modal-title">Rate Goal</h3>
+      <button class="modal-close" onclick="closeModal('rate-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="rate-modal-body"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('rate-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRating()">Save Rating</button>
+    </div>
+  </div>
+</div>
+
+<!-- Complete Review Modal (Manager) -->
+<div class="modal-backdrop" id="complete-modal" onclick="if(event.target===this)closeModal('complete-modal')">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3 class="modal-title">Complete Review</h3>
+      <button class="modal-close" onclick="closeModal('complete-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Overall Manager Comment</label>
+        <textarea id="manager-comment" class="form-control" rows="3" placeholder="Overall performance summary..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Final Rating</label>
+        <select id="final-rating" class="form-control">
+          <option value="">-- Select --</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('complete-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="completeReview()">Complete Review</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+if (!Auth.guard()) throw new Error('unauthenticated');
+
+const user = Auth.getUser();
+const isAdminHR = (window.CFG.performanceAdminRoles || ['hr','admin','super_admin']).includes(user.role);
+const isManager = (window.CFG.performanceManagerRoles || ['hr','admin','super_admin','manager','tl']).includes(user.role);
+const RATING_SCALE = window.CFG.performanceRatingScale || 5;
+const DEFAULT_WEIGHT = window.CFG.performanceDefaultWeight || 20;
+const FINAL_RATINGS = window.CFG.performanceFinalRatings || ['Outstanding','Exceeds Expectations','Meets Expectations','Needs Improvement','Unsatisfactory'];
+
+let currentTab = 'overview';
+let currentReviewId = null;
+let currentReview = null;
+let ratingGoalId = null;
+let ratingType = null; // 'self' or 'manager'
+let selectedRating = 0;
+let allCycles = [];
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  buildSidebar('performance.html');
+  loadNotifBadge();
+
+  // Populate final rating options from CFG
+  const ratingStars = ['⭐⭐⭐⭐⭐','⭐⭐⭐⭐','⭐⭐⭐','⭐⭐','⭐'];
+  const sel = document.getElementById('final-rating');
+  FINAL_RATINGS.forEach((r, i) => {
+    const o = document.createElement('option');
+    o.value = r; o.textContent = `${ratingStars[i]||''} ${r}`;
+    sel.appendChild(o);
+  });
+
+  // Set default goal weight from CFG
+  document.getElementById('goal-weight').value = DEFAULT_WEIGHT;
+
+  if (isAdminHR) {
+    document.getElementById('admin-create-btn').style.display = '';
+    document.getElementById('overview-stats').style.display = '';
+    document.getElementById('tab-btn-team').style.display = '';
+    document.getElementById('tab-btn-analytics').style.display = '';
+  } else if (isManager) {
+    document.getElementById('tab-btn-team').style.display = '';
+  }
+
+  loadOverview();
+  loadMyReviews();
+  if (isManager) loadTeamTab();
+  if (isAdminHR) loadAnalytics();
+});
+
+// ── Tab switch ────────────────────────────────────────────────────────────────
+// Navigate to My Review tab and immediately open a specific review (bypasses list reset)
+function goToMyReview(reviewId) {
+  currentTab = 'my-review';
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-btn-my-review')?.classList.add('active');
+  ['overview','my-review','team','analytics'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === 'my-review' ? '' : 'none';
+  });
+  // Go straight to detail view, skip the list
+  openReviewDetail(reviewId);
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-btn-' + tab)?.classList.add('active');
+  ['overview','my-review','team','analytics'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
+  });
+  // When switching TO My Review, always reset inner sections so the list is visible
+  // (openReviewDetail may have hidden the list section previously)
+  if (tab === 'my-review') {
+    const listSection   = document.getElementById('my-reviews-list-section');
+    const detailSection = document.getElementById('review-detail-section');
+    if (listSection)   listSection.style.display   = 'block';
+    if (detailSection) detailSection.style.display = 'none';
+    currentReviewId = null;
+    currentReview   = null;
+    loadMyReviews(); // always reload so the list is never stale or empty
+  }
+}
+
+// ── Overview ──────────────────────────────────────────────────────────────────
+async function loadOverview() {
+  await loadCycles();
+  if (isAdminHR) {
+    const s = await api('GET', '/performance/summary');
+    if (s?.success) {
+      const st = s.data.stats;
+      document.getElementById('stat-total').textContent     = st.total || 0;
+      document.getElementById('stat-pending').textContent   = st.pending || 0;
+      document.getElementById('stat-submitted').textContent = st.submitted || 0;
+      document.getElementById('stat-completed').textContent = st.completed || 0;
+      document.getElementById('stat-avg').textContent       = st.avg_score ? parseFloat(st.avg_score).toFixed(1) : '—';
+    }
+  }
+}
+
+async function loadCycles() {
+  const list = document.getElementById('cycles-list');
+  list.innerHTML = '<div class="loader"><div class="spinner"></div><div style="margin-top:10px;font-size:12px;color:var(--text-muted)">Loading… (server may be starting up)</div></div>';
+  const r = await api('GET', '/performance/cycles');
+  if (!r?.success) {
+    list.innerHTML = `<div class="empty-state">
+      <div style="font-size:2rem;margin-bottom:8px">⚠️</div>
+      <div style="font-weight:600;margin-bottom:4px">${r?.message || 'Failed to load cycles'}</div>
+      <div style="margin-top:10px"><button class="btn btn-primary btn-sm" onclick="loadCycles()">Retry</button></div>
+    </div>`;
+    return;
+  }
+  allCycles = r.data;
+  if (!allCycles.length) {
+    list.innerHTML = `<div class="empty-state">
+      <div style="font-size:2.5rem;margin-bottom:10px">🎯</div>
+      <div style="font-weight:600;margin-bottom:4px">No review cycles yet</div>
+      ${isAdminHR ? '<div style="color:var(--text-muted);font-size:13px">Create a new cycle to start performance reviews</div>' : '<div style="color:var(--text-muted);font-size:13px">HR will create review cycles soon</div>'}
+    </div>`;
+    return;
+  }
+  list.innerHTML = allCycles.map(c => {
+    const total = parseInt(c.total_reviews) || 0;
+    const done  = parseInt(c.completed_reviews) || 0;
+    const pct   = total ? Math.round(done / total * 100) : 0;
+    return `
+      <div class="cycle-card" onclick="openCycleDetail(${c.id})">
+        <div class="cycle-dot ${c.status || 'draft'}"></div>
+        <div class="cycle-info">
+          <div class="cycle-title">${c.title}</div>
+          <div class="cycle-dates">${fmt.date(c.start_date)} — ${fmt.date(c.end_date)}</div>
+          <div style="margin-top:6px">
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+          </div>
+        </div>
+        <div class="cycle-progress">
+          <div class="cycle-pct">${pct}%</div>
+          <div class="cycle-pct-lbl">${done}/${total} done</div>
+          <div style="margin-top:4px"><span class="status-chip status-${c.status||'draft'}">${c.status||'draft'}</span></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Cycle Detail Modal ────────────────────────────────────────────────────────
+async function openCycleDetail(cycleId) {
+  openModal('cycle-detail-modal');
+  const body = document.getElementById('cycle-detail-modal-body');
+  const footer = document.getElementById('cycle-detail-modal-footer');
+  body.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  footer.innerHTML = '';
+
+  const r = await api('GET', `/performance/cycles/${cycleId}`);
+  if (!r?.success) { body.innerHTML = '<div class="empty-state">Failed to load</div>'; return; }
+
+  const { cycle, reviews } = r.data;
+  document.getElementById('cycle-detail-modal-title').textContent = cycle.title;
+
+  // For non-admin/non-manager employees, reviews array is empty — look up their own review
+  let myReviewId = null;
+  if (!isAdminHR && !isManager) {
+    // Find the employee's own review for this cycle from already-loaded myReviews data,
+    // or fall back to the /reviews/my endpoint
+    const myR = await api('GET', '/performance/reviews/my');
+    if (myR?.success) {
+      const match = myR.data.find(rv => String(rv.cycle_id) === String(cycleId));
+      if (match) myReviewId = match.id;
+    }
+  }
+
+  body.innerHTML = `
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+      <span class="status-chip status-${cycle.status||'draft'}">${cycle.status||'draft'}</span>
+      <span style="font-size:13px;color:var(--text-muted)">📅 ${fmt.date(cycle.start_date)} — ${fmt.date(cycle.end_date)}</span>
+      ${cycle.review_due_date ? `<span style="font-size:13px;color:var(--text-muted)">⏰ Due: ${fmt.date(cycle.review_due_date)}</span>` : ''}
+    </div>
+    ${cycle.description ? `<p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">${cycle.description}</p>` : ''}
+    ${(!isAdminHR && !isManager) ? `
+      <!-- Employee view: show their own participation status -->
+      <div style="font-weight:600;font-size:13px;margin-bottom:10px">Your Participation</div>
+      ${myReviewId
+        ? `<div style="color:var(--text-muted);font-size:13px;padding:12px 0">
+             You are enrolled in this cycle.
+             <button class="btn btn-primary btn-sm" style="margin-left:12px"
+               onclick="closeModal('cycle-detail-modal');goToMyReview(${myReviewId})">
+               Open My Review →
+             </button>
+           </div>`
+        : `<div style="color:var(--text-muted);font-size:13px;padding:12px 0">You are not yet enrolled in this cycle. HR will initiate it shortly.</div>`}
+    ` : `
+      <!-- Admin / Manager view: full reviews list -->
+      <div style="font-weight:600;font-size:13px;margin-bottom:10px">Reviews (${reviews.length})</div>
+      ${!reviews.length ? `<div style="color:var(--text-muted);font-size:13px;padding:12px 0">No reviews yet. Initiate the cycle to create review records for all employees.</div>` : ''}
+      <div style="max-height:300px;overflow-y:auto">
+        ${reviews.map(rv => `
+          <div class="review-row">
+            <div class="review-avatar">${(rv.first_name?.[0]||'')}${(rv.last_name?.[0]||'')}</div>
+            <div class="review-info">
+              <div class="review-name">${rv.first_name} ${rv.last_name}</div>
+              <div class="review-sub">${rv.designation||'—'} · ${rv.department||'—'}</div>
+            </div>
+            <span class="status-chip status-${rv.status||'pending'}">${rv.status||'pending'}</span>
+            ${rv.calculated_score ? `<div class="review-score">${parseFloat(rv.calculated_score).toFixed(1)}</div>` : '<div class="review-score" style="color:var(--text-muted)">—</div>'}
+          </div>`).join('')}
+      </div>
+    `}`;
+
+  if (isAdminHR && (!cycle.status || cycle.status === 'draft')) {
+    footer.innerHTML = `
+      <button class="btn btn-outline" onclick="closeModal('cycle-detail-modal')">Close</button>
+      <button class="btn btn-primary" onclick="initiateCycle(${cycle.id})">🚀 Initiate Cycle</button>`;
+  } else {
+    footer.innerHTML = `<button class="btn btn-outline" onclick="closeModal('cycle-detail-modal')">Close</button>`;
+  }
+}
+
+async function initiateCycle(cycleId) {
+  if (!confirm('This will create review records for ALL active employees. Continue?')) return;
+  const r = await api('POST', `/performance/cycles/${cycleId}/initiate`, {});
+  if (r?.success) {
+    toast(r.message, 'success');
+    closeModal('cycle-detail-modal');
+    loadCycles();
+  } else {
+    toast(r?.message || 'Failed', 'error');
+  }
+}
+
+// ── Create Cycle ──────────────────────────────────────────────────────────────
+async function createCycle() {
+  const title = document.getElementById('cycle-title').value.trim();
+  const start = document.getElementById('cycle-start').value;
+  const end   = document.getElementById('cycle-end').value;
+  if (!title || !start || !end) { toast('Please fill title, start and end date', 'error'); return; }
+  const r = await api('POST', '/performance/cycles', {
+    title, start_date: start, end_date: end,
+    review_due_date: document.getElementById('cycle-due').value || null,
+    description: document.getElementById('cycle-desc').value || null
+  });
+  if (r?.success) {
+    toast('Cycle created!', 'success');
+    closeModal('cycle-modal');
+    loadCycles();
+    ['cycle-title','cycle-start','cycle-end','cycle-due','cycle-desc'].forEach(id => document.getElementById(id).value = '');
+  } else {
+    toast(r?.message || 'Failed', 'error');
+  }
+}
+
+// ── My Reviews ────────────────────────────────────────────────────────────────
+async function loadMyReviews() {
+  const list = document.getElementById('my-reviews-list');
+  if (!list) return;
+  list.innerHTML = '<div class="loader"><div class="spinner"></div><div style="margin-top:10px;font-size:12px;color:var(--text-muted)">Loading…</div></div>';
+  const r = await api('GET', '/performance/reviews/my');
+  if (!r?.success) {
+    list.innerHTML = `<div class="empty-state">
+      <div style="font-weight:600;margin-bottom:4px">${r?.message || 'Failed to load reviews'}</div>
+      <div style="margin-top:10px"><button class="btn btn-primary btn-sm" onclick="loadMyReviews()">Retry</button></div>
+    </div>`;
+    return;
+  }
+  if (!r.data.length) {
+    list.innerHTML = `<div class="empty-state">
+      <div style="font-size:2.5rem;margin-bottom:10px">📝</div>
+      <div style="font-weight:600;margin-bottom:4px">No reviews yet</div>
+      <div style="color:var(--text-muted);font-size:13px">Your performance reviews will appear here once HR initiates a cycle</div>
+    </div>`;
+    return;
+  }
+  list.innerHTML = r.data.map(rv => `
+    <div class="review-row" style="cursor:pointer" onclick="openReviewDetail(${rv.id})">
+      <div style="font-size:1.5rem">🎯</div>
+      <div class="review-info">
+        <div class="review-name">${rv.cycle_title}</div>
+        <div class="review-sub">${fmt.date(rv.start_date)} — ${fmt.date(rv.end_date)}
+          ${rv.review_due_date ? ` · Due: ${fmt.date(rv.review_due_date)}` : ''}
+        </div>
+        ${rv.reviewer_first ? `<div class="review-sub">Reviewer: ${rv.reviewer_first} ${rv.reviewer_last}</div>` : ''}
+      </div>
+      <div style="text-align:right">
+        <span class="status-chip status-${rv.status||'pending'}">${rv.status||'pending'}</span>
+        ${rv.calculated_score ? `<div class="review-score" style="margin-top:4px">${parseFloat(rv.calculated_score).toFixed(1)}/5</div>` : ''}
+        ${rv.final_rating ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${rv.final_rating}</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+async function openReviewDetail(reviewId) {
+  currentReviewId = reviewId;
+  document.getElementById('my-reviews-list-section').style.display = 'none';
+  document.getElementById('review-detail-section').style.display = 'block';
+
+  const r = await api('GET', `/performance/reviews/${reviewId}`);
+  if (!r?.success) {
+    // Restore list view so the page isn't left blank
+    document.getElementById('my-reviews-list-section').style.display = 'block';
+    document.getElementById('review-detail-section').style.display = 'none';
+    currentReviewId = null;
+    toast(r?.message || 'Failed to load review', 'error');
+    return;
+  }
+  currentReview = r.data;
+
+  document.getElementById('review-detail-title').textContent = r.data.cycle_title;
+  document.getElementById('review-detail-status').innerHTML =
+    `<span class="status-chip status-${r.data.status||'pending'}">${r.data.status||'pending'}</span>`;
+
+  const canSelfRate    = Number(r.data.employee_id) === Number(user.id) && r.data.status === 'pending';
+  const canManagerRate = (isManager || isAdminHR) && Number(r.data.reviewer_id) === Number(user.id) && r.data.status === 'submitted';
+  const canAddGoal     = isAdminHR || (Number(r.data.employee_id) === Number(user.id) && r.data.status === 'pending');
+
+  document.getElementById('add-goal-btn-wrap').style.display = canAddGoal ? '' : 'none';
+
+  // Show/hide self assessment card
+  const selfCard = document.getElementById('self-assessment-card');
+  const submitBtn = document.getElementById('submit-self-btn');
+  if (r.data.status === 'pending' && Number(r.data.employee_id) === Number(user.id)) {
+    selfCard.style.display = '';
+    if (r.data.self_overall_comment) document.getElementById('self-overall-comment').value = r.data.self_overall_comment;
+  } else {
+    selfCard.style.display = 'none';
+  }
+
+  // Manager feedback
+  const mgrCard = document.getElementById('manager-feedback-card');
+  if (r.data.status === 'completed' && r.data.manager_overall_comment) {
+    mgrCard.style.display = '';
+    document.getElementById('manager-feedback-content').innerHTML = `
+      <div style="background:var(--bg);border-radius:10px;padding:14px;margin-bottom:10px">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Overall Comment</div>
+        <div style="font-size:14px">${r.data.manager_overall_comment}</div>
+      </div>
+      ${r.data.final_rating ? `<div><span style="font-weight:600">Final Rating:</span> ${r.data.final_rating}</div>` : ''}
+      ${r.data.calculated_score ? `<div style="margin-top:4px"><span style="font-weight:600">Score:</span> ${parseFloat(r.data.calculated_score).toFixed(2)}/5</div>` : ''}`;
+  } else {
+    mgrCard.style.display = 'none';
+  }
+
+  renderGoals(r.data.goals || [], canSelfRate, canManagerRate, canAddGoal);
+}
+
+function closeReviewDetail() {
+  document.getElementById('review-detail-section').style.display = 'none';
+  document.getElementById('my-reviews-list-section').style.display = 'block';
+  currentReviewId = null;
+  currentReview = null;
+}
+
+function renderGoals(goals, canSelfRate, canManagerRate, canAddGoal) {
+  const list  = document.getElementById('goals-list');
+  const empty = document.getElementById('goals-empty');
+  if (!goals.length) { list.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  list.innerHTML = goals.map(g => {
+    const selfRating = g.self_rating ? parseInt(g.self_rating) : 0;
+    const mgrRating  = g.manager_rating ? parseInt(g.manager_rating) : 0;
+    return `
+      <div class="goal-card" id="goal-${g.id}">
+        <div class="goal-header">
+          <div class="goal-title">${g.title}</div>
+          <span class="goal-weight">${g.weightage}%</span>
+          ${canAddGoal ? `<button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:11px" onclick="deleteGoal(${g.id})">✕</button>` : ''}
+        </div>
+        ${g.description ? `<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">${g.description}</div>` : ''}
+        ${g.target ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Target: <strong>${g.target} ${g.unit||''}</strong></div>` : ''}
+        ${g.achievement ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Achievement: <strong>${g.achievement}</strong></div>` : ''}
+        <div class="goal-ratings">
+          <div class="goal-rating-box">
+            <div class="goal-rating-lbl">Self Rating</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              ${renderStarsDisplay(selfRating)}
+              ${selfRating ? `<span class="rating-badge rating-${selfRating}">${selfRating}</span>` : '<span style="color:var(--text-muted);font-size:12px">Not rated</span>'}
+            </div>
+            ${g.self_comment ? `<div style="font-size:12px;color:var(--text-muted);margin-top:6px">"${g.self_comment}"</div>` : ''}
+            ${canSelfRate ? `<button class="btn btn-outline btn-sm" style="margin-top:8px;font-size:11px" onclick="openRateModal(${g.id},'self','${g.title}')">✏️ Rate</button>` : ''}
+          </div>
+          <div class="goal-rating-box">
+            <div class="goal-rating-lbl">Manager Rating</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              ${renderStarsDisplay(mgrRating)}
+              ${mgrRating ? `<span class="rating-badge rating-${mgrRating}">${mgrRating}</span>` : '<span style="color:var(--text-muted);font-size:12px">Not rated</span>'}
+            </div>
+            ${g.manager_comment ? `<div style="font-size:12px;color:var(--text-muted);margin-top:6px">"${g.manager_comment}"</div>` : ''}
+            ${canManagerRate ? `<button class="btn btn-outline btn-sm" style="margin-top:8px;font-size:11px" onclick="openRateModal(${g.id},'manager','${g.title}')">✏️ Rate</button>` : ''}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderStarsDisplay(rating) {
+  return Array.from({length:5},(_,i)=>`<span style="font-size:16px;color:${i<rating?'#f59e0b':'#d1d5db'}">★</span>`).join('');
+}
+
+// ── Rate Goal Modal ───────────────────────────────────────────────────────────
+function openRateModal(goalId, type, title) {
+  ratingGoalId = goalId;
+  ratingType   = type;
+  selectedRating = 0;
+  document.getElementById('rate-modal-title').textContent = `Rate: ${title}`;
+  document.getElementById('rate-modal-body').innerHTML = `
+    <div style="margin-bottom:14px">
+      <div class="form-label">Rating (1–5)</div>
+      <div class="rating-stars" id="rating-stars">
+        ${Array.from({length:RATING_SCALE},(_,i)=>i+1).map(i=>`<span class="star" onclick="setRating(${i})" onmouseover="hoverRating(${i})" onmouseout="resetStars()">★</span>`).join('')}
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px" id="rating-label">Click a star to rate</div>
+    </div>
+    ${type === 'self' ? `
+    <div class="form-group">
+      <label class="form-label">Achievement (optional)</label>
+      <input type="text" id="rate-achievement" class="form-control" placeholder="e.g. 92%">
+    </div>` : ''}
+    <div class="form-group">
+      <label class="form-label">Comment (optional)</label>
+      <textarea id="rate-comment" class="form-control" rows="2" placeholder="Add context to your rating..."></textarea>
+    </div>`;
+  openModal('rate-modal');
+}
+
+function setRating(val) {
+  selectedRating = val;
+  const labels = ['','Unsatisfactory','Needs Improvement','Meets Expectations','Exceeds Expectations','Outstanding'];
+  document.getElementById('rating-label').textContent = labels[val] || '';
+  highlightStars(val);
+}
+function hoverRating(val) { highlightStars(val); }
+function resetStars() { highlightStars(selectedRating); }
+function highlightStars(val) {
+  document.querySelectorAll('#rating-stars .star').forEach((s,i) => {
+    s.classList.toggle('filled', i < val);
+  });
+}
+
+async function saveRating() {
+  if (!selectedRating) { toast('Please select a rating', 'error'); return; }
+  const comment = document.getElementById('rate-comment')?.value || '';
+  const achievement = document.getElementById('rate-achievement')?.value || '';
+  const body = ratingType === 'self'
+    ? { self_rating: selectedRating, self_comment: comment, ...(achievement ? {achievement} : {}) }
+    : { manager_rating: selectedRating, manager_comment: comment };
+  const r = await api('PUT', `/performance/goals/${ratingGoalId}`, body);
+  if (r?.success) {
+    toast('Rating saved!', 'success');
+    closeModal('rate-modal');
+    openReviewDetail(currentReviewId);
+  } else {
+    toast(r?.message || 'Failed', 'error');
+  }
+}
+
+// ── Add Goal ──────────────────────────────────────────────────────────────────
+function openAddGoalModal() { openModal('goal-modal'); }
+
+async function saveGoal() {
+  const title = document.getElementById('goal-title').value.trim();
+  if (!title) { toast('Goal title is required', 'error'); return; }
+  const r = await api('POST', `/performance/reviews/${currentReviewId}/goals`, {
+    title,
+    description: document.getElementById('goal-desc').value || null,
+    weightage:   document.getElementById('goal-weight').value || 20,
+    target:      document.getElementById('goal-target').value || null,
+    unit:        document.getElementById('goal-unit').value || null,
+  });
+  if (r?.success) {
+    toast('Goal added!', 'success');
+    closeModal('goal-modal');
+    ['goal-title','goal-desc','goal-target','goal-unit'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('goal-weight').value = '20';
+    openReviewDetail(currentReviewId);
+  } else {
+    toast(r?.message || 'Failed', 'error');
+  }
+}
+
+async function deleteGoal(goalId) {
+  if (!confirm('Delete this goal?')) return;
+  const r = await api('DELETE', `/performance/goals/${goalId}`);
+  if (r?.success) { toast('Goal deleted', 'success'); openReviewDetail(currentReviewId); }
+  else toast(r?.message || 'Failed', 'error');
+}
+
+// ── Submit Self Review ────────────────────────────────────────────────────────
+async function submitSelfReview() {
+  const comment = document.getElementById('self-overall-comment').value;
+  if (!confirm('Submit your self review? You won\'t be able to edit it after submission.')) return;
+  const r = await api('PUT', `/performance/reviews/${currentReviewId}/submit`, { self_overall_comment: comment });
+  if (r?.success) {
+    toast('Self review submitted!', 'success');
+    openReviewDetail(currentReviewId);
+    loadMyReviews();
+  } else {
+    toast(r?.message || 'Failed', 'error');
+  }
+}
+
+// ── Team Reviews ──────────────────────────────────────────────────────────────
+async function loadTeamTab() {
+  // Populate cycle filter
+  const cf = document.getElementById('team-cycle-filter');
+  const r = await api('GET', '/performance/cycles');
+  if (r?.success) {
+    r.data.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.id; o.textContent = c.title;
+      cf.appendChild(o);
+    });
+  }
+  loadTeamReviews();
+}
+
+async function loadTeamReviews() {
+  const list = document.getElementById('team-reviews-list');
+  list.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const cycleId  = document.getElementById('team-cycle-filter')?.value;
+  const status   = document.getElementById('team-status-filter')?.value;
+
+  // Use /reviews/team endpoint (returns only the logged-in reviewer's direct reports)
+  let url = '/performance/reviews/team';
+  if (cycleId) url += `?cycle_id=${cycleId}`;
+
+  const r = await api('GET', url);
+  if (!r?.success) { list.innerHTML = '<div class="empty-state">Failed to load</div>'; return; }
+
+  let reviews = r.data || [];
+  if (status) reviews = reviews.filter(rv => rv.status === status);
+  if (!reviews.length) { list.innerHTML = '<div class="empty-state">No reviews found</div>'; return; }
+
+  list.innerHTML = `
+    <div style="overflow-x:auto">
+    <table class="table">
+      <thead><tr>
+        <th>Employee</th><th>Department</th><th>Status</th><th>Score</th><th>Rating</th><th>Action</th>
+      </tr></thead>
+      <tbody>
+        ${reviews.map(rv => `
+          <tr>
+            <td>
+              <div style="font-weight:600">${rv.first_name} ${rv.last_name}</div>
+              <div style="font-size:12px;color:var(--text-muted)">${rv.employee_code||''}</div>
+            </td>
+            <td>${rv.department||'—'}</td>
+            <td><span class="status-chip status-${rv.status||'pending'}">${rv.status||'pending'}</span></td>
+            <td>${rv.calculated_score ? parseFloat(rv.calculated_score).toFixed(2) : '—'}</td>
+            <td>${rv.final_rating || '—'}</td>
+            <td>
+              ${rv.status === 'submitted' ? `<button class="btn btn-primary btn-sm" onclick="openCompleteModal(${rv.id})">Complete</button>` : ''}
+              ${rv.status === 'completed' ? `<span style="color:var(--text-muted);font-size:12px">✓ Done</span>` : ''}
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+}
+
+// ── Complete Review ───────────────────────────────────────────────────────────
+let completeReviewId = null;
+function openCompleteModal(reviewId) {
+  completeReviewId = reviewId;
+  openModal('complete-modal');
+}
+
+async function completeReview() {
+  const r = await api('PUT', `/performance/reviews/${completeReviewId}/complete`, {
+    manager_overall_comment: document.getElementById('manager-comment').value,
+    final_rating: document.getElementById('final-rating').value,
+  });
+  if (r?.success) {
+    toast(`Review completed! Score: ${r.calculated_score || '—'}`, 'success');
+    closeModal('complete-modal');
+    loadTeamReviews();
+  } else {
+    toast(r?.message || 'Failed', 'error');
+  }
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+async function loadAnalytics() {
+  const r = await api('GET', '/performance/summary');
+  if (!r?.success) return;
+
+  // Top performers
+  const tp = document.getElementById('top-performers-list');
+  if (!r.data.topPerformers?.length) {
+    tp.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">No completed reviews yet</div>';
+  } else {
+    tp.innerHTML = r.data.topPerformers.map((p, i) => `
+      <div class="review-row">
+        <div style="font-weight:800;font-size:18px;color:var(--primary);min-width:24px">${['🥇','🥈','🥉','4️⃣','5️⃣'][i]}</div>
+        <div class="review-info">
+          <div class="review-name">${p.first_name} ${p.last_name}</div>
+          <div class="review-sub">${p.designation||'—'} · ${p.department||'—'}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="review-score">${parseFloat(p.calculated_score).toFixed(2)}</div>
+          ${p.final_rating ? `<div style="font-size:11px;color:var(--text-muted)">${p.final_rating}</div>` : ''}
+        </div>
+      </div>`).join('');
+  }
+
+  // Dept scores
+  const ds = document.getElementById('dept-scores-list');
+  const maxScore = Math.max(...(r.data.byDepartment||[]).map(d => parseFloat(d.avg_score||0)), 5);
+  if (!r.data.byDepartment?.length) {
+    ds.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">No data yet</div>';
+  } else {
+    ds.innerHTML = r.data.byDepartment.map(d => `
+      <div class="dept-row">
+        <div class="dept-name">${d.department || 'Unknown'}<div style="font-size:11px;color:var(--text-muted)">${d.completed}/${d.total} completed</div></div>
+        <div class="dept-bar-wrap"><div class="dept-bar" style="width:${d.avg_score ? (parseFloat(d.avg_score)/maxScore*100) : 0}%"></div></div>
+        <div class="dept-score">${d.avg_score ? parseFloat(d.avg_score).toFixed(1) : '—'}</div>
+      </div>`).join('');
+  }
+}
+
+buildSidebar('performance.html');
+</script>
+</body>
+</html>
