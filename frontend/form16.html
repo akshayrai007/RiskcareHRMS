@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Form 16</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+/* print handled by printF16() */
+.form16-header {
+  background: linear-gradient(135deg, var(--cfg-primary) 0%, var(--cfg-accent) 100%);
+  color: #fff; padding: 24px 28px; border-radius: 10px 10px 0 0;
+}
+.form16-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.form16-table th {
+  background: var(--cfg-pale); color: var(--cfg-accent); font-weight: 700;
+  padding: 9px 12px; text-align: left; border: 1px solid var(--cfg-border);
+}
+.form16-table td { padding: 8px 12px; border: 1px solid var(--cfg-pale); }
+.form16-table tr:nth-child(even) td { background: var(--cfg-sub-header); }
+.form16-section {
+  border: 1px solid var(--cfg-border); border-radius: 8px;
+  overflow: hidden; margin-bottom: 18px;
+}
+.form16-section-title {
+  background: var(--cfg-pale); color: var(--cfg-primary); font-weight: 700;
+  font-size: 13px; padding: 8px 14px; border-bottom: 1px solid var(--cfg-border);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.f16-row { display: flex; justify-content: space-between; padding: 7px 14px; border-bottom: 1px solid var(--cfg-pale); font-size: 13px; }
+.f16-row:last-child { border-bottom: none; }
+.f16-row .f16-label { color: #555; }
+.f16-row .f16-value { font-weight: 600; color: #111; }
+.f16-row.total { background: var(--cfg-pale); font-weight: 700; }
+.f16-row.total .f16-label, .f16-row.total .f16-value { color: var(--cfg-primary); font-size: 14px; }
+.badge-fy {
+  display: inline-block; background: rgba(255,255,255,0.2);
+  color: #fff; padding: 3px 12px; border-radius: 20px;
+  font-size: 12px; font-weight: 600; margin-left: 10px;
+}
+.quarter-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; padding: 12px; }
+.quarter-box { background: var(--cfg-sub-header); border: 1px solid var(--cfg-border); border-radius: 6px; padding: 10px 14px; }
+.quarter-box .q-title { font-size: 12px; font-weight: 700; color: var(--cfg-accent); margin-bottom: 6px; }
+.quarter-box .q-row { display: flex; justify-content: space-between; font-size: 12px; color: #555; padding: 2px 0; }
+.quarter-box .q-row span:last-child { font-weight: 600; color: #111; }
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">📄 Form 16</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-outline btn-sm no-print" onclick="printF16()" id="print-btn" style="display:none">🖨 Print / Download PDF</button>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+
+    <!-- Selector -->
+    <div class="card no-print" style="padding:16px 22px;margin-bottom:20px">
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div id="emp-selector-wrap" style="display:none">
+          <div class="form-label">Employee</div>
+          <select id="f16-emp" class="form-control" style="width:220px"></select>
+        </div>
+        <div>
+          <div class="form-label">Financial Year</div>
+          <select id="f16-fy" class="form-control" style="width:160px">
+            <option value="">-- Select FY --</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="loadForm16()">Load Form 16</button>
+      </div>
+    </div>
+
+    <!-- Form 16 Output -->
+    <div id="form16-area"></div>
+
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function(){
+  var C = window.CFG;
+  // Page title
+  var t = document.getElementById('page-title');
+  if(t) t.textContent = C.clientName + ' - ' + t.textContent;
+  // Sidebar logo text
+  var lt = document.getElementById('sidebar-logo-text');
+  if(lt) lt.innerHTML = C.logoHtml || C.clientName;
+  // Sidebar company short name
+  var cs = document.getElementById('sidebar-company-short');
+  if(cs) cs.textContent = C.companyShortName || '';
+})();
+</script>
+<script src="app.js"></script>
+<script>
+Auth.guard();
+loadNotifBadge();
+buildSidebar('form16.html');
+  loadNotifBadge();
+
+const f16User = Auth.getUser();
+const isHR = ['super_admin','admin','hr','accounts'].includes(f16User?.role);
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(async function init() {
+  // Show employee selector for HR/Admin
+  if (isHR) {
+    document.getElementById('emp-selector-wrap').style.display = '';
+    const empRes = await api('GET', '/employees?active=true&limit=500');
+    if (empRes?.success) {
+      const sel = document.getElementById('f16-emp');
+      // Add self first
+      const me = document.createElement('option');
+      me.value = f16User?.id;
+      me.textContent = `${f16User?.first_name || 'Me'} ${f16User?.last_name || ''} (${f16User?.employee_code || 'Self'})`.trim();
+      sel.appendChild(me);
+      (empRes.data || []).filter(e => e.id !== f16User?.id).forEach(e => {
+        const o = document.createElement('option');
+        o.value = e.id;
+        o.textContent = `${e.first_name} ${e.last_name} (${e.employee_code})`;
+        sel.appendChild(o);
+      });
+      sel.value = f16User?.id; // ensure self is selected by default
+      // When employee changes, reload FY list
+      sel.addEventListener('change', loadFYList);
+    }
+  }
+  await loadFYList();
+})();
+
+async function loadFYList() {
+  const empId = isHR ? document.getElementById('f16-emp').value : '';
+  const url   = empId ? `/payroll/form16/years?employee_id=${empId}` : '/payroll/form16/years';
+  const res   = await api('GET', url);
+  const sel   = document.getElementById('f16-fy');
+  sel.innerHTML = '<option value="">-- Select FY --</option>';
+  if (res?.success && res.data?.length) {
+    res.data.forEach(fy => {
+      const o = document.createElement('option');
+      o.value = fy;
+      o.textContent = `FY ${fy} (AY ${getAY(fy)})`;
+      sel.appendChild(o);
+    });
+    sel.value = res.data[0]; // default to latest
+  } else {
+    sel.innerHTML = '<option value="">No payroll data found</option>';
+  }
+}
+
+function getAY(fy) {
+  const [start] = fy.split('-');
+  const endFull = parseInt(start) + 1;
+  return `${endFull}-${String(endFull + 1).slice(2)}`;
+}
+
+async function loadForm16() {
+  const fy    = document.getElementById('f16-fy').value;
+  const empId = isHR ? document.getElementById('f16-emp').value : '';
+  const area  = document.getElementById('form16-area');
+
+  if (!fy) { toast('Please select a Financial Year', 'error'); return; }
+
+  area.innerHTML = '<div style="text-align:center;padding:40px;color:#6b7280">Loading Form 16…</div>';
+
+  let url = `/payroll/form16?fy=${fy}`;
+  if (empId) url += `&employee_id=${empId}`;
+
+  const res = await api('GET', url);
+  if (!res?.success) {
+    area.innerHTML = `<div style="text-align:center;padding:40px;color:#ef4444">${res?.message || 'Failed to load Form 16'}</div>`;
+    return;
+  }
+
+  document.getElementById('print-btn').style.display = '';
+  renderForm16(res.data);
+}
+
+function f16fmt(n) {
+  return window.CFG.currencySymbol + Number(n || 0).toLocaleString(window.CFG.currencyLocale);
+}
+
+function renderForm16(d) {
+  const area = document.getElementById('form16-area');
+  const { employee: emp, part_a: A, part_b: B, monthly_breakdown: months, financial_year: fy, assessment_year: ay } = d;
+
+  area.innerHTML = `
+  <div id="form16-area-inner" style="max-width:860px;margin:0 auto">
+
+    <!-- Header -->
+    <div class="form16-section">
+      <div style="display:flex;align-items:stretch;background:#f3f8f0;position:relative;overflow:hidden">
+        <div style="position:absolute;bottom:-16px;left:0;width:160px;height:80px;background:rgba(144,199,107,0.15);border-radius:0 50px 0 0"></div>
+        <div style="display:flex;align-items:center;padding:18px 14px 18px 18px;flex-shrink:0;z-index:1">
+          <img src="data:image/jpeg;base64,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" style="width:80px;height:80px;object-fit:contain;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.15)">
+        </div>
+        <div style="width:1.5px;background:var(--cfg-border);margin:16px 0;flex-shrink:0"></div>
+        <div style="flex:1;padding:16px 18px;display:flex;flex-direction:column;justify-content:center;z-index:1">
+          <div style="font-size:16px;font-weight:800;color:var(--cfg-primary);margin-bottom:8px">${A.employer_name}</div>
+          <div style="font-size:11.5px;color:#444;margin-bottom:5px">TAN: <strong style="color:var(--cfg-accent)">${A.employer_tan}</strong></div>
+          <div style="font-size:11px;color:#555;line-height:1.5;margin-bottom:5px">${window.CFG.companyOfficeAddr}</div>
+          <div style="font-size:11px;color:#555">${window.CFG.supportEmail} | ${window.CFG.websiteUrl}</div>
+        </div>
+        <div style="background:linear-gradient(145deg,var(--cfg-primary),var(--cfg-accent));width:175px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 20px;clip-path:polygon(15% 0%,100% 0%,100% 100%,0% 100%);position:relative">
+          <div style="position:absolute;bottom:0;left:0;right:0;height:28%;background:rgba(144,199,107,0.18);border-radius:40% 0 0 0"></div>
+          <div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:1px;z-index:1">FORM 16</div>
+          <div style="margin-top:10px;background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.4);border-radius:20px;padding:4px 16px;z-index:1">
+            <span style="font-size:12px;font-weight:700;color:#fff">FY ${fy}</span>
+          </div>
+        </div>
+      </div>
+      <div style="background:#fff;border-top:1.5px solid var(--cfg-pale);display:flex;align-items:center;padding:10px 18px;gap:14px">
+        <div style="width:44px;height:44px;background:#f3f8f0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1.5px solid var(--cfg-border);font-size:20px">📋</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--cfg-primary)">Certificate of Tax Deducted at Source on Salary</div>
+          <div style="font-size:12px;color:#555;margin-top:2px">Assessment Year <strong>${ay}</strong></div>
+          <div style="font-size:10.5px;color:#888;margin-top:1px">[As per Section 203 of Income Tax Act, 1961]</div>
+        </div>
+      </div>
+
+      <!-- Employee + Employer Info -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--cfg-border)">
+        <div style="padding:14px 18px;border-right:1px solid var(--cfg-border)">
+          <div style="font-size:11px;font-weight:700;color:var(--cfg-accent);margin-bottom:8px;text-transform:uppercase">Employee Details</div>
+          <table style="font-size:12px;width:100%;border-collapse:collapse">
+            <tr><td style="color:#777;padding:3px 0;width:120px">Name</td><td style="font-weight:600">${emp.name}</td></tr>
+            <tr><td style="color:#777;padding:3px 0">Employee Code</td><td style="font-weight:600">${emp.code}</td></tr>
+            <tr><td style="color:#777;padding:3px 0">PAN</td><td style="font-weight:600;color:${emp.pan === 'NOT PROVIDED' ? '#ef4444' : '#111'}">${emp.pan}</td></tr>
+            <tr><td style="color:#777;padding:3px 0">UAN</td><td>${emp.uan || '—'}</td></tr>
+            <tr><td style="color:#777;padding:3px 0">PF Number</td><td>${emp.pf_number || '—'}</td></tr>
+            <tr><td style="color:#777;padding:3px 0">Department</td><td>${emp.department}</td></tr>
+            <tr><td style="color:#777;padding:3px 0">Designation</td><td>${emp.designation}</td></tr>
+          </table>
+        </div>
+        <div style="padding:14px 18px">
+          <div style="font-size:11px;font-weight:700;color:var(--cfg-accent);margin-bottom:8px;text-transform:uppercase">Employer Details</div>
+          <table style="font-size:12px;width:100%;border-collapse:collapse">
+            <tr><td style="color:#777;padding:3px 0;width:120px">Name</td><td style="font-weight:600">${A.employer_name}</td></tr>
+            <tr><td style="color:#777;padding:3px 0">TAN</td><td style="font-weight:600">${A.employer_tan}</td></tr>
+            <tr><td style="color:#777;padding:3px 0">Address</td><td style="font-size:11px">${window.CFG.companyOfficeAddr}</td></tr>
+            <tr><td style="color:#777;padding:3px 0">Financial Year</td><td style="font-weight:600">FY ${fy}</td></tr>
+            <tr><td style="color:#777;padding:3px 0">Assessment Year</td><td style="font-weight:600">${ay}</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PART A -->
+    <div class="form16-section form16-card">
+      <div class="form16-section-title">📋 Part A — Details of Tax Deducted and Deposited in Central Government Account</div>
+      <div style="padding:14px 16px">
+        <div class="quarter-grid">
+          ${A.quarter_summary.map(q => `
+            <div class="quarter-box">
+              <div class="q-title">${q.quarter}</div>
+              <div class="q-row"><span>TDS Deducted</span><span>${f16fmt(q.tds_deducted)}</span></div>
+              <div class="q-row"><span>TDS Deposited</span><span>${f16fmt(q.tds_deposited)}</span></div>
+            </div>
+          `).join('')}
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;background:var(--cfg-pale);border-radius:6px;padding:10px 16px;margin-top:4px">
+          <span style="font-weight:700;color:var(--cfg-primary);font-size:14px">Total TDS Deducted & Deposited</span>
+          <span style="font-weight:800;color:var(--cfg-primary);font-size:16px">${f16fmt(A.total_tds_deducted)}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PART B -->
+    <div class="form16-section form16-card">
+      <div class="form16-section-title">📑 Part B — Details of Salary Paid and Any Other Income and Tax Deducted</div>
+
+      <!-- Gross Salary -->
+      <div class="form16-section-title" style="background:var(--cfg-sub-header);color:#555;font-size:12px;border-top:none">1. Gross Salary</div>
+      <div class="f16-row"><span class="f16-label">(a) Basic Salary</span><span class="f16-value">${f16fmt(B.basic)}</span></div>
+      <div class="f16-row"><span class="f16-label">(b) House Rent Allowance (HRA)</span><span class="f16-value">${f16fmt(B.hra)}</span></div>
+      <div class="f16-row"><span class="f16-label">(c) Conveyance Allowance</span><span class="f16-value">${f16fmt(B.conveyance)}</span></div>
+      <div class="f16-row"><span class="f16-label">(d) Special Allowance</span><span class="f16-value">${f16fmt(B.special_allowance)}</span></div>
+      <div class="f16-row total"><span class="f16-label">Total Gross Salary</span><span class="f16-value">${f16fmt(B.gross_salary)}</span></div>
+
+      <!-- Deduction u/s 16 -->
+      <div class="form16-section-title" style="background:var(--cfg-sub-header);color:#555;font-size:12px;border-top:1px solid var(--cfg-border)">2. Less: Deduction u/s 16</div>
+      <div class="f16-row"><span class="f16-label">Standard Deduction u/s 16(ia)</span><span class="f16-value">- ${f16fmt(B.standard_deduction)}</span></div>
+      <div class="f16-row total"><span class="f16-label">Income Chargeable under Head "Salaries"</span><span class="f16-value">${f16fmt(B.income_chargeable)}</span></div>
+
+      <!-- Chapter VI-A -->
+      <div class="form16-section-title" style="background:var(--cfg-sub-header);color:#555;font-size:12px;border-top:1px solid var(--cfg-border)">3. Deductions under Chapter VI-A</div>
+      <div class="f16-row"><span class="f16-label">Section 80C — PF Employee Contribution</span><span class="f16-value">- ${f16fmt(B.sec_80c_pf)}</span></div>
+      <div class="f16-row total"><span class="f16-label">Total Deductions (Chapter VI-A)</span><span class="f16-value">- ${f16fmt(B.total_deductions_vi_a)}</span></div>
+
+      <!-- Net Taxable -->
+      <div class="f16-row" style="background:#fff8e1;border-top:2px solid #ffd54f">
+        <span class="f16-label" style="font-weight:700;color:#e65100;font-size:14px">Net Taxable Income</span>
+        <span class="f16-value" style="color:#e65100;font-size:16px">${f16fmt(B.net_taxable_income)}</span>
+      </div>
+
+      <!-- Tax -->
+      <div class="form16-section-title" style="background:var(--cfg-sub-header);color:#555;font-size:12px;border-top:1px solid var(--cfg-border)">4. Tax Deducted at Source (TDS)</div>
+      <div class="f16-row total"><span class="f16-label">Total TDS Deducted on Salary</span><span class="f16-value">${f16fmt(B.total_tds)}</span></div>
+
+      <!-- Statutory Deductions Reference -->
+      <div class="form16-section-title" style="background:var(--cfg-sub-header);color:#555;font-size:12px;border-top:1px solid var(--cfg-border)">5. Statutory Deductions (For Reference)</div>
+      <div class="f16-row"><span class="f16-label">PF Employee Contribution</span><span class="f16-value">${f16fmt(B.pf_employee_total)}</span></div>
+      <div class="f16-row"><span class="f16-label">PF Employer Contribution</span><span class="f16-value">${f16fmt(B.pf_employer_total)}</span></div>
+      <div class="f16-row"><span class="f16-label">ESI Employee Contribution</span><span class="f16-value">${f16fmt(B.esi_employee_total)}</span></div>
+      <div class="f16-row"><span class="f16-label">Professional Tax</span><span class="f16-value">${f16fmt(B.professional_tax_total)}</span></div>
+      <div class="f16-row"><span class="f16-label">Labour Welfare Fund (LWF)</span><span class="f16-value">${f16fmt(B.lwf_total)}</span></div>
+      <div class="f16-row total"><span class="f16-label">Net Salary Paid (Annual)</span><span class="f16-value">${f16fmt(B.net_salary_total)}</span></div>
+    </div>
+
+    <!-- Monthly Breakdown -->
+    <div class="form16-section form16-card">
+      <div class="form16-section-title">📅 Monthly Salary Breakdown — FY ${fy}</div>
+      <div style="overflow-x:auto">
+        <table class="form16-table">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th style="text-align:right">Basic</th>
+              <th style="text-align:right">HRA</th>
+              <th style="text-align:right">Gross</th>
+              <th style="text-align:right">PF (Emp)</th>
+              <th style="text-align:right">ESI</th>
+              <th style="text-align:right">PT</th>
+              <th style="text-align:right">TDS</th>
+              <th style="text-align:right">Net Salary</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${months.map(m => `
+              <tr>
+                <td>${m.month} ${m.year}</td>
+                <td style="text-align:right">${f16fmt(m.basic)}</td>
+                <td style="text-align:right">${f16fmt(m.hra)}</td>
+                <td style="text-align:right;font-weight:600">${f16fmt(m.gross)}</td>
+                <td style="text-align:right">${f16fmt(m.pf_employee)}</td>
+                <td style="text-align:right">${f16fmt(m.esi_employee)}</td>
+                <td style="text-align:right">${f16fmt(m.professional_tax)}</td>
+                <td style="text-align:right;color:#d32f2f">${f16fmt(m.tds)}</td>
+                <td style="text-align:right;font-weight:700;color:var(--cfg-primary)">${f16fmt(m.net_salary)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+          <tfoot>
+            <tr style="background:var(--cfg-pale);font-weight:700">
+              <td>TOTAL</td>
+              <td style="text-align:right">${f16fmt(months.reduce((s,m)=>s+m.basic,0))}</td>
+              <td style="text-align:right">${f16fmt(months.reduce((s,m)=>s+m.hra,0))}</td>
+              <td style="text-align:right">${f16fmt(months.reduce((s,m)=>s+m.gross,0))}</td>
+              <td style="text-align:right">${f16fmt(months.reduce((s,m)=>s+m.pf_employee,0))}</td>
+              <td style="text-align:right">${f16fmt(months.reduce((s,m)=>s+m.esi_employee,0))}</td>
+              <td style="text-align:right">${f16fmt(months.reduce((s,m)=>s+m.professional_tax,0))}</td>
+              <td style="text-align:right;color:#d32f2f">${f16fmt(months.reduce((s,m)=>s+m.tds,0))}</td>
+              <td style="text-align:right;color:var(--cfg-primary)">${f16fmt(months.reduce((s,m)=>s+m.net_salary,0))}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Declaration -->
+    <div class="form16-section" style="margin-bottom:30px">
+      <div class="form16-section-title">✅ Declaration</div>
+      <div style="padding:14px 18px;font-size:12px;color:#555;line-height:1.7">
+        I, the employer, hereby certify that a sum of <strong>${f16fmt(A.total_tds_deducted)}</strong> has been deducted
+        at source and paid to the credit of the Central Government. This certificate is issued in accordance
+        with the provisions of Section 203 of the Income Tax Act, 1961, read with Rule 31 of the Income Tax
+        Rules, 1962 for the Financial Year <strong>${fy}</strong> (Assessment Year <strong>${ay}</strong>).
+      </div>
+    </div>
+
+  </div>`;
+}
+
+function printF16() {
+  var el = document.getElementById('form16-area-inner');
+  if (!el) { alert('Please load Form 16 first'); return; }
+
+  var w = window.open('', '_blank', 'width=900,height=700');
+  var css = '\n  @page { size: A4 portrait; margin: 10mm 10mm; }\n  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }\n  body { margin: 0; padding: 10px; font-family: Arial, sans-serif; font-size: 12px; color: #111; background: #fff; }\n  /* Form sections */\n  .form16-section { border: 1px solid var(--cfg-border); border-radius: 8px; overflow: visible; margin-bottom: 14px; page-break-inside: auto; }\n  .form16-section-title { background: var(--cfg-pale); color: var(--cfg-primary); font-weight: 700; font-size: 11px; padding: 6px 12px; border-bottom: 1px solid var(--cfg-border); text-transform: uppercase; letter-spacing: 0.5px; page-break-after: avoid; }\n  /* f16 rows */\n  .f16-row { display: flex; justify-content: space-between; padding: 5px 12px; border-bottom: 1px solid var(--cfg-pale); font-size: 12px; }\n  .f16-row .f16-label { color: #555; }\n  .f16-row .f16-value { font-weight: 600; }\n  .f16-row.total { background: var(--cfg-pale); font-weight: 700; color: var(--cfg-primary); }\n  .f16-row.total .f16-label, .f16-row.total .f16-value { color: var(--cfg-primary); font-size: 13px; }\n  /* table */\n  .form16-table { width: 100%; border-collapse: collapse; font-size: 11px; }\n  .form16-table th { background: var(--cfg-pale); color: var(--cfg-accent); font-weight: 700; padding: 6px 8px; border: 1px solid var(--cfg-border); text-align: left; }\n  .form16-table td { padding: 5px 8px; border: 1px solid var(--cfg-pale); }\n  .form16-table tr:nth-child(even) td { background: var(--cfg-sub-header); }\n  .form16-table tfoot tr td { background: var(--cfg-pale); font-weight: 700; color: var(--cfg-primary); }\n  tr { page-break-inside: avoid; }\n  /* quarter grid */\n  .quarter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }\n  .quarter-box { background: var(--cfg-sub-header); border: 1px solid var(--cfg-border); border-radius: 6px; padding: 8px 12px; }\n  .quarter-box .q-title { font-size: 11px; font-weight: 700; color: var(--cfg-accent); margin-bottom: 4px; }\n  .quarter-box .q-row { display: flex; justify-content: space-between; font-size: 11px; color: #555; }\n  .quarter-box .q-row span:last-child { font-weight: 600; color: #111; }\n  /* badge */\n  .badge-fy { display: inline-block; background: rgba(255,255,255,0.15); color: #fff; padding: 2px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; border: 1px solid rgba(255,255,255,0.4); }\n  /* header image area */\n  img { max-width: 100%; }\n  /* no-print hidden */\n  .no-print { display: none !important; }\n';
+  var html = '<!DOCTYPE html><html><head>' +
+    '<meta charset="UTF-8"><title>Form 16</title>' +
+    '<style>' + css + '</style>' +
+    '</head><body>' + el.innerHTML + '</body></html>';
+
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+
+  // Wait for images (logo base64) to render then print
+  w.onload = function() { w.focus(); w.print(); };
+  // Fallback if onload already fired
+  setTimeout(function() {
+    if (w && !w.closed) { w.focus(); w.print(); }
+  }, 1500);
+}
+
+</script>
+</body>
+</html>
