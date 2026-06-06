@@ -1,0 +1,3039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Employees</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-logo-sub">nagement</div></div>
+      <div class="logo-sub">Enterprise Edition</div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">Employees</div>
+    </div>
+    <div class="topbar-right">
+      <span id="add-emp-btn"></span>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('directory')">👥 Directory</button>
+      <button class="tab-btn" id="separated-tab" style="display:none" onclick="switchTab('separated')">🔴 Separated <span id="sep-count-badge" style="background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;display:none"></span></button>
+      <button class="tab-btn" id="geofence-tab" style="display:none" onclick="switchTab('geofence')">📍 Geofence</button>
+      <button class="tab-btn" id="logs-tab"     style="display:none" onclick="switchTab('logs')">📋 Punch Logs</button>
+      <button class="tab-btn" id="import-tab"   style="display:none" onclick="switchTab('import')">📥 Import Employees</button>
+      <button class="tab-btn" id="reshuffle-tab" style="display:none" onclick="switchTab('reshuffle')">🔀 Reshuffle Locations</button>
+    </div>
+
+    <!-- EMPLOYEE DIRECTORY -->
+    <div id="tab-directory">
+      <div class="card" style="padding:16px 20px;margin-bottom:16px">
+        <div class="flex gap-2 flex-wrap">
+          <div class="input-with-icon" style="flex:1;min-width:200px;max-width:280px">
+            <span class="input-icon">🔍</span>
+            <input id="search" class="form-control" placeholder="Search name, code, email…" oninput="filterEmployees()">
+          </div>
+          <select id="dept-filter" class="form-control" style="width:190px" onchange="filterEmployees()">
+            <option value="">All Departments</option>
+          </select>
+          <select id="role-filter" class="form-control" style="width:150px" onchange="filterEmployees()">
+            <option value="">All Roles</option>
+            <option value="admin">Admin</option>
+            <option value="hr">HR</option>
+            <option value="manager">Manager</option>
+            <option value="tl">Team Lead</option>
+            <option value="employee">Employee</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="clearFilters()">✕ Clear</button>
+          <span id="emp-count" class="text-muted" style="padding:8px 0;font-size:13px;margin-left:4px"></span>
+        </div>
+        <!-- Active / Inactive status pills -->
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.3px">STATUS:</span>
+          <button id="status-pill-all" class="status-pill active-pill" onclick="setStatusFilter('all',this)"
+            style="padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s">
+            All <span id="status-count-all" style="opacity:.8"></span>
+          </button>
+          <button id="status-pill-active" class="status-pill" onclick="setStatusFilter('active',this)"
+            style="padding:5px 14px;border-radius:20px;border:1.5px solid #86efac;background:#f0fdf4;color:#15803d;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s">
+            ✅ Active <span id="status-count-active" style="opacity:.8"></span>
+          </button>
+          <button id="status-pill-inactive" class="status-pill" onclick="setStatusFilter('inactive',this)"
+            style="padding:5px 14px;border-radius:20px;border:1.5px solid #fca5a5;background:#fef2f2;color:#dc2626;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s">
+            ⏸ Inactive <span id="status-count-inactive" style="opacity:.8"></span>
+          </button>
+        </div>
+      </div>
+      <div id="dept-tabs" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px"></div>
+      <div class="card" style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Employee</th><th>Code</th><th>Department</th><th>Designation</th>
+              <th>Role</th><th>Category</th><th>Status</th><th>Reporting To</th><th>Joining Date</th><th>App Ver.</th><th></th>
+            </tr></thead>
+            <tbody id="emp-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEPARATED EMPLOYEES -->
+    <div id="tab-separated" style="display:none">
+      <div class="card" style="padding:16px 20px;margin-bottom:16px;background:rgba(239,68,68,.03);border-color:rgba(239,68,68,.15)">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:700;color:#dc2626">🔴 Separated / Deactivated Employees</span>
+          <div style="margin-left:auto">
+            <input id="sep-search" class="form-control" style="width:220px" placeholder="Search name, code…" oninput="filterSeparated()">
+          </div>
+        </div>
+      </div>
+      <div class="card" style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Employee</th><th>Code</th><th>Department</th><th>Designation</th>
+              <th>Separation Type</th><th>Last Working Day</th><th>Deactivated On</th><th></th>
+            </tr></thead>
+            <tbody id="sep-tbody">
+              <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- GEOFENCE -->
+    <div id="tab-geofence" style="display:none">
+      <div class="grid-2" style="gap:20px;align-items:start">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">📍</span>Office Locations</div>
+            <button class="btn btn-primary btn-sm" onclick="openModal('add-location-modal')">+ Add Location</button>
+          </div>
+          <div id="locations-list"><div class="loader"><div class="spinner"></div></div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title">Assign Buffer to Employees</div></div>
+          <div class="form-group">
+            <label class="form-label">Select Location</label>
+            <select id="assign-location" class="form-control" onchange="loadAssignEmployees()">
+              <option value="">Choose a location…</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Buffer Type</label>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+                <input type="radio" name="buf-type" value="specific" checked style="accent-color:var(--accent)">
+                <div><div style="font-weight:600">Specific</div><div class="text-muted" style="font-size:11px">Employee restricted to this location only</div></div>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+                <input type="radio" name="buf-type" value="universal" style="accent-color:var(--accent)">
+                <div><div style="font-weight:600">Universal</div><div class="text-muted" style="font-size:11px">Employee can punch from any universal location</div></div>
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Select Employees</label>
+            <div style="display:flex;gap:6px;margin-bottom:8px">
+              <input id="assign-search" class="form-control" placeholder="Search employees…" oninput="filterAssignList()">
+              <button class="btn btn-ghost btn-sm" onclick="selectAllAssign()">All</button>
+              <button class="btn btn-ghost btn-sm" onclick="clearAssign()">None</button>
+            </div>
+            <div id="assign-emp-list" style="max-height:280px;overflow-y:auto;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:6px">
+              <div class="text-muted" style="padding:20px;text-align:center">Select a location first</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="bulkAssignBuffer()">Assign Selected</button>
+        </div>
+      </div>
+
+        <!-- ── BUFFER RULES PANEL ─────────────────────────────── -->
+        <div class="card" style="margin-top:20px">
+          <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div class="card-title"><span class="card-title-icon">🛡️</span>Employee Buffer Rules</div>
+            <div style="font-size:12px;color:var(--muted)">Set state / district / office boundary per employee</div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:320px 1fr;gap:20px;padding:16px;align-items:start">
+
+            <!-- FORM -->
+            <div style="background:var(--surface2);border-radius:var(--radius);padding:16px">
+              <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px">Assign Rule</div>
+
+              <div class="form-group">
+                <label class="form-label">Employee</label>
+                <input class="form-control" id="br-emp-search" placeholder="Type name or code…"
+                  oninput="brFilterEmps(this.value)" autocomplete="off" style="margin-bottom:4px">
+                <div id="br-emp-dropdown" style="display:none;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);max-height:200px;overflow-y:auto;position:relative;z-index:10"></div>
+                <input type="hidden" id="br-emp-id">
+                <div id="br-emp-selected" style="display:none;margin-top:6px;padding:8px 10px;background:var(--accent-l);border-radius:var(--radius-sm);align-items:center;justify-content:space-between">
+                  <span id="br-emp-selected-name" style="font-size:13px;font-weight:600;color:var(--accent)"></span>
+                  <button onclick="brClearEmp()" style="border:none;background:none;cursor:pointer;color:var(--muted);font-size:14px">✕</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Rule Type</label>
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+                  <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:var(--radius-sm);border:1.5px solid var(--border);cursor:pointer;background:var(--surface)" onclick="brSetRuleType('office')">
+                    <input type="radio" name="br-rule" value="office" style="margin-top:3px;accent-color:var(--accent)">
+                    <div><div style="font-weight:600;font-size:13px">🏢 Office</div><div class="text-muted" style="font-size:11px">Must be within office radius (onsite)</div></div>
+                  </label>
+                  <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:var(--radius-sm);border:1.5px solid var(--border);cursor:pointer;background:var(--surface)" onclick="brSetRuleType('district')">
+                    <input type="radio" name="br-rule" value="district" style="margin-top:3px;accent-color:var(--accent)">
+                    <div><div style="font-weight:600;font-size:13px">📍 District</div><div class="text-muted" style="font-size:11px">Must be inside assigned district</div></div>
+                  </label>
+                  <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:var(--radius-sm);border:1.5px solid var(--border);cursor:pointer;background:var(--surface)" onclick="brSetRuleType('state')">
+                    <input type="radio" name="br-rule" value="state" style="margin-top:3px;accent-color:var(--accent)">
+                    <div><div style="font-weight:600;font-size:13px">🗺️ State</div><div class="text-muted" style="font-size:11px">Must be inside assigned state</div></div>
+                  </label>
+                  <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:var(--radius-sm);border:1.5px solid var(--border);cursor:pointer;background:var(--surface)" onclick="brSetRuleType('universal')">
+                    <input type="radio" name="br-rule" value="universal" style="margin-top:3px;accent-color:var(--accent)">
+                    <div><div style="font-weight:600;font-size:13px">🌍 Universal</div><div class="text-muted" style="font-size:11px">Punch from anywhere (WFH)</div></div>
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group" id="br-office-group" style="display:none">
+                <label class="form-label">Office Location</label>
+                <select class="form-control" id="br-office-sel">
+                  <option value="">— select office —</option>
+                </select>
+              </div>
+
+              <div class="form-group" id="br-state-group" style="display:none">
+                <label class="form-label">State</label>
+                <select class="form-control" id="br-state-sel" onchange="brStateChanged()">
+                  <option value="">— select state —</option>
+                </select>
+              </div>
+
+              <div class="form-group" id="br-district-group" style="display:none">
+                <label class="form-label">District</label>
+                <select class="form-control" id="br-district-sel">
+                  <option value="">— select district —</option>
+                </select>
+              </div>
+
+              <div style="display:flex;gap:8px;margin-top:6px">
+                <button class="btn btn-primary" style="flex:1" onclick="brSave()">Save Rule</button>
+                <button class="btn btn-outline btn-sm" onclick="brReset()">Clear</button>
+              </div>
+              <div id="br-form-msg" style="margin-top:8px;font-size:12px;display:none"></div>
+            </div>
+
+            <!-- TABLE -->
+            <div>
+              <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
+                <input class="form-control" id="br-table-search" placeholder="Search employee…"
+                  oninput="brFilterTable()" style="max-width:200px">
+                <select class="form-control" id="br-filter-type" onchange="brFilterTable()" style="max-width:150px">
+                  <option value="">All types</option>
+                  <option value="office">Office</option>
+                  <option value="district">District</option>
+                  <option value="state">State</option>
+                  <option value="universal">Universal</option>
+                  <option value="none">Not set</option>
+                </select>
+                <span id="br-table-count" style="font-size:12px;color:var(--muted);margin-left:auto"></span>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr>
+                    <th>Employee</th>
+                    <th>Emp Type</th>
+                    <th>Rule</th>
+                    <th>Boundary</th>
+                    <th style="text-align:center">Actions</th>
+                  </tr></thead>
+                  <tbody id="br-table-body">
+                    <tr><td colspan="5" style="padding:24px;text-align:center;color:var(--muted)">
+                      <div class="loader"><div class="spinner"></div></div>
+                    </td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
+
+    <!-- PUNCH LOGS -->
+    <div id="tab-logs" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Geofence Punch Logs</div>
+          <div class="flex gap-2">
+            <input id="log-from" class="form-control" type="date" style="width:150px">
+            <input id="log-to"   class="form-control" type="date" style="width:150px">
+            <button class="btn btn-primary btn-sm" onclick="loadLogs()">Filter</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>Employee</th><th>Department</th><th>Date / Time</th>
+            <th>Type</th><th>Location</th><th>Distance</th><th>Valid</th>
+          </tr></thead>
+          <tbody id="logs-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- IMPORT EMPLOYEES -->
+    <div id="tab-import" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📥 Bulk Import Employees</div>
+          <a href="/employee_import_template.xlsx" download class="btn btn-outline btn-sm">⬇ Download Template</a>
+        </div>
+        <div class="card-body" style="padding:24px">
+          <div id="import-drop-zone" style="border:2px dashed #c7d2fe;border-radius:14px;padding:40px;text-align:center;background:#f8f9ff;cursor:pointer"
+               onclick="document.getElementById('import-file-input').click()"
+               ondragover="event.preventDefault()"
+               ondrop="handleImportDrop(event)">
+            <div style="font-size:36px;margin-bottom:8px">📊</div>
+            <div style="font-size:15px;font-weight:700;color:#334155;margin-bottom:4px">Drop Excel file here or click to browse</div>
+            <div style="font-size:12px;color:#94a3b8">.xlsx or .xls · Max 1000 employees</div>
+            <input type="file" id="import-file-input" accept=".xlsx,.xls" style="display:none" onchange="handleImportFile(this.files[0])">
+          </div>
+          <div id="import-file-info" style="display:none;margin-top:16px;padding:14px 18px;background:#f0fdf4;border:1.5px solid rgba(16,185,129,.2);border-radius:10px;align-items:center;gap:12px">
+            <span style="font-size:22px">📄</span>
+            <div style="flex:1">
+              <div id="import-file-name" style="font-weight:700;font-size:14px;color:#065f46"></div>
+              <div id="import-file-size" style="font-size:12px;color:#64748b;margin-top:2px"></div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="clearImportFile()">✕ Remove</button>
+          </div>
+          <div style="margin-top:20px">
+            <button id="import-submit-btn" class="btn btn-primary" onclick="submitImport()" style="display:none">🚀 Import Employees</button>
+          </div>
+          <div id="import-results" style="display:none;margin-top:20px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════
+         RESHUFFLE LOCATIONS TAB
+    ════════════════════════════════════════════════════════ -->
+    <div id="tab-reshuffle" style="display:none">
+
+      <style>
+        /* ── Reshuffle Tab Styles ───────────────────────────── */
+        #tab-reshuffle .rs-tabs { display:flex;gap:2px;background:var(--surface2);border-radius:var(--radius-sm);padding:3px;width:fit-content;margin-bottom:18px; }
+        #tab-reshuffle .rs-tab  { padding:7px 16px;border:none;border-radius:6px;background:none;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s; }
+        #tab-reshuffle .rs-tab.active { background:var(--surface);color:var(--accent);box-shadow:var(--shadow-xs); }
+
+        .rs-panel { background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden; }
+        .rs-panel-head { background:var(--accent-l);border-bottom:1.5px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:10px; }
+        .rs-panel-head .rs-ph-title { font-weight:700;font-size:13px;color:var(--accent);flex:1; }
+        .rs-panel-head .rs-count { background:var(--accent);color:#fff;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700; }
+
+        .rs-emp-list { overflow-y:auto;max-height:340px;padding:8px; }
+        .rs-chip {
+          display:flex;align-items:center;gap:9px;padding:8px 10px;
+          border-radius:8px;border:1.5px solid transparent;
+          background:var(--surface2);margin-bottom:4px;
+          cursor:grab;user-select:none;transition:all .12s;
+        }
+        .rs-chip:hover { background:var(--accent-l);border-color:var(--border); }
+        .rs-chip.rs-dragging { opacity:.45;transform:scale(.96); }
+        .rs-chip .rs-av {
+          width:30px;height:30px;border-radius:50%;background:var(--accent);
+          color:#fff;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+        }
+        .rs-chip .rs-info { flex:1;min-width:0; }
+        .rs-chip .rs-name { font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+        .rs-chip .rs-code { font-size:11px;color:var(--muted); }
+        .rs-chip .rs-grip { color:var(--muted);font-size:13px;flex-shrink:0; }
+
+        .rs-drop-active { background:var(--accent-l) !important;border-color:var(--accent) !important; }
+
+        .rs-pending-table { width:100%;border-collapse:collapse;font-size:13px; }
+        .rs-pending-table th { text-align:left;padding:8px 12px;background:var(--accent-l);color:var(--accent);font-weight:700;font-size:11px;letter-spacing:.4px;border-bottom:1.5px solid var(--border); }
+        .rs-pending-table td { padding:8px 12px;border-bottom:1px solid var(--surface2);vertical-align:middle; }
+        .rs-pending-table tr:hover td { background:var(--surface2); }
+        .tag-from { background:#fee2e2;color:#b91c1c;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;display:inline-block; }
+        .tag-to   { background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;display:inline-block; }
+      </style>
+
+      <!-- Inner sub-tabs -->
+      <div class="rs-tabs">
+        <button class="rs-tab active" onclick="rsSwitchTab('drag')">🔀 Drag &amp; Drop</button>
+        <button class="rs-tab" onclick="rsSwitchTab('bulk')">📋 Bulk Reassign</button>
+        <button class="rs-tab" onclick="rsSwitchTab('pending')">✅ Pending <span id="rs-pending-badge"></span></button>
+      </div>
+
+      <!-- ── DRAG & DROP ─────────────────────────────────────── -->
+      <div id="rs-drag" class="rs-subtab">
+        <div class="card" style="margin-bottom:16px;padding:16px 20px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Source Location</label>
+              <select id="rs-from-sel" class="form-control" onchange="rsLoadFrom()"><option value="">— select —</option></select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Destination Location</label>
+              <select id="rs-to-sel" class="form-control" onchange="rsLoadTo()"><option value="">— select —</option></select>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="rs-panel">
+            <div class="rs-panel-head">
+              <span>👥</span>
+              <span class="rs-ph-title" id="rs-from-title">Source Employees</span>
+              <span class="rs-count" id="rs-from-count">0</span>
+            </div>
+            <div style="padding:8px 8px 0">
+              <input class="form-control" placeholder="Search…" style="margin-bottom:0" oninput="rsRenderFrom(this.value)">
+            </div>
+            <div class="rs-emp-list" id="rs-from-list"
+              ondragover="event.preventDefault();this.classList.add('rs-drop-active')"
+              ondragleave="this.classList.remove('rs-drop-active')"
+              ondrop="rsDrop(event,'from')">
+              <div class="text-muted" style="padding:20px;text-align:center">Select a source location</div>
+            </div>
+          </div>
+          <div class="rs-panel">
+            <div class="rs-panel-head">
+              <span>🎯</span>
+              <span class="rs-ph-title" id="rs-to-title">Destination Employees</span>
+              <span class="rs-count" id="rs-to-count">0</span>
+            </div>
+            <div style="padding:8px 8px 0">
+              <input class="form-control" placeholder="Search…" style="margin-bottom:0" oninput="rsRenderTo(this.value)">
+            </div>
+            <div class="rs-emp-list" id="rs-to-list"
+              ondragover="event.preventDefault();this.classList.add('rs-drop-active')"
+              ondragleave="this.classList.remove('rs-drop-active')"
+              ondrop="rsDrop(event,'to')">
+              <div class="text-muted" style="padding:20px;text-align:center">Drag employees here to move</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── BULK REASSIGN ───────────────────────────────────── -->
+      <div id="rs-bulk" class="rs-subtab" style="display:none">
+        <div class="card" style="padding:16px 20px">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
+            <div class="form-group" style="margin:0;flex:1;min-width:180px">
+              <label class="form-label">Filter by Location</label>
+              <select id="rs-bulk-loc-filter" class="form-control" onchange="rsRenderBulk()"><option value="">All locations</option></select>
+            </div>
+            <div class="form-group" style="margin:0;flex:1;min-width:180px">
+              <label class="form-label">Search Employee</label>
+              <input class="form-control" id="rs-bulk-search" placeholder="Name or code…" oninput="rsRenderBulk()">
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+            <label style="font-size:13px;font-weight:600;color:var(--text)">Move selected →</label>
+            <select id="rs-bulk-dest" class="form-control" style="max-width:240px"><option value="">— destination —</option></select>
+            <button class="btn btn-primary btn-sm" onclick="rsApplyBulk()">Move Selected</button>
+            <button class="btn btn-outline btn-sm" onclick="rsClearBulkSel()">Clear Selection</button>
+          </div>
+          <div id="rs-bulk-list"><div class="text-muted" style="padding:20px;text-align:center">Loading…</div></div>
+        </div>
+      </div>
+
+      <!-- ── PENDING CHANGES ─────────────────────────────────── -->
+      <div id="rs-pending" class="rs-subtab" style="display:none">
+        <div class="card" style="padding:0;overflow:hidden">
+          <div class="card-header">
+            <div class="card-title">✅ Pending Changes</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-outline btn-sm" onclick="rsClearAll()">Clear All</button>
+              <button class="btn btn-primary btn-sm" id="rs-commit-btn" onclick="rsConfirm()">Apply All Changes</button>
+            </div>
+          </div>
+          <div id="rs-pending-body" style="padding:16px 20px">
+            <div class="text-muted" style="text-align:center;padding:30px">No pending changes. Drag employees or use Bulk Reassign.</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /tab-reshuffle -->
+
+  </div>
+</div>
+
+<!-- Employee Detail Modal -->
+<div class="modal-backdrop" id="emp-detail-modal">
+  <div class="modal" style="width:640px">
+    <div class="modal-header">
+      <div class="modal-title" id="emp-detail-title">Employee Detail</div>
+      <button class="modal-close" onclick="closeModal('emp-detail-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="emp-detail-content" style="display:block;padding:0;overflow-y:auto;max-height:75vh;background:var(--bg)"></div>
+    <div class="modal-footer" id="emp-detail-footer">
+      <button class="btn btn-outline" onclick="closeModal('emp-detail-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Employee Modal -->
+<div class="modal-backdrop" id="edit-emp-modal">
+  <div class="modal" style="width:700px;max-height:94vh;border-radius:20px;overflow:hidden;border:none;box-shadow:0 24px 60px rgba(0,0,0,.18)">
+
+    <!-- Colored header -->
+    <div style="background:linear-gradient(135deg,#2e7d32,#4a8c1c);padding:20px 24px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:38px;height:38px;background:rgba(255,255,255,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">✏️</div>
+        <div>
+          <div id="edit-emp-title" style="font-size:17px;font-weight:800;color:#fff;letter-spacing:-.2px">Edit Employee</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.7);margin-top:1px">Update employee information</div>
+        </div>
+      </div>
+      <button onclick="closeModal('edit-emp-modal')" style="width:32px;height:32px;background:rgba(255,255,255,.15);border:none;border-radius:8px;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s" onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">✕</button>
+    </div>
+
+    <!-- Tab bar -->
+    <div style="display:flex;background:#fff;border-bottom:2px solid #e8f5e9;position:sticky;top:0;z-index:10">
+      <button class="edit-tab-btn active" id="etab-btn-info" onclick="switchEditTab('info')"
+        style="flex:1;padding:13px 8px;border:none;background:none;font-weight:700;font-size:13px;cursor:pointer;border-bottom:3px solid transparent;color:#94a3b8;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px">
+        <span style="font-size:15px">👤</span> Info
+      </button>
+      <button class="edit-tab-btn" id="etab-btn-salary" onclick="switchEditTab('salary')"
+        style="flex:1;padding:13px 8px;border:none;background:none;font-weight:700;font-size:13px;cursor:pointer;border-bottom:3px solid transparent;color:#94a3b8;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px">
+        <span style="font-size:15px">💰</span> Salary Structure
+      </button>
+      <button class="edit-tab-btn" id="etab-btn-bank" onclick="switchEditTab('bank')"
+        style="flex:1;padding:13px 8px;border:none;background:none;font-weight:700;font-size:13px;cursor:pointer;border-bottom:3px solid transparent;color:#94a3b8;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px">
+        <span style="font-size:15px">🏦</span> Bank &amp; Docs
+      </button>
+    </div>
+
+    <div class="modal-body" style="max-height:72vh;overflow-y:auto;padding:0;display:block;overflow-x:hidden;background:#f7faf3">
+
+      <!-- ── Tab: Info ── -->
+      <div id="etab-info" style="padding:20px 24px">
+
+        <!-- Personal Info Section -->
+        <div style="background:#fff;border:1.5px solid #d4e5be;border-radius:14px;padding:18px 20px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #eef5e6">
+            <div style="width:28px;height:28px;background:#eaf3d8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">👤</div>
+            <span style="font-size:12px;font-weight:800;color:#2e7d32;letter-spacing:.5px;text-transform:uppercase">Personal Information</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-group" style="margin:0"><label class="form-label">First Name *</label><input id="edit-fname" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Last Name</label><input id="edit-lname" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Email *</label><input id="edit-email" class="form-control" type="email"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Phone</label><input id="edit-phone" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Alt Phone</label><input id="edit-altphone" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Gender</label>
+              <select id="edit-gender" class="form-control">
+                <option value="">Select…</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0"><label class="form-label">Date of Birth</label><input id="edit-dob" class="form-control" type="date"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Blood Group</label>
+              <select id="edit-blood" class="form-control">
+                <option value="">Select…</option>
+                <option value="A+">A+</option><option value="A-">A-</option>
+                <option value="B+">B+</option><option value="B-">B-</option>
+                <option value="O+">O+</option><option value="O-">O-</option>
+                <option value="AB+">AB+</option><option value="AB-">AB-</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0"><label class="form-label">Marital Status</label>
+              <select id="edit-marital" class="form-control">
+                <option value="">Select…</option>
+                <option value="Single">Single</option>
+                <option value="Married">Married</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0"><label class="form-label">City</label><input id="edit-city" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">State</label><input id="edit-state" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Pincode</label><input id="edit-pincode" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0;grid-column:1/-1"><label class="form-label">Address</label><input id="edit-address" class="form-control" type="text"></div>
+          </div>
+        </div>
+
+        <!-- Employment Section -->
+        <div style="background:#fff;border:1.5px solid #d4e5be;border-radius:14px;padding:18px 20px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #eef5e6">
+            <div style="width:28px;height:28px;background:#eaf3d8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">💼</div>
+            <span style="font-size:12px;font-weight:800;color:#2e7d32;letter-spacing:.5px;text-transform:uppercase">Employment Details</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-group" style="margin:0"><label class="form-label">Joining Date</label><input id="edit-joining" class="form-control" type="date"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Employment Type</label>
+              <select id="edit-emptype" class="form-control">
+                <option value="Full-Time">Full-Time</option>
+                <option value="Part-Time">Part-Time</option>
+                <option value="Contract">Contract</option>
+                <option value="Intern">Intern</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0"><label class="form-label">Category</label>
+              <select id="edit-category" class="form-control">
+                <option value="permanent">Permanent</option>
+                <option value="provision">Provision</option>
+                <option value="contractual">Contractual</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Work Location Type</label>
+              <select id="edit-saturday-policy" class="form-control">
+                <option value="2nd_4th_off">🏢 Onsite (2nd &amp; 4th Sat off)</option>
+                <option value="all_working">🌾 Field / Offsite (All Sat working)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0"><label class="form-label">Role</label>
+              <select id="edit-role" class="form-control" onchange="onRoleChange()">
+                <option value="employee">Employee</option>
+                <option value="tl">Team Leader</option>
+                <option value="manager">Manager</option>
+                <option value="hr">HR</option>
+                <option value="accounts">Accounts</option>
+                <option value="admin">Admin</option>
+                <option value="super_admin">Super Admin (MD)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0"><label class="form-label">Level</label><input id="edit-level" class="form-control" type="text" placeholder="L4, L5…"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Probation End Date</label><input id="edit-probation" class="form-control" type="date"></div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Reporting Manager</label>
+              <select id="edit-manager" class="form-control"><option value="">Loading…</option></select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Team Leader</label>
+              <select id="edit-tl" class="form-control"><option value="">Loading…</option></select>
+            </div>
+            <div class="form-group" style="margin:0;grid-column:1/-1" id="advance-chain-info" style="display:none">
+              <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e">
+                ⚡ <b>Advance Chain:</b> <span id="advance-chain-label"></span>
+              </div>
+            </div>
+            <div class="form-group" style="margin:0;grid-column:1/-1"><label class="form-label">Notes</label><input id="edit-notes" class="form-control" type="text" placeholder="Optional notes…"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Tab: Salary Structure ── -->
+      <div id="etab-salary" style="padding:20px 24px;display:none">
+
+        <div style="background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1b5e20;display:flex;align-items:center;gap:8px">
+          💡 Statutory amounts (PF, ESI, PT, LWF) are <b>auto-calculated</b> when you save. Just fill in the earnings below.
+        </div>
+
+        <!-- Earnings -->
+        <div style="background:#fff;border:1.5px solid #d4e5be;border-radius:14px;padding:18px 20px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #eef5e6">
+            <div style="width:28px;height:28px;background:#eaf3d8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">💵</div>
+            <span style="font-size:12px;font-weight:800;color:#2e7d32;letter-spacing:.5px;text-transform:uppercase">Earnings (₹/month)</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-group" style="margin:0"><label class="form-label">Basic Salary *</label><input id="edit-basic" class="form-control" type="number" placeholder="0" oninput="recalcSalaryPreview()"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">HRA</label><input id="edit-hra" class="form-control" type="number" placeholder="0" oninput="recalcSalaryPreview()"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Conveyance Allowance</label><input id="edit-conveyance" class="form-control" type="number" placeholder="0" oninput="recalcSalaryPreview()"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Special Allowance</label><input id="edit-special" class="form-control" type="number" placeholder="0" oninput="recalcSalaryPreview()"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Gratuity</label><input id="edit-gratuity" class="form-control" type="number" placeholder="0" oninput="recalcSalaryPreview()"></div>
+          </div>
+        </div>
+
+        <!-- Statutory -->
+        <div style="background:#fff;border:1.5px solid #d4e5be;border-radius:14px;padding:18px 20px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #eef5e6">
+            <div style="width:28px;height:28px;background:#eaf3d8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">📋</div>
+            <span style="font-size:12px;font-weight:800;color:#2e7d32;letter-spacing:.5px;text-transform:uppercase">Statutory Applicability</span>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:7px;padding:8px 14px;background:#f7faf3;border:1.5px solid #d4e5be;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#2e7d32">
+              <input type="checkbox" id="edit-pf" checked onchange="recalcSalaryPreview()" style="accent-color:#4a8c1c;width:15px;height:15px"> PF
+            </label>
+            <label style="display:flex;align-items:center;gap:7px;padding:8px 14px;background:#f7faf3;border:1.5px solid #d4e5be;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#2e7d32">
+              <input type="checkbox" id="edit-esi" checked onchange="recalcSalaryPreview()" style="accent-color:#4a8c1c;width:15px;height:15px"> ESI
+            </label>
+            <label style="display:flex;align-items:center;gap:7px;padding:8px 14px;background:#f7faf3;border:1.5px solid #d4e5be;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#2e7d32">
+              <input type="checkbox" id="edit-pt" checked onchange="recalcSalaryPreview()" style="accent-color:#4a8c1c;width:15px;height:15px"> PT
+            </label>
+            <label style="display:flex;align-items:center;gap:7px;padding:8px 14px;background:#f7faf3;border:1.5px solid #d4e5be;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#2e7d32">
+              <input type="checkbox" id="edit-lwf" checked onchange="recalcSalaryPreview()" style="accent-color:#4a8c1c;width:15px;height:15px"> LWF
+            </label>
+            <label style="display:flex;align-items:center;gap:7px;padding:8px 14px;background:#f7faf3;border:1.5px solid #d4e5be;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#2e7d32">
+              <input type="checkbox" id="edit-tds" onchange="recalcSalaryPreview()" style="accent-color:#4a8c1c;width:15px;height:15px"> TDS
+            </label>
+          </div>
+        </div>
+
+        <!-- Live Preview -->
+        <div id="salary-preview" style="display:none;background:#fff;border:2px solid #4a8c1c;border-radius:14px;padding:18px 20px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #eef5e6">
+            <div style="width:28px;height:28px;background:#eaf3d8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">📊</div>
+            <span style="font-size:12px;font-weight:800;color:#2e7d32;letter-spacing:.5px;text-transform:uppercase">Live Preview</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+            <div style="background:#f7faf3;border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px">GROSS</div>
+              <b id="prev-gross" style="font-size:16px;color:#1e293b">₹0</b>
+            </div>
+            <div style="background:#fef2f2;border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px">DEDUCTIONS</div>
+              <b id="prev-ded" style="font-size:16px;color:#dc2626">₹0</b>
+            </div>
+            <div style="background:#f0fdf4;border-radius:10px;padding:12px;text-align:center;border:1.5px solid #86efac">
+              <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px">NET SALARY</div>
+              <b id="prev-net" style="font-size:18px;color:#16a34a">₹0</b>
+            </div>
+            <div style="background:#f7faf3;border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px">PF (EMP)</div>
+              <b id="prev-pf-emp" style="font-size:15px;color:#1e293b">₹0</b>
+            </div>
+            <div style="background:#f7faf3;border-radius:10px;padding:12px;text-align:center">
+              <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px">ESI (EMP)</div>
+              <b id="prev-esi-emp" style="font-size:15px;color:#1e293b">₹0</b>
+            </div>
+            <div style="background:#eaf3d8;border-radius:10px;padding:12px;text-align:center;border:1.5px solid #4a8c1c">
+              <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px">CTC</div>
+              <b id="prev-ctc" style="font-size:15px;color:#4a8c1c">₹0</b>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#fff;border:1.5px solid #d4e5be;border-radius:14px;padding:18px 20px">
+          <div class="form-group" style="margin:0"><label class="form-label">Notes</label><input id="edit-sal-notes" class="form-control" type="text" placeholder="Optional notes…"></div>
+        </div>
+      </div>
+
+      <!-- ── Tab: Bank & Docs ── -->
+      <div id="etab-bank" style="padding:20px 24px;display:none">
+
+        <!-- Bank Details -->
+        <div style="background:#fff;border:1.5px solid #d4e5be;border-radius:14px;padding:18px 20px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #eef5e6">
+            <div style="width:28px;height:28px;background:#eaf3d8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">🏦</div>
+            <span style="font-size:12px;font-weight:800;color:#2e7d32;letter-spacing:.5px;text-transform:uppercase">Bank Details</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-group" style="margin:0"><label class="form-label">Bank Name</label><input id="edit-bank-name" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Account Number</label><input id="edit-bank-acc" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">IFSC Code</label><input id="edit-bank-ifsc" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Branch</label><input id="edit-bank-branch" class="form-control" type="text"></div>
+          </div>
+        </div>
+
+        <!-- Statutory Docs -->
+        <div style="background:#fff;border:1.5px solid #d4e5be;border-radius:14px;padding:18px 20px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #eef5e6">
+            <div style="width:28px;height:28px;background:#fff3e0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">📄</div>
+            <span style="font-size:12px;font-weight:800;color:#e65100;letter-spacing:.5px;text-transform:uppercase">Statutory Documents</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-group" style="margin:0"><label class="form-label">PAN Number</label><input id="edit-pan" class="form-control" type="text" style="text-transform:uppercase"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Aadhar Number</label><input id="edit-aadhar" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">UAN Number</label><input id="edit-uan" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">PF Number</label><input id="edit-pf-num" class="form-control" type="text"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div style="padding:16px 24px;border-top:1.5px solid #d4e5be;display:flex;gap:10px;justify-content:flex-end;background:#fff;border-radius:0 0 20px 20px">
+      <button class="btn btn-outline" onclick="closeModal('edit-emp-modal')" style="min-width:90px">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEmployeeEdit()" id="edit-save-btn" style="min-width:140px;background:linear-gradient(135deg,#2e7d32,#4a8c1c);border:none">💾 Save Changes</button>
+    </div>
+
+  </div><!-- /.modal -->
+</div><!-- /#edit-emp-modal -->
+
+<!-- Add Employee Modal -->
+<div class="modal-backdrop" id="add-emp-modal">
+  <div class="modal" style="width:640px;max-height:92vh">
+    <div class="modal-header">
+      <div class="modal-title">Add New Employee</div>
+      <button class="modal-close" onclick="closeModal('add-emp-modal')">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:72vh;overflow-y:auto">
+      <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);text-transform:uppercase;margin-bottom:10px">Basic Info</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Employee Code</label>
+          <div style="position:relative">
+            <input id="new-code" class="form-control" placeholder="Click Generate or leave blank for auto…" style="padding-right:90px">
+            <button type="button" onclick="generateEmpCode()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:600">Generate</button>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px" id="code-preview-hint">
+            Leave blank — code is auto-assigned on save based on category
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Role *</label>
+          <select id="new-role" class="form-control">
+            <option value="employee">Employee</option>
+            <option value="tl">Team Lead</option>
+            <option value="manager">Manager</option>
+            <option value="hr">HR</option>
+            <option value="accounts">Accounts</option>
+            <option value="admin">Admin</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">First Name *</label><input id="new-fname" class="form-control" placeholder="First name"></div>
+        <div class="form-group"><label class="form-label">Last Name</label><input id="new-lname" class="form-control" placeholder="Last name"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Email *</label><input id="new-email" class="form-control" type="email" placeholder="email@company.com"></div>
+        <div class="form-group"><label class="form-label">Phone</label><input id="new-phone" class="form-control" placeholder="10-digit mobile"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Date of Birth</label><input id="new-dob" class="form-control" type="date"></div>
+        <div class="form-group">
+          <label class="form-label">Gender</label>
+          <select id="new-gender" class="form-control"><option value="">Select…</option><option>Male</option><option>Female</option><option>Other</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input id="new-password" class="form-control" value="Admin@1234">
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Default: Admin@1234</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Blood Group</label>
+          <select id="new-blood" class="form-control"><option value="">Select…</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>O+</option><option>O-</option><option>AB+</option><option>AB-</option></select>
+        </div>
+      </div>
+
+      <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);text-transform:uppercase;margin:16px 0 10px">Employment</div>
+
+      <!-- Employee Category — drives code generation -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Employee Category *</label>
+          <select id="new-emp-category" class="form-control" onchange="onCategoryChange()">
+            <option value="permanent">Permanent</option>
+            <option value="provision">Provision / Probation</option>
+            <option value="contractual">Contractual</option>
+          </select>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px" id="category-hint">
+            Permanent &amp; Provision → ' + (window.CFG?.permanentEmpCodePrefix||'EMP') + '10000+  |  Contractual → ' + (window.CFG?.contractualEmpCodePrefix||'CT') + '0001+
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Employment Type</label>
+          <select id="new-emptype" class="form-control">
+            <option value="Full-Time">Full-Time</option>
+            <option value="Part-Time">Part-Time</option>
+            <option value="Contract">Contract</option>
+            <option value="Intern">Intern</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Work Location Type</label>
+          <select id="new-saturday-policy" class="form-control">
+            <option value="2nd_4th_off">🏢 Onsite (2nd &amp; 4th Sat off)</option>
+            <option value="all_working">🌾 Field / Offsite (All Sat working)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Provision end date — shown only when category = provision -->
+      <div class="form-row" id="provision-end-row" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Provision End Date</label>
+          <input id="new-provision-end" class="form-control" type="date" readonly
+            style="background:#f9fafb;color:var(--muted)">
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Auto-calculated: Joining Date + 6 months</div>
+        </div>
+        <div class="form-group"></div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Department</label><select id="new-dept" class="form-control" onchange="loadDesig()"><option value="">Select department…</option></select></div>
+        <div class="form-group"><label class="form-label">Designation</label><select id="new-desig" class="form-control"><option value="">Select designation…</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Joining Date</label><input id="new-joining" class="form-control" type="date" onchange="updateProvisionEndDate()"></div>
+        <div class="form-group"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Reporting Manager</label><select id="new-manager" class="form-control"><option value="">Select manager…</option></select></div>
+        <div class="form-group"><label class="form-label">Team Leader</label><select id="new-tl" class="form-control"><option value="">Select TL…</option></select></div>
+      </div>
+
+      <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);text-transform:uppercase;margin:16px 0 10px">Compensation</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Basic Salary (₹/month)</label><input id="new-salary" class="form-control" type="number" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">HRA (₹/month)</label><input id="new-hra" class="form-control" type="number" placeholder="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">CTC Annual (₹)</label><input id="new-ctc" class="form-control" type="number" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">Special Allowance</label><input id="new-special" class="form-control" type="number" placeholder="0"></div>
+      </div>
+
+      <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);text-transform:uppercase;margin:16px 0 10px">Documents & Bank</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">PAN Number</label><input id="new-pan" class="form-control" placeholder="ABCDE1234F" maxlength="10" oninput="this.value=this.value.toUpperCase()"></div>
+        <div class="form-group"><label class="form-label">Aadhaar Number</label><input id="new-aadhar" class="form-control" placeholder="12-digit" maxlength="12"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Bank Name</label><input id="new-bank-name" class="form-control" placeholder="e.g. SBI, HDFC"></div>
+        <div class="form-group"><label class="form-label">Account Number</label><input id="new-bank-acc" class="form-control" placeholder="Account number"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">IFSC Code</label><input id="new-bank-ifsc" class="form-control" placeholder="IFSC code" oninput="this.value=this.value.toUpperCase()"></div>
+        <div class="form-group"><label class="form-label">City</label><input id="new-city" class="form-control" placeholder="City"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('add-emp-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addEmployee()">Create Employee</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Location Modal -->
+<div class="modal-backdrop" id="add-location-modal">
+  <div class="modal" style="width:480px">
+    <div class="modal-header">
+      <div class="modal-title">Add Office Location</div>
+      <button class="modal-close" onclick="closeModal('add-location-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Location Name *</label><input id="loc-name" class="form-control" placeholder="e.g. Head Office — Delhi"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Latitude *</label><input id="loc-lat" class="form-control" type="number" step="any" placeholder="28.6139"></div>
+        <div class="form-group"><label class="form-label">Longitude *</label><input id="loc-lng" class="form-control" type="number" step="any" placeholder="77.2090"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Radius (meters)</label>
+        <input id="loc-radius" class="form-control" type="number" value="100" min="10" max="9999999">
+      </div>
+      <div class="form-group"><label class="form-label">Address</label><input id="loc-address" class="form-control" placeholder="Full address"></div>
+      <button class="btn btn-outline btn-sm" onclick="useMyLocation()" style="margin-top:4px">📍 Use My Current Location</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('add-location-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addLocation()">Add Location</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Location Modal -->
+<div class="modal-backdrop" id="edit-location-modal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit Office Location</div>
+      <button class="modal-close" onclick="closeModal('edit-location-modal')">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+      <input type="hidden" id="edit-loc-id">
+      <div>
+        <label class="form-label">Location Name</label>
+        <input class="form-control" id="edit-loc-name" placeholder="e.g. Head Office – Mumbai">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label class="form-label">Latitude</label>
+          <input class="form-control" id="edit-loc-lat" type="number" step="0.0000001">
+        </div>
+        <div>
+          <label class="form-label">Longitude</label>
+          <input class="form-control" id="edit-loc-lng" type="number" step="0.0000001">
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Radius (meters)</label>
+        <input class="form-control" id="edit-loc-radius" type="number" min="10" max="9999999">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Use 999999 for state-wide / universal zones</div>
+      </div>
+      <div>
+        <label class="form-label">Address</label>
+        <input class="form-control" id="edit-loc-address" placeholder="Full address">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('edit-location-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditLocation()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Location — Blocked Modal (employees still assigned) -->
+<div class="modal-backdrop" id="del-loc-blocked-modal">
+  <div class="modal" style="width:480px">
+    <div class="modal-header">
+      <div class="modal-title">🚫 Cannot Delete Location</div>
+      <button class="modal-close" onclick="closeModal('del-loc-blocked-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;font-size:13px;color:#b91c1c;font-weight:600">
+        Reassign or remove these employees from this location before deleting.
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px" id="del-loc-blocked-count"></div>
+      <div id="del-loc-blocked-list" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('del-loc-blocked-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Location — Confirm Modal (no employees assigned) -->
+<div class="modal-backdrop" id="del-loc-confirm-modal">
+  <div class="modal" style="width:420px">
+    <div class="modal-header">
+      <div class="modal-title">🗑️ Delete Location</div>
+      <button class="modal-close" onclick="closeModal('del-loc-confirm-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:var(--radius);padding:12px 14px;font-size:13px;color:#b91c1c;font-weight:600">
+        ⚠️ This will permanently delete the location. This cannot be undone.
+      </div>
+      <div style="margin-top:12px;font-size:13px;color:var(--text)">
+        Location: <strong id="del-loc-confirm-name"></strong>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('del-loc-confirm-modal')">Cancel</button>
+      <button class="btn btn-danger" id="del-loc-confirm-btn" onclick="confirmHardDeleteLocation()">Delete Permanently</button>
+    </div>
+  </div>
+</div>
+
+<!-- Change Manager Modal -->
+<div class="modal-backdrop" id="change-manager-modal">
+  <div class="modal" style="width:440px">
+    <div class="modal-header">
+      <div class="modal-title" id="change-manager-title">Change Reporting Manager</div>
+      <button class="modal-close" onclick="closeModal('change-manager-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Select New Reporting Manager</label>
+        <select id="change-manager-select" class="form-control"><option value="">— No Manager —</option></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('change-manager-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveChangeManager()">Save Manager</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Deactivate / Delete Employee Confirmation Modal ════════════════════ -->
+<div class="modal-backdrop" id="emp-danger-modal" style="z-index:400">
+  <div class="modal" style="width:460px;max-width:96vw">
+    <div class="modal-header" id="emp-danger-modal-header" style="background:linear-gradient(135deg,#dc2626,#b91c1c)">
+      <div class="modal-title" id="emp-danger-modal-title" style="color:#fff;display:flex;align-items:center;gap:8px">
+        <span id="emp-danger-modal-icon" style="font-size:20px">⚠️</span>
+        <span id="emp-danger-modal-title-text">Confirm Action</span>
+      </div>
+      <button class="modal-close" onclick="closeModal('emp-danger-modal');closeModal('emp-detail-modal')" style="color:#fff;opacity:.8">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <div id="emp-danger-modal-warn" style="border-radius:10px;padding:12px 16px;font-size:13px;font-weight:600;margin-bottom:16px"></div>
+      <p id="emp-danger-modal-msg" style="font-size:14px;color:var(--text);margin:0 0 10px"></p>
+      <div style="background:var(--surface2);border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:22px">👤</span>
+        <div>
+          <div id="emp-danger-modal-name" style="font-weight:700;font-size:14px;color:var(--text)"></div>
+          <div id="emp-danger-modal-code" style="font-size:12px;color:var(--muted)"></div>
+        </div>
+      </div>
+      <!-- Deactivation remark field — shown only when action=deactivate -->
+      <div id="deactivation-remark-wrap" style="display:none;margin-top:14px">
+        <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">
+          📝 Salary / Termination Remark <span style="color:#dc2626">*</span>
+        </label>
+        <textarea id="deactivation-remark-input"
+          placeholder="e.g. Process salary only till 15th May 2026. Full &amp; Final pending. Terminated due to..."
+          style="width:100%;min-height:80px;border:1.5px solid #fca5a5;border-radius:8px;padding:10px 12px;font-size:13px;resize:vertical;background:var(--surface);color:var(--text);box-sizing:border-box"
+          maxlength="500"></textarea>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">This note will appear in the attendance Excel download for payroll processing.</div>
+      </div>
+    </div>
+    <div class="modal-footer" style="gap:10px">
+      <button class="btn btn-outline" onclick="closeModal('emp-danger-modal');closeModal('emp-detail-modal')">Cancel</button>
+      <button class="btn" id="emp-danger-confirm-btn" onclick="executeDangerAction()" style="min-width:160px">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+Auth.guard();
+buildSidebar('employees.html');
+loadNotifBadge();
+
+const user = Auth.getUser();
+let empData = [];
+let assignEmpData = [];
+
+// ── ISSUE 7 FIX ───────────────────────────────────────────────────────────────
+// Block 1: Separated + Import tabs — HR + Accounts only
+if (Role.is('hr', 'accounts')) {
+  document.getElementById('separated-tab').style.display = '';
+  document.getElementById('import-tab').style.display    = '';
+  loadSeparatedCount();
+}
+
+// Block 2: Geofence + Punch Logs tabs — Admin only
+if (Role.is('admin', 'super_admin')) {
+  document.getElementById('geofence-tab').style.display = '';
+  document.getElementById('logs-tab').style.display     = '';
+  document.getElementById('reshuffle-tab').style.display = '';
+}
+
+// Block 3: Add / Export / Import BUTTONS — HR + Accounts only
+if (Role.is('hr', 'accounts')) {
+  document.getElementById('add-emp-btn').innerHTML = `
+    <button class="btn btn-outline btn-sm" onclick="downloadMasterExcel()">⬇ Export Excel</button>
+    <button class="btn btn-outline btn-sm" style="background:var(--accent);color:#fff;border-color:var(--accent)" onclick="openMasterExport()">📊 Master Excel</button>
+    <label class="btn btn-outline btn-sm" style="cursor:pointer;margin-left:8px">
+      ⬆ Import Excel
+      <input type="file" id="import-file" accept=".xlsx,.xls" onchange="importExcel(this)" style="display:none">
+    </label>
+    <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openAddEmp()">+ Add Employee</button>`;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+loadDepartments();
+loadEmployees();
+
+// ── Departments ───────────────────────────────────────────────────────────────
+async function loadDepartments() {
+  const data = await api('GET', '/departments');
+  if (!data?.success) return;
+  const sel1 = document.getElementById('dept-filter');
+  const sel2 = document.getElementById('new-dept');
+  data.data.forEach(d => {
+    sel1.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+    if (sel2) sel2.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+  });
+  const tabsEl = document.getElementById('dept-tabs');
+  tabsEl.innerHTML = `<button class="dept-pill active" onclick="filterByDept('',this)">All</button>` +
+    data.data.map(d => `<button class="dept-pill" onclick="filterByDept('${d.id}',this)">${d.name} <span id="dept-cnt-${d.id}" style="opacity:.65"></span></button>`).join('');
+}
+
+// ── Employees ─────────────────────────────────────────────────────────────────
+async function loadEmployees() {
+  // Fetch active + inactive employees in parallel
+  const [activeRes, inactiveRes] = await Promise.all([
+    api('GET', '/employees'),
+    api('GET', '/employees?is_active=false')
+  ]);
+  if (!activeRes?.success) return;
+  const activeList   = activeRes.data || [];
+  const inactiveList = (inactiveRes?.data || []).filter(e => !activeList.find(a => a.id === e.id));
+  activeList.forEach(e => { if (e.is_active === undefined) e.is_active = true; });
+  inactiveList.forEach(e => { e.is_active = false; });
+  empData = [...activeList, ...inactiveList];
+
+  // Update status pill counts
+  const inactiveCnt = empData.filter(e => e.is_active === false).length;
+  const activeCnt   = empData.filter(e => e.is_active !== false).length;
+  document.getElementById('status-count-all').textContent      = `(${empData.length})`;
+  document.getElementById('status-count-active').textContent   = `(${activeCnt})`;
+  document.getElementById('status-count-inactive').textContent = `(${inactiveCnt})`;
+
+  // Render using CURRENT _statusFilter (caller sets it before calling us)
+  filterEmployees();
+
+  const counts = activeList.reduce((a, e) => { a[e.department_id] = (a[e.department_id] || 0) + 1; return a; }, {});
+  Object.entries(counts).forEach(([id, cnt]) => {
+    const el = document.getElementById('dept-cnt-' + id);
+    if (el) el.textContent = cnt;
+  });
+}
+
+let _statusFilter = 'active'; // default: show active only
+
+function setStatusFilter(val, btn) {
+  _statusFilter = val;
+  // Update pill styles
+  document.querySelectorAll('.status-pill').forEach(p => {
+    p.style.fontWeight = '700';
+    p.style.opacity = '1';
+  });
+  const isAll      = val === 'all';
+  const isActive   = val === 'active';
+  const isInactive = val === 'inactive';
+  document.getElementById('status-pill-all').style.background      = isAll      ? 'var(--accent)' : 'var(--surface2)';
+  document.getElementById('status-pill-all').style.color           = isAll      ? '#fff'          : 'var(--muted)';
+  document.getElementById('status-pill-all').style.borderColor     = isAll      ? 'var(--accent)'  : 'var(--border)';
+  document.getElementById('status-pill-active').style.background   = isActive   ? '#16a34a'        : '#f0fdf4';
+  document.getElementById('status-pill-active').style.color        = isActive   ? '#fff'           : '#15803d';
+  document.getElementById('status-pill-active').style.borderColor  = isActive   ? '#16a34a'        : '#86efac';
+  document.getElementById('status-pill-inactive').style.background = isInactive ? '#dc2626'        : '#fef2f2';
+  document.getElementById('status-pill-inactive').style.color      = isInactive ? '#fff'           : '#dc2626';
+  document.getElementById('status-pill-inactive').style.borderColor= isInactive ? '#dc2626'        : '#fca5a5';
+  filterEmployees();
+}
+
+function filterByDept(deptId, btn) {
+  document.querySelectorAll('#dept-tabs .dept-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('dept-filter').value = deptId;
+  filterEmployees();
+}
+
+function filterEmployees() {
+  const q    = document.getElementById('search').value.toLowerCase();
+  const dept = document.getElementById('dept-filter').value;
+  const role = document.getElementById('role-filter').value;
+  const filtered = empData.filter(e => {
+    const matchStatus = _statusFilter === 'all'
+      ? true
+      : _statusFilter === 'inactive'
+      ? e.is_active === false
+      : e.is_active !== false;
+    return matchStatus &&
+      (!q    || `${e.first_name} ${e.last_name} ${e.employee_code} ${e.email}`.toLowerCase().includes(q)) &&
+      (!dept || String(e.department_id) === dept) &&
+      (!role || e.role === role);
+  });
+  document.getElementById('emp-count').textContent = `${filtered.length} employee${filtered.length !== 1 ? 's' : ''}`;
+  renderEmployees(filtered);
+}
+
+function clearFilters() {
+  document.getElementById('search').value      = '';
+  document.getElementById('dept-filter').value = '';
+  document.getElementById('role-filter').value = '';
+  document.querySelectorAll('#dept-tabs .dept-pill').forEach((b, i) => b.classList.toggle('active', i === 0));
+  setStatusFilter('active', document.getElementById('status-pill-active'));
+}
+
+function renderEmployees(list) {
+  document.getElementById('emp-count').textContent = `${list.length} employee${list.length !== 1 ? 's' : ''}`;
+  document.getElementById('emp-tbody').innerHTML = list.length ? list.map(e => {
+    const inactive = e.is_active === false;
+    const rowStyle = inactive ? 'cursor:pointer;opacity:.65;background:rgba(239,68,68,.03)' : 'cursor:pointer';
+    return `
+    <tr style="${rowStyle}" onclick="showEmpDetail(${e.id})">
+      <td>
+        <div class="flex gap-2">
+          <div class="avatar" style="background:${inactive ? 'linear-gradient(135deg,#94a3b8,#64748b)' : 'linear-gradient(135deg,var(--accent),var(--purple))'}">${e.first_name?.[0]}${e.last_name?.[0] || ''}</div>
+          <div>
+            <div style="font-weight:700;font-size:13.5px;${inactive ? 'color:var(--muted);text-decoration:line-through' : ''}">${e.first_name} ${e.last_name}</div>
+            <div class="text-muted">${e.email}</div>
+          </div>
+        </div>
+      </td>
+      <td class="font-mono">${e.employee_code}</td>
+      <td>${e.department_name || '—'}</td>
+      <td style="color:var(--text2)">${e.designation_title || '—'}</td>
+      <td><span class="badge badge-${e.role}">${e.role}</span></td>
+      <td>${(() => {
+        const cat = e.employee_category || 'permanent';
+        const styles = { permanent:'background:#dcfce7;color:#15803d', provision:'background:#fef9c3;color:#92400e', contractual:'background:#ede9fe;color:#6d28d9' };
+        const labels = { permanent:'Permanent', provision:'⏳ Provision', contractual:'Contractual' };
+        return `<span class="badge" style="${styles[cat]}">${labels[cat]||cat}</span>`;
+      })()}</td>
+      <td>
+        ${inactive
+          ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">⏸ Inactive</span>`
+          : `<span style="display:inline-flex;align-items:center;gap:4px;background:#f0fdf4;color:#15803d;border:1.5px solid #86efac;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">✅ Active</span>`
+        }
+      </td>
+      <td>${e.manager_name || '—'}</td>
+      <td>${fmt.date(e.joining_date)}</td>
+      <td style="font-size:12px;color:var(--muted);">${e.app_version ? `<span style="background:#ede9fe;color:#6d28d9;padding:2px 7px;border-radius:10px;font-size:11px;">v${e.app_version}</span>` : '<span style="color:var(--muted)">Web</span>'}</td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-ghost btn-sm" onclick="showEmpDetail(${e.id})">View →</button>
+      </td>
+    </tr>`;
+  }).join('')
+  : '<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:48px"><div style="font-size:32px;margin-bottom:10px">👥</div>No employees found</td></tr>';
+}
+
+async function showEmpDetail(id) {
+  const data = await api('GET', `/employees/${id}`);
+  if (!data?.success) return;
+  const e = data.data;
+  const [bal, att] = await Promise.all([
+    api('GET', `/leave/balance?employee_id=${id}`),
+    api('GET', `/attendance/summary?employee_id=${id}`)
+  ]);
+  document.getElementById('emp-detail-title').textContent = `${e.first_name} ${e.last_name}`;
+  document.getElementById('emp-detail-content').innerHTML = `
+    <div style="background:var(--bg)">
+
+      <!-- Header Banner -->
+      <div style="background:linear-gradient(135deg,#2e7d32,#4a8c1c);padding:20px 24px;display:flex;align-items:center;gap:16px">
+        <div style="width:52px;height:52px;min-width:52px;border-radius:14px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;letter-spacing:-1px">${e.first_name?.[0]}${e.last_name?.[0]||''}</div>
+        <div style="flex:1">
+          <div style="font-size:17px;font-weight:800;color:#fff;letter-spacing:-.3px">${e.first_name} ${e.last_name}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px">${e.designation_title||'—'} · ${e.department_name||'—'}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">
+            <span style="background:rgba(255,255,255,.2);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;letter-spacing:.3px;text-transform:uppercase">${e.role}</span>
+            ${e.saturday_policy==='all_working'?`<span style="background:rgba(255,220,100,.25);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px">🌾 Field</span>`:`<span style="background:rgba(180,210,255,.25);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px">🏢 Onsite</span>`}
+            ${e.is_wfh_permanent?`<span style="background:rgba(100,200,255,.25);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px">🏠 WFH</span>`:''}
+            ${!e.is_active?`<span style="background:rgba(255,100,100,.3);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px">Inactive</span>`:''}
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:rgba(255,255,255,.6);font-weight:600;letter-spacing:.5px">EMP CODE</div>
+          <div style="font-size:16px;font-weight:800;color:#fff;font-family:monospace">${e.employee_code}</div>
+        </div>
+      </div>
+
+      <div style="padding:20px 24px">
+
+        <!-- Personal & Employment Info Table -->
+        <div style="background:#fff;border:1.5px solid #e2eed8;border-radius:12px;overflow:hidden;margin-bottom:16px">
+          <div style="background:#f4faf0;padding:10px 16px;border-bottom:1.5px solid #e2eed8;display:flex;align-items:center;gap:8px">
+            <span style="font-size:13px">👤</span>
+            <span style="font-size:11px;font-weight:800;color:#2e7d32;letter-spacing:.6px;text-transform:uppercase">Employee Information</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <tbody>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;width:38%;background:#fafcf8">Email</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.email}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Phone</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.phone||'—'}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Date of Birth</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.date_of_birth ? fmt.date(e.date_of_birth) : '—'}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Joining Date</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${fmt.date(e.joining_date)}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Reporting To</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.manager_name||'—'}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Location</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.city||'—'}${e.state?', '+e.state:''}</td>
+              </tr>
+              <tr${e.employee_category==='provision'?` style="border-bottom:1px solid #f0f7eb"`:''}> 
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Category</td>
+                <td style="padding:10px 16px;font-size:13px;font-weight:600">
+                  ${e.employee_category==='provision'?`<span style="color:#92400e">⏳ Provision</span>`:e.employee_category==='contractual'?`<span style="color:#6d28d9">📋 Contractual</span>`:`<span style="color:#15803d">✅ Permanent</span>`}
+                </td>
+              </tr>
+              ${e.employee_category==='provision'?`
+              <tr>
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Provision Ends</td>
+                <td style="padding:10px 16px;font-size:13px;color:#c2410c;font-weight:600">${fmt.date(e.provision_end_date)||'—'}</td>
+              </tr>`:''}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Compensation -->
+        ${Role.canViewSalary()?`
+        <div style="background:#fff;border:1.5px solid #e2eed8;border-radius:12px;overflow:hidden;margin-bottom:16px">
+          <div style="background:#f4faf0;padding:10px 16px;border-bottom:1.5px solid #e2eed8;display:flex;align-items:center;gap:8px">
+            <span style="font-size:13px">💰</span>
+            <span style="font-size:11px;font-weight:800;color:#2e7d32;letter-spacing:.6px;text-transform:uppercase">Compensation</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <tbody>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;width:38%;background:#fafcf8">Basic Salary</td>
+                <td style="padding:10px 16px;font-size:14px;font-weight:800;color:#15803d">${fmt.money(e.basic_salary)}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">CTC (Annual)</td>
+                <td style="padding:10px 16px;font-size:14px;font-weight:800;color:#1e293b">${fmt.money(e.ctc)}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Bank</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.bank_name||'—'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>`:''}
+
+        <!-- Leave Balance -->
+        <div style="background:#fff;border:1.5px solid #e2eed8;border-radius:12px;overflow:hidden;margin-bottom:16px">
+          <div style="background:#f4faf0;padding:10px 16px;border-bottom:1.5px solid #e2eed8;display:flex;align-items:center;gap:8px">
+            <span style="font-size:13px">🌿</span>
+            <span style="font-size:11px;font-weight:800;color:#2e7d32;letter-spacing:.6px;text-transform:uppercase">Leave Balance — ${new Date().getFullYear()}</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:#f9fcf6;border-bottom:1px solid #e8f0e0">
+                <th style="padding:8px 16px;font-size:10px;font-weight:800;color:#64748b;letter-spacing:.5px;text-align:left">TYPE</th>
+                <th style="padding:8px 16px;font-size:10px;font-weight:800;color:#64748b;letter-spacing:.5px;text-align:center">ALLOCATED</th>
+                <th style="padding:8px 16px;font-size:10px;font-weight:800;color:#64748b;letter-spacing:.5px;text-align:center">USED</th>
+                <th style="padding:8px 16px;font-size:10px;font-weight:800;color:#64748b;letter-spacing:.5px;text-align:center">AVAILABLE</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(() => {
+                const isProvisional = e.employee_category==='provision';
+                const contractualSixMonthMark = e.employee_category==='contractual'&&e.joining_date?(()=>{const d=new Date(e.joining_date);d.setMonth(d.getMonth()+6);return d;})():null;
+                const isContractualProvisional = contractualSixMonthMark&&new Date()<contractualSixMonthMark;
+                const allowedCodes = (isProvisional||isContractualProvisional)?['PL']:['EL','SL','CL'];
+                const filtered = (bal?.data||[]).filter(b=>allowedCodes.includes(b.code||b.leave_type_code||''));
+                if(!filtered.length) return `<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--muted);font-size:13px">No leave data</td></tr>`;
+                return filtered.map((b,i)=>{
+                  const code = b.code||b.leave_type_code||'?';
+                  const avail = b.available??(parseFloat(b.allocated||0)-parseFloat(b.used||0));
+                  const pct = b.allocated>0?Math.round((parseFloat(b.used||0)/parseFloat(b.allocated||1))*100):0;
+                  const barColor = pct>75?'#ef4444':pct>40?'#f59e0b':'#22c55e';
+                  return `<tr style="${i<filtered.length-1?'border-bottom:1px solid #f0f7eb':''}">
+                    <td style="padding:12px 16px">
+                      <span style="font-size:12px;font-weight:800;color:#2e7d32;background:#dcfce7;padding:3px 10px;border-radius:20px">${code}</span>
+                    </td>
+                    <td style="padding:12px 16px;text-align:center;font-size:13px;font-weight:600;color:#475569">${fmt.num(b.allocated||0)}</td>
+                    <td style="padding:12px 16px;text-align:center;font-size:13px;font-weight:600;color:#ef4444">${fmt.num(b.used||0)}</td>
+                    <td style="padding:12px 16px;text-align:center">
+                      <span style="font-size:15px;font-weight:800;color:${avail<=0?'#ef4444':avail<=2?'#f59e0b':'#15803d'}">${fmt.num(avail)}</span>
+                      <div style="background:#e2e8f0;border-radius:4px;height:4px;margin-top:4px;overflow:hidden">
+                        <div style="background:${barColor};height:100%;width:${pct}%;border-radius:4px;transition:width .3s"></div>
+                      </div>
+                    </td>
+                  </tr>`;
+                }).join('');
+              })()}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Attendance -->
+        <div style="background:#fff;border:1.5px solid #e2eed8;border-radius:12px;overflow:hidden">
+          <div style="background:#f4faf0;padding:10px 16px;border-bottom:1.5px solid #e2eed8;display:flex;align-items:center;gap:8px">
+            <span style="font-size:13px">🕐</span>
+            <span style="font-size:11px;font-weight:800;color:#2e7d32;letter-spacing:.6px;text-transform:uppercase">This Month's Attendance</span>
+          </div>
+          ${att?.success?`
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:#f9fcf6;border-bottom:1px solid #e8f0e0">
+                <th style="padding:8px 16px;font-size:10px;font-weight:800;color:#64748b;letter-spacing:.5px;text-align:center">PRESENT</th>
+                <th style="padding:8px 16px;font-size:10px;font-weight:800;color:#64748b;letter-spacing:.5px;text-align:center">ABSENT</th>
+                <th style="padding:8px 16px;font-size:10px;font-weight:800;color:#64748b;letter-spacing:.5px;text-align:center">LATE</th>
+                <th style="padding:8px 16px;font-size:10px;font-weight:800;color:#64748b;letter-spacing:.5px;text-align:center">ON LEAVE</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding:14px 16px;text-align:center"><span style="font-size:22px;font-weight:800;color:#15803d">${att.data.present||0}</span></td>
+                <td style="padding:14px 16px;text-align:center"><span style="font-size:22px;font-weight:800;color:#ef4444">${att.data.absent||0}</span></td>
+                <td style="padding:14px 16px;text-align:center"><span style="font-size:22px;font-weight:800;color:#f59e0b">${att.data.late||0}</span></td>
+                <td style="padding:14px 16px;text-align:center"><span style="font-size:22px;font-weight:800;color:#6366f1">${att.data.on_leave||0}</span></td>
+              </tr>
+            </tbody>
+          </table>`:`<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">No attendance data</div>`}
+        </div>
+
+      </div>
+    </div>`;
+
+  const footer = document.getElementById('emp-detail-footer');
+  // Build all buttons in ONE assignment — multiple innerHTML+= re-parses the DOM each time
+  // which can cause button misalignment / double-firing issues
+  const canManage = Role.is('hr', 'accounts');
+  const canDanger = Role.is('admin', 'hr', 'accounts');
+  const hrButtons = canManage ? `
+    <button class="btn btn-outline btn-sm" id="btn-reset-pwd">🔑 Reset Password</button>
+    <button class="btn btn-outline btn-sm" id="btn-toggle-wfh" style="${e.is_wfh_permanent ? 'background:#e0f2fe;color:#0369a1;border-color:#7dd3fc' : ''}">
+      ${e.is_wfh_permanent ? '🏠 Disable Permanent WFH' : '🏠 Enable Permanent WFH'}
+    </button>
+    <button class="btn btn-primary btn-sm" id="btn-edit-emp">✏️ Edit Employee</button>
+  ` : '';
+  const dangerButtons = canDanger ? `
+    <button class="btn btn-sm" id="btn-deactivate-emp" style="background:#fff7ed;color:#c2410c;border:1.5px solid #fed7aa">
+      ${e.is_active === false ? '✅ Reactivate Account' : '⏸ Deactivate Account'}
+    </button>
+    <button class="btn btn-sm" id="btn-delete-emp" style="background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca">
+      🗑️ Delete Account
+    </button>
+  ` : '';
+  footer.innerHTML = `<button class="btn btn-outline" id="btn-close-detail">Close</button>${dangerButtons}${hrButtons}`;
+
+  // Attach event listeners directly — no inline onclick, no string injection
+  footer.querySelector('#btn-close-detail').onclick = () => closeModal('emp-detail-modal');
+  if (canManage) {
+    footer.querySelector('#btn-reset-pwd').onclick    = () => resetPassword(e.id, e.email);
+    footer.querySelector('#btn-toggle-wfh').onclick   = () => toggleWFH(e.id, e.is_wfh_permanent);
+    footer.querySelector('#btn-edit-emp').onclick     = (ev) => { ev.stopPropagation(); openEditEmp(e.id); };
+  }
+  if (canDanger) {
+    footer.querySelector('#btn-deactivate-emp').onclick = () =>
+      openDangerModal(e.id, `${e.first_name} ${e.last_name}`, e.employee_code, e.is_active === false ? 'reactivate' : 'deactivate');
+    footer.querySelector('#btn-delete-emp').onclick = () =>
+      openDangerModal(e.id, `${e.first_name} ${e.last_name}`, e.employee_code, 'delete');
+  }
+  openModal('emp-detail-modal');
+}
+
+async function toggleWFH(id, current) {
+  const enable = !current;
+  const msg = enable
+    ? 'Enable Permanent WFH for this employee?\n\nThey will be auto-marked Present (WFH) every working day.'
+    : 'Disable Permanent WFH?\n\nEmployee will need to punch in/out manually.';
+  if (!confirm(msg)) return;
+  const data = await api('PUT', `/employees/${id}`, { is_wfh_permanent: enable });
+  if (data?.success) {
+    toast(enable ? '🏠 Permanent WFH enabled' : 'Permanent WFH disabled');
+    showEmpDetail(id); // refresh modal
+  } else toast(data?.message || 'Failed', 'error');
+}
+
+async function resetPassword(id, email) {
+  const newPw = prompt(`Reset password for ${email}. Leave blank for default Admin@1234:`) || 'Admin@1234';
+  const data = await api('POST', '/employees/reset-password', { employee_id: id, new_password: newPw });
+  if (data?.success) toast(`Password reset to: ${newPw}`);
+  else toast(data?.message || 'Failed', 'error');
+}
+
+// ── Add Employee ──────────────────────────────────────────────────────────────
+async function openAddEmp() {
+  const depts = await api('GET', '/departments');
+  const deptSel = document.getElementById('new-dept');
+  deptSel.innerHTML = '<option value="">Select department…</option>' +
+    (depts?.data || []).map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+  const all = await api('GET', '/employees');
+  const allEmps = all?.data || [];
+  const mgrSel = document.getElementById('new-manager');
+  mgrSel.innerHTML = '<option value="">Select manager…</option>' +
+    allEmps.filter(e => ['admin','hr','manager'].includes(e.role))
+      .map(e => `<option value="${e.id}">${e.first_name} ${e.last_name} (${e.role})</option>`).join('');
+  const tlSel = document.getElementById('new-tl');
+  tlSel.innerHTML = '<option value="">Select TL…</option>' +
+    allEmps.filter(e => e.role === 'tl')
+      .map(e => `<option value="${e.id}">${e.first_name} ${e.last_name}</option>`).join('');
+  openModal('add-emp-modal');
+}
+
+async function loadDesig() {
+  const deptId = document.getElementById('new-dept').value;
+  if (!deptId) return;
+  const data = await api('GET', `/designations?department_id=${deptId}`);
+  const sel = document.getElementById('new-desig');
+  sel.innerHTML = '<option value="">Select designation…</option>' +
+    (data?.data || []).map(d => `<option value="${d.id}">${d.title}</option>`).join('');
+}
+
+async function generateEmpCode() {
+  const category = document.getElementById('new-emp-category')?.value || 'permanent';
+  try {
+    const data = await api('GET', `/employees/code-preview?employee_category=${category}`);
+    if (data?.success) {
+      document.getElementById('new-code').value = data.data.next_code;
+      document.getElementById('code-preview-hint').textContent =
+        `Next ${category} code: ${data.data.next_code}`;
+    }
+  } catch (e) {
+    // fallback: generate locally if API fails
+    const isContractual = category === 'contractual';
+    const pfx = isContractual ? (window.CFG?.contractualEmpCodePrefix||'CT') : (window.CFG?.permanentEmpCodePrefix||'RC');
+    const start = window.CFG?.permanentEmpCodeStart || 10000;
+    const code = pfx + start;
+    document.getElementById('new-code').value = code;
+  }
+}
+
+function onCategoryChange() {
+  const cat = document.getElementById('new-emp-category').value;
+  const provRow = document.getElementById('provision-end-row');
+  const hint    = document.getElementById('category-hint');
+
+  // Show/hide provision end date row
+  provRow.style.display = cat === 'provision' ? '' : 'none';
+
+  // Update hint text
+  if (cat === 'permanent')   hint.textContent = 'Code series: ' + (window.CFG?.permanentEmpCodePrefix||'EMP') + '10000, ' + (window.CFG?.permanentEmpCodePrefix||'EMP') + '10001…';
+  if (cat === 'provision')   hint.textContent = 'Code series: ' + (window.CFG?.permanentEmpCodePrefix||'EMP') + '10000+ · 6-month provision, then confirmation workflow';
+  if (cat === 'contractual') hint.textContent = 'Code series: ' + (window.CFG?.contractualEmpCodePrefix||'CT') + '0001, ' + (window.CFG?.contractualEmpCodePrefix||'CT') + '0002…';
+
+  // Auto-generate code for the new category
+  generateEmpCode();
+
+  // Recalculate provision end date
+  updateProvisionEndDate();
+}
+
+function updateProvisionEndDate() {
+  const cat     = document.getElementById('new-emp-category').value;
+  const joining = document.getElementById('new-joining').value;
+  if (cat !== 'provision' || !joining) return;
+  const d = new Date(joining);
+  d.setMonth(d.getMonth() + 6);
+  document.getElementById('new-provision-end').value = d.toISOString().split('T')[0];
+}
+
+async function addEmployee() {
+  const fname = document.getElementById('new-fname').value.trim();
+  const email = document.getElementById('new-email').value.trim();
+  if (!fname) { toast('First name is required', 'error'); return; }
+  if (!email) { toast('Email is required', 'error'); return; }
+  let code = document.getElementById('new-code').value.trim();
+  if (!code) { await generateEmpCode(); code = document.getElementById('new-code').value.trim(); }
+  const g = id => document.getElementById(id);
+  const body = {
+    employee_code: code, first_name: fname, last_name: g('new-lname').value.trim() || null,
+    email, phone: g('new-phone').value.trim() || null, gender: g('new-gender').value || null,
+    date_of_birth: g('new-dob').value || null, blood_group: g('new-blood').value || null,
+    role: g('new-role').value, department_id: g('new-dept').value || null,
+    designation_id: g('new-desig').value || null,
+    joining_date: g('new-joining').value || new Date().toISOString().split('T')[0],
+    employment_type: g('new-emptype').value || 'Full-Time',
+    employee_category: g('new-emp-category').value || 'permanent',
+    saturday_policy:   g('new-saturday-policy').value || '2nd_4th_off',
+    reporting_manager_id: g('new-manager').value || null,
+    team_leader_id: g('new-tl').value || null,
+    basic_salary: parseFloat(g('new-salary').value) || 0, hra: parseFloat(g('new-hra').value) || 0,
+    special_allowance: parseFloat(g('new-special').value) || 0, ctc: parseFloat(g('new-ctc').value) || 0,
+    pan_number: g('new-pan').value.trim() || null, aadhar_number: g('new-aadhar').value.trim() || null,
+    bank_name: g('new-bank-name').value.trim() || null, bank_account: g('new-bank-acc').value.trim() || null,
+    bank_ifsc: g('new-bank-ifsc').value.trim() || null, city: g('new-city').value.trim() || null,
+    password: g('new-password').value || 'Admin@1234',
+  };
+  const data = await api('POST', '/employees', body);
+  if (data?.success) {
+    toast(`✅ ${fname} added!`);
+    closeModal('add-emp-modal');
+    loadEmployees();
+  } else toast(data?.message || 'Failed', 'error');
+}
+
+// ── Geofence ──────────────────────────────────────────────────────────────────
+async function loadLocations() {
+  const data = await api('GET', '/geofence/locations');
+  const el   = document.getElementById('locations-list');
+  const sel  = document.getElementById('assign-location');
+
+  if (!data?.success || !data.data?.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📍</div><p>No locations yet. Add one above.</p></div>';
+    sel.innerHTML = '<option value="">No locations available</option>';
+    return;
+  }
+
+  window._locMap = {};
+  data.data.forEach(l => { window._locMap[l.id] = l; });
+
+  el.innerHTML = data.data.map(l => `
+    <div class="flex-between" style="padding:13px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-weight:700;font-size:13.5px">${l.name}</div>
+        <div class="text-muted">${l.address || 'No address'}</div>
+        <div class="text-muted">Lat: ${l.latitude} · Lng: ${l.longitude} · Radius: <b>${l.radius_meters}m</b></div>
+        ${l.assigned_count > 0 ? `<span class="badge" style="background:var(--accent-l);color:var(--accent);margin-top:5px">${l.assigned_count} Employees</span>` : ''}
+      </div>
+      <div class="flex gap-2" style="flex-shrink:0;align-items:center">
+        <span class="badge ${l.is_active ? 'badge-present' : 'badge-absent'}">${l.is_active ? 'Active' : 'Inactive'}</span>
+        ${l.is_active
+          ? `<button class="btn btn-ghost btn-sm" onclick="toggleLocationActive(${l.id}, false)" title="Deactivate" style="color:#b45309;border-color:#b45309">⏸</button>`
+          : `<button class="btn btn-ghost btn-sm" onclick="toggleLocationActive(${l.id}, true)" title="Activate" style="color:#059669;border-color:#059669;font-weight:700">▶ Activate</button>`
+        }
+        <button class="btn btn-ghost btn-sm" title="Edit" onclick="openEditLocationById(${l.id})">✏️</button>
+        <button class="btn btn-ghost btn-sm" onclick="deleteLocation(${l.id}, '${l.name.replace(/'/g, "\\'")}')" title="Delete">🗑</button>
+      </div>
+    </div>`).join('');
+
+  sel.innerHTML = '<option value="">Choose a location…</option>' +
+    data.data.filter(l => l.is_active).map(l => `<option value="${l.id}">${l.name} (${l.radius_meters}m)</option>`).join('');
+}
+
+function openEditLocationById(id) {
+  const l = window._locMap && window._locMap[id];
+  if (!l) { toast('Location not found — please reload the page', 'error'); return; }
+  document.getElementById('edit-loc-id').value      = l.id;
+  document.getElementById('edit-loc-name').value    = l.name || '';
+  document.getElementById('edit-loc-lat').value     = l.latitude;
+  document.getElementById('edit-loc-lng').value     = l.longitude;
+  document.getElementById('edit-loc-radius').value  = l.radius_meters;
+  document.getElementById('edit-loc-address').value = l.address || '';
+  openModal('edit-location-modal');
+}
+
+async function saveEditLocation() {
+  const id      = document.getElementById('edit-loc-id').value;
+  const name    = document.getElementById('edit-loc-name').value.trim();
+  const lat     = parseFloat(document.getElementById('edit-loc-lat').value);
+  const lng     = parseFloat(document.getElementById('edit-loc-lng').value);
+  const radius  = parseInt(document.getElementById('edit-loc-radius').value);
+  const address = document.getElementById('edit-loc-address').value.trim();
+  if (!name || !lat || !lng || !radius) { toast('All fields are required', 'error'); return; }
+  const data = await api('PUT', `/geofence/locations/${id}`, { name, latitude: lat, longitude: lng, radius_meters: radius, address });
+  if (data?.success) {
+    toast('Location updated ✅');
+    closeModal('edit-location-modal');
+    loadLocations();
+  } else toast(data?.message || 'Update failed', 'error');
+}
+
+async function loadAssignEmployees() {
+  const locId = document.getElementById('assign-location').value;
+  const el    = document.getElementById('assign-emp-list');
+  if (!locId) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px">Select a location first</div>';
+    return;
+  }
+  el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px">Loading…</div>';
+
+  const [assignedRes, unassignedRes] = await Promise.all([
+    api('GET', `/geofence/locations/${locId}/employees`),
+    api('GET', `/geofence/locations/${locId}/unassigned`)
+  ]);
+
+  assignEmpData = unassignedRes?.data || [];
+  const assigned = assignedRes?.data || [];
+  renderAssignList(assignEmpData, assigned);
+}
+
+function filterAssignList() {
+  const q = document.getElementById('assign-search').value.toLowerCase();
+  const locId = document.getElementById('assign-location').value;
+  if (!locId) return;
+  api('GET', `/geofence/locations/${locId}/employees`).then(r => {
+    renderAssignList(
+      assignEmpData.filter(e => `${e.first_name} ${e.last_name} ${e.department_name || ''}`.toLowerCase().includes(q)),
+      r?.data || []
+    );
+  });
+}
+
+function renderAssignList(unassigned, assigned = []) {
+  const _locId = document.getElementById('assign-location').value;
+  window.currentLocId = _locId;
+  const el = document.getElementById('assign-emp-list');
+  let html = '';
+
+  if (assigned.length) {
+    html += `<div style="font-size:11px;font-weight:700;color:var(--accent);padding:6px 8px 2px;letter-spacing:.5px">ASSIGNED (${assigned.length})</div>`;
+    html += assigned.map(e => `
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;background:#f0fdf4;margin-bottom:2px">
+        <div class="avatar" style="width:28px;height:28px;font-size:11px;background:var(--accent)">${e.first_name?.[0]}${e.last_name?.[0] || ''}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${e.first_name} ${e.last_name}</div>
+          <div class="text-muted">${e.employee_code} · ${e.department_name || '—'} · <span style="color:${e.is_universal ? '#7c3aed' : 'var(--accent)'}">${e.is_universal ? 'Universal' : 'Specific'}</span></div>
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button onclick="toggleUniversal(${e.id}, ${e.is_universal ? 'false' : 'true'}, '${_locId}')"
+            style="border:none;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:600;background:${e.is_universal ? 'var(--accent-l)' : '#f3f4f6'};color:${e.is_universal ? 'var(--accent)' : '#374151'}">
+            ${e.is_universal ? '📍 Make Specific' : '🌐 Make Universal'}
+          </button>
+          <button onclick="removeBuffer(${e.id})" style="background:#fee2e2;border:none;color:#dc2626;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:600">✕</button>
+        </div>
+      </div>`).join('');
+  }
+
+  if (unassigned.length) {
+    html += `<div style="font-size:11px;font-weight:700;color:var(--muted);padding:8px 8px 2px;letter-spacing:.5px">ADD EMPLOYEES (${unassigned.length})</div>`;
+    html += unassigned.map(e => `
+      <label style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;cursor:pointer" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+        <input type="checkbox" value="${e.id}" style="accent-color:var(--accent);width:15px;height:15px;cursor:pointer;flex-shrink:0">
+        <div class="avatar" style="width:28px;height:28px;font-size:11px">${e.first_name?.[0]}${e.last_name?.[0] || ''}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${e.first_name} ${e.last_name}</div>
+          <div class="text-muted">${e.employee_code} · ${e.department_name || '—'}</div>
+        </div>
+      </label>`).join('');
+  }
+
+  if (!assigned.length && !unassigned.length) {
+    html = '<div style="color:var(--muted);font-size:13px;padding:10px;text-align:center">No employees found</div>';
+  }
+  el.innerHTML = html;
+}
+
+async function toggleUniversal(empId, isUniversal, locId) {
+  if (!locId) locId = document.getElementById('assign-location').value;
+  const data = await api('PATCH', `/geofence/${empId}/${locId}/toggle`, { is_universal: isUniversal === true || isUniversal === 'true' });
+  if (data?.success) {
+    toast(data.message, 'success');
+    loadAssignEmployees();
+    loadLocations();
+  } else toast(data?.message || 'Failed', 'error');
+}
+
+async function removeBuffer(employeeId) {
+  const locId = document.getElementById('assign-location').value;
+  if (!confirm('Remove this employee from this location?')) return;
+  const data = await api('DELETE', `/geofence/${employeeId}/${locId}`);
+  if (data?.success) { toast('Removed'); loadAssignEmployees(); loadLocations(); }
+  else toast(data?.message || 'Failed', 'error');
+}
+
+function selectAllAssign() { document.querySelectorAll('#assign-emp-list input[type=checkbox]').forEach(c => c.checked = true); }
+function clearAssign()      { document.querySelectorAll('#assign-emp-list input[type=checkbox]').forEach(c => c.checked = false); }
+
+async function bulkAssignBuffer() {
+  const locId = document.getElementById('assign-location').value;
+  if (!locId) { toast('Select a location first', 'error'); return; }
+  const isUniversal = document.querySelector('input[name="buf-type"]:checked').value === 'universal';
+  const checked = [...document.querySelectorAll('#assign-emp-list input[type=checkbox]:checked')].map(c => parseInt(c.value));
+  if (!checked.length) { toast('Select at least one employee', 'error'); return; }
+  const data = await api('POST', '/geofence/bulk-assign', {
+    employee_ids: checked,
+    office_location_id: parseInt(locId),
+    is_universal: isUniversal
+  });
+  if (data?.success) {
+    toast(data.message);
+    clearAssign();
+    loadAssignEmployees();
+    loadLocations();
+  } else toast(data?.message || 'Failed', 'error');
+}
+
+async function addLocation() {
+  const name   = document.getElementById('loc-name').value.trim();
+  const lat    = parseFloat(document.getElementById('loc-lat').value);
+  const lng    = parseFloat(document.getElementById('loc-lng').value);
+  const radius = parseInt(document.getElementById('loc-radius').value) || 100;
+  const addr   = document.getElementById('loc-address').value.trim();
+  if (!name || !lat || !lng) { toast('Name, latitude and longitude are required', 'error'); return; }
+  const data = await api('POST', '/geofence/locations', { name, latitude: lat, longitude: lng, radius_meters: radius, address: addr });
+  if (data?.success) { toast('Location added'); closeModal('add-location-modal'); loadLocations(); }
+  else toast(data?.message || 'Failed', 'error');
+}
+
+let _deleteLocId = null;
+
+async function toggleLocationActive(id, activate) {
+  const data = await api('PUT', `/geofence/locations/${id}`, { is_active: activate });
+  if (data?.success) {
+    toast(activate ? '✅ Location activated' : 'Location deactivated');
+    await loadLocations();
+  } else {
+    toast(data?.message || 'Failed to update location', 'error');
+  }
+}
+
+async function deleteLocation(id, name) {
+  _deleteLocId = id;
+
+  // Check if employees are assigned to this location
+  const data = await api('GET', `/geofence/locations/${id}/employees`);
+  if (!data?.success) { toast('Failed to check assigned employees', 'error'); return; }
+
+  const employees = data.data || [];
+
+  if (employees.length > 0) {
+    // Blocked — show assigned employees list
+    document.getElementById('del-loc-blocked-count').textContent =
+      `${employees.length} employee${employees.length > 1 ? 's are' : ' is'} currently assigned to this location:`;
+    document.getElementById('del-loc-blocked-list').innerHTML = employees.map(e => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border)">
+        <div style="width:30px;height:30px;border-radius:50%;background:var(--accent-l);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--accent)">
+          ${(e.name || '?')[0].toUpperCase()}
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${e.name}</div>
+          <div style="font-size:11px;color:var(--muted)">${e.code || e.employee_code || ''}</div>
+        </div>
+      </div>
+    `).join('');
+    openModal('del-loc-blocked-modal');
+  } else {
+    // Safe to delete — show confirmation
+    document.getElementById('del-loc-confirm-name').textContent = name;
+    openModal('del-loc-confirm-modal');
+  }
+}
+
+async function confirmHardDeleteLocation() {
+  if (!_deleteLocId) return;
+  const btn = document.getElementById('del-loc-confirm-btn');
+  btn.disabled = true;
+  btn.textContent = 'Deleting…';
+
+  const data = await api('DELETE', `/geofence/locations/${_deleteLocId}`);
+  btn.disabled = false;
+  btn.textContent = 'Delete Permanently';
+
+  if (data?.success) {
+    closeModal('del-loc-confirm-modal');
+    toast('Location permanently deleted');
+    loadLocations();
+  } else {
+    toast(data?.message || 'Delete failed', 'error');
+  }
+}
+
+function useMyLocation() {
+  if (!navigator.geolocation) { toast('GPS not available', 'error'); return; }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      document.getElementById('loc-lat').value = pos.coords.latitude.toFixed(6);
+      document.getElementById('loc-lng').value = pos.coords.longitude.toFixed(6);
+      toast('Location detected');
+    },
+    () => toast('Could not get GPS location', 'error')
+  );
+}
+
+async function loadLogs() {
+  const from = document.getElementById('log-from').value;
+  const to   = document.getElementById('log-to').value;
+  const data = await api('GET', `/geofence/logs?limit=200${from ? '&from_date=' + from : ''}${to ? '&to_date=' + to : ''}`);
+  document.getElementById('logs-tbody').innerHTML = (data?.data || []).map(l => `
+    <tr>
+      <td><div style="font-weight:600">${l.employee_name}</div><div class="text-muted">${l.employee_code}</div></td>
+      <td>${l.department_name || '—'}</td>
+      <td style="font-size:12px">${
+        l.punch_time_ist
+          ? l.punch_time_ist
+          : new Date(l.created_at).toLocaleString('en-IN', { timeZone: window.CFG?.timezone || 'Asia/Kolkata' })
+      }</td>
+      <td><span class="badge badge-${(l.punch_type||'').toLowerCase() === 'in' ? 'present' : 'late'}">${l.punch_type || '—'}</span></td>
+      <td>
+        ${l.location_name || l.office_name
+          ? `<span style="font-weight:600">${l.location_name || l.office_name}</span>`
+          : '—'}
+        ${l.employee_lat && l.employee_lng
+          ? `<br><a href="https://maps.google.com/?q=${l.employee_lat},${l.employee_lng}" target="_blank" style="font-size:11px;color:var(--accent);font-weight:600">📍 View on Maps</a>`
+          : ''}
+      </td>
+      <td style="font-weight:600">${l.distance_meters != null ? l.distance_meters + 'm' : '—'}</td>
+      <td><span class="badge badge-${l.is_within_geofence ? 'present' : 'absent'}">${l.is_within_geofence ? '✓ Valid' : '✗ Invalid'}</span></td>
+    </tr>`).join('')
+    || '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">No logs found</td></tr>';
+}
+
+// ── Separated Employees ───────────────────────────────────────────────────────
+let separatedData = [];
+
+async function loadSeparatedCount() {
+  const data = await api('GET', '/employees?is_active=false');
+  if (!data?.success) return;
+  const count = data.total || data.data?.length || 0;
+  const badge = document.getElementById('sep-count-badge');
+  if (badge && count > 0) { badge.textContent = count; badge.style.display = 'inline'; }
+}
+
+async function loadSeparated() {
+  const data = await api('GET', '/employees?is_active=false');
+  separatedData = data?.data || [];
+  filterSeparated();
+}
+
+function filterSeparated() {
+  const q = document.getElementById('sep-search')?.value?.toLowerCase() || '';
+  const filtered = separatedData.filter(e =>
+    !q || `${e.first_name} ${e.last_name} ${e.employee_code} ${e.email}`.toLowerCase().includes(q)
+  );
+  const tbody = document.getElementById('sep-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:48px"><div style="font-size:32px;margin-bottom:10px">✅</div>No separated employees</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(e => `
+    <tr>
+      <td>
+        <div class="flex gap-2">
+          <div class="avatar" style="background:linear-gradient(135deg,#94a3b8,#64748b)">${e.first_name?.[0]}${e.last_name?.[0] || ''}</div>
+          <div>
+            <div style="font-weight:700;font-size:13.5px;color:var(--muted)">${e.first_name} ${e.last_name}</div>
+            <div class="text-muted">${e.email}</div>
+          </div>
+        </div>
+      </td>
+      <td class="font-mono" style="color:var(--muted)">${e.employee_code}</td>
+      <td>${e.department_name || '—'}</td>
+      <td style="color:var(--muted)">${e.designation_title || '—'}</td>
+      <td><span class="badge" style="background:rgba(239,68,68,.1);color:#dc2626">${e.separation_type || 'Deactivated'}</span></td>
+      <td>${e.sep_last_working_date ? fmt.date(e.sep_last_working_date) : (e.separation_date ? fmt.date(e.separation_date) : '—')}</td>
+      <td class="text-muted">${e.updated_at ? fmt.date(e.updated_at) : '—'}</td>
+      <td>
+        ${Role.is('hr','accounts') ? `<button class="btn btn-ghost btn-sm" onclick="reactivateEmployee(${e.id},'${e.first_name} ${e.last_name}')">♻ Reactivate</button>` : ''}
+      </td>
+    </tr>`).join('');
+}
+
+async function reactivateEmployee(id, name) {
+  if (!confirm(`Reactivate ${name}?`)) return;
+  const data = await api('PUT', `/employees/${id}`, { is_active: true, separation_date: null, separation_type: null });
+  if (data?.success) { toast(`✅ ${name} reactivated`); loadSeparated(); loadSeparatedCount(); loadEmployees(); }
+  else toast(data?.message || 'Failed', 'error');
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(name) {
+  ['directory','separated','geofence','logs','import','reshuffle'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === name ? '' : 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    const names = ['directory','separated','geofence','logs','import','reshuffle'];
+    b.classList.toggle('active', names[i] === name);
+  });
+  if (name === 'separated') loadSeparated();
+  if (name === 'geofence')  { loadLocations(); loadBufferRules(); }
+  if (name === 'logs')      loadLogs();
+  if (name === 'reshuffle') loadReshuffle();
+}
+
+// ── Change Reporting Manager ──────────────────────────────────────────────────
+let _changeMgrEmpId = null;
+
+async function openChangeManager(empId, empName, currentMgrId) {
+  _changeMgrEmpId = empId;
+  document.getElementById('change-manager-title').textContent = `Change Manager — ${empName}`;
+  // Close detail modal immediately (before async) so the backdrop click handler
+  // cannot accidentally close the change-manager-modal once it opens
+  closeModal('emp-detail-modal');
+  const sel = document.getElementById('change-manager-select');
+  sel.innerHTML = '<option value="">Loading…</option>';
+  openModal('change-manager-modal');
+  const res = await api('GET', '/employees');
+  const emps = (res?.data || []).filter(e => e.id !== empId);
+  sel.innerHTML = '<option value="">— No Manager —</option>' +
+    emps.map(e => `<option value="${e.id}" ${e.id === currentMgrId ? 'selected' : ''}>${e.first_name} ${e.last_name} (${e.employee_code}) — ${e.role}</option>`).join('');
+}
+
+async function saveChangeManager() {
+  const mgrId = document.getElementById('change-manager-select').value || null;
+  const data = await api('PUT', `/employees/${_changeMgrEmpId}`, { reporting_manager_id: mgrId });
+  if (data?.success) { toast('Manager updated'); closeModal('change-manager-modal'); loadEmployees(); }
+  else toast(data?.message || 'Failed', 'error');
+}
+
+// ── Excel Export / Import ─────────────────────────────────────────────────────
+async function downloadMasterExcel() {
+  toast('Preparing Excel…');
+  const token = Auth.getToken();
+  const res = await fetch(`${API_BASE}/employees/export`, { headers: { Authorization: 'Bearer ' + token } });
+  if (!res.ok) { toast('Export failed', 'error'); return; }
+  const blob = await res.blob();
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: (window.CFG?.clientName||'HRMS') + '_Employees_' + new Date().toISOString().split('T')[0] + '.xlsx' });
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('✅ Excel downloaded');
+}
+
+function openMasterExport() {
+  const now = new Date();
+  const month = prompt(`Master Excel — Enter month (1-12):`, now.getMonth() + 1);
+  if (!month) return;
+  const year  = prompt(`Enter year:`, now.getFullYear());
+  if (!year) return;
+  downloadMasterReport(parseInt(month), parseInt(year));
+}
+
+async function downloadMasterReport(month, year) {
+  toast('⏳ Preparing Master Excel (employees + attendance)…');
+  const token = Auth.getToken();
+  const res = await fetch(`${API_BASE}/employees/export-master?month=${month}&year=${year}`, {
+    headers: { Authorization: 'Bearer ' + token }
+  });
+  if (!res.ok) { toast('Master export failed', 'error'); return; }
+  const blob = await res.blob();
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(blob),
+    download: `${window.CFG?.clientName||'HRMS'}_Master_${months[month-1]}${year}.xlsx`
+  });
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('✅ Master Excel downloaded!');
+}
+
+async function importExcel(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  toast('Importing employees…');
+  try {
+    const res = await fetch(`${API_BASE}/employees/import`, { method: 'POST', headers: { Authorization: 'Bearer ' + Auth.getToken() }, body: fd });
+    const data = await res.json();
+    if (data.success) {
+      const d = data.data;
+      toast(`Imported: ${d.imported}${d.skipped ? ', Skipped: ' + d.skipped : ''}`);
+      loadEmployees();
+    } else toast(data.message || 'Import failed', 'error');
+  } catch(e) { toast('Import failed', 'error'); }
+  input.value = '';
+}
+
+// ── Import tab (drag & drop) ──────────────────────────────────────────────────
+let importFile = null;
+
+function handleImportDrop(e) {
+  e.preventDefault();
+  handleImportFile(e.dataTransfer.files[0]);
+}
+
+function handleImportFile(file) {
+  if (!file || !file.name.match(/\.(xlsx|xls)$/i)) { toast('Please upload an .xlsx or .xls file', 'error'); return; }
+  importFile = file;
+  const info = document.getElementById('import-file-info');
+  document.getElementById('import-file-name').textContent = file.name;
+  document.getElementById('import-file-size').textContent = (file.size / 1024).toFixed(1) + ' KB';
+  info.style.display = 'flex';
+  document.getElementById('import-submit-btn').style.display = '';
+}
+
+function clearImportFile() {
+  importFile = null;
+  document.getElementById('import-file-input').value = '';
+  document.getElementById('import-file-info').style.display = 'none';
+  document.getElementById('import-submit-btn').style.display = 'none';
+  document.getElementById('import-results').style.display = 'none';
+}
+
+async function submitImport() {
+  if (!importFile) { toast('Please select a file first', 'error'); return; }
+  const btn = document.getElementById('import-submit-btn');
+  btn.disabled = true; btn.textContent = '⏳ Importing…';
+  const fd = new FormData();
+  fd.append('file', importFile);
+  try {
+    const res = await fetch(`${API_BASE}/employees/import`, { method: 'POST', headers: { Authorization: 'Bearer ' + Auth.getToken() }, body: fd });
+    const data = await res.json();
+    const el = document.getElementById('import-results');
+    el.style.display = '';
+    if (data.success) {
+      const { imported, skipped, errors } = data.data;
+      el.innerHTML = `<div style="background:#f0fdf4;border:1.5px solid rgba(16,185,129,.2);border-radius:12px;padding:20px">
+        <div style="font-size:16px;font-weight:800;color:#065f46;margin-bottom:12px">✅ Import Complete</div>
+        <div style="display:flex;gap:24px">
+          <div style="text-align:center"><div style="font-size:28px;font-weight:800;color:#10b981">${imported}</div><div style="font-size:12px;color:#64748b">Imported</div></div>
+          <div style="text-align:center"><div style="font-size:28px;font-weight:800;color:#f59e0b">${skipped}</div><div style="font-size:12px;color:#64748b">Skipped</div></div>
+        </div>
+        ${errors?.length ? `<div style="margin-top:12px;font-size:13px;color:#dc2626">⚠ ${errors.length} error(s): ${errors.slice(0,3).map(e=>`Row ${e.row}: ${e.error}`).join('; ')}</div>` : ''}
+      </div>`;
+      if (imported > 0) { toast(`${imported} employees imported`); loadEmployees(); }
+    } else {
+      el.innerHTML = `<div style="background:#fef2f2;border:1.5px solid rgba(239,68,68,.2);border-radius:12px;padding:16px;color:#dc2626"><b>❌ Import failed:</b> ${data.message}</div>`;
+      toast(data.message, 'error');
+    }
+  } catch(e) { toast('Import failed', 'error'); }
+  btn.disabled = false; btn.textContent = '🚀 Import Employees';
+}
+
+// ── Modal helpers ─────────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── Edit Employee ─────────────────────────────────────────────────────────────
+let _editEmpId = null;
+
+function switchEditTab(tab) {
+  ['info','salary','bank'].forEach(t => {
+    document.getElementById(`etab-${t}`).style.display = t === tab ? '' : 'none';
+    const btn = document.getElementById(`etab-btn-${t}`);
+    const isActive = t === tab;
+    btn.style.borderBottomColor = isActive ? '#2e7d32' : 'transparent';
+    btn.style.color             = isActive ? '#2e7d32' : '#94a3b8';
+    btn.style.background        = isActive ? '#f0fdf4' : 'none';
+    btn.style.fontWeight        = isActive ? '800' : '700';
+  });
+}
+
+async function openEditEmp(id) {
+  _editEmpId = id;
+  // Close emp-detail-modal IMMEDIATELY (before any await) so the backdrop click
+  // handler cannot fire on the newly-opened edit modal
+  closeModal('emp-detail-modal');
+  // Fetch employee, salary structure, and all employees (for manager/TL dropdowns) in parallel
+  const [empRes, salRes, allEmpsRes] = await Promise.all([
+    api('GET', `/employees/${id}`),
+    api('GET', `/payroll/salary-structure/${id}`).catch(() => null),
+    api('GET', '/employees')
+  ]);
+  if (!empRes?.success) { toast('Failed to load employee', 'error'); return; }
+  const e = empRes.data;
+  const s = salRes?.data || {};
+  const allEmps = (allEmpsRes?.data || []).filter(emp => emp.id !== id);
+
+  // Populate Reporting Manager dropdown
+  const mgrSel = document.getElementById('edit-manager');
+  mgrSel.innerHTML = '<option value="">— No Manager —</option>' +
+    allEmps.map(emp => `<option value="${emp.id}" ${emp.id === e.reporting_manager_id ? 'selected' : ''}>${emp.first_name} ${emp.last_name} (${emp.employee_code}) — ${emp.role}</option>`).join('');
+
+  // Populate Team Leader dropdown
+  const tlSel = document.getElementById('edit-tl');
+  tlSel.innerHTML = '<option value="">— No Team Leader —</option>' +
+    allEmps.filter(emp => ['tl','manager','admin','hr'].includes(emp.role))
+      .map(emp => `<option value="${emp.id}" ${emp.id === e.team_leader_id ? 'selected' : ''}>${emp.first_name} ${emp.last_name} (${emp.employee_code})</option>`).join('');
+
+  document.getElementById('edit-emp-title').textContent = `Edit — ${e.first_name} ${e.last_name}`;
+
+  // Info tab
+  document.getElementById('edit-fname').value    = e.first_name || '';
+  document.getElementById('edit-lname').value    = e.last_name  || '';
+  document.getElementById('edit-email').value    = e.email      || '';
+  document.getElementById('edit-phone').value    = e.phone      || '';
+  document.getElementById('edit-altphone').value = e.alternate_phone || '';
+  document.getElementById('edit-gender').value   = e.gender     || '';
+  document.getElementById('edit-dob').value      = e.date_of_birth ? e.date_of_birth.split('T')[0] : '';
+  document.getElementById('edit-blood').value    = e.blood_group || '';
+  document.getElementById('edit-marital').value  = e.marital_status || '';
+  document.getElementById('edit-city').value     = e.city       || '';
+  document.getElementById('edit-state').value    = e.state      || '';
+  document.getElementById('edit-pincode').value  = e.pincode    || '';
+  document.getElementById('edit-address').value  = e.address_line1 || '';
+  document.getElementById('edit-joining').value  = e.joining_date ? e.joining_date.split('T')[0] : '';
+  document.getElementById('edit-emptype').value  = e.employment_type  || 'Full-Time';
+  document.getElementById('edit-category').value = e.employee_category || 'permanent';
+  document.getElementById('edit-saturday-policy').value = e.saturday_policy || '2nd_4th_off';
+  document.getElementById('edit-role').value     = e.role       || 'employee';
+  document.getElementById('edit-level').value    = e.level      || '';
+  document.getElementById('edit-probation').value = e.probation_end_date ? e.probation_end_date.split('T')[0] : '';
+  document.getElementById('edit-notes').value    = e.notes      || '';
+
+  // Salary tab
+  document.getElementById('edit-basic').value      = s.basic       || e.basic_salary || '';
+  document.getElementById('edit-hra').value         = s.hra         || e.hra          || '';
+  document.getElementById('edit-conveyance').value  = s.conveyance  || '';
+  document.getElementById('edit-special').value     = s.special_allowance || e.special_allowance || '';
+  document.getElementById('edit-gratuity').value    = s.gratuity    || '';
+  document.getElementById('edit-pf').checked        = s.pf_applicable  !== false;
+  document.getElementById('edit-esi').checked       = s.esi_applicable !== false;
+  document.getElementById('edit-pt').checked        = s.pt_applicable  !== false;
+  document.getElementById('edit-lwf').checked       = s.lwf_applicable !== false;
+  document.getElementById('edit-tds').checked       = !!s.tds_applicable;
+  document.getElementById('edit-sal-notes').value   = s.notes || '';
+
+  // Bank tab
+  document.getElementById('edit-bank-name').value   = e.bank_name    || '';
+  document.getElementById('edit-bank-acc').value    = e.bank_account || '';
+  document.getElementById('edit-bank-ifsc').value   = e.bank_ifsc    || '';
+  document.getElementById('edit-bank-branch').value = e.bank_branch  || '';
+  document.getElementById('edit-pan').value         = e.pan_number   || '';
+  document.getElementById('edit-aadhar').value      = e.aadhar_number|| '';
+  document.getElementById('edit-uan').value         = e.uan_number   || '';
+  document.getElementById('edit-pf-num').value      = e.pf_number    || '';
+
+  // Show advance chain info based on role
+  onRoleChange();
+
+  switchEditTab('info');
+  recalcSalaryPreview();
+  openModal('edit-emp-modal');
+}
+
+function onRoleChange() {
+  const role = document.getElementById('edit-role')?.value;
+  const infoBox = document.getElementById('advance-chain-info');
+  const label   = document.getElementById('advance-chain-label');
+  if (!infoBox || !label) return;
+
+  // Show advance chain preview based on role
+  const chains = {
+    'employee': 'Reporting Manager → COO → MD → Accounts',
+    'tl':       'Reporting Manager → COO → MD → Accounts',
+    'manager':  'Reporting Manager → COO → MD → Accounts',
+    'hr':       'COO → MD → Accounts (skips reporting manager)',
+    'admin':    'COO → MD → Accounts (skips reporting manager)',
+    'accounts': 'COO → MD',
+    'super_admin': 'Accounts only',
+  };
+  const chain = chains[role];
+  if (chain) {
+    label.textContent = chain;
+    infoBox.style.display = '';
+  } else {
+    infoBox.style.display = 'none';
+  }
+}
+
+function recalcSalaryPreview() {
+  const v = id => parseFloat(document.getElementById(id)?.value) || 0;
+  const basic      = v('edit-basic');
+  const hra        = v('edit-hra');
+  const conveyance = v('edit-conveyance');
+  const special    = v('edit-special');
+  const gratuity   = v('edit-gratuity');
+  if (!basic) { document.getElementById('salary-preview').style.display = 'none'; return; }
+
+  const gross     = basic + hra + conveyance + special + gratuity;
+  const pfBase    = Math.min(basic, 15000);
+  const pfEmp     = document.getElementById('edit-pf').checked  ? Math.round(pfBase * 0.12)  : 0;
+  const pfEmr     = document.getElementById('edit-pf').checked  ? Math.round(pfBase * 0.12)  : 0;
+  const pfAdm     = document.getElementById('edit-pf').checked  ? 150 : 0;  // Fixed ₹150
+  const esiEmp    = document.getElementById('edit-esi').checked && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
+  const esiEmr    = document.getElementById('edit-esi').checked && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
+  const pt        = document.getElementById('edit-pt').checked  && gross >= 10000 ? 200 : 0;
+  const lwf       = document.getElementById('edit-lwf').checked ? 6 : 0;
+  const totalDed  = pfEmp + esiEmp + pt + lwf;
+  const net       = gross - totalDed;
+  const ctc       = gross + pfEmr + esiEmr + pfAdm;
+
+  const fmt2 = n => '₹' + Math.round(n).toLocaleString('en-IN');
+  document.getElementById('prev-gross').textContent   = fmt2(gross);
+  document.getElementById('prev-ded').textContent     = fmt2(totalDed);
+  document.getElementById('prev-net').textContent     = fmt2(net);
+  document.getElementById('prev-pf-emp').textContent  = fmt2(pfEmp);
+  document.getElementById('prev-esi-emp').textContent = fmt2(esiEmp);
+  document.getElementById('prev-ctc').textContent     = fmt2(ctc);
+  document.getElementById('salary-preview').style.display = '';
+}
+
+async function saveEmployeeEdit() {
+  if (!_editEmpId) return;
+  const btn = document.getElementById('edit-save-btn');
+  btn.disabled = true; btn.textContent = '⏳ Saving…';
+
+  const basic      = parseFloat(document.getElementById('edit-basic').value)      || 0;
+
+  // 1. Update core employee fields
+  const empBody = {
+    first_name:          document.getElementById('edit-fname').value.trim(),
+    last_name:           document.getElementById('edit-lname').value.trim(),
+    email:               document.getElementById('edit-email').value.trim(),
+    phone:               document.getElementById('edit-phone').value.trim()      || null,
+    alternate_phone:     document.getElementById('edit-altphone').value.trim()   || null,
+    gender:              document.getElementById('edit-gender').value            || null,
+    date_of_birth:       document.getElementById('edit-dob').value               || null,
+    blood_group:         document.getElementById('edit-blood').value             || null,
+    marital_status:      document.getElementById('edit-marital').value           || null,
+    city:                document.getElementById('edit-city').value.trim()       || null,
+    state:               document.getElementById('edit-state').value.trim()      || null,
+    pincode:             document.getElementById('edit-pincode').value.trim()    || null,
+    address_line1:       document.getElementById('edit-address').value.trim()    || null,
+    joining_date:        document.getElementById('edit-joining').value           || null,
+    employment_type:     document.getElementById('edit-emptype').value,
+    employee_category:   document.getElementById('edit-category').value,
+    saturday_policy:     document.getElementById('edit-saturday-policy').value,
+    role:                document.getElementById('edit-role').value,
+    level:               document.getElementById('edit-level').value.trim()      || null,
+    probation_end_date:  document.getElementById('edit-probation').value         || null,
+    notes:               document.getElementById('edit-notes').value.trim()      || null,
+    bank_name:           document.getElementById('edit-bank-name').value.trim()  || null,
+    bank_account:        document.getElementById('edit-bank-acc').value.trim()   || null,
+    bank_ifsc:           document.getElementById('edit-bank-ifsc').value.trim()  || null,
+    bank_branch:         document.getElementById('edit-bank-branch').value.trim()|| null,
+    pan_number:          document.getElementById('edit-pan').value.trim()        || null,
+    aadhar_number:       document.getElementById('edit-aadhar').value.trim()     || null,
+    uan_number:          document.getElementById('edit-uan').value.trim()        || null,
+    pf_number:           document.getElementById('edit-pf-num').value.trim()     || null,
+    basic_salary:        parseFloat(document.getElementById('edit-basic').value)       || 0,
+    hra:                 parseFloat(document.getElementById('edit-hra').value)          || 0,
+    special_allowance:   parseFloat(document.getElementById('edit-special').value)      || 0,
+    gratuity:            parseFloat(document.getElementById('edit-gratuity').value)     || 0,
+    conveyance:          parseFloat(document.getElementById('edit-conveyance').value)   || 0,
+    travel_allowance:    parseFloat(document.getElementById('edit-conveyance').value)   || 0,
+    reporting_manager_id: document.getElementById('edit-manager').value ? parseInt(document.getElementById('edit-manager').value) : null,
+    team_leader_id:       document.getElementById('edit-tl').value       ? parseInt(document.getElementById('edit-tl').value)      : null,
+  };
+
+  const empRes = await api('PATCH', `/employees/${_editEmpId}`, empBody);
+  if (!empRes?.success) {
+    toast(empRes?.message || 'Failed to update employee', 'error');
+    btn.disabled = false; btn.textContent = '💾 Save Changes';
+    return;
+  }
+
+  // 2. Save salary structure ONLY if basic salary is filled in
+  const basicVal = parseFloat(document.getElementById('edit-basic').value) || 0;
+  if (basicVal > 0) {
+    const salBody = {
+      employee_id:       _editEmpId,
+      basic: basicVal,
+      hra:        parseFloat(document.getElementById('edit-hra').value)        || 0,
+      conveyance: parseFloat(document.getElementById('edit-conveyance').value) || 0,
+      special_allowance: parseFloat(document.getElementById('edit-special').value) || 0,
+      gratuity:   parseFloat(document.getElementById('edit-gratuity').value)   || 0,
+      pf_applicable:  document.getElementById('edit-pf').checked,
+      esi_applicable: document.getElementById('edit-esi').checked,
+      pt_applicable:  document.getElementById('edit-pt').checked,
+      lwf_applicable: document.getElementById('edit-lwf').checked,
+      tds_applicable: document.getElementById('edit-tds').checked,
+      notes:          document.getElementById('edit-sal-notes').value.trim() || null,
+    };
+    const salRes = await api('POST', '/payroll/salary-structure', salBody);
+    if (!salRes?.success) {
+      toast('Info saved! But salary structure error: ' + (salRes?.message || ''), 'error');
+      btn.disabled = false; btn.textContent = '💾 Save Changes';
+      return;
+    }
+  }
+
+  toast('✅ Employee updated successfully!');
+  btn.disabled = false; btn.textContent = '✅ Saved!';
+  setTimeout(() => { btn.textContent = '💾 Save Changes'; }, 2000);
+  loadEmployees(); // refresh the list
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  RESHUFFLE LOCATIONS — full logic
+// ══════════════════════════════════════════════════════════════════
+let _rsLocs   = [];   // all locations
+let _rsEmps   = [];   // all employees
+let _rsFrom   = [];   // employees currently shown in source panel
+let _rsTo     = [];   // employees currently shown in dest panel
+let _rsDragId = null; // id being dragged
+let _rsPending = [];  // [{employee_id, emp, fromLocId, fromLocName, toLocId, toLocName}]
+let _rsBulkSel = new Set();
+
+// Called when the tab becomes visible
+async function loadReshuffle() {
+  if (_rsLocs.length) { rsPopulateSelects(); return; } // already loaded
+  const [ld, ed] = await Promise.all([
+    api('GET', '/geofence/locations'),
+    api('GET', '/employees')
+  ]);
+  _rsLocs = ld?.data || [];
+  _rsEmps = ed?.data || [];
+  rsPopulateSelects();
+  rsRenderBulk();
+}
+
+function rsPopulateSelects() {
+  const opts = _rsLocs.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+  ['rs-from-sel','rs-to-sel','rs-bulk-loc-filter','rs-bulk-dest'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const prefix = id === 'rs-bulk-loc-filter'
+      ? '<option value="">All locations</option>'
+      : '<option value="">— select —</option>';
+    el.innerHTML = prefix + opts;
+  });
+}
+
+// ── Drag & Drop ──────────────────────────────────────────────────
+async function rsLoadFrom() {
+  const locId = parseInt(document.getElementById('rs-from-sel').value);
+  if (!locId) return;
+  const loc = _rsLocs.find(l => l.id === locId);
+  document.getElementById('rs-from-title').textContent = loc?.name || 'Source';
+  const d = await api('GET', `/geofence/locations/${locId}/employees`);
+  _rsFrom = d?.data || [];
+  rsRenderFrom();
+}
+
+async function rsLoadTo() {
+  const locId = parseInt(document.getElementById('rs-to-sel').value);
+  if (!locId) return;
+  const loc = _rsLocs.find(l => l.id === locId);
+  document.getElementById('rs-to-title').textContent = loc?.name || 'Destination';
+  const d = await api('GET', `/geofence/locations/${locId}/employees`);
+  _rsTo = d?.data || [];
+  rsRenderTo();
+}
+
+function rsRenderFrom(f = '') {
+  const emps = _rsFrom.filter(e => rsMatch(e, f));
+  document.getElementById('rs-from-count').textContent = _rsFrom.length;
+  document.getElementById('rs-from-list').innerHTML =
+    emps.length ? emps.map(e => rsChip(e, 'from')).join('') :
+    '<div class="text-muted" style="padding:16px;text-align:center">No employees</div>';
+  rsBindDrag();
+}
+
+function rsRenderTo(f = '') {
+  const emps = _rsTo.filter(e => rsMatch(e, f));
+  document.getElementById('rs-to-count').textContent = _rsTo.length;
+  document.getElementById('rs-to-list').innerHTML =
+    emps.length ? emps.map(e => rsChip(e, 'to')).join('') :
+    '<div class="text-muted" style="padding:16px;text-align:center">Drag employees here</div>';
+  rsBindDrag();
+}
+
+function rsMatch(e, f) {
+  if (!f) return true;
+  const q = f.toLowerCase();
+  return `${e.first_name} ${e.last_name||''}`.toLowerCase().includes(q)
+      || (e.employee_code||'').toLowerCase().includes(q);
+}
+
+function rsChip(e, side) {
+  const name = `${e.first_name} ${e.last_name||''}`.trim();
+  const init = (e.first_name?.[0]||'') + (e.last_name?.[0]||name[1]||'');
+  return `<div class="rs-chip" draggable="true" data-id="${e.id}" data-side="${side}">
+    <div class="rs-av">${init.toUpperCase()}</div>
+    <div class="rs-info"><div class="rs-name">${name}</div><div class="rs-code">${e.employee_code||''}</div></div>
+    <div class="rs-grip">⠿</div>
+  </div>`;
+}
+
+function rsBindDrag() {
+  document.querySelectorAll('.rs-chip[draggable]').forEach(el => {
+    el.addEventListener('dragstart', ev => {
+      _rsDragId = parseInt(el.dataset.id);
+      el.classList.add('rs-dragging');
+      ev.dataTransfer.effectAllowed = 'move';
+    });
+    el.addEventListener('dragend', () => el.classList.remove('rs-dragging'));
+  });
+}
+
+function rsDrop(ev, targetSide) {
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('rs-drop-active');
+  if (!_rsDragId) return;
+
+  const fromLocId = parseInt(document.getElementById('rs-from-sel').value);
+  const toLocId   = parseInt(document.getElementById('rs-to-sel').value);
+  if (!fromLocId || !toLocId) { toast('Select both locations first', 'error'); return; }
+  if (fromLocId === toLocId)  { toast('Source and destination are the same', 'error'); return; }
+
+  const srcEl = document.querySelector(`.rs-chip[data-id="${_rsDragId}"]`);
+  if (!srcEl || srcEl.dataset.side === targetSide) return;
+
+  const fromLoc = _rsLocs.find(l => l.id === fromLocId);
+  const toLoc   = _rsLocs.find(l => l.id === toLocId);
+
+  if (targetSide === 'to') {
+    const emp = _rsFrom.find(e => e.id === _rsDragId);
+    if (!emp) return;
+    rsQueueChange(emp, fromLocId, fromLoc?.name, toLocId, toLoc?.name);
+    _rsFrom = _rsFrom.filter(e => e.id !== _rsDragId);
+    _rsTo   = [..._rsTo, emp];
+  } else {
+    const emp = _rsTo.find(e => e.id === _rsDragId);
+    if (!emp) return;
+    const idx = _rsPending.findIndex(p => p.employee_id === _rsDragId && p.toLocId === toLocId);
+    if (idx > -1) { _rsPending.splice(idx, 1); rsUpdateBadge(); }
+    _rsTo   = _rsTo.filter(e => e.id !== _rsDragId);
+    _rsFrom = [..._rsFrom, emp];
+  }
+  rsRenderFrom(); rsRenderTo();
+  _rsDragId = null;
+}
+
+// ── Queue & Badge ────────────────────────────────────────────────
+function rsQueueChange(emp, fromLocId, fromLocName, toLocId, toLocName) {
+  _rsPending = _rsPending.filter(p => !(p.employee_id === emp.id && p.toLocId === toLocId));
+  _rsPending.push({ employee_id: emp.id, emp, fromLocId, fromLocName, toLocId, toLocName });
+  rsUpdateBadge();
+  toast(`${emp.first_name} queued for move`);
+}
+
+function rsUpdateBadge() {
+  const b = document.getElementById('rs-pending-badge');
+  b.textContent = _rsPending.length ? `(${_rsPending.length})` : '';
+  b.style.color = _rsPending.length ? 'var(--accent)' : '';
+}
+
+// ── Bulk ─────────────────────────────────────────────────────────
+async function rsRenderBulk() {
+  const search = (document.getElementById('rs-bulk-search')?.value || '').toLowerCase();
+  const filterLocId = parseInt(document.getElementById('rs-bulk-loc-filter')?.value) || 0;
+  const container = document.getElementById('rs-bulk-list');
+  if (!container) return;
+
+  let emps = _rsEmps;
+  if (search) emps = emps.filter(e => rsMatch(e, search));
+  let locationMap = {};
+
+  if (filterLocId) {
+    const d = await api('GET', `/geofence/locations/${filterLocId}/employees`);
+    const locEmps = d?.data || [];
+    const ids = new Set(locEmps.map(e => e.id));
+    emps = emps.filter(e => ids.has(e.id));
+    locEmps.forEach(e => locationMap[e.id] = _rsLocs.find(l => l.id === filterLocId)?.name || '');
+  }
+
+  if (!emps.length) {
+    container.innerHTML = '<div class="text-muted" style="padding:20px;text-align:center">No employees match</div>';
+    return;
+  }
+
+  container.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr>
+      <th><input type="checkbox" id="rs-all-cb" onchange="rsToggleAll(this)"> All</th>
+      <th>Employee</th><th>Code</th><th>Current Location</th>
+    </tr></thead>
+    <tbody>
+      ${emps.map(e => {
+        const name = `${e.first_name} ${e.last_name||''}`.trim();
+        const pend = _rsPending.find(p => p.employee_id === e.id);
+        const locCell = pend
+          ? `<span style="background:#fef9c3;color:#92400e;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">${pend.toLocName} (pending)</span>`
+          : locationMap[e.id]
+          ? `<span class="badge" style="background:var(--accent-l);color:var(--accent)">${locationMap[e.id]}</span>`
+          : '<span style="color:var(--muted)">—</span>';
+        return `<tr>
+          <td><input type="checkbox" class="rs-bulk-cb" data-id="${e.id}" ${_rsBulkSel.has(e.id)?'checked':''} onchange="rsToggleEmp(${e.id},this.checked)"></td>
+          <td><strong>${name}</strong></td>
+          <td style="color:var(--muted)">${e.employee_code||''}</td>
+          <td>${locCell}</td>
+        </tr>`;
+      }).join('')}
+    </tbody></table></div>`;
+}
+
+function rsToggleEmp(id, checked) { checked ? _rsBulkSel.add(id) : _rsBulkSel.delete(id); }
+function rsToggleAll(cb) {
+  document.querySelectorAll('.rs-bulk-cb').forEach(el => {
+    el.checked = cb.checked;
+    rsToggleEmp(parseInt(el.dataset.id), cb.checked);
+  });
+}
+function rsClearBulkSel() {
+  _rsBulkSel.clear();
+  document.querySelectorAll('.rs-bulk-cb,.rs-all-cb').forEach(el => el.checked = false);
+}
+
+async function rsApplyBulk() {
+  const destId = parseInt(document.getElementById('rs-bulk-dest').value);
+  if (!destId) { toast('Select a destination', 'error'); return; }
+  if (!_rsBulkSel.size) { toast('Select at least one employee', 'error'); return; }
+  const toLoc = _rsLocs.find(l => l.id === destId);
+  _rsBulkSel.forEach(empId => {
+    const emp = _rsEmps.find(e => e.id === empId);
+    if (emp) rsQueueChange(emp, null, 'Current', destId, toLoc?.name);
+  });
+  rsClearBulkSel();
+  rsRenderBulk();
+  rsSwitchTab('pending');
+}
+
+// ── Pending ───────────────────────────────────────────────────────
+function rsRenderPending() {
+  const body = document.getElementById('rs-pending-body');
+  if (!_rsPending.length) {
+    body.innerHTML = '<div class="text-muted" style="padding:30px;text-align:center">No pending changes. Use Drag &amp; Drop or Bulk Reassign.</div>';
+    return;
+  }
+  body.innerHTML = `<table class="rs-pending-table">
+    <thead><tr><th>Employee</th><th>Code</th><th>From</th><th></th><th>To</th><th></th></tr></thead>
+    <tbody>
+      ${_rsPending.map((p,i) => {
+        const name = `${p.emp.first_name} ${p.emp.last_name||''}`.trim();
+        return `<tr>
+          <td><strong>${name}</strong></td>
+          <td style="color:var(--muted)">${p.emp.employee_code||''}</td>
+          <td><span class="tag-from">${p.fromLocName||'Current'}</span></td>
+          <td style="color:var(--accent);font-weight:700">→</td>
+          <td><span class="tag-to">${p.toLocName}</span></td>
+          <td><button class="btn btn-outline btn-sm" style="padding:3px 8px;font-size:11px" onclick="rsRemovePending(${i})">✕</button></td>
+        </tr>`;
+      }).join('')}
+    </tbody></table>`;
+}
+
+function rsRemovePending(i) { _rsPending.splice(i,1); rsUpdateBadge(); rsRenderPending(); }
+function rsClearAll() { _rsPending=[]; rsUpdateBadge(); rsRenderPending(); }
+
+function rsConfirm() {
+  if (!_rsPending.length) { toast('No changes to apply', 'error'); return; }
+  if (!confirm(`Apply ${_rsPending.length} location change(s)? This will update geofence assignments.`)) return;
+  rsCommit();
+}
+
+async function rsCommit() {
+  const btn = document.getElementById('rs-commit-btn');
+  btn.disabled = true; btn.textContent = 'Applying…';
+  let ok = 0, fail = 0;
+  for (const p of _rsPending) {
+    try {
+      if (p.fromLocId) await api('DELETE', `/geofence/${p.employee_id}/${p.fromLocId}`);
+      const r = await api('POST', '/geofence/assign', {
+        employee_id: p.employee_id,
+        office_location_id: p.toLocId,
+        is_universal: false
+      });
+      r?.success ? ok++ : fail++;
+    } catch { fail++; }
+  }
+  btn.disabled = false; btn.textContent = 'Apply All Changes';
+  if (ok) {
+    toast(`✅ ${ok} employee(s) reassigned${fail ? `, ${fail} failed` : ''}`);
+    _rsPending = []; rsUpdateBadge(); rsRenderPending();
+    // Refresh location list counts
+    const ld = await api('GET', '/geofence/locations');
+    _rsLocs = ld?.data || []; rsPopulateSelects();
+    const fl = document.getElementById('rs-from-sel').value;
+    const tl = document.getElementById('rs-to-sel').value;
+    if (fl) rsLoadFrom();
+    if (tl) rsLoadTo();
+  } else toast(`❌ All ${fail} changes failed`, 'error');
+}
+
+// ── Sub-tab switching ────────────────────────────────────────────
+function rsSwitchTab(name) {
+  ['drag','bulk','pending'].forEach(t => {
+    document.getElementById('rs-' + t).style.display = t === name ? '' : 'none';
+  });
+  document.querySelectorAll('.rs-tab').forEach((b,i) => {
+    b.classList.toggle('active', ['drag','bulk','pending'][i] === name);
+  });
+  if (name === 'pending') rsRenderPending();
+  if (name === 'bulk') rsRenderBulk();
+}
+// ══════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════
+//  BUFFER RULES
+// ══════════════════════════════════════════════════════════════════
+const BR_STATES = ["ANDAMAN & NICOBAR", "ANDHRA PRADESH", "ARUNACHAL PRADESH", "ASSAM", "BIHAR", "CHANDIGARH", "CHHATTISGARH", "DADRA,NAGAR HAVELI,DAMAN & DIU", "DELHI", "GOA", "GUJARAT", "HARYANA", "HIMACHAL PRADESH", "JAMMU & KASHMIR", "JHARKHAND", "KARNATAKA", "KERALA", "LADAKH", "LAKSHADWEEP", "MADHYA PRADESH", "MAHARASHTRA", "MANIPUR", "MEGHALAYA", "MIZORAM", "NAGALAND", "ODISHA", "PUDUCHERRY", "PUNJAB", "RAJASTHAN", "SIKKIM", "TAMIL NADU", "TELANGANA", "TRIPURA", "UTTAR PRADESH", "UTTARAKHAND", "WEST BENGAL"];
+const BR_DISTRICTS = {"ANDAMAN & NICOBAR": ["Nicobars", "North And Middle Andaman", "South Andamans"], "ANDHRA PRADESH": ["Alluri Sitharama Raju", "Anakapalli", "Anantapur", "Annamayya", "Bapatla", "Chittoor", "East Godavari", "Eluru", "Guntur", "Kakinada", "Konaseema", "Krishna", "Kurnool", "Nandyal", "Ntr", "Palnadu", "Parvathipuram Manyam", "Prakasam", "Spsr Nellore", "Sri Sathya Sai", "Srikakulam", "Tirupati", "Visakhapatanam", "Vizianagaram", "West Godavari", "Y.S.R."], "ARUNACHAL PRADESH": ["Anjaw", "Changlang", "Dibang Valley", "East Kameng", "East Siang", "Kamle", "Kra Daadi", "Kurung Kumey", "Leparada", "Lohit", "Longding", "Lower Dibang Valley", "Lower Siang", "Lower Subansiri", "Namsai", "Pakke Kessang", "Papum Pare", "Shi Yomi", "Siang", "Tawang", "Tirap", "Upper Siang", "Upper Subansiri", "West Kameng", "West Siang"], "ASSAM": ["Bajali", "Baksa", "Barpeta", "Biswanath", "Bongaigaon", "Cachar", "Charaideo", "Chirang", "Darrang", "Dhemaji", "Dhubri", "Dibrugarh", "Dima Hasao", "Goalpara", "Golaghat", "Hailakandi", "Hojai", "Jorhat", "Kamrup", "Kamrup Metro", "Karbi Anglong", "Karimganj", "Kokrajhar", "Lakhimpur", "Majuli", "Marigaon", "Nagaon", "Nalbari", "Sivasagar", "Sonitpur", "South Salmara Mancachar", "Tamulpur", "Tinsukia", "Udalguri", "West Karbi Anglong"], "BIHAR": ["Araria", "Arwal", "Aurangabad", "Banka", "Begusarai", "Bhagalpur", "Bhojpur", "Buxar", "Darbhanga", "Gaya", "Gopalganj", "Jamui", "Jehanabad", "Kaimur (Bhabua)", "Katihar", "Khagaria", "Kishanganj", "Lakhisarai", "Madhepura", "Madhubani", "Munger", "Muzaffarpur", "Nalanda", "Nawada", "Pashchim Champaran", "Patna", "Purbi Champaran", "Purnia", "Rohtas", "Saharsa", "Samastipur", "Saran", "Sheikhpura", "Sheohar", "Sitamarhi", "Siwan", "Supaul", "Vaishali"], "CHANDIGARH": ["Chandigarh"], "CHHATTISGARH": ["Balod", "Baloda Bazar", "Balrampur", "Bastar", "Bemetara", "Bijapur", "Bilaspur", "Dantewada", "Dhamtari", "Durg", "Gariyaband", "Gaurella Pendra Marwahi", "Janjgir-Champa", "Jashpur", "Kabirdham", "Kanker", "Khairgarh Chhuikhadan Gandai", "Kondagaon", "Korba", "Korea", "Mahasamund", "Manendragarh Chirimiri Bharatpur", "Mohla Manpur Ambagarh Chouki", "Mungeli", "Narayanpur", "Raigarh", "Raipur", "Rajnandgaon", "Sakti", "Sarangarh Bilaigarh", "Sukma", "Surajpur", "Surguja"], "DADRA,NAGAR HAVELI,DAMAN & DIU": ["Dadra And Nagar Haveli", "Daman", "Diu"], "DELHI": ["Central", "East", "New Delhi", "North", "North East", "North West", "Shahdara", "South", "South East", "South West", "West"], "GOA": ["North Goa", "South Goa"], "GUJARAT": ["Ahmadabad", "Amreli", "Anand", "Arvalli", "Banas Kantha", "Bharuch", "Bhavnagar", "Botad", "Chhotaudepur", "Dang", "Devbhumi Dwarka", "Dohad", "Gandhinagar", "Gir Somnath", "Jamnagar", "Junagadh", "Kachchh", "Kheda", "Mahesana", "Mahisagar", "Morbi", "Narmada", "Navsari", "Panch Mahals", "Patan", "Porbandar", "Rajkot", "Sabar Kantha", "Surat", "Surendranagar", "Tapi", "Vadodara", "Valsad"], "HARYANA": ["Ambala", "Bhiwani", "Charki Dadri", "Faridabad", "Fatehabad", "Gurugram", "Hisar", "Jhajjar", "Jind", "Kaithal", "Karnal", "Kurukshetra", "Mahendragarh", "Nuh", "Palwal", "Panchkula", "Panipat", "Rewari", "Rohtak", "Sirsa", "Sonipat", "Yamunanagar"], "HIMACHAL PRADESH": ["Bilaspur", "Chamba", "Hamirpur", "Kangra", "Kinnaur", "Kullu", "Lahul And Spiti", "Mandi", "Shimla", "Sirmaur", "Solan", "Una"], "JAMMU & KASHMIR": ["Anantnag", "Bandipora", "Baramulla", "Budgam", "Doda", "Ganderbal", "Jammu", "Kathua", "Kishtwar", "Kulgam", "Kupwara", "Mirpur", "Muzaffarabad", "Poonch", "Pulwama", "Rajouri", "Ramban", "Reasi", "Samba", "Shopian", "Srinagar", "Udhampur"], "JHARKHAND": ["Bokaro", "Chatra", "Deoghar", "Dhanbad", "Dumka", "East Singhbum", "Garhwa", "Giridih", "Godda", "Gumla", "Hazaribagh", "Jamtara", "Khunti", "Koderma", "Latehar", "Lohardaga", "Pakur", "Palamu", "Ramgarh", "Ranchi", "Sahebganj", "Saraikela Kharsawan", "Simdega", "West Singhbhum"], "KARNATAKA": ["Bagalkote", "Ballari", "Belagavi", "Bengaluru Rural", "Bengaluru Urban", "Bidar", "Chamarajanagara", "Chikkaballapura", "Chikkamagaluru", "Chitradurga", "Dakshina Kannada", "Davangere", "Dharwad", "Gadag", "Hassan", "Haveri", "Kalaburagi", "Kodagu", "Kolar", "Koppal", "Mandya", "Mysuru", "Raichur", "Ramanagara", "Shivamogga", "Tumakuru", "Udupi", "Uttara Kannada", "Vijayanagar", "Vijayapura", "Yadgir"], "KERALA": ["Alappuzha", "Ernakulam", "Idukki", "Kannur", "Kasaragod", "Kollam", "Kottayam", "Kozhikode", "Malappuram", "Palakkad", "Pathanamthitta", "Thiruvananthapuram", "Thrissur", "Wayanad"], "LADAKH": ["Kargil", "Leh Ladakh"], "LAKSHADWEEP": ["Lakshadweep District"], "MADHYA PRADESH": ["Agar Malwa", "Alirajpur", "Anuppur", "Ashoknagar", "Balaghat", "Barwani", "Betul", "Bhind", "Bhopal", "Burhanpur", "Chhatarpur", "Chhindwara", "Damoh", "Datia", "Dewas", "Dhar", "Dindori", "East Nimar", "Guna", "Gwalior", "Harda", "Indore", "Jabalpur", "Jhabua", "Katni", "Khargone", "Mandla", "Mandsaur", "Morena", "Narmadapuram", "Narsinghpur", "Neemuch", "Niwari", "Panna", "Raisen", "Rajgarh", "Ratlam", "Rewa", "Sagar", "Satna", "Sehore", "Seoni", "Shahdol", "Shajapur", "Sheopur", "Shivpuri", "Sidhi", "Singrauli", "Tikamgarh", "Ujjain", "Umaria", "Vidisha"], "MAHARASHTRA": ["Ahmednagar", "Akola", "Amravati", "Aurangabad", "Beed", "Bhandara", "Buldhana", "Chandrapur", "Dhule", "Gadchiroli", "Gondia", "Hingoli", "Jalgaon", "Jalna", "Kolhapur", "Latur", "Mumbai", "Mumbai Suburban", "Nagpur", "Nanded", "Nandurbar", "Nashik", "Osmanabad", "Palghar", "Parbhani", "Pune", "Raigad", "Ratnagiri", "Sangli", "Satara", "Sindhudurg", "Solapur", "Thane", "Wardha", "Washim", "Yavatmal"], "MANIPUR": ["Bishnupur", "Chandel", "Churachandpur", "Imphal East", "Imphal West", "Jiribam", "Kakching", "Kamjong", "Kangpokpi", "Noney", "Pherzawl", "Senapati", "Tamenglong", "Tengnoupal", "Thoubal", "Ukhrul"], "MEGHALAYA": ["East Garo Hills", "East Jaintia Hills", "East Khasi Hills", "Eastern West Khasi Hills", "North Garo Hills", "Ri Bhoi", "South Garo Hills", "South West Garo Hills", "South West Khasi Hills", "West Garo Hills", "West Jaintia Hills", "West Khasi Hills"], "MIZORAM": ["Aizawl", "Champhai", "Hnahthial", "Khawzawl", "Kolasib", "Lawngtlai", "Lunglei", "Mamit", "Saiha", "Saitual", "Serchhip"], "NAGALAND": ["Chumoukedima", "Dimapur", "Kiphire", "Kohima", "Longleng", "Mokokchung", "Mon", "Niuland", "Noklak", "Peren", "Phek", "Shamator", "Tseminyu", "Tuensang", "Wokha", "Zunheboto"], "ODISHA": ["Anugul", "Balangir", "Baleshwar", "Bargarh", "Bhadrak", "Boudh", "Cuttack", "Deogarh", "Dhenkanal", "Gajapati", "Ganjam", "Jagatsinghapur", "Jajapur", "Jharsuguda", "Kalahandi", "Kandhamal", "Kendrapara", "Kendujhar", "Khordha", "Koraput", "Malkangiri", "Mayurbhanj", "Nabarangpur", "Nayagarh", "Nuapada", "Puri", "Rayagada", "Sambalpur", "Sonepur", "Sundargarh"], "PUDUCHERRY": ["Karaikal", "Mahe", "Pondicherry", "Yanam"], "PUNJAB": ["Amritsar", "Barnala", "Bathinda", "Faridkot", "Fatehgarh Sahib", "Fazilka", "Ferozepur", "Gurdaspur", "Hoshiarpur", "Jalandhar", "Kapurthala", "Ludhiana", "Malerkotla", "Mansa", "Moga", "Pathankot", "Patiala", "Rupnagar", "S.A.S Nagar", "Sangrur", "Shahid Bhagat Singh Nagar", "Sri Muktsar Sahib", "Tarn Taran"], "RAJASTHAN": ["Ajmer", "Alwar", "Banswara", "Baran", "Barmer", "Bharatpur", "Bhilwara", "Bikaner", "Bundi", "Chittorgarh", "Churu", "Dausa", "Dholpur", "Dungarpur", "Ganganagar", "Hanumangarh", "Jaipur", "Jaisalmer", "Jalore", "Jhalawar", "Jhunjhunu", "Jodhpur", "Karauli", "Kota", "Nagaur", "Pali", "Pratapgarh", "Rajsamand", "Sawai Madhopur", "Sikar", "Sirohi", "Tonk", "Udaipur"], "SIKKIM": ["Gangtok", "Gyalshing", "Mangan", "Namchi", "Pakyong", "Soreng"], "TAMIL NADU": ["Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri", "Dindigul", "Erode", "Kallakurichi", "Kanchipuram", "Kanniyakumari", "Karur", "Krishnagiri", "Madurai", "Mayiladuthurai", "Nagapattinam", "Namakkal", "Perambalur", "Pudukkottai", "Ramanathapuram", "Ranipet", "Salem", "Sivaganga", "Tenkasi", "Thanjavur", "The Nilgiris", "Theni", "Thiruvallur", "Thiruvarur", "Tiruchirappalli", "Tirunelveli", "Tirupathur", "Tiruppur", "Tiruvannamalai", "Tuticorin", "Vellore", "Villupuram", "Virudhunagar"], "TELANGANA": ["Adilabad", "Bhadradri Kothagudem", "Hanumakonda", "Hyderabad", "Jagitial", "Jangoan", "Jayashankar Bhupalapally", "Jogulamba Gadwal", "Kamareddy", "Karimnagar", "Khammam", "Kumuram Bheem Asifabad", "Mahabubabad", "Mahabubnagar", "Mancherial", "Medak", "Medchal Malkajgiri", "Mulugu", "Nagarkurnool", "Nalgonda", "Narayanpet", "Nirmal", "Nizamabad", "Peddapalli", "Rajanna Sircilla", "Ranga Reddy", "Sangareddy", "Siddipet", "Suryapet", "Vikarabad", "Wanaparthy", "Warangal", "Yadadri Bhuvanagiri"], "TRIPURA": ["Dhalai", "Gomati", "Khowai", "North Tripura", "Sepahijala", "South Tripura", "Unakoti", "West Tripura"], "UTTAR PRADESH": ["Agra", "Aligarh", "Ambedkar Nagar", "Amethi", "Amroha", "Auraiya", "Ayodhya", "Azamgarh", "Baghpat", "Bahraich", "Ballia", "Balrampur", "Banda", "Barabanki", "Bareilly", "Basti", "Bhadohi", "Bijnor", "Budaun", "Bulandshahr", "Chandauli", "Chitrakoot", "Deoria", "Etah", "Etawah", "Farrukhabad", "Fatehpur", "Firozabad", "Gautam Buddha Nagar", "Ghaziabad", "Ghazipur", "Gonda", "Gorakhpur", "Hamirpur", "Hapur", "Hardoi", "Hathras", "Jalaun", "Jaunpur", "Jhansi", "Kannauj", "Kanpur Dehat", "Kanpur Nagar", "Kasganj", "Kaushambi", "Kheri", "Kushi Nagar", "Lalitpur", "Lucknow", "Maharajganj", "Mahoba", "Mainpuri", "Mathura", "Mau", "Meerut", "Mirzapur", "Moradabad", "Muzaffarnagar", "Pilibhit", "Pratapgarh", "Prayagraj", "Rae Bareli", "Rampur", "Saharanpur", "Sambhal", "Sant Kabeer Nagar", "Shahjahanpur", "Shamli", "Shravasti", "Siddharth Nagar", "Sitapur", "Sonbhadra", "Sultanpur", "Unnao", "Varanasi"], "UTTARAKHAND": ["Almora", "Bageshwar", "Chamoli", "Champawat", "Dehradun", "Haridwar", "Nainital", "Pauri Garhwal", "Pithoragarh", "Rudra Prayag", "Tehri Garhwal", "Udam Singh Nagar", "Uttar Kashi"], "WEST BENGAL": ["24 Paraganas North", "24 Paraganas South", "Alipurduar", "Bankura", "Birbhum", "Coochbehar", "Darjeeling", "Dinajpur Dakshin", "Dinajpur Uttar", "Hooghly", "Howrah", "Jalpaiguri", "Jhargram", "Kalimpong", "Kolkata", "Maldah", "Medinipur East", "Medinipur West", "Murshidabad", "Nadia", "Paschim Bardhaman", "Purba Bardhaman", "Purulia"]};
+let _brAllRules = [];
+let _brRuleType = '';
+
+async function loadBufferRules() {
+  const [empData, ruleData] = await Promise.all([
+    api('GET', '/employees'),
+    api('GET', '/geofence/buffer-rules')
+  ]);
+  // allEmps already loaded as allEmps global
+  _brAllRules = ruleData?.data || [];
+
+  // Populate state select
+  const stateSel = document.getElementById('br-state-sel');
+  if (stateSel && stateSel.options.length <= 1) {
+    BR_STATES.forEach(s => { const o = document.createElement('option'); o.value=s; o.textContent=s; stateSel.appendChild(o); });
+  }
+
+  // Populate office select (onsite only: Mumbai=1, Delhi=2)
+  const offSel = document.getElementById('br-office-sel');
+  if (offSel && offSel.options.length <= 1) {
+    const locs = await api('GET', '/geofence/locations');
+    (locs?.data || []).filter(l => [1,2].includes(l.id)).forEach(l => {
+      const o = document.createElement('option'); o.value=l.id; o.textContent=l.name; offSel.appendChild(o);
+    });
+  }
+
+  brRenderTable(_brAllRules);
+}
+
+function brFilterEmps(q) {
+  const dd = document.getElementById('br-emp-dropdown');
+  if (!q) { dd.style.display='none'; return; }
+  const matches = (allEmps||[]).filter(e =>
+    `${e.first_name} ${e.last_name}`.toLowerCase().includes(q.toLowerCase()) ||
+    e.employee_code.toLowerCase().includes(q.toLowerCase())
+  ).slice(0,8);
+  if (!matches.length) { dd.style.display='none'; return; }
+  dd.innerHTML = matches.map(e => `
+    <div onclick="brSelectEmp(${e.id},'${(e.first_name+' '+e.last_name).trim().replace(/'/g,"\'")} (${e.employee_code})')"
+      style="padding:8px 12px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)">
+      <div style="width:28px;height:28px;border-radius:50%;background:var(--accent-l);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">
+        ${(e.first_name[0]||'?').toUpperCase()}
+      </div>
+      <div>
+        <div style="font-weight:600">${e.first_name} ${e.last_name}</div>
+        <div style="font-size:11px;color:var(--muted)">${e.employee_code} · ${e.role}</div>
+      </div>
+    </div>`).join('');
+  dd.style.display='block';
+}
+
+function brSelectEmp(id, label) {
+  document.getElementById('br-emp-id').value = id;
+  document.getElementById('br-emp-search').value = '';
+  document.getElementById('br-emp-dropdown').style.display = 'none';
+  const sel = document.getElementById('br-emp-selected');
+  document.getElementById('br-emp-selected-name').textContent = label;
+  sel.style.display = 'flex';
+  // Load existing rule
+  const existing = _brAllRules.find(r => r.id == id);
+  if (existing?.rule_type) {
+    const radio = document.querySelector(`input[name="br-rule"][value="${existing.rule_type}"]`);
+    if (radio) { radio.checked = true; brSetRuleType(existing.rule_type); }
+    if (existing.state) { document.getElementById('br-state-sel').value = existing.state; brStateChanged(); }
+    if (existing.district) setTimeout(() => { document.getElementById('br-district-sel').value = existing.district; }, 60);
+  }
+}
+
+function brClearEmp() {
+  document.getElementById('br-emp-id').value = '';
+  document.getElementById('br-emp-search').value = '';
+  document.getElementById('br-emp-selected').style.display = 'none';
+  brReset();
+}
+
+function brSetRuleType(type) {
+  _brRuleType = type;
+  document.getElementById('br-office-group').style.display   = type==='office'   ? '' : 'none';
+  document.getElementById('br-state-group').style.display    = (type==='state'||type==='district') ? '' : 'none';
+  document.getElementById('br-district-group').style.display = type==='district' ? '' : 'none';
+}
+
+function brStateChanged() {
+  const state = document.getElementById('br-state-sel').value;
+  const distSel = document.getElementById('br-district-sel');
+  distSel.innerHTML = '<option value="">— select district —</option>';
+  if (!state || !BR_DISTRICTS[state]) return;
+  BR_DISTRICTS[state].forEach(d => { const o=document.createElement('option'); o.value=d; o.textContent=d; distSel.appendChild(o); });
+}
+
+function brReset() {
+  _brRuleType = '';
+  document.querySelectorAll('input[name="br-rule"]').forEach(r => r.checked=false);
+  ['br-office-group','br-state-group','br-district-group'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
+  const ss=document.getElementById('br-state-sel'); if(ss) ss.value='';
+  const ds=document.getElementById('br-district-sel'); if(ds) ds.innerHTML='<option value="">— select district —</option>';
+  const os=document.getElementById('br-office-sel'); if(os) os.value='';
+  const msg=document.getElementById('br-form-msg'); if(msg){ msg.style.display='none'; msg.textContent=''; }
+}
+
+async function brSave() {
+  const empId = document.getElementById('br-emp-id').value;
+  if (!empId) { brMsg('Select an employee first','error'); return; }
+  if (!_brRuleType) { brMsg('Select a rule type','error'); return; }
+  const body = { employee_id: parseInt(empId), rule_type: _brRuleType };
+  if (_brRuleType==='state') {
+    body.state = document.getElementById('br-state-sel').value;
+    if (!body.state) { brMsg('Select a state','error'); return; }
+  }
+  if (_brRuleType==='district') {
+    body.state    = document.getElementById('br-state-sel').value;
+    body.district = document.getElementById('br-district-sel').value;
+    if (!body.state)    { brMsg('Select a state','error'); return; }
+    if (!body.district) { brMsg('Select a district','error'); return; }
+  }
+  if (_brRuleType==='office') {
+    const offId = document.getElementById('br-office-sel').value;
+    if (!offId) { brMsg('Select an office location','error'); return; }
+    await api('POST','/geofence/assign',{ employee_id:parseInt(empId), office_location_id:parseInt(offId), is_universal:false });
+  }
+  const r = await api('POST','/geofence/buffer-rules', body);
+  if (r?.success) {
+    brMsg('✅ Rule saved!','success');
+    await loadBufferRules();
+    setTimeout(brReset, 1500);
+  } else {
+    brMsg(r?.message||'Failed','error');
+  }
+}
+
+async function brDelete(empId) {
+  if (!confirm('Remove buffer rule for this employee?')) return;
+  const r = await api('DELETE',`/geofence/buffer-rules/${empId}`);
+  if (r?.success) { toast('Rule removed'); await loadBufferRules(); }
+  else toast(r?.message||'Failed','error');
+}
+
+function brEditRow(empId, name, ruleType, state, district) {
+  brClearEmp();
+  document.getElementById('br-emp-id').value = empId;
+  document.getElementById('br-emp-selected-name').textContent = name;
+  document.getElementById('br-emp-selected').style.display = 'flex';
+  const radio = document.querySelector(`input[name="br-rule"][value="${ruleType}"]`);
+  if (radio) { radio.checked=true; brSetRuleType(ruleType); }
+  if (state) { document.getElementById('br-state-sel').value=state; brStateChanged(); }
+  if (district) setTimeout(() => { document.getElementById('br-district-sel').value=district; }, 60);
+  document.getElementById('br-emp-search').scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+function brRenderTable(rules) {
+  const body = document.getElementById('br-table-body');
+  if (!body) return;
+  document.getElementById('br-table-count').textContent = rules.length+' employees';
+  if (!rules.length) {
+    body.innerHTML='<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--muted)">No rules yet</td></tr>';
+    return;
+  }
+  const tlabel={ office:'Office', district:'District', state:'State', universal:'Universal' };
+  const tbadge={ office:'badge-info', district:'badge-success', state:'badge-warning', universal:'badge-purple' };
+  const etbadge={ onsite:'badge-info', offsite:'badge-success', wfh:'badge-purple' };
+  body.innerHTML = rules.map(r => {
+    const name = `${r.first_name} ${r.last_name||''}`.trim();
+    const rt   = r.rule_type;
+    const boundary = rt==='district' ? `${r.district}, ${r.state}`
+                   : rt==='state'    ? r.state
+                   : rt==='office'   ? 'Office radius'
+                   : rt==='universal'? 'Anywhere'
+                   : '—';
+    return `<tr>
+      <td><div style="font-weight:600">${name}</div><div style="font-size:11px;color:var(--muted)">${r.employee_code}</div></td>
+      <td><span class="badge ${etbadge[r.employee_type]||''}" style="font-size:10px">${r.employee_type||'—'}</span></td>
+      <td>${rt ? `<span class="badge ${tbadge[rt]||''}">${tlabel[rt]||rt}</span>` : '<span style="color:var(--muted);font-size:12px">Not set</span>'}</td>
+      <td style="font-size:12px">${boundary}</td>
+      <td style="text-align:center">
+        <button class="btn btn-ghost btn-sm" onclick="brEditRow(${r.id},'${name.replace(/'/g,"\'")}','${rt||''}','${(r.state||'').replace(/'/g,"\'")}','${(r.district||'').replace(/'/g,"\'")}')" style="margin-right:4px">✏️</button>
+        ${rt ? `<button class="btn btn-ghost btn-sm" onclick="brDelete(${r.id})">🗑️</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function brFilterTable() {
+  const q    = (document.getElementById('br-table-search')?.value||'').toLowerCase();
+  const type = document.getElementById('br-filter-type')?.value||'';
+  const filtered = _brAllRules.filter(r => {
+    const name = `${r.first_name} ${r.last_name||''} ${r.employee_code}`.toLowerCase();
+    const matchQ = !q || name.includes(q);
+    const matchT = !type || (type==='none' && !r.rule_type) || r.rule_type===type;
+    return matchQ && matchT;
+  });
+  brRenderTable(filtered);
+}
+
+function brMsg(msg,type) {
+  const el=document.getElementById('br-form-msg');
+  if(!el) return;
+  el.textContent=msg; el.style.display='block';
+  el.style.color = type==='error' ? 'var(--red,#dc2626)' : 'var(--green,#16a34a)';
+}
+// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+//  DEACTIVATE / DELETE EMPLOYEE
+// ══════════════════════════════════════════════════════════════════
+let _dangerEmpId   = null;
+let _dangerAction  = null;
+
+function openDangerModal(id, name, code, action) {
+  _dangerEmpId  = id;
+  _dangerAction = action;
+  // Keep emp-detail-modal open in background — danger modal sits on top (z-index:400)
+
+  const header  = document.getElementById('emp-danger-modal-header');
+  const icon    = document.getElementById('emp-danger-modal-icon');
+  const titleTxt= document.getElementById('emp-danger-modal-title-text');
+  const warn    = document.getElementById('emp-danger-modal-warn');
+  const msg     = document.getElementById('emp-danger-modal-msg');
+  const btn     = document.getElementById('emp-danger-confirm-btn');
+
+  document.getElementById('emp-danger-modal-name').textContent = name;
+  document.getElementById('emp-danger-modal-code').textContent = code;
+
+  // Show/hide remark field
+  const remarkWrap = document.getElementById('deactivation-remark-wrap');
+  const remarkInput = document.getElementById('deactivation-remark-input');
+  remarkWrap.style.display = action === 'deactivate' ? 'block' : 'none';
+  if (remarkInput) remarkInput.value = '';
+
+  if (action === 'deactivate') {
+    header.style.background = 'linear-gradient(135deg,#d97706,#b45309)';
+    icon.textContent        = '⏸';
+    titleTxt.textContent    = 'Deactivate Account';
+    warn.style.cssText      = 'background:#fff7ed;border:1.5px solid #fed7aa;color:#c2410c;border-radius:10px;padding:12px 16px;font-size:13px;font-weight:600;margin-bottom:16px';
+    warn.textContent        = '⚠️ This employee will no longer be able to log in. Add a salary/termination note below.';
+    msg.textContent         = 'Are you sure you want to deactivate this employee account?';
+    btn.style.cssText       = 'background:#d97706;color:#fff;border:none;min-width:160px';
+    btn.textContent         = 'Yes, Deactivate';
+  } else if (action === 'reactivate') {
+    header.style.background = 'linear-gradient(135deg,#2e7d32,#4a8c1c)';
+    icon.textContent        = '✅';
+    titleTxt.textContent    = 'Reactivate Account';
+    warn.style.cssText      = 'background:#f0fdf4;border:1.5px solid #86efac;color:#15803d;border-radius:10px;padding:12px 16px;font-size:13px;font-weight:600;margin-bottom:16px';
+    warn.textContent        = '✅ This employee will regain access to the app.';
+    msg.textContent         = 'Are you sure you want to reactivate this employee account?';
+    btn.style.cssText       = 'background:#16a34a;color:#fff;border:none;min-width:160px';
+    btn.textContent         = 'Yes, Reactivate';
+  } else if (action === 'delete') {
+    header.style.background = 'linear-gradient(135deg,#dc2626,#b91c1c)';
+    icon.textContent        = '🗑️';
+    titleTxt.textContent    = 'Delete Account Permanently';
+    warn.style.cssText      = 'background:#fef2f2;border:1.5px solid #fecaca;color:#dc2626;border-radius:10px;padding:12px 16px;font-size:13px;font-weight:600;margin-bottom:16px';
+    warn.textContent        = '🚨 WARNING: This action is permanent and CANNOT be undone. All data for this employee will be deleted.';
+    msg.textContent         = 'Are you absolutely sure you want to permanently DELETE this employee?';
+    btn.style.cssText       = 'background:#dc2626;color:#fff;border:none;min-width:160px';
+    btn.textContent         = 'Yes, Delete Permanently';
+  }
+
+  openModal('emp-danger-modal');
+}
+
+async function executeDangerAction() {
+  const btn = document.getElementById('emp-danger-confirm-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Processing…';
+
+  try {
+    let data;
+
+    // DEBUG: raw fetch to see exact server response
+    const debugMethod = _dangerAction === 'delete' ? 'DELETE' : 'PUT';
+    const remarkVal   = (document.getElementById('deactivation-remark-input')?.value || '').trim();
+    const debugBody   = _dangerAction === 'deactivate' ? { is_active: false, deactivation_remark: remarkVal || null }
+                      : _dangerAction === 'reactivate' ? { is_active: true,  deactivation_remark: null }
+                      : null;
+    const debugRes = await fetch(`${API_BASE}/employees/${_dangerEmpId}`, {
+      method: debugMethod,
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + Auth.getToken() },
+      body: debugBody ? JSON.stringify(debugBody) : undefined
+    });
+    const debugText = await debugRes.text();
+    console.warn(`[HRMS DEBUG] ${debugMethod} /employees/${_dangerEmpId} → HTTP ${debugRes.status}:`, debugText);
+
+    let parsed;
+    try { parsed = JSON.parse(debugText); } catch(e) { parsed = { success: false, message: `HTTP ${debugRes.status}: ${debugText.slice(0,200)}` }; }
+
+    if (debugRes.status === 403) {
+      toast(`❌ Not authorized (403) — redeploy backend index.js`, 'error');
+      btn.disabled = false; btn.textContent = 'Yes, ' + (_dangerAction === 'delete' ? 'Delete' : _dangerAction.charAt(0).toUpperCase() + _dangerAction.slice(1));
+      return;
+    }
+    if (debugRes.status === 401) {
+      toast('❌ Session expired — please log in again', 'error');
+      btn.disabled = false; btn.textContent = 'Yes, Deactivate';
+      return;
+    }
+
+    data = parsed;
+
+    if (_dangerAction === 'deactivate') {
+      if (!data) { toast('Server error — null response', 'error'); }
+      else if (data?.success) {
+        toast('⏸ Employee account deactivated');
+        closeModal('emp-danger-modal');
+        closeModal('emp-detail-modal');
+        _statusFilter = 'inactive';
+        await loadEmployees();
+        setStatusFilter('inactive', document.getElementById('status-pill-inactive'));
+        loadSeparatedCount();
+      } else toast('Deactivate failed: ' + (data?.message || 'Unknown error'), 'error');
+
+    } else if (_dangerAction === 'reactivate') {
+      if (!data) { toast('Server error — null response', 'error'); }
+      else if (data?.success) {
+        toast('✅ Employee account reactivated');
+        closeModal('emp-danger-modal');
+        closeModal('emp-detail-modal');
+        _statusFilter = 'active';
+        await loadEmployees();
+        setStatusFilter('active', document.getElementById('status-pill-active'));
+        loadSeparatedCount();
+      } else toast('Reactivate failed: ' + (data?.message || 'Unknown error'), 'error');
+
+    } else if (_dangerAction === 'delete') {
+      if (!data) { toast('Server error — null response', 'error'); }
+      else if (data?.success) {
+        toast('🗑️ Employee account deleted permanently');
+        closeModal('emp-danger-modal');
+        closeModal('emp-detail-modal');
+        _statusFilter = 'active';
+        await loadEmployees();
+        loadSeparatedCount();
+      } else toast('Delete failed: ' + (data?.message || 'Unknown error'), 'error');
+    }
+  } catch (err) {
+    console.error('[danger action error]', err);
+    toast('Error: ' + err.message, 'error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = _dangerAction === 'delete' ? 'Yes, Delete Permanently'
+                  : _dangerAction === 'reactivate' ? 'Yes, Reactivate'
+                  : 'Yes, Deactivate';
+}
+// ══════════════════════════════════════════════════════════════════
+
+</script>
+</body>
+</html>
+
