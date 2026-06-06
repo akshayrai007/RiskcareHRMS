@@ -194,7 +194,6 @@ const NAV_GROUPS = [
   {
     label: 'System',
     items: [
-      { href:'invoice.html',        icon: '🧾',                label:'Invoice Generator', roles:['admin','super_admin','hr','accounts'] },
       { href:'geofence.html', icon: ICONS.geofence, label:'Geofence', roles:['admin','super_admin'] },
       { href:'ai-voice.html',       icon: ICONS.aivoice,      label:'Voice Assistant',  always:true },
     ]
