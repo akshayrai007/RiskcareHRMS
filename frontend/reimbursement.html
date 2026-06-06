@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title id="page-title">Reimbursement</title>
+<script>document.addEventListener('DOMContentLoaded',function(){if(window.CFG?.clientName)document.getElementById('page-title').textContent='Reimbursement – '+window.CFG.clientName;});</script>
+<script src="config.js"></script>
+<script>
+(function(){
+  var C = window.CFG;
+  var t = document.getElementById('page-title');
+  if(t) t.textContent = C.clientName + ' - ' + t.textContent;
+  var lt = document.getElementById('sidebar-logo-text');
+  if(lt) lt.innerHTML = C.logoHtml || C.clientName;
+  var cs = document.getElementById('sidebar-company-short');
+  if(cs) cs.textContent = C.companyShortName || '';
+})();
+</script>
+<link rel="stylesheet" href="style.css"/>
+<style>
+/* ── Reimbursement page styles ── */
+.summary-row{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.scard{flex:1;min-width:140px;background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,.07);text-align:center}
+.scard .val{font-size:26px;font-weight:800;margin-bottom:4px}
+.scard .lbl{font-size:11px;color:#666;font-weight:500}
+.c-green{color:#2e7d32}.c-orange{color:#e65100}.c-blue{color:#1565c0}.c-red{color:#c62828}
+
+/* ── Reimbursement cards ── */
+.reimb-list{display:flex;flex-direction:column;gap:14px}
+.reimb-card{background:#fff;border-radius:14px;box-shadow:0 1px 6px rgba(0,0,0,.08);overflow:hidden}
+.reimb-card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #f0f0f0;gap:8px;flex-wrap:wrap}
+.reimb-title{font-size:15px;font-weight:700;color:#1b4332}
+.reimb-meta{font-size:12px;color:#777;margin-top:2px}
+.status-pill{padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:capitalize}
+.pill-pending{background:#fff3e0;color:#e65100}
+.pill-draft{background:#f3f4f6;color:#6b7280;border:1px dashed #9ca3af}
+.pill-approved{background:#e8f5e9;color:#2e7d32}
+.pill-rejected{background:#fce4ec;color:#c62828}
+.pill-disbursed{background:#e3f2fd;color:#1565c0}
+.reimb-card-body{padding:14px 18px}
+
+/* ── Items table ── */
+.items-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.items-table th{background:#f5f5f5;padding:7px 10px;text-align:left;font-weight:600;color:#444}
+.items-table td{padding:7px 10px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+.items-table tr:last-child td{border-bottom:none}
+.cat-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.cat-travel{background:#e3f2fd;color:#1565c0}
+.cat-food{background:#fff3e0;color:#e65100}
+.cat-accommodation{background:#e8f5e9;color:#2e7d32}
+.cat-miscellaneous{background:#f3e5f5;color:#6a1b9a}
+
+/* ── Action row on card ── */
+.action-row{display:flex;gap:8px;padding:10px 18px;background:#fafafa;border-top:1px solid #f0f0f0;flex-wrap:wrap;align-items:center}
+
+/* ── Apply form ── */
+.form-section{background:#fff;border-radius:14px;box-shadow:0 1px 6px rgba(0,0,0,.08);padding:24px}
+.form-section h2{font-size:17px;font-weight:700;margin-bottom:18px;color:#1b4332}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:4px}
+.form-control{width:100%;padding:9px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;outline:none;transition:.2s}
+.form-control:focus{border-color:#2d6a4f}
+select.form-control{background:#fff}
+
+/* ── Expense item block ── */
+.excel-table{width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:0}
+.excel-table thead tr{background:#f0f4f0}
+.excel-table thead th{font-size:11px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:0.4px;padding:8px 10px;border:1px solid #d0d7d0;text-align:center;white-space:nowrap}
+.excel-table tbody tr{background:#fff}
+.excel-table tbody tr:nth-child(even){background:#f9fbf9}
+.excel-table tbody tr:hover{background:#f0f7f0}
+.excel-table tbody td{padding:5px 6px;border:1px solid #d0d7d0;vertical-align:middle}
+.excel-table tbody td .form-control{border:none;background:transparent;padding:4px 6px;font-size:13px;height:30px;width:100%;box-shadow:none;outline:none}
+.excel-table tbody td .form-control:focus{background:#fffde7;border-radius:3px}
+.excel-table tbody td select.form-control{padding:4px 2px}
+.excel-table tfoot tr{background:#f5f5f5}
+.excel-table tfoot td{padding:6px 10px;border:1px solid #d0d7d0}
+.del-row-btn{background:none;border:none;color:#c62828;font-size:16px;cursor:pointer;padding:0;display:block;margin:0 auto;line-height:1}
+.del-row-btn:hover{color:#e53935}
+.excel-wrap{border:1.5px solid #b0c4b0;border-radius:10px;overflow:hidden;margin-bottom:12px}
+
+/* ── Attachment preview ── */
+.attach-preview{display:flex;align-items:center;gap:8px;margin-top:6px;padding:6px 10px;background:#e8f5e9;border-radius:8px;font-size:12px;color:#2e7d32;cursor:pointer}
+.attach-preview svg{flex-shrink:0}
+
+/* ── Revision modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;width:min(640px,95vw);max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.modal-box h3{font-size:17px;font-weight:700;margin-bottom:16px;color:#1b4332}
+.modal-close{float:right;background:none;border:none;font-size:22px;cursor:pointer;color:#888;margin-top:-4px}
+.revision-item-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0}
+.revision-item-row:last-child{border-bottom:none}
+.revision-item-row .desc{font-size:13px;color:#333}
+.revision-item-row .orig{font-size:12px;color:#888}
+
+/* ── Viewer modal ── */
+.viewer-frame{width:100%;height:70vh;border:none;border-radius:8px;background:#f0f0f0}
+
+/* ── Empty state ── */
+.empty-state{text-align:center;padding:48px 24px;color:#aaa}
+.empty-state svg{margin-bottom:12px;opacity:.4}
+.empty-state p{font-size:14px}
+
+/* ── Approval timeline ── */
+.timeline{padding:12px 0;font-size:12px}
+.timeline-step{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start}
+.timeline-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:1px}
+.dot-done{background:#e8f5e9}
+.dot-current{background:#fff3e0}
+.dot-wait{background:#f5f5f5}
+.timeline-text .name{font-weight:600;color:#333}
+.timeline-text .sub{color:#888;margin-top:1px}
+
+.loader{text-align:center;padding:40px;color:#888;font-size:14px}
+
+/* ── Approval Pipeline ── */
+.approval-pipeline{display:flex;align-items:flex-start;gap:0;margin-top:16px;padding-top:14px;border-top:1px solid #f0f0f0;flex-wrap:wrap;gap:4px}
+.appr-step{display:flex;flex-direction:column;align-items:center;min-width:90px;position:relative}
+.appr-step:not(:last-child)::after{content:'→';position:absolute;right:-10px;top:13px;color:#ccc;font-size:14px}
+.appr-bubble{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:2px solid #ddd;background:#f9f9f9;color:#999;margin-bottom:4px;flex-shrink:0}
+.appr-bubble.done{background:#d1fae5;border-color:#2e7d32;color:#2e7d32}
+.appr-bubble.active{background:#fef9c3;border-color:#f59e0b;color:#b45309;animation:pulse-ring 1.8s infinite}
+.appr-bubble.rejected{background:#fee2e2;border-color:#c62828;color:#c62828}
+.appr-bubble.disbursed{background:#ede9fe;border-color:#7c3aed;color:#7c3aed}
+@keyframes pulse-ring{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.4)}50%{box-shadow:0 0 0 6px rgba(245,158,11,0)}}
+.appr-label{font-size:10px;font-weight:700;color:#555;text-align:center;line-height:1.2}
+.appr-sub{font-size:9px;color:#aaa;text-align:center;margin-top:2px}
+.appr-you{font-size:9px;background:#fef9c3;color:#b45309;padding:1px 5px;border-radius:10px;font-weight:700;margin-top:2px}
+
+/* ── Approval Timeline Modal ── */
+.tl-list{display:flex;flex-direction:column}
+.tl-step{display:flex;align-items:flex-start;gap:14px;padding:12px 0;border-bottom:1px solid #f5f5f5}
+.tl-step:last-child{border-bottom:none}
+.tl-bubble{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;border:2px solid #ddd;background:#f9f9f9;color:#aaa}
+.dot-done{background:#d1fae5!important;border-color:#2e7d32!important;color:#2e7d32!important}
+.dot-current{background:#fef9c3!important;border-color:#f59e0b!important;color:#b45309!important;box-shadow:0 0 0 5px rgba(245,158,11,.15)}
+.dot-rejected{background:#fee2e2!important;border-color:#c62828!important;color:#c62828!important}
+.dot-disbursed{background:#ede9fe!important;border-color:#7c3aed!important;color:#7c3aed!important}
+.dot-ready{background:#e3f2fd!important;border-color:#1565c0!important;color:#1565c0!important}
+.dot-wait{background:#f5f5f5;border-color:#ddd;color:#bbb}
+.tl-info{flex:1;padding-top:4px}
+.tl-name{font-size:14px;font-weight:700;color:#222;display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.tl-actor{font-size:12px;font-weight:400;color:#777}
+.tl-you{font-size:10px;background:#fef9c3;color:#b45309;padding:1px 7px;border-radius:10px;font-weight:700;margin-left:4px}
+.tl-sub{font-size:12px;color:#666;margin-top:4px;line-height:1.5}
+.tl-approved{color:#2e7d32;font-weight:600}
+.tl-rejected-txt{color:#c62828;font-weight:600}
+.tl-waiting{color:#b45309;font-weight:600}
+.tl-remark{font-style:italic;color:#888;margin-top:4px;padding:4px 8px;background:#fafafa;border-left:3px solid #ddd;border-radius:3px}
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark"><svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+    <div><div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div></div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">🧾 Reimbursements</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-primary btn-sm" onclick="showTab('apply')">+ New Request</button>
+      <button id="exportBtn" class="btn btn-outline btn-sm" onclick="openExportModal()" style="display:none">⬇ Export Excel</button>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-my"      onclick="showTab('my')">My Requests</button>
+      <button class="tab-btn"        id="tab-drafts"  onclick="showTab('drafts')">📝 Drafts</button>
+      <button class="tab-btn"        id="tab-pending" onclick="showTab('pending')">Pending My Approval</button>
+      <button class="tab-btn"        id="tab-all"     onclick="showTab('all')">All Requests</button>
+      <button class="tab-btn"        id="tab-apply"   onclick="showTab('apply')">+ Apply</button>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-row" id="summaryRow" style="display:none">
+      <div class="scard"><div class="val c-orange" id="sPending">0</div><div class="lbl">Pending</div></div>
+      <div class="scard"><div class="val c-green"  id="sApproved">0</div><div class="lbl">Approved</div></div>
+      <div class="scard"><div class="val c-blue"   id="sDisbursed">0</div><div class="lbl">Disbursed</div></div>
+      <div class="scard"><div class="val c-red"    id="sRejected">0</div><div class="lbl">Rejected</div></div>
+      <div class="scard"><div class="val c-green"  id="sTotal">₹0</div><div class="lbl">Total Approved</div></div>
+    </div>
+
+    <!-- Content Area -->
+    <div id="contentArea"></div>
+  </div>
+</div>
+
+</div><!-- /.main -->
+
+<!-- ── Revision / Approve Modal ── -->
+<div class="modal-overlay" id="revisionModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('revisionModal')">×</button>
+    <h3 id="revisionModalTitle">Review Reimbursement</h3>
+    <div id="revisionModalBody"></div>
+  </div>
+</div>
+
+<!-- ── Attachment Viewer Modal ── -->
+<div class="modal-overlay" id="viewerModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('viewerModal')">×</button>
+    <h3 id="viewerTitle">Attachment</h3>
+    <div id="viewerBody"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+let currentTab  = 'my';
+let allData     = [];
+
+Auth.guard();
+buildSidebar('reimbursement.html');
+loadNotifBadge();
+const currentUser = Auth.getUser();
+
+// ── Approver code → human label map (mirrors advance.html) ──────────────────
+const CODE_TO_LABEL = (() => {
+  const m = {};
+  m[window.CFG.cooEmployeeCode]      = { label: 'COO',      icon: '🏢' };
+  m[window.CFG.mdEmployeeCode]       = { label: 'MD',       icon: '👑' };
+  m[window.CFG.accountsEmployeeCode] = { label: 'Accounts', icon: '💸' };
+  return m;
+})();
+function codeLabel(code) {
+  return CODE_TO_LABEL[code] || { label: code, icon: '👤' };
+}
+
+// Show tabs based on role
+const canSeeAll = ['hr','super_admin','admin','accounts'].includes(currentUser.role);
+if (!canSeeAll) document.getElementById('tab-all').style.display = 'none';
+
+showTab('my');
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function showTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('tab-' + tab);
+  if (el) el.classList.add('active');
+
+  document.getElementById('summaryRow').style.display = (tab !== 'apply' && tab !== 'drafts') ? 'flex' : 'none';
+
+  if (tab === 'apply') {
+    renderApplyForm();
+  } else if (tab === 'drafts') {
+    loadDrafts();
+  } else {
+    loadReimbursements(tab);
+  }
+}
+
+// ── Load list ─────────────────────────────────────────────────────────────────
+async function loadReimbursements(tab) {
+  document.getElementById('contentArea').innerHTML = '<div class="loader">Loading…</div>';
+  try {
+    // 'my' tab: only my requests. 'pending'/'all': fetch all visible to this user
+    let url = '/reimbursement';
+    if (tab === 'my') url += `?employee_id=${currentUser.id}`;
+
+    const res = await api('GET', url);
+    const data = res?.data || [];
+    allData = data;
+
+    // Stats always from full dataset
+    let pending=0,approved=0,disbursed=0,rejected=0,totalAmt=0;
+    data.forEach(d => {
+      if (d.status==='pending')   pending++;
+      if (d.status==='approved')  { approved++; totalAmt += parseFloat(d.approved_amount||0); }
+      if (d.status==='disbursed') { disbursed++; totalAmt += parseFloat(d.approved_amount||0); }
+      if (d.status==='rejected')  rejected++;
+    });
+    document.getElementById('sPending').textContent   = pending;
+    document.getElementById('sApproved').textContent  = approved;
+    document.getElementById('sDisbursed').textContent = disbursed;
+    document.getElementById('sRejected').textContent  = rejected;
+    document.getElementById('sTotal').textContent     = '₹' + totalAmt.toLocaleString('en-IN');
+
+    // Filter for 'pending my approval': records where it's literally MY turn to act
+    let filtered = data;
+    if (tab === 'my') {
+      filtered = data.filter(d => d.status !== 'draft'); // drafts go to Drafts tab only
+    }
+    if (tab === 'pending') {
+      filtered = data.filter(d =>
+        d.status === 'pending' &&
+        d.current_approver_code === currentUser.employee_code
+      );
+    }
+
+    renderList(filtered, tab);
+  } catch(e) {
+    document.getElementById('contentArea').innerHTML = '<div class="loader">Failed to load. Please try again.</div>';
+    console.error(e);
+  }
+}
+
+// ── Render list ───────────────────────────────────────────────────────────────
+function renderList(data, tab) {
+  if (!data.length) {
+    document.getElementById('contentArea').innerHTML = `
+      <div class="empty-state">
+        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5">
+          <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <p>No reimbursement requests found</p>
+      </div>`;
+    return;
+  }
+
+  const html = data.map(r => renderCard(r, tab)).join('');
+  document.getElementById('contentArea').innerHTML = `<div class="reimb-list">${html}</div>`;
+}
+
+function catBadge(cat) {
+  return `<span class="cat-badge cat-${cat}">${cat.charAt(0).toUpperCase()+cat.slice(1)}</span>`;
+}
+
+// ── Approval Pipeline Builder ─────────────────────────────────────────────────
+function buildPipeline(r) {
+  let chain = [];
+  try { chain = JSON.parse(r.approval_chain || '[]'); } catch(_) {}
+  if (!chain.length) return '';
+
+  const steps = chain.map(code => {
+    const isCurrent  = r.status === 'pending' && code === r.current_approver_code;
+    const isDone     = r.status !== 'pending' || chain.indexOf(code) < chain.indexOf(r.current_approver_code);
+    const isRejected = r.status === 'rejected' && code === r.current_approver_code;
+    const isDisbursed= r.status === 'disbursed' && code === r.current_approver_code;
+    const isYou      = code === currentUser.employee_code;
+
+    let bubbleClass, icon;
+    if (r.status === 'approved' || r.status === 'disbursed') {
+      // All chain steps done (disbursed = fully approved + paid)
+      bubbleClass = r.status === 'disbursed' ? 'disbursed' : 'done';
+      icon = r.status === 'disbursed' ? '💰' : '✅';
+    } else if (isRejected) {
+      bubbleClass = 'rejected'; icon = '❌';
+    } else if (isDone) {
+      bubbleClass = 'done'; icon = '✅';
+    } else if (isCurrent) {
+      bubbleClass = 'active'; icon = '⏳';
+    } else {
+      bubbleClass = ''; icon = '⬜';
+    }
+
+    return `
+    <div class="appr-step">
+      <div class="appr-bubble ${bubbleClass}">${icon}</div>
+      <div class="appr-label">${escHtml(code)}</div>
+      ${isCurrent && r.status==='pending' ? `<div class="appr-sub">Awaiting</div>` : ''}
+      ${isDone && r.status!=='approved' && r.status!=='disbursed' ? `<div class="appr-sub">Approved</div>` : ''}
+      ${isYou ? `<div class="appr-you">You</div>` : ''}
+    </div>`;
+  });
+
+  // Add Accounts / Disburse as final step if not already in chain
+  const lastStep = r.status === 'disbursed'
+    ? `<div class="appr-step"><div class="appr-bubble disbursed">💰</div><div class="appr-label">Disbursed</div></div>`
+    : `<div class="appr-step"><div class="appr-bubble ${r.status==='approved'?'done':''}">
+        ${r.status==='approved'?'🏦':'🏦'}</div>
+        <div class="appr-label">Accounts</div>
+        <div class="appr-sub">${r.status==='approved'?'Ready':'Pending'}</div></div>`;
+
+  return `<div class="approval-pipeline">${steps.join('')}${lastStep}</div>`;
+}
+
+
+function renderCard(r, tab) {
+  const pillClass = `pill-${r.status}`;
+  const isApprover = r.status === 'pending' &&
+                     r.current_approver_code === currentUser?.employee_code;
+  const isOwner    = r.employee_id === currentUser?.id;
+  const isAccounts = currentUser?.role === 'accounts';
+
+  // Items table
+  const itemRows = (r.items || []).map((item, i) => `
+    <tr>
+      <td>${catBadge(item.category)}</td>
+      <td>${item.description}</td>
+      <td>${formatDate(item.expense_date)}</td>
+      <td>₹${parseFloat(item.amount).toLocaleString('en-IN')}</td>
+      <td>${item.approved_amount != null ? '<s style="color:#aaa">₹'+parseFloat(item.amount).toLocaleString('en-IN')+'</s> ₹'+parseFloat(item.approved_amount).toLocaleString('en-IN') : '—'}</td>
+      <td>
+        ${item.has_attachment
+          ? `<button class="btn btn-outline btn-sm" onclick="viewAttachment(${item.id},'${escHtml(item.attachment_name||'file')}','${item.attachment_mime||''}')">👁 View</button>`
+          : '<span style="color:#aaa;font-size:12px">None</span>'}
+      </td>
+    </tr>`).join('');
+
+  const isDraft      = r.status === 'draft';
+  const isSettled    = ['approved', 'disbursed'].includes(r.status);
+  // Show approved_amount only when actually approved/disbursed; otherwise show total_amount
+  const displayAmt   = isSettled ? parseFloat(r.approved_amount || r.total_amount || 0) : parseFloat(r.total_amount || 0);
+  const totalAmt     = parseFloat(r.total_amount || 0);
+  // "revised" badge only makes sense when approved amount differs from requested total
+  const amtRevised   = isSettled && parseFloat(r.approved_amount || 0) !== totalAmt && parseFloat(r.approved_amount || 0) > 0;
+
+  let actionButtons = '';
+  if (isApprover) {
+    actionButtons = `
+      <button class="btn btn-success btn-sm" onclick="openRevisionModal(${r.id})">✅ Review & Approve</button>
+      <button class="btn btn-danger  btn-sm" onclick="rejectReimb(${r.id})">❌ Reject</button>`;
+  }
+  if (isOwner && isDraft) {
+    actionButtons += `<button class="btn btn-primary btn-sm" onclick="submitDraftById(${r.id})">🚀 Submit</button>`;
+    actionButtons += `<button class="btn btn-outline btn-sm" onclick="openEditModal(${r.id})">✏️ Edit</button>`;
+  }
+  if (isOwner && r.status === 'pending') {
+    actionButtons += `<button class="btn btn-outline btn-sm" onclick="openEditModal(${r.id})">✏️ Edit</button>`;
+    actionButtons += `<button class="btn btn-outline btn-sm" style="color:#c62828;border-color:#c62828" onclick="revokeReimb(${r.id})">↩ Revoke</button>`;
+  }
+  if (isAccounts && r.status === 'approved') {
+    actionButtons += `<button class="btn btn-primary btn-sm" onclick="disburseReimb(${r.id})">💰 Disburse</button>`;
+  }
+  if (!isDraft) {
+    actionButtons += `<button class="btn btn-outline btn-sm" onclick="viewTimeline(${r.id})">📋 Timeline</button>`;
+  }
+
+  return `
+  <div class="reimb-card" id="card-${r.id}">
+    <div class="reimb-card-header">
+      <div>
+        <div class="reimb-title">${escHtml(r.title)}</div>
+        <div class="reimb-meta">
+          ${r.employee_name ? `<b>${escHtml(r.employee_name)}</b> (${r.employee_code}) &nbsp;•&nbsp;` : ''}
+          ${r.department_name ? escHtml(r.department_name) + ' &nbsp;•&nbsp;' : ''}
+          ${formatDate(r.requested_at)}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="text-align:right">
+          <div style="font-size:18px;font-weight:800;color:#1b4332">
+            ₹${displayAmt.toLocaleString('en-IN')}
+            ${amtRevised ? `<span style="font-size:11px;color:#888;font-weight:400;display:block"><s>₹${totalAmt.toLocaleString('en-IN')}</s> revised</span>` : ''}
+          </div>
+        </div>
+        <span class="status-pill ${pillClass}">${r.status}</span>
+      </div>
+    </div>
+    <div class="reimb-card-body">
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Category</th><th>Description</th><th>Date</th>
+            <th>Amount</th><th>Approved</th><th>Attachment</th>
+          </tr>
+        </thead>
+        <tbody>${itemRows || '<tr><td colspan="6" style="color:#aaa;text-align:center;padding:12px">No items</td></tr>'}</tbody>
+      </table>
+
+      <!-- ── Approval Pipeline ── -->
+      ${buildPipeline(r)}
+    </div>
+    ${actionButtons ? `<div class="action-row">${actionButtons}</div>` : ''}
+  </div>`;
+}
+
+// ── Apply Form ────────────────────────────────────────────────────────────────
+let itemCount = 0;
+let itemAttachments = {}; // { itemIndex: { data, name, mime, size } }
+
+function renderApplyForm() {
+  itemCount = 0;
+  itemAttachments = {};
+  document.getElementById('contentArea').innerHTML = `
+  <div class="form-section">
+    <h2>New Reimbursement Request</h2>
+    <div class="form-group">
+      <label>Request Title *</label>
+      <input id="reimbTitle" class="form-control" placeholder="e.g. Client Visit – April 2026"/>
+    </div>
+    <div class="form-group">
+      <label>Link to Project <span style="color:#999;font-weight:400">(optional — Accounts can correct at disbursement)</span></label>
+      <select id="reimbProject" class="form-control">
+        <option value="">-- No Project --</option>
+      </select>
+    </div>
+    <div class="excel-wrap">
+      <table class="excel-table">
+        <thead>
+          <tr>
+            <th style="width:50px">#</th>
+            <th style="width:130px">Category</th>
+            <th style="width:130px">Date</th>
+            <th>Description</th>
+            <th style="width:140px">Amount (₹)</th>
+            <th style="width:200px">Attachment</th>
+            <th style="width:32px"></th>
+          </tr>
+        </thead>
+        <tbody id="itemsContainer"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="7">
+              <button class="btn btn-outline" style="font-size:12px;padding:4px 14px" onclick="addItem()">+ Add Row</button>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <br/>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="submitReimb()">Submit Request</button>
+      <button class="btn btn-outline" onclick="saveAsDraft()" style="border-color:#f59e0b;color:#f59e0b">💾 Save as Draft</button>
+      <button class="btn btn-outline" onclick="showTab('my')">Cancel</button>
+    </div>
+  </div>`;
+  addItem(); // Start with one item
+
+  // Load active projects for employee to suggest
+  api('GET', '/projects?status=active').then(r => {
+    if (!r?.success) return;
+    const sel = document.getElementById('reimbProject');
+    if (!sel) return;
+    (r.data || []).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name + (p.code ? ` (${p.code})` : '');
+      sel.appendChild(opt);
+    });
+  }).catch(()=>{});
+}
+
+function addItem() {
+  const idx = itemCount++;
+  const tbody = document.getElementById('itemsContainer');
+  const tr = document.createElement('tr');
+  tr.id = `item-${idx}`;
+  const today = new Date().toISOString().slice(0,10);
+  tr.innerHTML = `
+    <td style="text-align:center;color:#aaa;font-size:12px;font-weight:600">${idx+1}</td>
+    <td>
+      <div id="catWrap-${idx}">
+        <select class="form-control" id="cat-${idx}" onchange="handleCatChange(${idx})">
+          <option value="travel">🚗 Travel</option>
+          <option value="food">🍽️ Food & Beverages</option>
+          <option value="accommodation">🏨 Accommodation</option>
+          <option value="fuel">⛽ Fuel / Petrol</option>
+          <option value="transport">🚕 Local Transport</option>
+          <option value="train">🚆 Train / Bus Fare</option>
+          <option value="flight">✈️ Flight</option>
+          <option value="medical">💊 Medical</option>
+          <option value="stationery">📋 Stationery / Office</option>
+          <option value="internet">🌐 Internet / Phone</option>
+          <option value="client_entertainment">🤝 Client Entertainment</option>
+          <option value="printing">🖨️ Printing</option>
+          <option value="repair">🔧 Repair / Maintenance</option>
+          <option value="training">📚 Training / Course</option>
+          <option value="miscellaneous">📦 Miscellaneous</option>
+          <option value="other">✏️ Other (specify)</option>
+        </select>
+      </div>
+    </td>
+    <td><input type="date" class="form-control" id="date-${idx}" value="${today}"/></td>
+    <td><input class="form-control" id="desc-${idx}" placeholder="e.g. Cab from office to airport"/></td>
+    <td><input type="number" class="form-control" id="amt-${idx}" placeholder="0.00" min="0" step="0.01" style="text-align:right"/></td>
+    <td>
+      <input type="file" class="form-control" id="file-${idx}" style="font-size:11px;padding:2px 4px;height:28px"
+             accept="image/*,application/pdf" onchange="handleFileSelect(${idx}, this)"/>
+      <div id="filePreview-${idx}" style="font-size:10px;margin-top:2px"></div>
+    </td>
+    <td style="text-align:center">${idx > 0 ? `<button class="del-row-btn" onclick="removeItem(${idx})" title="Delete row">🗑</button>` : ''}</td>`;
+  tbody.appendChild(tr);
+}
+
+function handleCatChange(idx) {
+  const sel = document.getElementById(`cat-${idx}`);
+  const wrap = document.getElementById(`catWrap-${idx}`);
+  if (!sel || !wrap) return;
+  if (sel.value === 'other') {
+    wrap.innerHTML = `
+      <div style="display:flex;align-items:center;gap:4px">
+        <input class="form-control" id="cat-${idx}" data-custom="true"
+               placeholder="Specify category…" style="flex:1;min-width:0"/>
+        <button onclick="resetCatToDropdown(${idx})" title="Back to list"
+                style="background:none;border:none;cursor:pointer;color:#888;font-size:14px;padding:0 2px;line-height:1">✕</button>
+      </div>`;
+    document.getElementById(`cat-${idx}`).focus();
+  }
+}
+
+function resetCatToDropdown(idx) {
+  const wrap = document.getElementById(`catWrap-${idx}`);
+  if (!wrap) return;
+  wrap.innerHTML = `
+    <select class="form-control" id="cat-${idx}" onchange="handleCatChange(${idx})">
+      <option value="travel">🚗 Travel</option>
+      <option value="food">🍽️ Food & Beverages</option>
+      <option value="accommodation">🏨 Accommodation</option>
+      <option value="fuel">⛽ Fuel / Petrol</option>
+      <option value="transport">🚕 Local Transport</option>
+      <option value="train">🚆 Train / Bus Fare</option>
+      <option value="flight">✈️ Flight</option>
+      <option value="medical">💊 Medical</option>
+      <option value="stationery">📋 Stationery / Office</option>
+      <option value="internet">🌐 Internet / Phone</option>
+      <option value="client_entertainment">🤝 Client Entertainment</option>
+      <option value="printing">🖨️ Printing</option>
+      <option value="repair">🔧 Repair / Maintenance</option>
+      <option value="training">📚 Training / Course</option>
+      <option value="miscellaneous">📦 Miscellaneous</option>
+      <option value="other">✏️ Other (specify)</option>
+    </select>`;
+}
+
+function removeItem(idx) {
+  const el = document.getElementById(`item-${idx}`);
+  if (el) el.remove();
+  delete itemAttachments[idx];
+}
+
+function handleFileSelect(idx, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const base64 = e.target.result.split(',')[1];
+    itemAttachments[idx] = {
+      data: base64,
+      name: file.name,
+      mime: file.type,
+      size: file.size
+    };
+    const preview = document.getElementById(`filePreview-${idx}`);
+    preview.innerHTML = `<div class="attach-preview">📎 ${file.name} (${(file.size/1024).toFixed(1)} KB)</div>`;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function submitReimb() {
+  const title      = document.getElementById('reimbTitle')?.value?.trim();
+  const project_id = document.getElementById('reimbProject')?.value || null;
+  if (!title) return alert('Please enter a request title');
+
+  const items = [];
+  let valid = true;
+  let i = 0;
+  while (i < itemCount) {
+    const itemEl = document.getElementById(`item-${i}`);
+    if (!itemEl) { i++; continue; }
+    const catEl = document.getElementById(`cat-${i}`); const cat = (catEl?.dataset?.custom === 'true') ? (catEl?.value?.trim() || 'other') : catEl?.value;
+    const desc = document.getElementById(`desc-${i}`)?.value?.trim();
+    const amt  = parseFloat(document.getElementById(`amt-${i}`)?.value);
+    const date = document.getElementById(`date-${i}`)?.value;
+    if (!desc || !amt || amt <= 0 || !date) { valid = false; break; }
+    const att = itemAttachments[i] || {};
+    items.push({
+      category: cat, description: desc, amount: amt, expense_date: date,
+      attachment_data: att.data || null,
+      attachment_name: att.name || null,
+      attachment_mime: att.mime || null,
+      attachment_size: att.size || null
+    });
+    i++;
+  }
+
+  if (!valid || !items.length)
+    return alert('Please fill all expense item fields (description, amount, date)');
+
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'Submitting…';
+
+  try {
+    const res = await api('POST', '/reimbursement/apply', {
+      title,
+      items: JSON.stringify(items),
+      project_id: project_id ? parseInt(project_id) : null
+    });
+    if (res?.success) {
+      alert('✅ Reimbursement submitted successfully!');
+      showTab('my');
+    } else {
+      alert('Error: ' + (res?.message || 'Failed'));
+      btn.disabled = false; btn.textContent = 'Submit Request';
+    }
+  } catch {
+    alert('Network error'); btn.disabled = false; btn.textContent = 'Submit Request';
+  }
+}
+
+async function saveAsDraft() {
+  const title      = document.getElementById('reimbTitle')?.value?.trim();
+  const project_id = document.getElementById('reimbProject')?.value || null;
+  if (!title) return alert('Please enter a request title before saving draft');
+
+  const items = [];
+  let i = 0;
+  while (i < itemCount) {
+    const itemEl = document.getElementById(`item-${i}`);
+    if (!itemEl) { i++; continue; }
+    const catEl = document.getElementById(`cat-${i}`);
+    const cat  = (catEl?.dataset?.custom === 'true') ? (catEl?.value?.trim() || 'other') : catEl?.value;
+    const desc = document.getElementById(`desc-${i}`)?.value?.trim() || '';
+    const amt  = parseFloat(document.getElementById(`amt-${i}`)?.value) || 0;
+    const date = document.getElementById(`date-${i}`)?.value || new Date().toISOString().slice(0,10);
+    const att  = itemAttachments[i] || {};
+    items.push({
+      category: cat, description: desc, amount: amt, expense_date: date,
+      attachment_data: att.data || null,
+      attachment_name: att.name || null,
+      attachment_mime: att.mime || null,
+      attachment_size: att.size || null
+    });
+    i++;
+  }
+
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  try {
+    const res = await api('POST', '/reimbursement/draft', {
+      title,
+      items: JSON.stringify(items),
+      project_id: project_id ? parseInt(project_id) : null
+    });
+    if (res?.success) {
+      alert('💾 Draft saved! You can find it in the Drafts tab.');
+      showTab('drafts');
+    } else {
+      alert('Error: ' + (res?.message || 'Failed'));
+    }
+  } catch {
+    alert('Network error');
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 Save as Draft';
+  }
+}
+
+async function loadDrafts() {
+  document.getElementById('contentArea').innerHTML = `<div class="loader">Loading drafts…</div>`;
+  try {
+    const res = await api('GET', `/reimbursement?employee_id=${currentUser.id}`);
+    const drafts = (res?.data || []).filter(d => d.status === 'draft');
+    if (!drafts.length) {
+      document.getElementById('contentArea').innerHTML = `
+        <div class="empty-state">
+          <div style="font-size:48px;margin-bottom:12px">📝</div>
+          <p>No drafts yet. Start a new request and click "Save as Draft".</p>
+          <button class="btn btn-primary" onclick="showTab('apply')">+ New Request</button>
+        </div>`;
+      return;
+    }
+    const html = drafts.map(r => renderCard(r, 'drafts')).join('');
+    document.getElementById('contentArea').innerHTML = `<div class="reimb-list">${html}</div>`;
+  } catch {
+    document.getElementById('contentArea').innerHTML = `<p style="color:red">Failed to load drafts.</p>`;
+  }
+}
+
+async function submitDraftById(id) {
+  if (!confirm('Submit this draft for approval?')) return;
+  try {
+    const res = await api('POST', `/reimbursement/${id}/submit-draft`, {});
+    if (res?.success) {
+      alert('✅ Draft submitted successfully! It is now pending approval.');
+      showTab('my'); // showTab calls loadReimbursements('my') which fetches fresh data
+    } else {
+      alert('Error: ' + (res?.message || 'Failed'));
+    }
+  } catch {
+    alert('Network error');
+  }
+}
+
+function editDraft(id) {
+  // Opens the edit modal (already exists in the codebase)
+  openEditModal(id);
+}
+
+// ── Review & Approve Modal ────────────────────────────────────────────────────
+function openRevisionModal(id) {
+  const reimb = allData.find(r => r.id === id);
+  if (!reimb) return;
+
+  const itemsHtml = (reimb.items || []).map((item, i) => `
+    <div class="revision-item-row">
+      <div>
+        <div class="desc">${catBadge(item.category)} ${escHtml(item.description)}</div>
+        <div class="orig">${formatDate(item.expense_date)} &nbsp;•&nbsp;
+          ${item.has_attachment
+            ? `<a href="#" onclick="viewAttachment(${item.id},'${escHtml(item.attachment_name||'file')}','${item.attachment_mime||''}');return false" style="color:#2d6a4f">📎 View Attachment</a>`
+            : 'No attachment'}
+        </div>
+      </div>
+      <div class="orig">₹${parseFloat(item.amount).toLocaleString('en-IN')}</div>
+      <div>
+        <input type="number" class="form-control" style="width:110px"
+               id="rev-item-${item.id}"
+               value="${parseFloat(item.amount)}"
+               min="0" step="0.01"
+               title="Approved amount (edit to revise)"/>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('revisionModalTitle').textContent =
+    `Review: ${reimb.title}`;
+
+  // Show project selector for ALL approvers — Accounts gets a highlighted "final assignment" style
+  const isAccountsUser = currentUser?.role === 'accounts';
+  const projectSelectorHtml = `
+    <div class="form-group" style="margin-top:14px;padding:12px;background:${isAccountsUser ? '#f0fdf4' : '#f8f9fa'};border:1px solid ${isAccountsUser ? '#bbf7d0' : '#dee2e6'};border-radius:8px">
+      <label style="font-size:12px;font-weight:700;color:${isAccountsUser ? '#166534' : '#444'};display:block;margin-bottom:6px">
+        🗂 Link to Project
+        ${isAccountsUser
+          ? '<span style="background:#dcfce7;color:#166534;font-size:11px;padding:2px 8px;border-radius:4px;margin-left:6px">Accounts — Final Assignment</span>'
+          : '<span style="font-weight:400;color:#888;font-size:11px">(optional — override employee\'s selection)</span>'}
+      </label>
+      <select id="approvalProjectSel" class="form-control" style="font-size:13px;${isAccountsUser ? 'border-color:#16a34a;background:#f0fdf4' : ''}">
+        <option value="">-- No Project / Not billable --</option>
+      </select>
+      ${isAccountsUser ? '<div style="font-size:11px;color:#555;margin-top:4px">Once approved, the expense immediately appears in the selected project\'s budget.</div>' : ''}
+    </div>`;
+
+  document.getElementById('revisionModalBody').innerHTML = `
+    <p style="font-size:13px;color:#666;margin-bottom:14px">
+      Employee: <b>${escHtml(reimb.employee_name||'')}</b> &nbsp;•&nbsp;
+      Requested: <b>₹${parseFloat(reimb.total_amount).toLocaleString('en-IN')}</b>
+    </p>
+    <div style="font-size:12px;font-weight:600;color:#555;display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:6px 0;border-bottom:2px solid #eee;margin-bottom:4px">
+      <span>Item</span><span>Requested</span><span>Approve ₹</span>
+    </div>
+    ${itemsHtml}
+    <div class="form-group" style="margin-top:16px">
+      <label>Remarks (optional)</label>
+      <input class="form-control" id="revRemarks" placeholder="Any notes for the employee"/>
+    </div>
+    ${projectSelectorHtml}
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn btn-success" onclick="submitApproval(${id},'approve')">✅ Approve</button>
+      <button class="btn btn-danger"  onclick="submitApproval(${id},'reject')">❌ Reject</button>
+      <button class="btn btn-outline" onclick="closeModal('revisionModal')">Cancel</button>
+    </div>`;
+
+  // Load active projects and pre-select employee's suggested project (all approvers can set it)
+  const existingProjId = reimb.project_id || '';
+  api('GET', '/projects?status=active').then(r => {
+    const sel = document.getElementById('approvalProjectSel');
+    if (!sel || !r?.success) return;
+    (r.data || []).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name + (p.code ? ` (${p.code})` : '');
+      if (p.id == existingProjId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }).catch(() => {});
+
+  document.getElementById('revisionModal').classList.add('open');
+}
+
+async function submitApproval(id, action) {
+  const reimb = allData.find(r => r.id === id);
+  if (!reimb) return;
+
+  const remarks = document.getElementById('revRemarks')?.value?.trim() || '';
+  const project_id = document.getElementById('approvalProjectSel')?.value || null;
+  const item_revisions = (reimb.items || []).map(item => ({
+    item_id: item.id,
+    approved_amount: parseFloat(document.getElementById(`rev-item-${item.id}`)?.value || item.amount)
+  }));
+
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'Processing…';
+
+  try {
+    const res2 = await api('POST', `/reimbursement/${id}/action`,
+      { action, remarks, item_revisions, project_id: project_id ? parseInt(project_id) : null });
+    const data = res2;
+    if (data?.success) {
+      closeModal('revisionModal');
+      alert('✅ ' + data.message);
+      loadReimbursements(currentTab);
+    } else {
+      alert('Error: ' + (data.message || 'Failed'));
+      btn.disabled = false; btn.textContent = action === 'approve' ? '✅ Approve' : '❌ Reject';
+    }
+  } catch {
+    alert('Network error'); btn.disabled = false;
+  }
+}
+
+// ── Reject quick ──────────────────────────────────────────────────────────────
+async function rejectReimb(id) {
+  const remarks = prompt('Reason for rejection (optional):') ?? null;
+  if (remarks === null) return;
+  try {
+    const res = await api('POST', `/reimbursement/${id}/action`, { action:'reject', remarks });
+    const d = res;
+    alert(d?.success ? '✅ Rejected' : 'Error: ' + d?.message);
+    loadReimbursements(currentTab);
+  } catch { alert('Network error'); }
+}
+
+// ── Revoke ────────────────────────────────────────────────────────────────────
+async function revokeReimb(id) {
+  if (!confirm('Revoke this reimbursement request? It will be permanently deleted.')) return;
+  try {
+    const res = await api('POST', `/reimbursement/${id}/revoke`);
+    if (res?.success) {
+      alert('✅ Request revoked and deleted.');
+      showTab('my');
+    } else {
+      alert('Error: ' + res?.message);
+    }
+  } catch { alert('Network error'); }
+}
+
+// ── Disburse ──────────────────────────────────────────────────────────────────
+async function disburseReimb(id) {
+  // Build a proper modal instead of prompt() so Accounts can set project
+  const existing = allData.find(r => r.id === id);
+  const existingProjId = existing?.project_id || '';
+
+  // Inject disburse modal if not present
+  if (!document.getElementById('disburse-modal')) {
+    const m = document.createElement('div');
+    m.id = 'disburse-modal';
+    m.className = 'modal-overlay';
+    m.style.display = 'flex';
+    m.innerHTML = `
+      <div class="modal-box" style="max-width:440px;width:100%">
+        <button class="modal-close" onclick="document.getElementById('disburse-modal').style.display='none'">×</button>
+        <h3>💰 Disburse Reimbursement</h3>
+        <div id="disburse-body"></div>
+        <div style="display:flex;gap:10px;margin-top:16px">
+          <button class="btn btn-outline" onclick="document.getElementById('disburse-modal').style.display='none'">Cancel</button>
+          <button class="btn btn-primary" onclick="confirmDisburse()">Confirm Disbursement</button>
+        </div>
+      </div>`;
+    document.body.appendChild(m);
+  } else {
+    document.getElementById('disburse-modal').style.display = 'flex';
+  }
+
+  window._disburseId = id;
+  document.getElementById('disburse-body').innerHTML = `
+    <div class="form-group" style="margin-bottom:12px">
+      <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">
+        🗂 Link to Project <span style="color:#888;font-weight:400">(Accounts assigns — overrides employee selection)</span>
+      </label>
+      <select id="disburse-project" class="form-control">
+        <option value="">-- No Project / Not billable --</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">Remarks / Reference *</label>
+      <input id="disburse-remarks" class="form-control" placeholder="e.g. NEFT Ref: 123456">
+    </div>`;
+
+  // Load projects
+  api('GET', '/projects?status=active').then(r => {
+    if (!r?.success) return;
+    const sel = document.getElementById('disburse-project');
+    if (!sel) return;
+    (r.data || []).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name + (p.code ? ` (${p.code})` : '');
+      if (p.id == existingProjId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }).catch(()=>{});
+}
+
+async function confirmDisburse() {
+  const remarks    = document.getElementById('disburse-remarks')?.value?.trim();
+  const project_id = document.getElementById('disburse-project')?.value || null;
+  if (!remarks) { alert('Remarks are required'); return; }
+  try {
+    const res = await api('POST', `/reimbursement/${window._disburseId}/disburse`, {
+      remarks,
+      payment_date: new Date().toISOString().slice(0,10),
+      project_id: project_id ? parseInt(project_id) : null,
+    });
+    document.getElementById('disburse-modal').style.display = 'none';
+    if (res?.success) {
+      toast('✅ Disbursed successfully!', 'success');
+      loadReimbursements(currentTab);
+    } else {
+      toast('Error: ' + (res?.message || 'Failed'), 'error');
+    }
+  } catch { toast('Network error', 'error'); }
+}
+
+// ── Approval Timeline ─────────────────────────────────────────────────────────
+async function viewTimeline(id) {
+  const reimb = allData.find(r => r.id === id);
+  if (!reimb) return;
+
+  // Show modal immediately with loading state
+  document.getElementById('revisionModalTitle').textContent = '📋 Approval Timeline';
+  document.getElementById('revisionModalBody').innerHTML = `
+    <p style="font-size:13px;color:#666;margin-bottom:16px">
+      <b>${escHtml(reimb.title)}</b> &nbsp;•&nbsp;
+      <span class="status-pill pill-${reimb.status}" style="font-size:11px">${reimb.status}</span>
+    </p>
+    <div style="text-align:center;padding:20px;color:#aaa">Loading…</div>`;
+  document.getElementById('revisionModal').classList.add('open');
+
+  try {
+    const res   = await api('GET', `/reimbursement/${id}/approvals`);
+    const doneSteps = res?.data || [];   // steps already acted on
+
+    // Parse approval_chain — may be array or JSON string
+    let chain = [];
+    if (Array.isArray(reimb.approval_chain)) chain = reimb.approval_chain;
+    else { try { chain = JSON.parse(reimb.approval_chain || '[]'); } catch(_){} }
+
+    const isRejected  = reimb.status === 'rejected';
+    const isDisbursed = reimb.status === 'disbursed';
+    const isApproved  = reimb.status === 'approved';
+    const currentLevel= parseInt(reimb.current_level) || 1;
+
+    const stepsHTML = chain.map((code, i) => {
+      const lvl      = i + 1;
+      const info     = codeLabel(code);
+      // Match done step by level index
+      const done     = doneSteps.find(s => s.level === lvl || s.level_label === code);
+      const isCurrent= !done && !isRejected && reimb.current_approver_code === code;
+
+      let bubbleClass = 'dot-wait', icon = String(lvl);
+      if (done) {
+        bubbleClass = done.action === 'approve' ? 'dot-done' : 'dot-rejected';
+        icon = done.action === 'approve' ? '✓' : '✗';
+      } else if (isCurrent) {
+        bubbleClass = 'dot-current';
+        icon = '⏳';
+      }
+
+      const isYou = code === currentUser.employee_code;
+
+      return `
+      <div class="tl-step">
+        <div class="tl-connector ${i === 0 ? 'invisible' : ''}"></div>
+        <div class="tl-bubble ${bubbleClass}">${icon}</div>
+        <div class="tl-info">
+          <div class="tl-name">
+            ${info.icon} ${info.label}
+            ${isYou ? '<span class="tl-you">You</span>' : ''}
+            ${done ? `<span class="tl-actor">— ${escHtml(done.approver_name || code)}</span>` : ''}
+          </div>
+          <div class="tl-sub">
+            ${done
+              ? `<span class="tl-action ${done.action === 'approve' ? 'tl-approved' : 'tl-rejected-txt'}">
+                   ${done.action === 'approve' ? '✅ Approved' : '❌ Rejected'}
+                 </span>
+                 &nbsp;•&nbsp; ${formatDate(done.acted_at)}
+                 ${done.revised_amount && done.original_amount !== done.revised_amount
+                   ? ` &nbsp;•&nbsp; Revised ₹${parseFloat(done.original_amount).toLocaleString('en-IN')} → ₹${parseFloat(done.revised_amount).toLocaleString('en-IN')}`
+                   : ''}
+                 ${done.remarks ? `<div class="tl-remark">"${escHtml(done.remarks)}"</div>` : ''}`
+              : isCurrent
+                ? '<span class="tl-waiting">⏳ Awaiting approval</span>'
+                : '<span style="color:#bbb">Pending</span>'}
+          </div>
+        </div>
+      </div>`;
+    });
+
+    // Add final Accounts/Disburse step if not already last in chain
+    const lastCode = chain[chain.length - 1];
+    if (lastCode !== (window.CFG?.cooEmployeeCode || '')) {
+      const disbDone = isDisbursed;
+      stepsHTML.push(`
+      <div class="tl-step">
+        <div class="tl-connector"></div>
+        <div class="tl-bubble ${isDisbursed ? 'dot-disbursed' : isApproved ? 'dot-ready' : 'dot-wait'}">
+          ${isDisbursed ? '💰' : isApproved ? '🏦' : '🏦'}
+        </div>
+        <div class="tl-info">
+          <div class="tl-name">💸 Accounts &nbsp;<span class="tl-actor">— Disbursement</span></div>
+          <div class="tl-sub">
+            ${isDisbursed
+              ? '<span class="tl-approved">✅ Disbursed</span>'
+              : isApproved
+                ? '<span class="tl-waiting">Ready to disburse</span>'
+                : '<span style="color:#bbb">Pending</span>'}
+          </div>
+        </div>
+      </div>`);
+    }
+
+    document.getElementById('revisionModalBody').innerHTML = `
+      <p style="font-size:13px;color:#555;margin-bottom:18px">
+        <b>${escHtml(reimb.title)}</b>
+        &nbsp;•&nbsp;
+        ${reimb.employee_name ? escHtml(reimb.employee_name) + ' (' + (reimb.employee_code||'') + ')' : ''}
+        &nbsp;•&nbsp;
+        <span class="status-pill pill-${reimb.status}" style="font-size:11px">${reimb.status}</span>
+      </p>
+      <div class="tl-list">
+        ${stepsHTML.length ? stepsHTML.join('') : '<p style="color:#aaa;text-align:center;padding:20px">No approval chain found</p>'}
+      </div>
+      <div style="margin-top:18px">
+        <button class="btn btn-outline" onclick="closeModal('revisionModal')">Close</button>
+      </div>`;
+
+  } catch(err) {
+    document.getElementById('revisionModalBody').innerHTML =
+      `<p style="color:#c62828">Failed to load timeline.<br><small>${err.message}</small></p>
+       <button class="btn btn-outline" style="margin-top:12px" onclick="closeModal('revisionModal')">Close</button>`;
+  }
+}
+
+// ── Attachment Viewer ─────────────────────────────────────────────────────────
+async function viewAttachment(itemId, name, mime) {
+  document.getElementById('viewerTitle').textContent = '📎 ' + (name || 'Attachment');
+  document.getElementById('viewerBody').innerHTML = '<div style="text-align:center;padding:30px;color:#888">Loading…</div>';
+  document.getElementById('viewerModal').classList.add('open');
+
+  const url   = `${API_BASE}/reimbursement/item/${itemId}/attachment`;
+  const token = Auth.getToken();  // ← uses window.CFG.tokenKey
+
+  try {
+    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob   = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const actualMime = blob.type || mime || '';
+
+    if (actualMime.startsWith('image/')) {
+      document.getElementById('viewerBody').innerHTML =
+        `<img src="${blobUrl}" style="max-width:100%;max-height:72vh;border-radius:8px;display:block;margin:0 auto" alt="${escHtml(name)}"/>
+         <a href="${blobUrl}" download="${escHtml(name)}" class="btn btn-outline btn-sm" style="margin-top:10px;display:inline-block">⬇ Download</a>`;
+    } else if (actualMime === 'application/pdf') {
+      document.getElementById('viewerBody').innerHTML =
+        `<iframe class="viewer-frame" src="${blobUrl}" style="width:100%;height:72vh;border:none;border-radius:8px"></iframe>
+         <a href="${blobUrl}" download="${escHtml(name)}" class="btn btn-outline btn-sm" style="margin-top:8px;display:inline-block">⬇ Download</a>`;
+    } else {
+      document.getElementById('viewerBody').innerHTML =
+        `<p style="color:#555;margin-bottom:12px">Cannot preview <b>${escHtml(name)}</b> in browser.</p>
+         <a href="${blobUrl}" download="${escHtml(name)}" class="btn btn-primary btn-sm">⬇ Download File</a>`;
+    }
+  } catch(err) {
+    document.getElementById('viewerBody').innerHTML =
+      `<p style="color:#c62828">Failed to load attachment. Please try again.<br><small>${err.message}</small></p>`;
+  }
+}
+
+// ── Edit Reimbursement ───────────────────────────────────────────────────────
+let editItemCount = 0;
+let editAttachments = {}; // { idx: { data, name, mime, size, existing } }
+let editReimbId = null;
+
+function openEditModal(id) {
+  const reimb = allData.find(r => r.id === id);
+  if (!reimb) return;
+  editReimbId    = id;
+  editItemCount  = 0;
+  editAttachments = {};
+
+  // Full category list same as Apply form
+  const ALL_CATS = [
+    ['travel','🚗 Travel'],['food','🍽️ Food & Beverages'],['accommodation','🏨 Accommodation'],
+    ['fuel','⛽ Fuel / Petrol'],['transport','🚕 Local Transport'],['train','🚆 Train / Bus Fare'],
+    ['flight','✈️ Flight'],['medical','💊 Medical'],['stationery','📋 Stationery / Office'],
+    ['internet','🌐 Internet / Phone'],['client_entertainment','🤝 Client Entertainment'],
+    ['printing','🖨️ Printing'],['repair','🔧 Repair / Maintenance'],
+    ['training','📚 Training / Course'],['miscellaneous','📦 Miscellaneous'],['other','✏️ Other']
+  ];
+  window._editAllCats = ALL_CATS;
+
+  document.getElementById('editModalBody').innerHTML = `
+    <div class="form-group">
+      <label>Request Title *</label>
+      <input id="editTitle" class="form-control" value="${escHtml(reimb.title)}" placeholder="Request title"/>
+    </div>
+    <div style="overflow-x:auto;margin-bottom:12px">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="background:#f8f9fa;font-weight:600;color:#555">
+            <th style="padding:8px 6px;text-align:left;width:32px">#</th>
+            <th style="padding:8px 6px;text-align:left">Category</th>
+            <th style="padding:8px 6px;text-align:left;width:140px">Date</th>
+            <th style="padding:8px 6px;text-align:left">Description</th>
+            <th style="padding:8px 6px;text-align:right;width:110px">Amount (₹)</th>
+            <th style="padding:8px 6px;text-align:left">Attachment</th>
+            <th style="width:32px"></th>
+          </tr>
+        </thead>
+        <tbody id="editItemsContainer"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="7" style="padding:8px 6px">
+              <button class="btn btn-outline" style="font-size:12px;padding:4px 14px" onclick="addEditItem()">+ Add Row</button>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn btn-primary" onclick="submitEdit(${id})">💾 Update Request</button>
+      <button class="btn btn-outline" onclick="closeModal('editModal')">Cancel</button>
+    </div>`;
+
+  // Pre-fill existing items
+  (reimb.items || []).forEach(item => addEditItem({
+    category:           item.category,
+    description:        item.description || '',
+    amount:             item.amount,
+    date:               item.expense_date,
+    existingAttachName: item.has_attachment ? (item.attachment_name || 'attachment') : null,
+  }));
+  if (!reimb.items || !reimb.items.length) addEditItem();
+
+  document.getElementById('editModal').classList.add('open');
+}
+
+function addEditItem(prefill = {}) {
+  const idx  = editItemCount++;
+  const tbody = document.getElementById('editItemsContainer');
+  const tr   = document.createElement('tr');
+  tr.id = `edit-item-${idx}`;
+
+  const catOptions = (window._editAllCats || []).map(([val, label]) =>
+    `<option value="${val}" ${val === (prefill.category || 'travel') ? 'selected' : ''}>${label}</option>`
+  ).join('');
+
+  const existingName  = prefill.existingAttachName || null;
+  const today         = new Date().toISOString().slice(0, 10);
+  const dateVal       = prefill.date ? prefill.date.slice(0, 10) : today;
+
+  tr.innerHTML = `
+    <td style="padding:6px;color:#aaa;font-size:12px;font-weight:600;text-align:center">${idx + 1}</td>
+    <td style="padding:4px 6px">
+      <select class="form-control" id="ecat-${idx}" style="min-width:140px">${catOptions}</select>
+    </td>
+    <td style="padding:4px 6px">
+      <input type="date" class="form-control" id="edate-${idx}" value="${dateVal}"/>
+    </td>
+    <td style="padding:4px 6px">
+      <input class="form-control" id="edesc-${idx}" value="${escHtml(prefill.description || '')}" placeholder="e.g. Cab fare"/>
+    </td>
+    <td style="padding:4px 6px">
+      <input type="number" class="form-control" id="eamt-${idx}" value="${prefill.amount || ''}"
+             placeholder="0.00" min="0" step="0.01" style="text-align:right"/>
+    </td>
+    <td style="padding:4px 6px">
+      <input type="file" class="form-control" id="efile-${idx}" accept="image/*,application/pdf"
+             style="font-size:11px;padding:2px 4px;height:28px" onchange="handleEditFile(${idx}, this)"/>
+      <div id="efilePreview-${idx}" style="font-size:10px;margin-top:2px">
+        ${existingName ? `<div class="attach-preview">📎 ${escHtml(existingName)}</div>` : ''}
+      </div>
+    </td>
+    <td style="padding:4px 6px;text-align:center">
+      ${idx > 0 ? `<button class="del-row-btn" onclick="removeEditItem(${idx})" title="Delete row">🗑</button>` : ''}
+    </td>`;
+
+  if (existingName) editAttachments[idx] = { existing: true, name: existingName };
+  tbody.appendChild(tr);
+}
+
+function removeEditItem(idx) {
+  const el = document.getElementById(`edit-item-${idx}`);
+  if (el) el.remove();
+  delete editAttachments[idx];
+}
+
+function handleEditFile(idx, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const base64 = e.target.result.split(',')[1];
+    editAttachments[idx] = { data: base64, name: file.name, mime: file.type, size: file.size };
+    const preview = document.getElementById(`efilePreview-${idx}`);
+    preview.innerHTML = `<div class="attach-preview">📎 ${escHtml(file.name)} (${(file.size/1024).toFixed(1)} KB) — <span style="color:#2e7d32">New file selected</span></div>`;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function submitEdit(id) {
+  const title = document.getElementById('editTitle')?.value?.trim();
+  if (!title) return alert('Please enter a request title');
+
+  const items = [];
+  let valid = true;
+  for (let i = 0; i < editItemCount; i++) {
+    const itemEl = document.getElementById(`edit-item-${i}`);
+    if (!itemEl) continue;
+    const cat  = document.getElementById(`ecat-${i}`)?.value;
+    const desc = document.getElementById(`edesc-${i}`)?.value?.trim();
+    const amt  = parseFloat(document.getElementById(`eamt-${i}`)?.value);
+    const date = document.getElementById(`edate-${i}`)?.value;
+    if (!desc || !amt || amt <= 0 || !date) { valid = false; break; }
+    const att = editAttachments[i] || {};
+    items.push({
+      category:        cat,
+      description:     desc,
+      amount:          amt,
+      expense_date:    date,
+      // Only send attachment fields if a new file was picked (att.data exists)
+      // If existing=true but no new data, send nulls — backend keeps existing or clears
+      attachment_data: att.data  || null,
+      attachment_name: att.data  ? att.name : (att.existing ? att.name : null),
+      attachment_mime: att.data  ? att.mime : null,
+      attachment_size: att.data  ? att.size : null,
+    });
+  }
+
+  if (!valid || !items.length)
+    return alert('Please fill all expense item fields (description, amount, date)');
+
+  const btn = document.querySelector('#editModal .btn-primary');
+  btn.disabled = true; btn.textContent = 'Updating…';
+
+  try {
+    const res = await api('PUT', `/reimbursement/${id}/edit`, { title, items: JSON.stringify(items) });
+    if (res?.success) {
+      closeModal('editModal');
+      alert('✅ Reimbursement updated successfully!');
+      showTab(currentTab); // showTab handles both 'drafts' and other tabs correctly
+    } else {
+      alert('Error: ' + (res?.message || 'Failed'));
+      btn.disabled = false; btn.textContent = '💾 Update Request';
+    }
+  } catch(e) {
+    alert('Network error: ' + e.message);
+    btn.disabled = false; btn.textContent = '💾 Update Request';
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function formatDate(d) {
+  if (!d) return '—';
+  const s = String(d);
+  // Full ISO timestamps (requested_at, approved_at etc) — use browser local timezone
+  if (s.length > 10) {
+    return new Date(s).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+  }
+  // Date-only strings "YYYY-MM-DD" — parse as local midnight to avoid UTC day shift
+  return new Date(s + 'T00:00:00').toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+</script>
+
+<!-- ── Export Modal ─────────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="export-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h3>⬇ Export Reimbursements to Excel</h3>
+      <button class="modal-close" onclick="closeModal('export-modal')">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label class="form-label">From Date</label>
+          <input type="date" id="exp-from" class="form-control">
+        </div>
+        <div>
+          <label class="form-label">To Date</label>
+          <input type="date" id="exp-to" class="form-control">
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Status Filter</label>
+        <select id="exp-status" class="form-control">
+          <option value="all">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="disbursed">Disbursed</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+      <p style="font-size:12px;color:#666;margin:0;line-height:1.5">
+        Excel will contain two sheets: <strong>Summary</strong> (one row per reimbursement with employee details)
+        and <strong>Line Items</strong> (one row per expense item, with a direct attachment download link for each receipt/file).
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('export-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="runExport()" id="exp-go-btn">⬇ Download Excel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Edit Reimbursement Modal ─────────────────────────────────────────────── -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal-box" style="max-width:min(960px,96vw);width:100%">
+    <button class="modal-close" onclick="closeModal('editModal')">×</button>
+    <h3>✏️ Edit Reimbursement</h3>
+    <div id="editModalBody"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ── Show export button for privileged roles ───────────────────────────────────
+(function() {
+  if (['accounts','hr','super_admin'].includes(currentUser?.role)) {
+    const btn = document.getElementById('exportBtn');
+    if (btn) btn.style.display = '';
+  }
+})();
+
+// ── Open export modal with sensible defaults ──────────────────────────────────
+function openExportModal() {
+  const now = new Date();
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const today = now.toISOString().slice(0,10);
+  document.getElementById('exp-from').value   = firstOfMonth;
+  document.getElementById('exp-to').value     = today;
+  document.getElementById('exp-status').value = 'all';
+  document.getElementById('export-modal').classList.add('open');
+}
+
+// ── Run the export ────────────────────────────────────────────────────────────
+async function runExport() {
+  const from   = document.getElementById('exp-from').value;
+  const to     = document.getElementById('exp-to').value;
+  const status = document.getElementById('exp-status').value;
+
+  if (!from || !to) { alert('Please select both From and To dates.'); return; }
+  if (from > to)    { alert('"From" date must be before "To" date.'); return; }
+
+  const btn = document.getElementById('exp-go-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Preparing…';
+
+  try {
+    const res = await api('GET', `/reimbursement/export?from=${from}&to=${to}&status=${status}`);
+    if (!res?.success) throw new Error(res?.message || 'Export failed');
+    buildExcel(res.data, from, to, status);
+    closeModal('export-modal');
+  } catch (e) {
+    alert('Export failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⬇ Download Excel';
+  }
+}
+
+// ── Build Excel with SheetJS (two sheets) ────────────────────────────────────
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+}
+function fmtDateTime(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function buildExcel(data, from, to, statusFilter) {
+  const wb      = XLSX.utils.book_new();
+  const baseUrl = window.location.origin;
+
+  // ── Sheet 1: Summary ─────────────────────────────────────────────────────
+  const summaryRows = data.map(r => {
+    const approvals = r.approvals || [];
+    // Build approval chain summary string: "L1: Gurudutt Dureja (approve) → L2: ..."
+    const chainSummary = approvals.map(a =>
+      `L${a.level} ${a.approver_name} [${a.action.toUpperCase()}]${a.remarks ? ': ' + a.remarks : ''}`
+    ).join(' → ');
+
+    const rejectedBy = approvals.find(a => a.action === 'reject');
+    const lastApprover = approvals.filter(a => a.action === 'approve').pop();
+
+    return {
+      'ID'                 : r.id,
+      'Employee Name'      : r.employee_name,
+      'Employee Code'      : r.employee_code,
+      'Department'         : r.department_name || '—',
+      'Designation'        : r.designation     || '—',
+      'Phone'              : r.phone           || '—',
+      'Title'              : r.title,
+      'Status'             : r.status.toUpperCase(),
+      'Total Amount (₹)'   : parseFloat(r.total_amount    || 0),
+      'Approved Amount (₹)': parseFloat(r.approved_amount || 0),
+      'Requested On'       : fmtDateTime(r.requested_at),
+      'Approved On'        : fmtDateTime(r.approved_at),
+      'Disbursed On'       : fmtDateTime(r.disbursed_at),
+      'Final Remarks'      : r.final_remarks || '',
+      'Rejected By'        : rejectedBy ? `${rejectedBy.approver_name} (${rejectedBy.approver_code})` : '—',
+      'Rejection Reason'   : rejectedBy ? (rejectedBy.remarks || '—') : '—',
+      'Last Approved By'   : lastApprover ? `${lastApprover.approver_name} (${lastApprover.approver_code})` : '—',
+      'Approval Chain'     : chainSummary || '(no action yet)',
+      'No. of Items'       : (r.items || []).length,
+    };
+  });
+
+  const ws1 = XLSX.utils.json_to_sheet(summaryRows.length ? summaryRows : [{ Note: 'No records found.' }]);
+  ws1['!cols'] = [
+    {wch:5},{wch:22},{wch:13},{wch:18},{wch:22},{wch:13},
+    {wch:28},{wch:12},{wch:16},{wch:18},
+    {wch:20},{wch:20},{wch:20},
+    {wch:28},{wch:26},{wch:28},{wch:26},
+    {wch:60},{wch:6}
+  ];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
+
+  // ── Sheet 2: Line Items with attachment links ─────────────────────────────
+  const itemRows = [];
+  for (const r of data) {
+    const items = r.items || [];
+    const baseRow = {
+      'ID': r.id, 'Employee Name': r.employee_name,
+      'Employee Code': r.employee_code, 'Status': r.status.toUpperCase(),
+      'Reimbursement Title': r.title,
+    };
+    if (!items.length) {
+      itemRows.push({ ...baseRow, 'Category':'', 'Description':'', 'Expense Date':'',
+        'Item Amount (₹)':'', 'Approved Amt (₹)':'', 'Attachment File':'', 'Attachment Link (click to open)':'' });
+      continue;
+    }
+    for (const item of items) {
+      itemRows.push({
+        ...baseRow,
+        'Category'                    : item.category    || '—',
+        'Description'                 : item.description || '',
+        'Expense Date'                : item.expense_date ? new Date(item.expense_date + 'T00:00:00').toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) : '—',
+        'Item Amount (₹)'             : parseFloat(item.amount          || 0),
+        'Approved Amt (₹)'            : parseFloat(item.approved_amount ?? item.amount ?? 0),
+        'Attachment File'             : item.attachment_name || '',
+        'Attachment Link (click to open)': item.has_attachment
+          ? `${baseUrl}/reimbursement/item/${item.id}/attachment`
+          : '',
+      });
+    }
+  }
+
+  const ws2 = XLSX.utils.json_to_sheet(itemRows.length ? itemRows : [{ Note: 'No items found.' }]);
+  ws2['!cols'] = [
+    {wch:5},{wch:22},{wch:13},{wch:12},{wch:28},
+    {wch:14},{wch:32},{wch:14},{wch:16},{wch:16},{wch:24},{wch:65}
+  ];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Line Items');
+
+  // ── Sheet 3: Full Approval Log ────────────────────────────────────────────
+  const approvalRows = [];
+  for (const r of data) {
+    for (const a of (r.approvals || [])) {
+      approvalRows.push({
+        'Reimb. ID'          : r.id,
+        'Employee Name'      : r.employee_name,
+        'Employee Code'      : r.employee_code,
+        'Reimbursement Title': r.title,
+        'Total Amount (₹)'   : parseFloat(r.total_amount || 0),
+        'Level'              : a.level,
+        'Approver Code'      : a.approver_code,
+        'Approver Name'      : a.approver_name,
+        'Action'             : a.action.toUpperCase(),
+        'Original Amount (₹)': a.original_amount ? parseFloat(a.original_amount) : '—',
+        'Revised Amount (₹)' : a.revised_amount  ? parseFloat(a.revised_amount)  : '—',
+        'Remarks'            : a.remarks || '',
+      });
+    }
+    if (!(r.approvals || []).length) {
+      approvalRows.push({
+        'Reimb. ID': r.id, 'Employee Name': r.employee_name,
+        'Employee Code': r.employee_code, 'Reimbursement Title': r.title,
+        'Total Amount (₹)': parseFloat(r.total_amount || 0),
+        'Level':'—','Approver Code':'—','Approver Name':'—',
+        'Action':'PENDING','Original Amount (₹)':'—','Revised Amount (₹)':'—',
+        'Remarks':'No action taken yet','Action Date & Time':'—',
+      });
+    }
+  }
+
+  const ws3 = XLSX.utils.json_to_sheet(approvalRows.length ? approvalRows : [{ Note: 'No approvals recorded.' }]);
+  ws3['!cols'] = [
+    {wch:8},{wch:22},{wch:13},{wch:28},{wch:16},
+    {wch:6},{wch:14},{wch:22},{wch:12},
+    {wch:18},{wch:16},{wch:32},{wch:22}
+  ];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Approval Log');
+
+  // ── Save ──────────────────────────────────────────────────────────────────
+  const statusLabel = statusFilter === 'all'
+    ? 'All' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1);
+  const filename = `${window.CFG?.clientName||window.CFG?.companyShortName||"HRMS"}_Reimbursements_${statusLabel}_${from}_to_${to}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  const totalItems = itemRows.length;
+  const totalApprovals = approvalRows.length;
+  toast(`✅ Excel downloaded — ${data.length} reimbursement(s), ${totalItems} item(s), ${totalApprovals} approval action(s)`);
+}
+</script>
+</body>
+</html>
