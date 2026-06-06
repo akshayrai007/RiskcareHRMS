@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Import Employees</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+.steps-bar{display:flex;align-items:center;gap:0;margin-bottom:28px}
+.step-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:2px solid var(--border);background:#fff;color:var(--muted);transition:.3s;flex-shrink:0}
+.step-dot.active{border-color:var(--accent);background:var(--accent);color:#fff}
+.step-dot.done{border-color:#10b981;background:#10b981;color:#fff}
+.step-line{flex:1;height:2px;background:var(--border);transition:.3s}
+.step-line.done{background:#10b981}
+.step-label{font-size:11px;color:var(--muted);margin-top:4px;text-align:center;font-weight:500}
+
+.upload-zone{border:2px dashed var(--border2);border-radius:16px;padding:40px;text-align:center;background:#fff;transition:.2s;cursor:pointer}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent2);background:var(--accent-l)}
+.upload-icon{font-size:40px;margin-bottom:12px}
+.upload-title{font-size:15px;font-weight:700;margin-bottom:6px}
+.upload-sub{font-size:13px;color:var(--muted)}
+
+.card{background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;margin-bottom:16px}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px}
+.card-body{padding:16px 18px}
+
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px}
+.form-control{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--bg);outline:none;transition:.15s}
+.form-control:focus{border-color:var(--accent2);background:#fff}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+.alert{padding:12px 14px;border-radius:10px;font-size:13px;margin-bottom:16px}
+.alert-error{background:#fef2f2;border:1px solid rgba(239,68,68,.2);color:var(--red)}
+.alert-success{background:#f0fdf4;border:1px solid rgba(16,185,129,.2);color:#065f46}
+.alert-info{background:#EFF6FF;border:1px solid #BFDBFE;color:#1e40af}
+
+.results-table{width:100%;border-collapse:collapse;font-size:12px}
+.results-table th{background:var(--accent);color:#fff;padding:10px 12px;text-align:left;font-size:11px;font-weight:700}
+.results-table td{padding:9px 12px;border-bottom:1px solid var(--border)}
+.results-table tr:last-child td{border:none}
+.results-table tr:hover td{background:var(--accent-l)}
+
+.badge{padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700}
+.badge-success{background:#dcfce7;color:#166534}
+.badge-error{background:#fee2e2;color:#991b1b}
+.badge-warn{background:#fef9c3;color:#854d0e}
+
+.progress-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;background:var(--accent);transition:width .3s;border-radius:3px}
+
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.summary-item{background:#fff;border-radius:10px;border:1px solid var(--border);padding:14px 16px;text-align:center}
+.summary-num{font-size:24px;font-weight:800;margin-bottom:4px}
+.summary-label{font-size:11px;color:var(--muted);font-weight:600}
+.num-green{color:var(--accent)} .num-red{color:var(--red)} .num-orange{color:#f97316}
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">⬆ Import Employees</div>
+    </div>
+    <div class="topbar-right">
+      <a href="/outputs/1_employee_import_template.xlsx" class="btn btn-outline btn-sm" download>⬇ Download Template</a>
+      <a href="employees.html" class="btn btn-outline btn-sm">← Back to Employees</a>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Steps bar -->
+    <div style="max-width:600px;margin-bottom:24px">
+      <div class="steps-bar">
+        <div style="text-align:center">
+          <div class="step-dot active" id="s1">1</div>
+          <div class="step-label">Download</div>
+        </div>
+        <div class="step-line" id="l1"></div>
+        <div style="text-align:center">
+          <div class="step-dot" id="s2">2</div>
+          <div class="step-label">Fill Excel</div>
+        </div>
+        <div class="step-line" id="l2"></div>
+        <div style="text-align:center">
+          <div class="step-dot" id="s3">3</div>
+          <div class="step-label">Upload</div>
+        </div>
+        <div class="step-line" id="l3"></div>
+        <div style="text-align:center">
+          <div class="step-dot" id="s4">4</div>
+          <div class="step-label">Review</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Instructions card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📋 Instructions</div>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-info" style="margin-bottom:0">
+          <strong>Step 1:</strong> Download the template above.<br>
+          <strong>Step 2:</strong> Fill employee details. Orange columns are required (*). Use Department IDs from the "Departments" sheet.<br>
+          <strong>Step 3:</strong> Delete the 3 sample rows (rows 4–6) before uploading.<br>
+          <strong>Step 4:</strong> Upload the filled Excel below. HR-defined <strong>employee_code</strong> and <strong>password</strong> are set per row.
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload form -->
+    <div class="card" id="upload-card">
+      <div class="card-header">
+        <div class="card-title">⬆ Upload Filled Template</div>
+      </div>
+      <div class="card-body">
+        <div id="main-alert" style="display:none" class="alert"></div>
+
+        <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+             ondragover="this.classList.add('drag');event.preventDefault()"
+             ondragleave="this.classList.remove('drag')"
+             ondrop="handleDrop(event)">
+          <div class="upload-icon">📊</div>
+          <div class="upload-title" id="drop-title">Click to select Excel file or drag & drop</div>
+          <div class="upload-sub">Supports .xlsx · Max 10MB</div>
+        </div>
+        <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none" onchange="fileSelected(this)">
+
+        <div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between">
+          <div class="form-group" style="margin:0;display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="overwrite" style="width:16px;height:16px">
+            <label for="overwrite" style="font-size:13px;color:var(--muted)">Overwrite existing records if employee_code/email matches</label>
+          </div>
+          <button class="btn btn-primary" onclick="doImport()" id="import-btn" disabled>⬆ Import Employees</button>
+        </div>
+
+        <div id="progress-wrap" style="display:none;margin-top:12px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Importing...</div>
+          <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="results-section" style="display:none">
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="summary-num num-green" id="r-imported">0</div>
+          <div class="summary-label">✅ Imported</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-num num-orange" id="r-skipped">0</div>
+          <div class="summary-label">⚠ Skipped (Duplicates)</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-num num-red" id="r-errors">0</div>
+          <div class="summary-label">❌ Errors</div>
+        </div>
+      </div>
+
+      <div class="card" id="imported-card" style="display:none">
+        <div class="card-header">
+          <div class="card-title">✅ Successfully Imported</div>
+        </div>
+        <div class="card-body" style="padding:0">
+          <table class="results-table">
+            <thead><tr><th>#</th><th>Emp Code</th><th>Name</th><th>Email</th><th>Status</th></tr></thead>
+            <tbody id="imported-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="errors-card" style="display:none">
+        <div class="card-header">
+          <div class="card-title">⚠ Issues Found</div>
+        </div>
+        <div class="card-body">
+          <div id="errors-list" style="font-size:12px;color:var(--red);line-height:2"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="resetForm()">⬆ Import More</button>
+        <a href="employees.html" class="btn btn-outline">👥 View Employees</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API   = window.CFG.apiBase;
+const token = localStorage.getItem(window.CFG.tokenKey);
+const user  = JSON.parse(localStorage.getItem(window.CFG.userKey) || '{}');
+if (!token) location.href = 'login.html';
+if (!['admin','super_admin','hr'].includes(user.role)) {
+  alert('Access denied. HR/Admin only.'); location.href = 'dashboard.html';
+}
+
+let selectedFile = null;
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) setFile(f);
+}
+function fileSelected(input) { if (input.files[0]) setFile(input.files[0]); }
+function setFile(f) {
+  if (!/\.(xlsx|xls)$/i.test(f.name)) { showAlert('main-alert','Only .xlsx files allowed','error'); return; }
+  selectedFile = f;
+  document.getElementById('drop-title').textContent = `📄 ${f.name} (${(f.size/1024).toFixed(0)} KB)`;
+  document.getElementById('import-btn').disabled = false;
+  setStep(2);
+}
+
+function setStep(n) {
+  for (let i=1;i<=4;i++) {
+    const dot  = document.getElementById('s'+i);
+    const line = document.getElementById('l'+i);
+    if (i < n) { dot.className='step-dot done'; dot.textContent='✓'; if(line) line.classList.add('done'); }
+    else if (i===n) { dot.className='step-dot active'; dot.textContent=i; }
+    else { dot.className='step-dot'; dot.textContent=i; if(line) line.classList.remove('done'); }
+  }
+}
+
+async function doImport() {
+  if (!selectedFile) return;
+  setStep(3);
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('import-btn').disabled = true;
+
+  // Animate progress bar
+  let pct = 10;
+  const prog = document.getElementById('progress-fill');
+  prog.style.width = pct + '%';
+  const interval = setInterval(() => { if (pct < 85) { pct += 5; prog.style.width=pct+'%'; } }, 200);
+
+  const fd = new FormData();
+  fd.append('file', selectedFile);
+  if (document.getElementById('overwrite').checked) fd.append('overwrite', 'true');
+
+  try {
+    const res  = await fetch(`${API}/employees/import`, {
+      method:'POST',
+      headers:{'Authorization':`Bearer ${token}`},
+      body: fd
+    });
+    clearInterval(interval);
+    prog.style.width = '100%';
+
+    const data = await res.json();
+    setTimeout(() => {
+      document.getElementById('progress-wrap').style.display = 'none';
+      setStep(4);
+      showResults(data);
+    }, 400);
+  } catch(e) {
+    clearInterval(interval);
+    showAlert('main-alert','Upload failed: ' + e.message,'error');
+    document.getElementById('import-btn').disabled = false;
+    document.getElementById('progress-wrap').style.display = 'none';
+  }
+}
+
+function showResults(data) {
+  document.getElementById('results-section').style.display = 'block';
+  document.getElementById('upload-card').style.display = 'none';
+  const s = data.data?.summary || {};
+  document.getElementById('r-imported').textContent = s.imported || 0;
+  document.getElementById('r-skipped').textContent  = s.skipped  || 0;
+  document.getElementById('r-errors').textContent   = s.errors   || 0;
+
+  const imported = data.data?.imported || [];
+  if (imported.length) {
+    document.getElementById('imported-card').style.display = 'block';
+    document.getElementById('imported-tbody').innerHTML = imported.map((e,i) =>
+      `<tr><td>${i+1}</td><td><strong>${e.employee_code}</strong></td><td>${e.name}</td><td>${e.email}</td><td><span class="badge badge-success">Imported ✓</span></td></tr>`
+    ).join('');
+  }
+
+  const allIssues = [...(data.data?.skipped||[]), ...(data.data?.errors||[])];
+  if (allIssues.length) {
+    document.getElementById('errors-card').style.display = 'block';
+    document.getElementById('errors-list').innerHTML = allIssues.map(e => `• ${e}`).join('<br>');
+  }
+}
+
+function resetForm() {
+  selectedFile = null;
+  document.getElementById('file-input').value = '';
+  document.getElementById('drop-title').textContent = 'Click to select Excel file or drag & drop';
+  document.getElementById('import-btn').disabled = true;
+  document.getElementById('results-section').style.display = 'none';
+  document.getElementById('upload-card').style.display = 'block';
+  document.getElementById('imported-card').style.display = 'none';
+  document.getElementById('errors-card').style.display = 'none';
+  document.getElementById('main-alert').style.display = 'none';
+  setStep(1);
+}
+
+function showAlert(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = `alert alert-${type}`;
+  el.style.display = 'block';
+}
+</script>
+<script src="config.js"></script>
+<script>
+(function(){
+  var C = window.CFG;
+  // Page title
+  var t = document.getElementById('page-title');
+  if(t) t.textContent = C.clientName + ' - ' + t.textContent;
+  // Sidebar logo text
+  var lt = document.getElementById('sidebar-logo-text');
+  if(lt) lt.innerHTML = C.logoHtml || C.clientName;
+  // Sidebar company short name
+  var cs = document.getElementById('sidebar-company-short');
+  if(cs) cs.textContent = C.companyShortName || '';
+})();
+</script>
+<script src="app.js"></script>
+<script>
+  if(typeof buildSidebar === 'function') buildSidebar('import_employees.html');
+  if(typeof loadNotifBadge === 'function') loadNotifBadge();
+</script>
+</body>
+</html>
