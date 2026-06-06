@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Leaves</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+    <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">Leave Management</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-primary btn-sm" onclick="openModal('apply-modal')">+ Apply Leave</button>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+
+    <!-- LEAVE BALANCE CARDS -->
+    <div id="bal-section" style="margin-bottom:6px">
+      <div class="section-title">Leave Balance — <span id="bal-year"></span></div>
+      <div id="balance-cards" class="bal-grid">
+        <div class="loader" style="grid-column:span 4"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('my-leaves')">📋 My Leaves</button>
+      <button class="tab-btn" onclick="switchTab('compoff-credits')">🔄 My Comp Off</button>
+      <button class="tab-btn" id="approvals-tab" style="display:none" onclick="switchTab('approvals')">✅ Approvals</button>
+      <button class="tab-btn" id="all-tab"        style="display:none" onclick="switchTab('all-leaves')">📂 All Applications</button>
+      <!-- Accrual tab removed — runs automatically via cron on 1st of every month -->
+    </div>
+
+    <!-- MY LEAVES -->
+    <div id="tab-my-leaves">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">📋</span>My Leave History</div>
+          <select id="my-status-filter" class="form-control" style="width:150px" onchange="loadMyLeaves()">
+            <option value="">All History</option>
+            <option value="pending" selected>Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div id="my-leaves-list"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- PENDING APPROVALS -->
+    <!-- COMP OFF CREDITS TAB -->
+    <div id="tab-compoff-credits" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">🔄</span>My Comp Off Credits</div>
+          <div style="font-size:12px;color:var(--muted)">Auto-credited when you work on holidays or weekends</div>
+        </div>
+        <!-- Balance summary strip -->
+        <div id="co-balance-strip" style="padding:20px 24px;background:linear-gradient(135deg,#fffbeb 0%,#fef9ec 100%);border-bottom:1px solid #fde68a">
+          <!-- Stats row -->
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+            <div style="flex:1;min-width:100px;background:#fff;border-radius:12px;padding:16px 20px;border:1.5px solid #fde68a;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
+              <div style="font-size:28px;font-weight:800;color:#d97706;line-height:1" id="co-avail-big">—</div>
+              <div style="font-size:11px;color:#b45309;font-weight:700;margin-top:4px;letter-spacing:0.5px">AVAILABLE</div>
+            </div>
+            <div style="flex:1;min-width:100px;background:#fff;border-radius:12px;padding:16px 20px;border:1.5px solid #a7f3d0;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
+              <div style="font-size:28px;font-weight:800;color:#059669;line-height:1" id="co-earned-big">—</div>
+              <div style="font-size:11px;color:#065f46;font-weight:700;margin-top:4px;letter-spacing:0.5px">TOTAL EARNED</div>
+            </div>
+            <div style="flex:1;min-width:100px;background:#fff;border-radius:12px;padding:16px 20px;border:1.5px solid #e5e7eb;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
+              <div style="font-size:28px;font-weight:800;color:#6b7280;line-height:1" id="co-used-big">—</div>
+              <div style="font-size:11px;color:#6b7280;font-weight:700;margin-top:4px;letter-spacing:0.5px">USED</div>
+            </div>
+          </div>
+          <!-- Rules row -->
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:140px;display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 14px;border:1px solid #fde68a">
+              <span style="font-size:20px">🌟</span>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#92400e">Full Day</div>
+                <div style="font-size:11px;color:#b45309">8+ hours worked</div>
+              </div>
+            </div>
+            <div style="flex:1;min-width:140px;display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 14px;border:1px solid #fde68a">
+              <span style="font-size:20px">✨</span>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#92400e">Half Day</div>
+                <div style="font-size:11px;color:#b45309">4 – 7.99 hours worked</div>
+              </div>
+            </div>
+            <div style="flex:1;min-width:140px;display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 14px;border:1px solid #fde68a">
+              <span style="font-size:20px">❌</span>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#92400e">No Credit</div>
+                <div style="font-size:11px;color:#b45309">Under 4 hours</div>
+              </div>
+            </div>
+            <div style="flex:1;min-width:140px;display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 14px;border:1px solid #fde68a">
+              <span style="font-size:20px">📅</span>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#92400e">Expires In</div>
+                <div style="font-size:11px;color:#b45309">30 days from work date</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="co-credits-list" style="padding:8px 0">
+          <div style="text-align:center;color:var(--muted);padding:40px">Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-approvals" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">✅</span>Leave Approvals</div>
+          <select id="approvals-filter" class="form-control" style="width:160px" onchange="loadApprovals()">
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="">All</option>
+          </select>
+        </div>
+        <div id="approvals-list"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- ALL APPLICATIONS -->
+    <div id="tab-all-leaves" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">📂</span>All Leave Applications</div>
+          <div class="flex gap-2">
+            <select id="all-status-filter" class="form-control" style="width:150px" onchange="loadAllLeaves()">
+              <option value="pending">Pending</option>
+              <option value="">All Status</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <div class="input-with-icon" style="width:220px">
+              <span class="input-icon">🔍</span>
+              <input id="all-search" class="form-control" placeholder="Search employee…" oninput="filterAll()">
+            </div>
+          </div>
+        </div>
+        <div id="all-leaves-list"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- ACCRUAL -->
+    <div id="tab-accrual" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">⚙</span>Monthly Leave Accrual</div>
+        </div>
+        <div style="background:var(--accent-l);border:1px solid rgba(67,97,238,.2);border-radius:var(--radius-sm);padding:16px;margin-bottom:20px">
+          <div style="font-weight:700;color:var(--accent);margin-bottom:6px">ℹ Automatic Accrual</div>
+          <p style="color:var(--text2);font-size:13px;line-height:1.7">
+            Runs automatically on the <b>1st of every month</b> via cron job.<br>
+            Adds: <b>1.5 EL + 0.5 SL + 0.5 CL</b> to all active employees.<br>
+            You can also trigger it manually below.
+          </p>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px;margin-bottom:18px">
+          <div class="section-title" style="margin-bottom:12px">Configured Leave Types</div>
+          <div id="leave-types-list"><div class="loader"><div class="spinner"></div></div></div>
+        </div>
+        <button class="btn btn-primary" onclick="runAccrual()">▶ Run Monthly Accrual Now</button>
+        <p class="text-muted" style="margin-top:10px;font-size:12px">This will add monthly increments to all active employees for the current month.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- APPLY LEAVE MODAL -->
+<div class="modal-backdrop" id="apply-modal">
+  <div class="modal" style="width:540px">
+    <div class="modal-header">
+      <div class="modal-title">Apply for Leave</div>
+      <button class="modal-close" onclick="closeModal('apply-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Leave Type</label>
+        <select id="apply-type" class="form-control" onchange="updateAvailable()">
+          <option value="">Select leave type…</option>
+        </select>
+        <div id="apply-available" style="margin-top:6px;font-size:12px;color:var(--accent);font-weight:600"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">From Date</label>
+          <input id="apply-from" class="form-control" type="date" onchange="onDateChange()">
+        </div>
+        <div class="form-group" id="to-date-group">
+          <label class="form-label">To Date</label>
+          <input id="apply-to" class="form-control" type="date" onchange="calcDays()">
+        </div>
+      </div>
+      <!-- Half Day Toggle -->
+      <div class="form-group" style="margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">
+          <div id="half-day-toggle" onclick="toggleHalfDay()" style="
+            width:44px;height:24px;border-radius:12px;background:#cbd5e1;
+            position:relative;transition:background .2s;cursor:pointer;flex-shrink:0">
+            <div id="half-day-knob" style="
+              width:20px;height:20px;border-radius:50%;background:#fff;
+              position:absolute;top:2px;left:2px;transition:left .2s;
+              box-shadow:0 1px 4px rgba(0,0,0,.2)"></div>
+          </div>
+          <span style="font-size:13px;font-weight:600;color:var(--text)">½ Half Day Leave</span>
+          <span id="half-day-type-badge" style="display:none;font-size:11px;font-weight:700;padding:2px 10px;border-radius:99px;background:#f5d0fe;color:#7e22ce;letter-spacing:.3px"></span>
+          <span id="half-day-hint" style="font-size:11px;color:var(--muted);display:none">
+            — counts as 0.5 day; same From &amp; To date
+          </span>
+        </label>
+      </div>
+      <div id="days-count" style="font-size:13px;font-weight:600;margin-bottom:14px;padding:8px 12px;border-radius:6px;display:none"></div>
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <select id="apply-category" class="form-control" onchange="onCategoryChange()">
+          <option value="leave">Leave</option>
+          <option value="od">On Duty (OD)</option>
+          <option value="lwp">Loss of Pay (LWP)</option>
+          <option value="compoff">🔄 Comp Off (Compensatory Off)</option>
+        </select>
+      </div>
+      <div id="compoff-info-box" style="display:none;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#92400e">
+        🔄 <strong>Comp Off:</strong> You can use this only if HR has credited comp off days to your account for working on a holiday or weekend.
+        Your available balance is shown above as <strong>COMPOFF</strong>.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason</label>
+        <textarea id="apply-reason" class="form-control" rows="3" placeholder="Explain the reason for leave…"></textarea>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px">
+        <div class="section-title" style="margin-bottom:10px">Approval Chain</div>
+        <div class="flex gap-3 flex-wrap" style="font-size:13px">
+          <div>Manager: <b id="l1-name">—</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('apply-modal');resetApplyModal()">Cancel</button>
+      <button class="btn btn-primary" id="apply-btn" onclick="submitLeave()">Submit Application</button>
+    </div>
+  </div>
+</div>
+
+<!-- LEAVE DETAIL MODAL -->
+<div class="modal-backdrop" id="detail-modal">
+  <div class="modal" style="width:560px">
+    <div class="modal-header">
+      <div class="modal-title">Leave Application Detail</div>
+      <button class="modal-close" onclick="closeModal('detail-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="detail-content"></div>
+    <div class="modal-footer" id="detail-actions">
+      <button class="btn btn-outline" onclick="closeModal('detail-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- REJECT MODAL -->
+<div class="modal-backdrop" id="reject-modal">
+  <div class="modal" style="width:400px">
+    <div class="modal-header">
+      <div class="modal-title">Reject Leave Application</div>
+      <button class="modal-close" onclick="closeModal('reject-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--red-l);border:1px solid rgba(239,68,68,.2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:13px;color:#dc2626">
+        ⚠ Please provide a reason. The employee will be notified.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason for Rejection</label>
+        <textarea id="reject-remarks" class="form-control" rows="3" placeholder="Provide a reason…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('reject-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmReject()">Reject Leave</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function(){
+  var C = window.CFG;
+  // Page title
+  var t = document.getElementById('page-title');
+  if(t) t.textContent = C.clientName + ' - ' + t.textContent;
+  // Sidebar logo text
+  var lt = document.getElementById('sidebar-logo-text');
+  if(lt) lt.innerHTML = C.logoHtml || C.clientName;
+  // Sidebar company short name
+  var cs = document.getElementById('sidebar-company-short');
+  if(cs) cs.textContent = C.companyShortName || '';
+})();
+</script>
+<script src="app.js"></script>
+<script>
+Auth.guard();
+buildSidebar('leaves.html');
+loadNotifBadge();
+
+const user = Auth.getUser();
+document.getElementById('bal-year').textContent = new Date().getFullYear();
+
+let allLeavesData = [];
+let activeActionId = null;
+let leaveTypesData = [];
+let balanceData    = [];
+let holidayDates   = new Set();
+
+if (Role.is('admin','super_admin','hr','manager','tl','accounts')) document.getElementById('approvals-tab').style.display = '';
+if (Role.isAdminOrHR() || Role.is('accounts')) {
+  document.getElementById('all-tab').style.display = '';
+  // accrual tab hidden — auto-runs via cron
+}
+
+if (location.hash === '#approvals') switchTab('approvals');
+
+// Pre-load holidays so calcDays can skip them
+(async () => {
+  const yr = new Date().getFullYear();
+  const hd = await api('GET', `/holidays?year=${yr}`);
+  if (hd?.success) hd.data.forEach(h => holidayDates.add(h.date.substring(0,10)));
+})();
+Promise.all([loadBalance(), loadLeaveTypes(), loadMyLeaves(), loadManagerInfo()]);
+
+async function loadBalance() {
+  // Fetch regular leave balance + comp off balance in parallel
+  const [data, compoffData] = await Promise.all([
+    api('GET', '/leave/balance'),
+    api('GET', '/compoff/balance').catch(() => null)
+  ]);
+
+  if (!data?.success) {
+    document.getElementById('balance-cards').innerHTML =
+      '<div style="grid-column:span 4;text-align:center;color:#e53935;padding:24px">⚠ Could not load leave balances. Please refresh.</div>';
+    return;
+  }
+  balanceData = data.data;
+  const el = document.getElementById('balance-cards');
+
+  // Show provisional banner for contractual employees still under 6 months
+  if (data.is_provisional && data.provision_ends) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'grid-column:span 4;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:12px 16px;margin-bottom:8px;color:#795548;font-size:13px;';
+    banner.innerHTML = `⏳ <strong>Provisional Period</strong> — You are on provisional leave (PL only) until <strong>${data.provision_ends}</strong>. EL, CL &amp; SL will be available once your 6-month period is complete.`;
+    el.parentNode.insertBefore(banner, el);
+  }
+
+  const items = balanceData.filter(b => parseFloat(b.allocated||0) > 0 || parseFloat(b.available||0) > 0);
+
+  // Build regular leave balance cards
+  let cardsHtml = items.map(b => {
+    const avail = parseFloat(b.available||0);
+    const alloc = parseFloat(b.allocated||0)+parseFloat(b.carry_forward||0);
+    const used  = parseFloat(b.used||0);
+    const pend  = parseFloat(b.pending||0);
+    const pct   = alloc>0 ? Math.max(0,Math.min(100,(used/alloc)*100)) : 0;
+    return `<div class="bal-card">
+      <div class="bal-code">${b.code}</div>
+      <div class="bal-val">${fmt.num(avail)}</div>
+      <div class="bal-meta">${b.name}</div>
+      <div class="bal-meta" style="margin-top:3px">
+        <span style="color:var(--green)">Used: ${fmt.num(used)}</span> / Alloc: ${fmt.num(alloc)}
+        ${pend>0?`<span style="color:var(--yellow)"> · Pending: ${fmt.num(pend)}</span>`:''}
+        ${parseFloat(b.carry_forward||0)>0?`<br><span style="color:var(--purple)">Carry Fwd: ${fmt.num(b.carry_forward)}</span>`:''}
+      </div>
+      <div class="bal-bar"><div class="bal-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+
+  // Always append COMPOFF balance card
+  {
+    const coAvail = parseFloat(compoffData?.data?.available || 0);
+    const coTotal = parseFloat(compoffData?.data?.total_credited || 0);
+    const coUsed  = parseFloat(compoffData?.data?.used || 0);
+    const coPct = coTotal > 0 ? Math.max(0, Math.min(100, (coUsed / coTotal) * 100)) : 0;
+    cardsHtml += `<div class="bal-card">
+      <div class="bal-code">COMPOFF</div>
+      <div class="bal-val">${fmt.num(coAvail)}</div>
+      <div class="bal-meta">Compensatory Off</div>
+      <div class="bal-meta" style="margin-top:3px">
+        <span style="color:var(--green)">Used: ${fmt.num(coUsed)}</span> / Earned: ${fmt.num(coTotal)}
+      </div>
+      <div class="bal-bar"><div class="bal-fill" style="width:${coPct}%"></div></div>
+    </div>`;
+  }
+
+  if (!cardsHtml) {
+    el.innerHTML = `<div style="grid-column:span 4;text-align:center;color:var(--muted);padding:24px">
+      No leave balances yet. Balances are credited automatically on the 1st of every month.
+    </div>`;
+    return;
+  }
+  el.innerHTML = cardsHtml;
+}
+
+async function loadLeaveTypes() {
+  const data = await api('GET', '/leave-types');
+  if (!data?.success) return;
+  leaveTypesData = data.data;
+  const sel = document.getElementById('apply-type');
+  sel.innerHTML = '<option value="">Select leave type…</option>' +
+    data.data.map(lt=>`<option value="${lt.id}" data-code="${lt.code}">${lt.name} (${lt.code})</option>`).join('');
+  const el = document.getElementById('leave-types-list');
+  if (el) el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Type</th><th>Code</th><th>Days/Year</th><th>Monthly Accrual</th><th>Carry Forward</th><th>Paid</th></tr></thead>
+    <tbody>${data.data.map(lt=>`
+      <tr>
+        <td style="font-weight:600">${lt.name}</td>
+        <td><span class="badge" style="background:var(--accent-l);color:var(--accent)">${lt.code}</span></td>
+        <td>${lt.days_allowed||0}</td>
+        <td>${lt.monthly_accrual>0?`<span style="color:var(--green);font-weight:600">+${lt.monthly_accrual}/mo</span>`:'—'}</td>
+        <td>${lt.carry_forward?`Max ${lt.max_carry_forward||0} days`:'No'}</td>
+        <td>${lt.is_paid?'<span class="badge badge-approved">Paid</span>':'<span class="badge badge-absent">Unpaid</span>'}</td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+async function loadManagerInfo() {
+  const managerId = user.reporting_manager_id || user.team_leader_id;
+  if (managerId) {
+    const d = await api('GET', `/employees/${managerId}`);
+    if (d?.success) document.getElementById('l1-name').textContent = `${d.data.first_name} ${d.data.last_name}`;
+  } else {
+    document.getElementById('l1-name').textContent = 'Auto-approved';
+  }
+}
+
+function updateAvailable() {
+  const sel  = document.getElementById('apply-type');
+  const code = sel.options[sel.selectedIndex]?.dataset?.code;
+  const bal  = balanceData.find(b => b.code === code);
+  const el   = document.getElementById('apply-available');
+  if (bal) el.textContent = `✓ Available: ${fmt.num(bal.available)} days`;
+  else el.textContent = '';
+  updateHalfDayBadge(); // refresh H-CL / H-EL etc. badge when type changes
+}
+
+function isNthSaturday(date, n) {
+  // Returns true if date is the nth Saturday of its month
+  if (date.getDay() !== 6) return false;
+  return Math.ceil(date.getDate() / 7) === n;
+}
+function isNonWorkingDay(date) {
+  const day = date.getDay();
+  if (day === 0) return true; // Sunday
+  if (isNthSaturday(date, 2) || isNthSaturday(date, 4)) return true; // 2nd & 4th Saturday
+  const ymd = date.getFullYear() + '-' +
+    String(date.getMonth() + 1).padStart(2, '0') + '-' +
+    String(date.getDate()).padStart(2, '0');
+  if (holidayDates.has(ymd)) return true; // Public holiday
+  return false;
+}
+function calcDays() {
+  const fromRaw = document.getElementById('apply-from').value;
+  const toRaw   = _isHalfDay ? fromRaw : document.getElementById('apply-to').value;
+  const dc      = document.getElementById('days-count');
+  if (!fromRaw || !toRaw) { dc.style.display = 'none'; return; }
+  // Append T00:00:00 to force LOCAL time parsing (prevents UTC timezone shift)
+  const cur = new Date(fromRaw + 'T00:00:00');
+  const end = new Date(toRaw   + 'T00:00:00');
+  if (isNaN(cur) || isNaN(end)) { dc.style.display = 'none'; return; }
+
+  // Half day — always 0.5 day on the selected date
+  if (_isHalfDay) {
+    dc.style.display = '';
+    if (isNonWorkingDay(cur)) {
+      dc.style.background = '#fff3e0'; dc.style.color = '#e65100'; dc.style.border = '1px solid #ffcc02';
+      dc.textContent = '⚠ Selected date is a non-working day';
+    } else {
+      dc.style.background = '#fef9c3'; dc.style.color = '#92400e'; dc.style.border = '1px solid #fde68a';
+      dc.textContent = '½ Half Day — 0.5 day leave will be deducted';
+    }
+    return;
+  }
+
+  if (cur > end) {
+    dc.style.display = '';
+    dc.style.background = '#fff3e0'; dc.style.color = '#e65100'; dc.style.border = '1px solid #ffcc02';
+    dc.textContent = '⚠ From date must be before To date';
+    return;
+  }
+  let count = 0;
+  const d = new Date(cur);
+  while (d <= end) {
+    if (!isNonWorkingDay(d)) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  dc.style.display = '';
+  if (count > 0) {
+    dc.style.background = window.CFG.paleColor; dc.style.color = window.CFG.primaryColor; dc.style.border = '1px solid ' + window.CFG.borderColor + ';';
+    dc.textContent = '📅 ' + count + ' Working day(s) selected';
+  } else {
+    dc.style.background = '#fff3e0'; dc.style.color = '#e65100'; dc.style.border = '1px solid #ffcc02';
+    dc.textContent = '⚠ No valid working days in selected range';
+  }
+}
+
+async function loadMyLeaves() {
+  const status = document.getElementById('my-status-filter').value;
+  const el = document.getElementById('my-leaves-list');
+  const data = await api('GET', '/leave/applications' + (status?'?status='+status:''));
+  if (!data) {
+    el.innerHTML = '<div style="text-align:center;color:#e53935;padding:24px">⚠ Could not load leaves. Please refresh.</div>';
+    return;
+  }
+  if (!data?.success || !data.data?.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>No leave applications found.</p></div>';
+    return;
+  }
+  el.innerHTML = data.data.map(a => renderLeaveCard(a, false)).join('');
+}
+
+async function loadApprovals() {
+  const status = document.getElementById('approvals-filter').value || 'pending';
+  const data = await api('GET', `/leave/applications?status=${status}`);
+  const el = document.getElementById('approvals-list');
+  if (!data?.success || !data.data?.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>No applications found.</p></div>';
+    return;
+  }
+  // Backend already scopes to: current approver (pending) + actioned by me (history) + own requests
+  // Exclude own requests from approvals view — show only team's leaves
+  const myId = user.id;
+  const teamLeaves = data.data.filter(a => a.employee_id !== myId);
+  if (!teamLeaves.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>No team applications found.</p></div>';
+    return;
+  }
+  el.innerHTML = teamLeaves.map(a => renderLeaveCard(a, true)).join('');
+}
+
+async function loadAllLeaves() {
+  const status = document.getElementById('all-status-filter').value;
+  const data = await api('GET', '/leave/applications' + (status?'?status='+status:''));
+  if (!data?.success) return;
+  allLeavesData = data.data;
+  filterAll();
+}
+
+function filterAll() {
+  const q  = document.getElementById('all-search').value.toLowerCase();
+  const el = document.getElementById('all-leaves-list');
+  const filtered = allLeavesData.filter(a =>
+    !q || a.employee_name?.toLowerCase().includes(q) || a.employee_code?.toLowerCase().includes(q)
+  );
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📂</div><p>No applications found.</p></div>';
+    return;
+  }
+  el.innerHTML = filtered.map(a => renderLeaveCard(a, Role.canApproveLeave())).join('');
+}
+
+function renderLeaveCard(a, canApprove) {
+  const userId   = user.id;
+  const userCode = user.employee_code;
+  const isOwnLeave = a.employee_id === userId;
+
+  // Only show approve/reject if:
+  // 1. This user is the designated current_approver_code on this leave
+  // 2. AND it's NOT their own leave (no self-approval ever)
+  const isMyTurn = !isOwnLeave
+    && a.current_approver_code
+    && a.current_approver_code === userCode
+    && a.status === 'pending';
+  return `<div class="req-card ${a.status}" style="cursor:pointer" onclick="showDetail(${a.id})">
+    <div class="req-top">
+      <div style="flex:1">
+        <div class="req-name">${a.employee_name||'You'} <span class="text-muted fs-sm">${a.employee_code||''}</span></div>
+        <div class="req-meta">${a.department_name||''} · ${a.designation_title||''}</div>
+        <div class="req-meta" style="margin-top:5px">
+          <span class="badge" style="background:var(--accent-l);color:var(--accent)">${a.leave_type_code}</span>
+          ${a.is_half_day ? `<span class="badge" style="background:#f5d0fe;color:#7e22ce;margin-left:4px">½ H-${a.leave_type_code}</span>` : ''}
+          <span style="margin:0 5px">·</span>
+          ${fmt.date(a.from_date)} → ${fmt.date(a.to_date)}
+          <span style="margin:0 5px">·</span>
+          <b>${a.days_requested ?? a.total_days ?? a.num_days ?? a.days ?? '?'} day(s)</b>
+        </div>
+        <div class="req-meta" style="margin-top:4px;font-style:italic">${a.reason}</div>
+        <div class="flex gap-2 flex-wrap" style="margin-top:8px">
+          ${a.current_approver_code && a.status==='pending' ? `<span class="badge badge-pending" style="font-size:10px">⏳ Awaiting: ${a.current_approver_code}</span>` : ''}
+          ${a.actioned_by && a.status!=='pending' ? `<span class="badge badge-${a.status}" style="font-size:10px">${a.status==='approved'?'✓':'✗'} ${a.status}</span>` : ''}
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <span class="badge badge-${a.status}">${a.status}</span>
+        <div class="text-muted2 mt-1">${fmt.ago(a.applied_at)}</div>
+      </div>
+    </div>
+    ${canApprove && isMyTurn && a.status==='pending' ? `
+    <div class="req-actions" onclick="event.stopPropagation()">
+      <button class="btn btn-success btn-sm" onclick="actionLeave(${a.id},'approve')">✓ Approve</button>
+      <button class="btn btn-danger btn-sm"  onclick="openReject(${a.id})">✗ Reject</button>
+    </div>` : ''}
+    ${a.status==='pending' && a.employee_id===userId ? `
+    <div class="req-actions" onclick="event.stopPropagation()">
+      <button class="btn btn-outline btn-sm" onclick="cancelLeave(${a.id})">Cancel Application</button>
+    </div>` : ''}
+    ${a.status==='approved' && a.employee_id===userId && new Date(a.from_date) > new Date() ? `
+    <div class="req-actions" onclick="event.stopPropagation()">
+      <button class="btn btn-outline btn-sm" style="border-color:#f59e0b;color:#92400e;background:#fffbeb" onclick="revokeLeave(${a.id},'${a.from_date}')">↩ Revoke Leave</button>
+    </div>` : ''}
+  </div>`;
+}
+
+async function showDetail(id) {
+  const data = await api('GET', '/leave/applications?status=');
+  if (!data?.success) return;
+  const a = [...(data.data||[])].find(x=>x.id===id);
+  if (!a) return;
+
+  const userCode   = user.employee_code;
+  const isOwnLeave = a.employee_id === user.id;
+  // Only show approve/reject if this user is the designated approver AND it's not their own leave
+  const isMyTurn = !isOwnLeave
+    && a.current_approver_code
+    && a.current_approver_code === userCode
+    && a.status === 'pending';
+
+  document.getElementById('detail-content').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div><div class="form-label">Employee</div><b>${a.employee_name}</b> (${a.employee_code})</div>
+      <div><div class="form-label">Department</div>${a.department_name||'—'}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div><div class="form-label">Leave Type</div><span class="badge" style="background:var(--accent-l);color:var(--accent)">${a.leave_type_name} (${a.leave_type_code})</span></div>
+      <div><div class="form-label">Category</div>${a.leave_category}${a.is_half_day ? ` &nbsp;<span class="badge" style="background:#f5d0fe;color:#7e22ce">½ H-${a.leave_type_code} — 0.5 day</span>` : ''}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+      <div><div class="form-label">From</div><b>${fmt.date(a.from_date)}</b></div>
+      <div><div class="form-label">To</div><b>${fmt.date(a.to_date)}</b></div>
+      <div><div class="form-label">Total Days</div><b style="color:var(--accent);font-size:18px">${a.days_requested ?? a.total_days ?? '?'}</b></div>
+    </div>
+    <div style="margin-bottom:16px"><div class="form-label">Reason</div>${a.reason}</div>
+    <div class="divider"></div>
+    <div class="section-title">Approval</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${a.status === 'pending' && a.current_approver_code
+        ? renderApprovalStep('Manager', a.current_approver_code, 'pending', '', null)
+        : renderApprovalStep('Manager', a.current_approver_code || '—', a.status, a.remarks, a.actioned_at)
+      }
+    </div>
+    <div class="divider"></div>
+    <div class="text-muted fs-sm">Applied: ${fmt.date(a.applied_at)} · Overall status: <span class="badge badge-${a.status}">${a.status}</span></div>`;
+
+  const actEl = document.getElementById('detail-actions');
+  actEl.innerHTML = `<button class="btn btn-outline" onclick="closeModal('detail-modal')">Close</button>`;
+  if (isMyTurn && a.status==='pending') {
+    activeActionId = id;
+    actEl.innerHTML += `
+      <button class="btn btn-danger btn-sm" onclick="openReject(${id});closeModal('detail-modal')">✗ Reject</button>
+      <button class="btn btn-success btn-sm" onclick="actionLeave(${id},'approve');closeModal('detail-modal')">✓ Approve</button>`;
+  }
+  openModal('detail-modal');
+}
+
+function renderApprovalStep(level, name, status, remarks, actionAt) {
+  return `<div class="approval-step">
+    <div class="approval-level">${level}</div>
+    <div style="flex:1">
+      <div style="font-weight:600;font-size:13px">${name||'Not assigned'}</div>
+      ${remarks?`<div class="text-muted" style="margin-top:2px">${remarks}</div>`:''}
+      ${actionAt?`<div class="text-muted2" style="margin-top:2px">${fmt.ago(actionAt)}</div>`:''}
+    </div>
+    <span class="badge badge-${status||'pending'}">${status||'pending'}</span>
+  </div>`;
+}
+
+let _isHalfDay = false;
+
+// Returns 'H-CL', 'H-EL', 'H-SL', 'H-LWP', 'H-WFH' based on selected leave type code
+function getHalfDayCode() {
+  const sel  = document.getElementById('apply-type');
+  const code = (sel.options[sel.selectedIndex]?.dataset?.code || '').toUpperCase();
+  const map  = { CL: 'H-CL', EL: 'H-EL', SL: 'H-SL', LWP: 'H-LWP', WFH: 'H-WFH' };
+  return map[code] || (code ? 'H-' + code : 'Half Day');
+}
+
+function updateHalfDayBadge() {
+  const badge = document.getElementById('half-day-type-badge');
+  if (!badge) return;
+  if (_isHalfDay) {
+    badge.textContent = '→ ' + getHalfDayCode();
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function toggleHalfDay() {
+  _isHalfDay = !_isHalfDay;
+  const toggle = document.getElementById('half-day-toggle');
+  const knob   = document.getElementById('half-day-knob');
+  const hint   = document.getElementById('half-day-hint');
+  const toGrp  = document.getElementById('to-date-group');
+  toggle.style.background = _isHalfDay ? 'var(--accent)' : '#cbd5e1';
+  knob.style.left = _isHalfDay ? '22px' : '2px';
+  hint.style.display = _isHalfDay ? '' : 'none';
+  updateHalfDayBadge();
+  // If half day, lock To = From
+  if (_isHalfDay) {
+    const fromVal = document.getElementById('apply-from').value;
+    document.getElementById('apply-to').value = fromVal;
+    toGrp.style.opacity = '0.4';
+    toGrp.style.pointerEvents = 'none';
+  } else {
+    toGrp.style.opacity = '';
+    toGrp.style.pointerEvents = '';
+  }
+  calcDays();
+}
+
+function onDateChange() {
+  if (_isHalfDay) {
+    const fromVal = document.getElementById('apply-from').value;
+    document.getElementById('apply-to').value = fromVal;
+  }
+  calcDays();
+}
+
+async function submitLeave() {
+  const leave_type_id  = document.getElementById('apply-type').value;
+  const from_date      = document.getElementById('apply-from').value;
+  const to_date        = _isHalfDay ? from_date : document.getElementById('apply-to').value;
+  const leave_category = document.getElementById('apply-category').value;
+  const reason         = document.getElementById('apply-reason').value.trim();
+  const is_half_day    = _isHalfDay;
+
+  if (!leave_type_id || !from_date || !to_date || !reason) { toast('All fields are required','error'); return; }
+  const btn = document.getElementById('apply-btn');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  const data = await api('POST','/leave/apply',{leave_type_id,from_date,to_date,reason,leave_category,is_half_day});
+  btn.disabled = false; btn.textContent = 'Submit Application';
+  if (data?.success) {
+    toast(data.message,'success');
+    closeModal('apply-modal');
+    // Reset half day toggle
+    if (_isHalfDay) toggleHalfDay();
+    loadMyLeaves(); loadBalance();
+  } else toast(data?.message||'Failed','error');
+}
+
+async function actionLeave(id, action) {
+  const data = await api('PUT', `/leave/${id}/action`, {action, remarks: action==='approve'?'Approved':'Rejected'});
+  if (data?.success) {
+    toast(`Leave ${action}d successfully`,'success');
+    loadApprovals();
+    if (typeof loadAllLeaves === 'function') loadAllLeaves();
+  } else toast(data?.message||'Failed','error');
+}
+
+function openReject(id) {
+  activeActionId = id;
+  document.getElementById('reject-remarks').value = '';
+  openModal('reject-modal');
+}
+
+async function confirmReject() {
+  const remarks = document.getElementById('reject-remarks').value.trim();
+  if (!remarks) { toast('Please provide a reason for rejection','error'); return; }
+  const data = await api('PUT', `/leave/${activeActionId}/action`, {action:'reject', remarks});
+  if (data?.success) {
+    toast('Leave rejected'); closeModal('reject-modal');
+    loadApprovals();
+    if (typeof loadAllLeaves === 'function') loadAllLeaves();
+  } else toast(data?.message||'Failed','error');
+}
+
+async function cancelLeave(id) {
+  if (!confirm('Cancel this leave application?')) return;
+  const data = await api('POST', `/leave/${id}/cancel`);
+  if (data?.success) { toast('Application cancelled'); loadMyLeaves(); loadBalance(); }
+  else toast(data?.message||'Failed','error');
+}
+
+async function revokeLeave(id, fromDate) {
+  const fromStr = new Date(fromDate).toLocaleDateString(window.CFG.currencyLocale, { day:'2-digit', month:'short', year:'numeric' });
+  const reason  = prompt(`Revoke approved leave starting ${fromStr}?\n\nReason for revoking (optional):`);
+  if (reason === null) return; // user pressed Cancel
+  const data = await api('POST', `/leave/${id}/revoke`, { reason: reason.trim() || '' });
+  if (data?.success) {
+    toast('✅ ' + (data.message || 'Leave revoked. Balance restored.'));
+    loadMyLeaves();
+    loadBalance();
+  } else {
+    toast(data?.message || 'Failed to revoke leave', 'error');
+  }
+}
+
+// runAccrual removed — handled by cron automatically
+
+function switchTab(name) {
+  ['my-leaves','compoff-credits','approvals','all-leaves'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===name?'':'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event?.target?.classList.add('active');
+  if (name==='approvals' && document.getElementById('approvals-list').innerHTML.includes('spinner')) loadApprovals();
+  if (name==='all-leaves') loadAllLeaves();
+  if (name==='compoff-credits') loadCompOffCredits();
+}
+
+async function loadCompOffCredits() {
+  const [balRes, credRes] = await Promise.all([
+    api('GET', '/compoff/balance').catch(() => null),
+    api('GET', '/compoff/credits').catch(() => null)
+  ]);
+
+  // Update balance strip
+  if (balRes?.success) {
+    const d = balRes.data;
+    const avail  = parseFloat(d.available       || 0);
+    const earned = parseFloat(d.total_credited   || 0);
+    const used   = parseFloat(d.used             || 0);
+    document.getElementById('co-avail-big').textContent  = avail.toFixed(1);
+    document.getElementById('co-earned-big').textContent = earned.toFixed(1);
+    document.getElementById('co-used-big').textContent   = used.toFixed(1);
+  }
+
+  // Render credits table
+  const el = document.getElementById('co-credits-list');
+  if (!credRes?.success || !credRes.data.length) {
+    el.innerHTML = `<div style="text-align:center;padding:48px 24px;color:var(--muted)">
+      <div style="font-size:48px;margin-bottom:12px">🗓️</div>
+      <div style="font-weight:700;font-size:15px;color:#374151;margin-bottom:6px">No comp off credits yet</div>
+      <div style="font-size:13px;color:#6b7280;max-width:340px;margin:0 auto;line-height:1.6">Work on a holiday or weekend — <strong>8+ hrs</strong> earns 1 full day, <strong>4–7.99 hrs</strong> earns 0.5 day. Credits are auto-added after you punch out.</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="background:#f9fafb;text-align:left">
+      <th style="padding:10px 16px;color:var(--muted);font-weight:600">Date Worked</th>
+      <th style="padding:10px 16px;color:var(--muted);font-weight:600">Type</th>
+      <th style="padding:10px 16px;color:var(--muted);font-weight:600">Occasion</th>
+      <th style="padding:10px 16px;color:var(--muted);font-weight:600">Days</th>
+      <th style="padding:10px 16px;color:var(--muted);font-weight:600">Status</th>
+      <th style="padding:10px 16px;color:var(--muted);font-weight:600">Expiry</th>
+      <th style="padding:10px 16px;color:var(--muted);font-weight:600">Remarks</th>
+    </tr></thead>
+    <tbody>
+      ${credRes.data.map(c => `<tr style="border-top:1px solid #f3f4f6">
+        <td style="padding:10px 16px;font-weight:600">${fmtDateCo(c.worked_date)}</td>
+        <td style="padding:10px 16px">
+          <span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;${c.worked_type==='holiday'?'background:#fef3c7;color:#92400e':'background:#e0e7ff;color:#3730a3'}">
+            ${c.worked_type==='holiday'?'🗓 Holiday':'📅 Weekend'}
+          </span>
+        </td>
+        <td style="padding:10px 16px;color:var(--muted)">${c.holiday_name||'—'}</td>
+        <td style="padding:10px 16px;font-weight:700;color:#92400e">${parseFloat(c.days_credited).toFixed(1)}</td>
+        <td style="padding:10px 16px">
+          <span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;${
+            c.status==='available'?'background:#dcfce7;color:#166534':
+            c.status==='used'?'background:#f3f4f6;color:#6b7280':'background:#fee2e2;color:#991b1b'}">
+            ${c.status.charAt(0).toUpperCase()+c.status.slice(1)}
+          </span>
+        </td>
+        <td style="padding:10px 16px;font-size:12px;color:var(--muted)">${c.expiry_date?fmtDateCo(c.expiry_date):'No expiry'}</td>
+        <td style="padding:10px 16px;font-size:12px;color:var(--muted)">${c.remarks||'—'}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+function fmtDateCo(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString(window.CFG.currencyLocale, { day:'2-digit', month:'short', year:'numeric' });
+}
+
+
+function onCategoryChange() {
+  const cat = document.getElementById('apply-category').value;
+  const infoBox = document.getElementById('compoff-info-box');
+
+  // Show/hide comp off info box
+  if (infoBox) infoBox.style.display = (cat === 'compoff') ? '' : 'none';
+
+  // Auto-select COMPOFF leave type when category is compoff
+  if (cat === 'compoff') {
+    const sel = document.getElementById('apply-type');
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].dataset.code === 'COMPOFF') {
+        sel.selectedIndex = i;
+        updateAvailable();
+        break;
+      }
+    }
+  }
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function resetApplyModal() {
+  if (_isHalfDay) toggleHalfDay(); // reset toggle
+  document.getElementById('apply-from').value = '';
+  document.getElementById('apply-to').value = '';
+  document.getElementById('apply-type').value = '';
+  document.getElementById('apply-reason').value = '';
+  document.getElementById('days-count').style.display = 'none';
+  document.getElementById('apply-available').textContent = '';
+  const ib = document.getElementById('compoff-info-box'); if(ib) ib.style.display='none';
+  document.getElementById('apply-category').value = 'leave';
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+</script>
+</body>
+</html>
