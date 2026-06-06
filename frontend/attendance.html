@@ -1,0 +1,2974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Attendance</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+
+<style>
+@media (max-width: 768px) {
+
+  /* ── Hide sidebar on mobile ── */
+  .sidebar { display: none !important; }
+
+  /* ── Main takes full width ── */
+  .main { margin-left: 0 !important; width: 100% !important; }
+
+  /* ── Topbar ── */
+  .topbar {
+    padding: 10px 14px !important;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #fff;
+    box-shadow: 0 1px 8px rgba(0,0,0,.08);
+  }
+  .topbar-title { font-size: 18px !important; font-weight: 700 !important; }
+  .topbar-right { gap: 8px !important; }
+
+  /* ── Content padding ── */
+  .content { padding: 12px !important; }
+
+  /* ── Legend pills ── */
+  .flex.gap-2.flex-wrap { gap: 6px !important; margin-bottom: 12px !important; }
+  .badge { font-size: 10px !important; padding: 3px 8px !important; }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex !important;
+    overflow-x: auto !important;
+    gap: 6px !important;
+    padding-bottom: 4px !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .tabs::-webkit-scrollbar { display: none !important; }
+  .tab-btn {
+    white-space: nowrap !important;
+    font-size: 12px !important;
+    padding: 7px 12px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ── Calendar card ── */
+  .card { border-radius: 14px !important; padding: 12px !important; margin-bottom: 12px !important; }
+  .card-header { padding: 0 0 12px 0 !important; }
+
+  /* ── Calendar nav ── */
+  .cal-month-lbl { font-size: 16px !important; font-weight: 700 !important; }
+  .cal-nav-btn { width: 30px !important; height: 30px !important; font-size: 18px !important; }
+
+  /* ── Calendar grid ── */
+  .cal-grid {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    gap: 2px !important;
+  }
+
+  /* ── Day of week headers ── */
+  .cal-dow {
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    padding: 4px 0 !important;
+    color: #64748b !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0 !important;
+  }
+
+  /* ── Calendar cells ── */
+  .cal-cell {
+    border-radius: 8px !important;
+    padding: 5px 4px !important;
+    min-height: 68px !important;
+    cursor: pointer !important;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 3px !important;
+  }
+
+  /* ── Day number ── */
+  .cal-day-num {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    color: #1e293b !important;
+  }
+
+  /* ── Status badge inside cell ── */
+  .cal-status {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.3px !important;
+    padding: 3px 6px !important;
+    border-radius: 5px !important;
+    text-align: center !important;
+    line-height: 1.3 !important;
+    word-break: break-word !important;
+    width: 100% !important;
+    display: inline-block !important;
+  }
+
+  /* ── Punch time text ── */
+  .cal-cell > div[style*="font-size:9px"] {
+    font-size: 7px !important;
+    color: #64748b !important;
+    text-align: center !important;
+  }
+
+  /* ── Regularize button ── */
+  .cal-reg-btn {
+    font-size: 7px !important;
+    padding: 2px 3px !important;
+    border-radius: 4px !important;
+    margin-top: 1px !important;
+    text-align: center !important;
+    line-height: 1.2 !important;
+  }
+
+  /* ── Today highlight ── */
+  .cal-today {
+    box-shadow: 0 0 0 2px var(--cfg-accent) !important;
+  }
+
+  /* ── Color classes ── */
+  .cs-present   { background: #dcfce7 !important; }
+  .cs-absent    { background: #fee2e2 !important; }
+  .cs-late      { background: #fef3c7 !important; }
+  .cs-on-leave  { background: #dbeafe !important; }
+  .cs-half-day  { background: #fef9c3 !important; }
+  .cs-holiday   { background: #fed7aa !important; }
+  .cs-weekend   { background: #f1f5f9 !important; }
+  .cs-regularized { background: #ede9fe !important; }
+
+  /* Status text colors */
+  .cal-status.cs-present    { color: #15803d !important; background: #bbf7d0 !important; }
+  .cal-status.cs-absent     { color: #b91c1c !important; background: #fecaca !important; }
+  .cal-status.cs-late       { color: #92400e !important; background: #fde68a !important; }
+  .cal-status.cs-on-leave   { color: #1d4ed8 !important; background: #bfdbfe !important; }
+  .cal-status.cs-holiday    { color: #c2410c !important; background: #fed7aa !important; }
+  .cal-status.cs-weekend    { color: #64748b !important; background: #e2e8f0 !important; }
+  .cal-status.cs-regularized{ color: #6d28d9 !important; background: #ddd6fe !important; }
+  .cal-status.cs-half-day  { color: #92400e !important; background: #fde68a !important; }
+
+  /* ── Day detail card ── */
+  #day-detail .card-header { flex-wrap: wrap !important; gap: 8px !important; }
+  #day-detail > div[style*="grid-template-columns:repeat(4"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* ── Summary tab ── */
+  #summary-content > div[style*="repeat(6,1fr)"] {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+  }
+  #summary-content > div[style*="repeat(3,1fr)"] {
+    grid-template-columns: repeat(1, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* ── Table wrap ── */
+  .table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+  table { font-size: 12px !important; min-width: 500px !important; }
+  th, td { padding: 8px 10px !important; }
+
+  /* ── Punch buttons ── */
+  #punch-in-btn, #punch-out-btn {
+    font-size: 12px !important;
+    padding: 8px 14px !important;
+    border-radius: 20px !important;
+    font-weight: 700 !important;
+  }
+
+  /* ── Map modal ── */
+  .modal-lg { width: 96vw !important; max-width: 96vw !important; margin: 8px auto !important; }
+  #punch-map { height: 300px !important; }
+  .modal-body { padding: 12px !important; }
+  .modal-footer { padding: 10px 12px !important; gap: 8px !important; }
+  .modal-footer .btn { flex: 1 !important; }
+
+}
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">Attendance</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-sm" id="od-btn" onclick="openODModal()" style="display:none;background:#8b5cf6;color:white;border:none">🚗 Apply OD</button>
+      <button class="btn btn-sm" id="wfh-btn" onclick="openWFHModal()" style="display:none;background:#0284c7;color:white;border:none">🏠 Apply WFH</button>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+
+    <!-- PUNCH STATUS BAR (dashboard-style) -->
+    <div class="punch-bar state-not-punched" id="punch-bar" style="margin-bottom:16px">
+      <div class="flex gap-3" style="align-items:center">
+        <div id="punch-status-dot" class="punch-status-dot"></div>
+        <div>
+          <div id="punch-status-text" style="font-weight:700;font-size:14.5px;color:var(--text)">Loading…</div>
+          <div id="punch-time-text" class="text-muted mt-1" style="font-size:12.5px"></div>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-success btn-sm" id="punch-in-btn" onclick="openMapPunch('in')" style="display:none">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+          Punch In
+        </button>
+        <button class="btn btn-danger btn-sm" id="punch-out-btn" onclick="openMapPunch('out')" style="display:none">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="8" y1="8" x2="16" y2="16"/><line x1="16" y1="8" x2="8" y2="16"/></svg>
+          Punch Out
+        </button>
+      </div>
+    </div>
+
+
+    <!-- LEGEND PILLS -->
+    <div class="flex gap-2 flex-wrap" style="margin-bottom:16px">
+      <span class="badge badge-present">Present</span>
+      <span class="badge badge-absent">Absent</span>
+      <span class="badge badge-on-leave">On Leave</span>
+      <span class="badge badge-late">Late</span>
+      <span class="badge" style="background:#f8fafc;color:#64748b;border:1px solid #cbd5e1">Sunday</span>
+      <span class="badge badge-holiday">🏖 Holiday / 2nd·4th Sat</span>
+      <span class="badge badge-regularized">Regularized</span>
+      <span class="badge" style="background:#fff7ed;color:#c2410c;border:1px solid #fb923c">National Holiday</span>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs" id="att-tabs">
+      <button class="tab-btn active" onclick="switchTab('calendar')">📅 My Calendar</button>
+      <button class="tab-btn" onclick="switchTab('summary')">📊 Summary</button>
+      <button class="tab-btn" id="team-tab" style="display:none" onclick="switchTab('team')">👥 Team Today</button>
+      <button class="tab-btn" id="loc-tab"  style="display:none" onclick="switchTab('locations')">🗺 Location Map</button>
+      <button class="tab-btn" id="reg-tab"  style="display:none" onclick="switchTab('regularize')">🔄 Regularizations</button>
+      <button class="tab-btn" id="odwfh-tab" onclick="switchTab('odwfh')">🚗 My OD/WFH</button>
+      <button class="tab-btn" id="download-tab" style="display:none" onclick="switchTab('download')">⬇ Download Attendance</button>
+      <button class="tab-btn" id="import-tab" style="display:none" onclick="switchTab('import')">⬆ Import Attendance</button>
+      <button class="tab-btn" id="mark-tab"   style="display:none" onclick="switchTab('mark')">✏️ Mark Attendance</button>
+    </div>
+
+    <!-- CALENDAR TAB -->
+    <div id="tab-calendar">
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap;gap:14px">
+          <div class="flex gap-3">
+            <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+            <div class="cal-month-lbl" id="cal-month-lbl"></div>
+            <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+          </div>
+          <div class="flex gap-2">
+            <select id="emp-filter" class="form-control" style="width:220px;display:none" onchange="loadCalendar()"></select>
+          </div>
+        </div>
+        <div class="cal-grid">
+          <div class="cal-dow">Sun</div>
+          <div class="cal-dow">Mon</div>
+          <div class="cal-dow">Tue</div>
+          <div class="cal-dow">Wed</div>
+          <div class="cal-dow">Thu</div>
+          <div class="cal-dow">Fri</div>
+          <div class="cal-dow">Sat</div>
+          <div id="cal-cells" style="display:contents"></div>
+        </div>
+      </div>
+
+      <!-- Day Detail -->
+      <div id="day-detail" style="display:none" class="card">
+        <div class="card-header">
+          <div class="card-title" id="day-detail-title">Day Detail</div>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('day-detail').style.display='none'">✕</button>
+        </div>
+        <div id="day-detail-content"></div>
+      </div>
+    </div>
+
+    <!-- SUMMARY TAB -->
+    <div id="tab-summary" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Monthly Summary</div>
+          <div class="flex gap-2" style="flex-wrap:wrap;align-items:center">
+            <select id="sum-emp-select" class="form-control" style="width:200px;display:none" onchange="loadSummary()">
+              <option value="">— My Attendance —</option>
+              <option value="__all__">📋 All Employees</option>
+            </select>
+            <select id="sum-month" class="form-control" style="width:130px"></select>
+            <select id="sum-year"  class="form-control" style="width:90px"></select>
+            <button class="btn btn-primary btn-sm" onclick="loadSummary()">Load</button>
+          </div>
+        </div>
+        <div id="summary-content"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+      <div class="card" id="month-table-card">
+        <div class="card-header"><div class="card-title">Daily Records</div></div>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>Date</th><th>Day</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Hours</th><th>Remarks</th><th>Action</th>
+          </tr></thead>
+          <tbody id="month-records"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- TEAM TODAY TAB -->
+    <div id="tab-team" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">👥 Team Attendance</div>
+          <div class="flex gap-2 align-items-center flex-wrap">
+            <!-- Date picker — defaults to today, can browse any date -->
+            <input type="date" id="team-date" class="form-control" style="width:160px"
+              oninput="loadTeamToday()" />
+            <div class="input-with-icon" style="width:180px">
+              <span class="input-icon">🔍</span>
+              <input id="team-search" class="form-control" placeholder="Search name…" oninput="filterTeam()">
+            </div>
+            <select id="team-status-filter" class="form-control" style="width:140px" onchange="filterTeam()">
+              <option value="">All Status</option>
+              <option value="present">Present</option>
+              <option value="absent">Absent</option>
+              <option value="late">Late</option>
+              <option value="on-leave">On Leave</option>
+              <option value="od">OD</option>
+              <option value="wfh">WFH</option>
+              <option value="half-day">Half Day</option>
+              <option value="lwp">LWP</option>
+            </select>
+          </div>
+        </div>
+        <div id="team-stats-bar" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px"></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Employee</th><th>Department</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Hours</th></tr></thead>
+          <tbody id="team-tbody"></tbody>
+        </table></div>
+      </div>
+
+      <!-- ── Pending OD / WFH Approvals (managers/HR/admin only) ── -->
+      <div id="team-pending-section" style="display:none;margin-top:16px">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">⏳ Pending OD &amp; WFH Approvals</div>
+          </div>
+          <div id="team-pending-list">
+            <div class="empty-state"><div class="empty-icon">✅</div><p>No pending OD/WFH requests</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOCATION MAP TAB -->
+    <div id="tab-locations" style="display:none">
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap;gap:12px">
+          <div class="card-title">📍 Team Punch Locations</div>
+          <div class="flex gap-2">
+            <input type="date" id="loc-date" class="form-control" style="width:160px">
+            <button class="btn btn-primary btn-sm" onclick="loadLocationMap()">Load</button>
+          </div>
+        </div>
+        <div id="loc-map" style="width:100%;height:420px;border-radius:12px;border:1.5px solid var(--border);margin-bottom:16px"></div>
+        <div id="loc-legend" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;font-size:12px;font-weight:600;color:var(--muted)">
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:50%;background:#22a855;display:inline-block"></span>Present</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Late</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:50%;background:#ef4444;display:inline-block"></span>Absent/No GPS</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:50%;background:var(--cfg-accent);display:inline-block"></span>Office Location</span>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Employee</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Hours</th><th>Location</th></tr></thead>
+          <tbody id="loc-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- REGULARIZATIONS TAB -->
+    <div id="tab-regularize" style="display:none">
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap;gap:10px">
+          <div class="card-title"><span class="card-title-icon">🔄</span>Regularizations</div>
+          <div class="flex gap-2 align-items-center" id="reg-filter-row">
+            <!-- Filter only affects the APPROVAL QUEUE below, not My Pending Requests -->
+            <span style="font-size:12px;color:var(--muted);display:none" id="reg-filter-label">Queue filter:</span>
+            <select id="reg-status-filter" class="form-control" style="width:160px;display:none"
+              onchange="loadRegularizations()">
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="">All</option>
+            </select>
+          </div>
+        </div>
+        <!-- MY PENDING REQUESTS — always pending only, visible to all roles -->
+        <div id="reg-my-section">
+          <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">⏳ My Pending Requests</div>
+          <div id="reg-my-list"><div class="empty-state"><div class="empty-icon">⏳</div><p>Loading…</p></div></div>
+        </div>
+        <!-- APPROVAL QUEUE — managers/HR/admin only -->
+        <div id="reg-approve-section" style="display:none;margin-top:28px">
+          <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">📋 Approval Queue</div>
+          <div id="reg-list"><div class="empty-state"><div class="empty-icon">✅</div><p>No pending regularizations</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MY OD/WFH TAB -->
+    <div id="tab-odwfh" style="display:none">
+      <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+        <div style="font-size:18px;font-weight:700;color:var(--text);">My OD &amp; WFH Requests</div>
+        <div style="margin-left:auto;display:flex;gap:8px;">
+          <select id="odwfh-type-filter" class="form-control" style="width:110px" onchange="loadMyODWFH()">
+            <option value="">All Types</option>
+            <option value="od">OD Only</option>
+            <option value="wfh">WFH Only</option>
+          </select>
+          <select id="odwfh-status-filter" class="form-control" style="width:130px" onchange="loadMyODWFH()">
+            <option value="">All Status</option>
+            <option value="pending" selected>Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+      </div>
+      <div id="my-odwfh-list"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- DOWNLOAD REPORT TAB (HR / Accounts only) -->
+    <div id="tab-download" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">⬇</span>Download Attendance</div>
+        </div>
+        <div style="background:var(--cfg-pale);border:1px solid var(--cfg-border);border-radius:8px;padding:16px;margin-bottom:24px">
+          <div style="font-weight:700;color:var(--cfg-primary);margin-bottom:10px;font-size:14px">📊 What You Get</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;font-size:13px;color:var(--cfg-dark)">
+            <div>📋 <b>Attendance Register:</b> Color-coded day-by-day register (P/A/H/WO/HOL) for all employees</div>
+            <div>🎨 <b>Color Coded:</b> Green=Present, Red=Absent, Blue=Leave, Purple=Half Day, Grey=Week Off</div>
+            <div>📊 <b>Summary Columns:</b> Paid Leave, Unpaid Leave, Total Present, Absent, Late counts per employee</div>
+            <div>💾 <b>Format:</b> .xlsx — Attendance Register only (no salary/personal data)</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px;align-items:end;margin-bottom:24px">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase">Month</div>
+            <select id="dl-month" class="form-control"></select>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase">Year</div>
+            <select id="dl-year" class="form-control"></select>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase">Department</div>
+            <select id="dl-department" class="form-control">
+              <option value="">All Departments</option>
+            </select>
+          </div>
+          <div>
+            <button class="btn btn-primary" id="dl-btn" onclick="downloadAttendanceExcel()" style="width:100%;padding:12px;font-size:14px;font-weight:700">
+              ⬇ Download Attendance
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPORT ATTENDANCE TAB -->
+    <div id="tab-import" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">⬆</span>Import Attendance (Bulk Upload)</div>
+        </div>
+
+        <!-- Info box -->
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px;margin-bottom:20px">
+          <div style="font-weight:700;color:#1e40af;margin-bottom:8px;font-size:14px">📋 How to Import</div>
+          <div style="font-size:13px;color:#1e3a8a;line-height:1.8">
+            1. Download the Excel template below &nbsp;→&nbsp; Fill in attendance codes &nbsp;→&nbsp; Upload.<br>
+            2. <b>Valid codes:</b> &nbsp;<code style="background:#dbeafe;padding:2px 6px;border-radius:4px">P</code> Present &nbsp;
+            <code style="background:#fee2e2;padding:2px 6px;border-radius:4px">A</code> Absent &nbsp;
+            <code style="background:#fef9c3;padding:2px 6px;border-radius:4px">H</code> Half Day &nbsp;
+            <code style="background:#ede9fe;padding:2px 6px;border-radius:4px">OD</code> Outdoor Duty &nbsp;
+            <code style="background:#dcfce7;padding:2px 6px;border-radius:4px">WFH</code> Work From Home &nbsp;
+            <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px">EL</code> Earned Leave &nbsp;
+            <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px">SL</code> Sick Leave &nbsp;
+            <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px">CL</code> Casual Leave &nbsp;
+            <code style="background:#fce7f3;padding:2px 6px;border-radius:4px">LWP</code> Loss of Pay &nbsp;
+            <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px">WO</code> Weekly Off (auto-skip)<br>
+            <b>Half-day leave codes:</b> &nbsp;
+            <code style="background:#fef9c3;padding:2px 6px;border-radius:4px">H-SL</code> Half-day Sick Leave &nbsp;
+            <code style="background:#fef9c3;padding:2px 6px;border-radius:4px">H-EL</code> Half-day Earned Leave &nbsp;
+            <code style="background:#fef9c3;padding:2px 6px;border-radius:4px">H-CL</code> Half-day Casual Leave &nbsp;
+            <code style="background:#fef9c3;padding:2px 6px;border-radius:4px">H-LWP</code> Half-day LWP &nbsp;
+            <code style="background:#dcfce7;padding:2px 6px;border-radius:4px">H-WFH</code> Half-day WFH<br>
+            3. Row 1 = Title, Row 2 = Headers (do not edit). Data starts from Row 3.
+          </div>
+        </div>
+
+        <!-- Step 1: Select Month/Year + Download Template -->
+        <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:20px">
+          <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:14px">Step 1 — Select Month & Download Template</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase">Month</div>
+              <select id="imp-month" class="form-control" style="width:140px"></select>
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase">Year</div>
+              <select id="imp-year" class="form-control" style="width:90px"></select>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="downloadImportTemplate()" style="display:flex;align-items:center;gap:6px;padding:8px 16px">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download Excel Template
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2: Upload -->
+        <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:20px">
+          <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:14px">Step 2 — Upload Filled Template</div>
+
+          <!-- Drag & Drop Zone -->
+          <div id="imp-dropzone"
+            style="border:2px dashed #cbd5e1;border-radius:10px;padding:36px;text-align:center;cursor:pointer;transition:all .2s;background:#fff;margin-bottom:16px"
+            onclick="document.getElementById('imp-file').click()"
+            ondragover="event.preventDefault();this.style.borderColor=window.CFG.accentColor;this.style.background='#f0fdf4'"
+            ondragleave="this.style.borderColor='#cbd5e1';this.style.background='#fff'"
+            ondrop="handleImpDrop(event)">
+            <div style="font-size:36px;margin-bottom:10px">📂</div>
+            <div style="font-weight:600;color:var(--text);margin-bottom:4px">Drag & drop Excel file here</div>
+            <div style="font-size:12px;color:var(--muted)">or click to browse &nbsp;·&nbsp; .xlsx / .xls only</div>
+            <div id="imp-filename" style="margin-top:12px;font-size:13px;font-weight:600;color:var(--cfg-accent)"></div>
+          </div>
+          <input type="file" id="imp-file" accept=".xlsx,.xls" style="display:none" onchange="onImpFileSelect(this)">
+
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;user-select:none">
+              <input type="checkbox" id="imp-overwrite" style="width:15px;height:15px;accent-color:var(--cfg-accent)">
+              <span><b>Overwrite existing records</b> <span style="color:var(--muted)">(uncheck = skip if record already exists)</span></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Upload Button + Result -->
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" id="imp-upload-btn" onclick="uploadAttendance()" style="display:flex;align-items:center;gap:8px;padding:10px 24px;font-size:14px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload & Import
+          </button>
+          <span id="imp-spinner" style="display:none">
+            <div class="spinner" style="width:20px;height:20px;border-width:3px"></div>
+          </span>
+        </div>
+
+        <!-- Result box -->
+        <div id="imp-result" style="display:none;margin-top:20px;border-radius:8px;padding:16px;font-size:13px"></div>
+      </div>
+    </div>
+
+    <!-- MARK ATTENDANCE TAB (COO / super_admin only) -->
+    <div id="tab-mark" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">✏️</span>Mark My Attendance</div>
+        </div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px;margin-bottom:20px;font-size:13px;color:#1e40af">
+          Mark your attendance for any date or date range without punching in/out.
+          Sundays, 2nd &amp; 4th Saturdays, and public holidays are automatically skipped.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+          <div class="form-group">
+            <label class="form-label">From Date *</label>
+            <input id="mark-from" class="form-control" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">To Date *</label>
+            <input id="mark-to" class="form-control" type="date">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:16px">
+          <label class="form-label">Status *</label>
+          <select id="mark-status" class="form-control">
+            <option value="present">✅ Present</option>
+            <option value="od">🚗 Outdoor Duty (OD)</option>
+            <option value="on-leave">🏖 On Leave</option>
+            <option value="wfh">🏠 Work From Home</option>
+            <option value="half-day">½ Half Day</option>
+            <option value="absent">❌ Absent</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:20px">
+          <label class="form-label">Remarks (optional)</label>
+          <input id="mark-remarks" class="form-control" type="text" placeholder="e.g. Field visit to Pune">
+        </div>
+        <button class="btn btn-primary" onclick="submitMarkRange()">✅ Submit Attendance</button>
+      </div>
+    </div>
+
+
+  </div>
+</div>
+
+<!-- REGULARIZE MODAL -->
+<div class="modal-backdrop" id="reg-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Request Regularization</div>
+      <button class="modal-close" onclick="closeModal('reg-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input id="reg-date" class="form-control" type="date">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Punch In Time (optional)</label>
+          <input id="reg-punchin" class="form-control" type="time">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Punch Out Time (optional)</label>
+          <input id="reg-punchout" class="form-control" type="time">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason</label>
+        <textarea id="reg-reason" class="form-control" rows="3" placeholder="Explain why you need this correction…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('reg-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitReg()">Submit Request</button>
+    </div>
+  </div>
+</div>
+
+<!-- APPROVE REG MODAL -->
+<div class="modal-backdrop" id="approve-reg-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Review Regularization</div>
+      <button class="modal-close" onclick="closeModal('approve-reg-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="approve-reg-content"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('approve-reg-modal')">Close</button>
+      <button class="btn btn-danger btn-sm" onclick="actionReg('reject')">Reject</button>
+      <button class="btn btn-success btn-sm" onclick="actionReg('approve')">Approve</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAP PUNCH MODAL -->
+
+
+
+<div class="modal-backdrop" id="map-punch-backdrop">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="map-modal-title">📍 Punch In — Verify Location</div>
+      <button class="modal-close" onclick="document.getElementById('map-punch-backdrop').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="map-status loading" id="map-status">📡 Getting your location…</div>
+      <div id="punch-map" style="width:100%;height:420px;border-radius:12px;border:1.5px solid var(--border);margin-bottom:12px"></div>
+      <div class="map-acc" id="map-acc"></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">🟢 Green circle = assigned office zone &nbsp;|&nbsp; 🔵 Blue circle = universal (punch from anywhere) &nbsp;|&nbsp; 🔵 Blue dot = your location</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="document.getElementById('map-punch-backdrop').classList.remove('open')">Cancel</button>
+      <button class="btn btn-primary" id="confirm-punch-btn" onclick="confirmPunch()" disabled>Confirm Punch</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function(){
+  var C = window.CFG;
+  // Page title
+  var t = document.getElementById('page-title');
+  if(t) t.textContent = C.clientName + ' - ' + t.textContent;
+  // Sidebar logo text
+  var lt = document.getElementById('sidebar-logo-text');
+  if(lt) lt.innerHTML = C.logoHtml || C.clientName;
+  // Sidebar company short name
+  var cs = document.getElementById('sidebar-company-short');
+  if(cs) cs.textContent = C.companyShortName || '';
+
+  // ── Inject Google Maps AFTER config.js so API key is resolved ──
+  if (C.googleMapsApiKey) {
+    var s = document.createElement('script');
+    s.src = 'https://maps.googleapis.com/maps/api/js?key=' + C.googleMapsApiKey
+          + '&libraries=geometry,marker&loading=async';
+    s.async = true; s.defer = true;
+    document.head.appendChild(s);
+  }
+})();
+</script>
+  <script src="app.js"></script>
+<script>
+function fmtHours(val) {
+  if (!val || val === '—') return '—';
+  const total = parseFloat(val);
+  if (isNaN(total) || total <= 0) return '—';
+  const h = Math.floor(total);
+  const m = Math.round((total - h) * 60);
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+Auth.guard();
+buildSidebar('attendance.html');
+loadNotifBadge();
+
+const user = Auth.getUser();
+let curYear  = new Date().getFullYear();
+let curMonth = new Date().getMonth() + 1;
+let calData  = {};
+let teamData = [];
+let activeRegId = null;
+
+// Regularization tab — visible to EVERYONE (employees see own requests, managers see approval queue)
+document.getElementById('reg-tab').style.display = '';
+
+if (Role.isManagerUp() || Role.is('tl')) {
+  document.getElementById('team-tab').style.display = '';
+  document.getElementById('loc-tab').style.display = '';
+  document.getElementById('reg-status-filter').style.display = '';
+  document.getElementById('reg-filter-label').style.display = '';
+}
+// HR, Super Admin — full visibility including employee filter
+if (Role.is('hr','super_admin')) {
+  document.getElementById('emp-filter').style.display = '';
+  document.getElementById('team-tab').style.display = '';
+  document.getElementById('loc-tab').style.display = '';
+  document.getElementById('reg-status-filter').style.display = '';
+  document.getElementById('reg-filter-label').style.display = '';
+  loadEmployeeFilter();
+  document.getElementById('sum-emp-select').style.display = '';
+  loadSummaryEmployeePicker();
+}
+// Admin sees their own team (direct reports) only — no emp-filter
+if (Role.is('admin')) {
+  document.getElementById('team-tab').style.display = '';
+  document.getElementById('loc-tab').style.display = '';
+  document.getElementById('reg-status-filter').style.display = '';
+  document.getElementById('reg-filter-label').style.display = '';
+}
+// Accounts — can download all employee reports but no team-today tab
+if (Role.is('accounts')) {
+  document.getElementById('sum-emp-select').style.display = '';
+  loadSummaryEmployeePicker();
+}
+// Only HR, Accounts, Super Admin can download attendance report — NOT admin
+if (Role.is('hr','accounts','super_admin')) {
+  document.getElementById('download-tab').style.display = '';
+  (function initDownloadTab() {
+    const NOW = new Date();
+    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const dlMonth = document.getElementById('dl-month');
+    const dlYear  = document.getElementById('dl-year');
+    if (dlMonth && !dlMonth.options.length)
+      MONTHS.forEach((m,i) => dlMonth.innerHTML += `<option value="${i+1}" ${i+1===NOW.getMonth()+1?'selected':''}>${m}</option>`);
+    if (dlYear && !dlYear.options.length)
+      for (let y = NOW.getFullYear(); y >= 2020; y--)
+        dlYear.innerHTML += `<option value="${y}" ${y===NOW.getFullYear()?'selected':''}>${y}</option>`;
+    api('GET','/departments').then(resp => {
+      if (!resp?.success) return;
+      const deptSel = document.getElementById('dl-department');
+      if (deptSel) resp.data.forEach(d => deptSel.innerHTML += `<option value="${d.id}">${d.name}</option>`);
+    });
+  })();
+}
+// Only HR can import attendance
+if (Role.is('hr')) {
+  document.getElementById('import-tab').style.display = '';
+}
+// COO (cooEmployeeCode) and super_admin can mark their own attendance via date range
+if (Role.is('super_admin') || (user && user.employee_code === window.CFG.cooEmployeeCode)) {
+  document.getElementById('mark-tab').style.display = '';
+}
+
+const monthSel = document.getElementById('sum-month');
+const yearSel  = document.getElementById('sum-year');
+['January','February','March','April','May','June','July','August','September','October','November','December']
+  .forEach((m,i) => monthSel.innerHTML += `<option value="${i+1}" ${i+1===curMonth?'selected':''}>${m}</option>`);
+for (let y = new Date().getFullYear(); y >= 2020; y--)
+  yearSel.innerHTML += `<option value="${y}" ${y===curYear?'selected':''}>${y}</option>`;
+
+loadCalendar();
+checkTodayPunch();
+showODWFHButtons();
+
+// ── Deep-link handler (notification clicks route here via #regularize:ID) ─────
+(function handleDeepLink() {
+  const hash = window.location.hash; // e.g. "#regularize:42"
+  if (!hash) return;
+  const [section, id] = hash.replace('#','').split(':');
+  if (section === 'regularize') {
+    // Switch to regularize tab (only visible to managers/HR)
+    const regTab = document.getElementById('reg-tab');
+    if (regTab && regTab.style.display !== 'none') {
+      switchTab('regularize');
+      if (id) {
+        setTimeout(async () => {
+          const data = await api('GET', `/attendance/regularizations?status=pending`);
+          if (!data?.success) return;
+          const r = data.data.find(x => String(x.id) === String(id));
+          if (r) openApproveReg(r.id, r.emp_name, r.date, r.regularization_reason || r.reason || '', r.punch_in || '', r.punch_out || '');
+        }, 600);
+      }
+    }
+  }
+  // OD/WFH notification → open My OD/WFH tab for employee, or regularize tab for manager
+  if (section === 'od' || section === 'wfh') {
+    // If manager: switch to regularize which has OD/WFH team view
+    // If employee: switch to My OD/WFH tab
+    const odwfhTab = document.getElementById('odwfh-tab');
+    if (odwfhTab) {
+      switchTab('odwfh');
+      // Auto-set status filter to show all if coming from a notification
+      const statusFilter = document.getElementById('odwfh-status-filter');
+      if (statusFilter) { statusFilter.value = ''; loadMyODWFH(); }
+    }
+  }
+  // Clear hash so back-button works cleanly
+  history.replaceState(null, '', window.location.pathname);
+})();
+
+async function checkTodayPunch() {
+  const istToday = new Intl.DateTimeFormat('en-CA', {
+    timeZone: window.CFG.timezone, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date());
+  const [istYear, istMonth, istDay] = istToday.split('-').map(Number);
+  const istDow = new Date(new Date().toLocaleString('en-US', { timeZone: window.CFG.timezone })).getDay();
+
+  const inBtn  = document.getElementById('punch-in-btn');
+  const outBtn = document.getElementById('punch-out-btn');
+  inBtn.style.display = 'none'; outBtn.style.display = 'none';
+
+  // Sunday → never
+  if (istDow === 0) { renderPunchBar(null, istDow); return; }
+
+  // Saturday → check policy (fail-open: show button if API fails)
+  if (istDow === 6) {
+    let satPolicy = 'all_working';
+    try {
+      const me = await api('GET', '/auth/me');
+      satPolicy = me?.data?.saturday_policy || me?.saturday_policy || 'all_working';
+    } catch(e) { satPolicy = 'all_working'; }
+    if (satPolicy === '2nd_4th_off') {
+      let satCount = 0;
+      for (let d = 1; d <= istDay; d++) {
+        if (new Date(istYear, istMonth - 1, d).getDay() === 6) satCount++;
+      }
+      if (satCount === 2 || satCount === 4) {
+      renderPunchBar(null, istDow, true);
+      // Still show punch button — employee may work on holiday
+      const inBtn = document.getElementById('punch-in-btn');
+      if (inBtn) inBtn.style.display = 'flex';
+      return;
+    }
+    }
+  }
+
+  const data = await api('GET', `/attendance?month=${istMonth}&year=${istYear}`);
+  const records = data?.data || [];
+  const todayRec = Array.isArray(records)
+    ? records.find(r => (r.date_str || r.date?.toString().split('T')[0]) === istToday)
+    : null;
+
+  renderPunchBar(todayRec, istDow);
+  if (!todayRec || !todayRec.punch_in) inBtn.style.display = 'flex';
+  else if (!todayRec.punch_out) {
+    outBtn.style.display = 'flex';
+    // FIX: wrap in catch so a slow/failed API call never silently skips tracking
+    startMovementTracking().catch(e => console.warn('[Tracking] page-load restart failed:', e));
+  }
+}
+
+function renderPunchBar(rec, dow, isHoliday = false) {
+  const bar     = document.getElementById('punch-bar');
+  const dot     = document.getElementById('punch-status-dot');
+  const txt     = document.getElementById('punch-status-text');
+  const timetxt = document.getElementById('punch-time-text');
+  if (!bar) return;
+
+  if (dow === 0) {
+    // Sunday — no punch ever
+    bar.className = 'punch-bar state-done';
+    dot.className = 'punch-status-dot done';
+    txt.textContent = '🌿 Sunday — Rest day';
+    timetxt.textContent = '';
+    return;
+  }
+  if (isHoliday && (!rec || !rec.punch_in)) {
+    // Holiday but not yet punched — show bar + button (employee may choose to work)
+    bar.className = 'punch-bar state-not-punched';
+    dot.className = 'punch-status-dot';
+    txt.textContent = '🏖 Holiday — No punch required';
+    timetxt.textContent = 'You may still punch in if working today';
+    // Don't return — let the button show below
+  } else if (isHoliday && rec?.punch_in) {
+    // Holiday but punched in — show normal working/done state
+    // Fall through to normal logic below
+  }
+  if (!rec || !rec.punch_in) {
+    bar.className = 'punch-bar state-not-punched';
+    dot.className = 'punch-status-dot';
+    txt.textContent = 'Not punched in today';
+    timetxt.textContent = 'Tap Punch In to mark your attendance';
+  } else if (rec.punch_in && !rec.punch_out) {
+    bar.className = 'punch-bar state-working';
+    dot.className = 'punch-status-dot active';
+    txt.textContent = 'Currently working 🟠';
+    timetxt.textContent = `Punched in at ${rec.punch_in?.substring(0,5) || rec.punch_in}`;
+  } else {
+    bar.className = 'punch-bar state-done';
+    dot.className = 'punch-status-dot done';
+    txt.textContent = 'Done for the day ✅';
+    timetxt.textContent = `${rec.punch_in?.substring(0,5)} → ${rec.punch_out?.substring(0,5)}`;
+  }
+}
+
+async function loadEmployeeFilter() {
+  const data = await api('GET', '/employees');
+  if (!data?.success) return;
+  const sel = document.getElementById('emp-filter');
+  sel.innerHTML = `<option value="">My Calendar</option>` +
+    data.data.map(e=>`<option value="${e.id}">${e.first_name} ${e.last_name} (${e.employee_code})</option>`).join('');
+}
+
+async function loadSummaryEmployeePicker() {
+  const data = await api('GET', '/employees');
+  if (!data?.success) return;
+  const sel = document.getElementById('sum-emp-select');
+  if (!sel) return;
+  sel.innerHTML =
+    `<option value="">— My Attendance —</option>
+     <option value="__all__">📋 All Employees (Monthly View)</option>` +
+    data.data.map(e=>`<option value="${e.id}">${e.first_name} ${e.last_name} (${e.employee_code})</option>`).join('');
+}
+
+// ── All Employees Monthly Summary ─────────────────────────────────────────────
+async function loadAllEmployeesSummary(month, year) {
+  const MONTH_NAMES = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+  const sumEl  = document.getElementById('summary-content');
+  const tblEl  = document.getElementById('month-records');
+  const cardEl = document.getElementById('month-table-card');
+
+  sumEl.innerHTML  = '<div class="loader"><div class="spinner"></div></div>';
+  tblEl.innerHTML  = '';
+  if (cardEl) cardEl.style.display = 'none';
+
+  // Fetch all employees + their summaries in parallel
+  const empData = await api('GET', '/employees');
+  if (!empData?.success) { sumEl.innerHTML = '<div class="empty-state">Failed to load employees</div>'; return; }
+
+  const emps = empData.data;
+  const summaries = await Promise.all(
+    emps.map(e => api('GET', `/attendance/summary?month=${month}&year=${year}&employee_id=${e.id}`))
+  );
+
+  // Aggregate totals
+  let totals = { present:0, absent:0, late:0, half_day:0, on_leave:0, od:0, lwp:0, total_hours:0 };
+  const rows = emps.map((e, i) => {
+    const s = summaries[i]?.data || {};
+    totals.present    += parseInt(s.present    || 0);
+    totals.absent     += parseInt(s.absent     || 0);
+    totals.late       += parseInt(s.late       || 0);
+    totals.half_day   += parseInt(s.half_day   || 0);
+    totals.on_leave   += parseInt(s.on_leave   || 0);
+    totals.od         += parseInt(s.od         || 0);
+    totals.lwp        += parseInt(s.lwp        || 0);
+    totals.total_hours+= parseFloat(s.total_hours || 0);
+    return { emp: e, s };
+  });
+
+  // Render aggregate stat boxes
+  sumEl.innerHTML = `
+    <div style="margin-bottom:10px;font-size:13px;font-weight:700;color:var(--muted)">
+      All Employees — ${MONTH_NAMES[parseInt(month)]} ${year} &nbsp;
+      <span style="font-weight:400;font-size:12px">(${emps.length} employees)</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px">
+      ${[
+        ['Present',  totals.present,  '#22a855','#d1fae5'],
+        ['Absent',   totals.absent,   '#ef4444','#fee2e2'],
+        ['Late',     totals.late,     '#f59e0b','#fef3c7'],
+        ['On Leave', totals.on_leave, '#3b82f6','#dbeafe'],
+        ['OD',       totals.od,       '#8b5cf6','#ede9fe'],
+        ['LWP',      totals.lwp,      '#e11d48','#ffe4e6']
+      ].map(([l,v,c,bg])=>`
+        <div style="text-align:center;background:${bg};border-radius:12px;padding:14px 8px;border:1.5px solid ${c}22">
+          <div style="font-size:28px;font-weight:800;color:${c};line-height:1">${v}</div>
+          <div style="font-size:10px;font-weight:700;color:${c};margin-top:5px;text-transform:uppercase">${l}</div>
+        </div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px">
+      <div style="background:var(--cfg-pale);border-radius:10px;padding:12px 16px;border:1px solid var(--cfg-border)">
+        <div style="font-size:11px;font-weight:700;color:#5a7a42;text-transform:uppercase">Half Days (Total)</div>
+        <div style="font-size:22px;font-weight:800;color:var(--cfg-accent);margin-top:4px">${totals.half_day}</div>
+      </div>
+      <div style="background:var(--cfg-pale);border-radius:10px;padding:12px 16px;border:1px solid var(--cfg-border)">
+        <div style="font-size:11px;font-weight:700;color:#5a7a42;text-transform:uppercase">Avg Daily Hours</div>
+        <div style="font-size:22px;font-weight:800;color:var(--cfg-accent);margin-top:4px">${totals.present > 0 ? (totals.total_hours / totals.present).toFixed(1) + 'h' : '—'}</div>
+      </div>
+    </div>`;
+
+  // Render per-employee breakdown table
+  if (cardEl) {
+    cardEl.style.display = '';
+    // Replace the card title
+    const titleEl = cardEl.querySelector('.card-title');
+    if (titleEl) titleEl.textContent = `All Employees — ${MONTH_NAMES[parseInt(month)]} ${year}`;
+  }
+
+  // Rebuild table headers for all-emp view
+  const thead = cardEl?.querySelector('thead tr');
+  if (thead) thead.innerHTML = `
+    <th>Employee</th><th>Code</th><th>Present</th><th>Absent</th>
+    <th>Late</th><th>Half Day</th><th>On Leave</th><th>OD</th><th>LWP</th><th>Total Hours</th>`;
+
+  tblEl.innerHTML = rows.map(({emp, s}) => `
+    <tr style="cursor:pointer" onclick="viewEmpSummary(${emp.id}, '${emp.first_name} ${emp.last_name}')">
+      <td style="font-weight:600">${emp.first_name} ${emp.last_name}</td>
+      <td style="color:var(--muted);font-size:12px">${emp.employee_code}</td>
+      <td><span style="color:#22a855;font-weight:700">${s.present||0}</span></td>
+      <td><span style="color:#ef4444;font-weight:700">${s.absent||0}</span></td>
+      <td><span style="color:#f59e0b;font-weight:700">${s.late||0}</span></td>
+      <td>${s.half_day||0}</td>
+      <td>${s.on_leave||0}</td>
+      <td>${s.od||0}</td>
+      <td>${s.lwp||0}</td>
+      <td style="font-weight:600">${parseFloat(s.total_hours||0).toFixed(1)}h</td>
+    </tr>`).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:32px">No records</td></tr>';
+}
+
+// Click a row in all-emp view to drill down to that employee's daily records
+async function viewEmpSummary(empId, empName) {
+  const sel = document.getElementById('sum-emp-select');
+  if (sel) {
+    sel.value = empId;
+    await loadSummary();
+    // Restore table header for single-employee view
+    const cardEl = document.getElementById('month-table-card');
+    const titleEl = cardEl?.querySelector('.card-title');
+    if (titleEl) titleEl.textContent = `Daily Records — ${empName}`;
+    const thead = cardEl?.querySelector('thead tr');
+    if (thead) thead.innerHTML = `<th>Date</th><th>Day</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Hours</th><th>Remarks</th><th>Action</th>`;
+  }
+}
+
+function changeMonth(dir) {
+  curMonth += dir;
+  if (curMonth > 12) { curMonth = 1; curYear++; }
+  if (curMonth < 1)  { curMonth = 12; curYear--; }
+  loadCalendar();
+}
+
+async function loadCalendar() {
+  const empId = document.getElementById('emp-filter')?.value || '';
+  const pad = n => String(n).padStart(2,'0');
+  const lastDay  = new Date(curYear, curMonth, 0).getDate();
+  const fromDate = `${curYear}-${pad(curMonth)}-01`;
+  const toDate   = `${curYear}-${pad(curMonth)}-${pad(lastDay)}`;
+
+  // FIX: use month/year params — backend ignores from_date/to_date on this endpoint
+  const attQ   = `/attendance?month=${curMonth}&year=${curYear}${empId?'&employee_id='+empId:''}`;
+  const leaveQ = `/leave/requests?from_date=${fromDate}&to_date=${toDate}${empId?'&employee_id='+empId:''}`;
+  const holQ   = `/holidays?year=${curYear}`;
+
+  const [attRes, leaveRes, holRes] = await Promise.all([
+    api('GET', attQ),
+    api('GET', leaveQ),
+    api('GET', holQ).catch(()=>null)
+  ]);
+
+  // Fetch saturday_policy — wrapped so it NEVER blocks calendar rendering
+  let saturdayPolicy = '2nd_4th_off'; // safe default
+  try {
+    let spRes = null;
+    if (empId) {
+      spRes = await Promise.race([
+        api('GET', `/employees/${empId}`),
+        new Promise(r => setTimeout(() => r(null), 3000))
+      ]);
+      saturdayPolicy = spRes?.data?.saturday_policy || '2nd_4th_off';
+    } else {
+      spRes = await Promise.race([
+        api('GET', '/auth/me'),
+        new Promise(r => setTimeout(() => r(null), 3000))
+      ]);
+      saturdayPolicy = spRes?.data?.saturday_policy || '2nd_4th_off';
+    }
+  } catch(e) { saturdayPolicy = '2nd_4th_off'; }
+
+  calData = {
+    attendance: attRes?.data  || attRes?.success && attRes?.data || [],
+    leaves:     leaveRes?.data|| [],
+    holidays:   holRes?.data  || []
+  };
+  // normalize: attendance might be wrapped differently
+  if (!Array.isArray(calData.attendance) && attRes?.data?.records) calData.attendance = attRes.data.records;
+  if (!Array.isArray(calData.attendance)) calData.attendance = [];
+  if (!Array.isArray(calData.leaves))     calData.leaves = [];
+  if (!Array.isArray(calData.holidays))   calData.holidays = [];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('cal-month-lbl').textContent = `${months[curMonth-1]} ${curYear}`;
+
+  const attMap = {}; const leaveMap = {};
+  // Backend returns date as 'date_str' via TO_CHAR — fall back to .date if needed
+  (calData.attendance||[]).forEach(a => {
+    const key = a.date_str || (a.date ? a.date.toString().split('T')[0] : null);
+    if (key) attMap[key] = { ...a, date: key };
+  });
+  (calData.leaves||[]).forEach(l => {
+    const [lfy,lfm,lfd]=l.from_date.split('-').map(Number); const [lty,ltm,ltd]=l.to_date.split('-').map(Number);
+    let d=new Date(lfy,lfm-1,lfd), end=new Date(lty,ltm-1,ltd);
+    while(d<=end){const dk=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;leaveMap[dk]=l;d.setDate(d.getDate()+1);}
+  });
+  const holMap = {};
+  (calData.holidays||[]).forEach(h => {
+    const dateKey = h.date ? h.date.toString().split('T')[0] : null;
+    if (dateKey) holMap[dateKey] = h;
+  });
+
+  const firstDay = new Date(curYear, curMonth-1, 1).getDay();
+  const daysInMonth = new Date(curYear, curMonth, 0).getDate();
+  const _td=new Date(); const todayStr=`${_td.getFullYear()}-${String(_td.getMonth()+1).padStart(2,'0')}-${String(_td.getDate()).padStart(2,'0')}`;
+
+  let html = '';
+  for (let i = 0; i < firstDay; i++) html += `<div class="cal-cell cal-empty"></div>`;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow = new Date(ds).getDay();
+    const isWeekend = dow === 0; // Sunday only
+
+    // Check if this Saturday is 2nd or 4th — only matters for '2nd_4th_off' employees
+    // Field/offsite employees (all_working) treat every Saturday as a working day
+    let is2nd4thSat = false;
+    if (dow === 6 && saturdayPolicy === '2nd_4th_off') {
+      let satCount = 0;
+      for (let dd = 1; dd <= d; dd++) {
+        if (new Date(curYear, curMonth-1, dd).getDay() === 6) satCount++;
+      }
+      is2nd4thSat = (satCount === 2 || satCount === 4);
+    }
+    const isToday   = ds === todayStr;
+    const att = attMap[ds];
+    const lv  = leaveMap[ds];
+    const hol = holMap[ds];
+
+    let status = '', csClass = '', extra = '';
+    if (hol)                            { status = hol.name;   csClass = 'cs-holiday'; }
+    else if (is2nd4thSat)               {
+      // recalc satCount for label
+      let sc = 0;
+      for (let dd = 1; dd <= d; dd++) if (new Date(curYear, curMonth-1, dd).getDay() === 6) sc++;
+      status = sc === 2 ? '2nd Saturday' : '4th Saturday';
+      csClass = 'cs-holiday';
+    }
+    else if (isWeekend)                 { status = 'Weekend';   csClass = 'cs-weekend'; }
+    else if (lv?.status === 'approved') { status = lv.leave_type_code || lv.leave_type_name || 'Leave'; csClass = 'cs-on-leave'; }
+    else if (lv?.status === 'pending')  { status = (lv.leave_type_code || lv.leave_type_name || 'Leave')+' (P)'; csClass = 'cs-pending'; }
+    else if (lv?.status === 'cancelled'){ status = 'Cancelled'; csClass = 'cs-absent'; }
+    else if (att?.status) {
+      // Special case: today, punched in but not yet out → still working, show as Present
+      if (isToday && att.punch_in && !att.punch_out) {
+        status = 'Present'; csClass = 'cs-present';
+      }
+      // Show enriched label for half-day: use remarks to show H-SL/H-EL/H-CL/H-WFH
+      else if (att.status === 'half-day') {
+        const rmk = (att.remarks || '').toUpperCase();
+        if (rmk.includes('SL')) { status = 'H-SL'; }
+        else if (rmk.includes('EL')) { status = 'H-EL'; }
+        else if (rmk.includes('CL')) { status = 'H-CL'; }
+        else if (rmk.includes('LWP')) { status = 'H-LWP'; }
+        else if (rmk.includes('WFH')) { status = 'H-WFH'; }
+        else { status = '½ Day'; }
+        csClass = 'cs-half-day';
+      } else if (att.status === 'present' && (att.punch_in_location||'').toLowerCase().includes('work from home')) {
+        status = (att.working_hours && att.working_hours <= 4.5) ? 'H-WFH' : 'WFH';
+        csClass = 'cs-present';
+      } else if (att.status === 'on-leave') {
+        // Show specific leave type from remarks if available
+        const rmk = (att.remarks || '').toUpperCase();
+        if (rmk.includes('SL')) status = 'SL';
+        else if (rmk.includes('CL')) status = 'CL';
+        else if (rmk.includes('EL')) status = 'EL';
+        else status = att.status;
+        csClass = 'cs-on-leave';
+      } else {
+        status = att.status;
+        csClass = 'cs-'+att.status;
+      }
+    }
+    // FIX: only mark absent if: past date (strictly before today), not a weekend/holiday, and no attendance record
+    else if (ds < todayStr && !isWeekend && !is2nd4thSat && !hol) { status = 'Absent'; csClass = 'cs-absent'; }
+    // today with no record yet = still working, show no status (not absent)
+    // future dates: leave status/csClass empty — shows as blank
+
+    // Show regularize for absent, late, half-day, or missing punch-out
+    const canRegularize = !empId && !isWeekend && !is2nd4thSat && !hol
+      && att?.regularization_status !== 'pending'
+      && (status.toLowerCase()==='absent'
+          || status.toLowerCase()==='late'
+          || status.toLowerCase()==='half-day'
+          || (att?.punch_in && !att?.punch_out));  // missing punch-out
+    if (canRegularize) {
+      const btnLabel = att?.regularization_status === 'rejected' ? '↩ Re-Reg' : status.toLowerCase()==='late' ? '🕐 Correct' : status.toLowerCase()==='half-day' ? '½ Correct' : (att?.punch_in && !att?.punch_out) ? '🔓 Add Out' : '+ Reg';
+      extra = `<div class="cal-reg-btn" onclick="openRegModal('${ds}','${status}');event.stopPropagation()">${btnLabel}</div>`;
+    }
+    if (att?.regularization_status === 'pending') {
+      extra = `<span class="badge" style="font-size:9px;background:var(--yellow-l);color:#d97706">REG PENDING</span>`;
+    }
+
+    const isFuture = new Date(ds) > new Date() && !isToday;
+    html += `<div class="cal-cell ${csClass}${isToday?' cal-today':''}${isFuture?' cal-future':''}" onclick="showDayDetail('${ds}')">
+      <div class="cal-day-num">${d}</div>
+      ${status ? `<div class="cal-status ${csClass}">${status}</div>` : ''}
+      ${att?.punch_in ? `<div style="font-size:9px;color:var(--muted);margin-top:2px">${fmt.time(att.punch_in)}${att.punch_out?'→'+fmt.time(att.punch_out):''}</div>` : ''}
+      ${extra}
+    </div>`;
+  }
+  document.getElementById('cal-cells').innerHTML = html;
+}
+
+function showDayDetail(ds) {
+  const att = (calData.attendance||[]).find(a=>a.date===ds);
+  const lv  = (calData.leaves||[]).find(l=>ds>=l.from_date&&ds<=l.to_date);
+  const hol = (calData.holidays||[]).find(h=>h.date===ds);
+  document.getElementById('day-detail').style.display = '';
+  document.getElementById('day-detail-title').textContent = fmt.date(ds);
+
+  let html = '';
+  if (att) html += `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+      <div><div class="form-label">Status</div><span class="badge badge-${att.status}">${att.status}</span></div>
+      <div><div class="form-label">Punch In</div><span style="font-weight:600">${fmt.time(att.punch_in)}</span></div>
+      <div><div class="form-label">Punch Out</div><span style="font-weight:600">${fmt.time(att.punch_out)}</span></div>
+      <div><div class="form-label">Hours</div><span style="font-weight:600">${fmtHours(att.working_hours)}</span></div>
+    </div>`;
+  if (lv) html += `<div class="divider"></div><div><div class="form-label">Leave</div>${lv.leave_name} · <span class="badge badge-${lv.status}">${lv.status}</span></div>`;
+  if (hol) html += `<div><div class="form-label">Holiday</div><b>${hol.name}</b></div>`;
+  if (!att && !lv && !hol) html = '<div class="text-muted" style="padding:8px 0">No attendance data for this day.</div>';
+  document.getElementById('day-detail-content').innerHTML = html;
+}
+
+// MAP PUNCH
+// ── Wait for Google Maps to be ready (loaded async) ──────────────────────────
+function waitForMaps(cb) {
+  if (typeof google !== 'undefined' && google.maps && google.maps.Map) { cb(); return; }
+  let tries = 0;
+  const t = setInterval(() => {
+    if (typeof google !== 'undefined' && google.maps && google.maps.Map) { clearInterval(t); cb(); }
+    else if (++tries > 60) { clearInterval(t); console.warn('Google Maps failed to load.'); }
+  }, 200);
+}
+
+let _map = null, _mapMarker = null, _mapCircles = [], _mapInfoWindow = null,
+    _punchType = 'in', _pLat = null, _pLng = null;
+
+// ── PUNCH MODAL MAP ────────────────────────────────────────────────────────────
+function openMapPunch(type) {
+  _punchType = type; _pLat = null; _pLng = null;
+  document.getElementById('map-punch-backdrop').classList.add('open');
+  document.getElementById('map-modal-title').textContent = type === 'in' ? '📍 Punch In — Verify Location' : '📍 Punch Out — Verify Location';
+  document.getElementById('map-status').className = 'map-status loading';
+  document.getElementById('map-status').innerHTML = '📡 Getting your location…';
+  document.getElementById('map-status').dataset.distText = '';
+  document.getElementById('map-acc').textContent = '';
+  document.getElementById('confirm-punch-btn').disabled = true;
+
+  setTimeout(() => {
+    waitForMaps(() => {
+    if (_map) { _map = null; }
+    document.getElementById('punch-map').innerHTML = '';
+    _map = new google.maps.Map(document.getElementById('punch-map'), {
+      zoom: 5, center: { lat: 22.5, lng: 80.0 },
+      mapId: 'DEMO_MAP_ID',
+      mapTypeId: 'roadmap', streetViewControl: false, mapTypeControl: true,
+      mapTypeControlOptions: { style: google.maps.MapTypeControlStyle.DROPDOWN_MENU },
+      gestureHandling: 'greedy'
+    });
+    _mapInfoWindow = new google.maps.InfoWindow();
+    _mapCircles = [];
+
+    if (!navigator.geolocation) {
+      setMapStatus('fail', '⚠ GPS not supported. You can still punch manually.');
+      document.getElementById('confirm-punch-btn').disabled = false;
+      loadOfficeBuffers().catch(() => {});
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(async pos => {
+      _pLat = pos.coords.latitude; _pLng = pos.coords.longitude;
+      const acc = Math.round(pos.coords.accuracy);
+      document.getElementById('map-acc').textContent = `GPS accuracy: ±${acc}m`;
+      if (_mapMarker) _mapMarker.map = null;
+      const _pinEl = document.createElement('div');
+      _pinEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"><circle cx="9" cy="9" r="7" fill="#4361ee" stroke="white" stroke-width="2.5"/></svg>';
+      _mapMarker = new google.maps.marker.AdvancedMarkerElement({
+        position: { lat: _pLat, lng: _pLng }, map: _map, title: 'Your Location',
+        content: _pinEl.firstChild
+      });
+      _mapMarker.addListener('click', () => { _mapInfoWindow.setContent('<b>Your Location</b>'); _mapInfoWindow.open(_map, _mapMarker); });
+      await loadOfficeBuffers();
+      validateGeo(_pLat, _pLng);
+    }, () => {
+      setMapStatus('fail', '⚠ Location access denied. Punch will be recorded without GPS.');
+      document.getElementById('confirm-punch-btn').disabled = false;
+      document.getElementById('map-acc').textContent = 'No GPS — punch will be recorded without location data.';
+      loadOfficeBuffers().catch(() => {});
+    }, { timeout: 15000, enableHighAccuracy: true });
+    }); // end waitForMaps
+  }, 150);
+}
+
+async function loadOfficeBuffers() {
+  _mapCircles.forEach(c => { if (c.setMap) c.setMap(null); });
+  _mapCircles = [];
+  const session = await api('GET', '/auth/me').catch(() => null);
+  const empId = session?.data?.id || session?.id;
+  let rule = null;
+  if (empId) { const rd = await api('GET', `/geofence/buffer-rules/${empId}`).catch(() => null); rule = rd?.data || null; }
+  const ruleType = rule?.rule_type;
+
+  if (ruleType === 'district' && rule.state && rule.district) {
+    await drawDistrictBoundary(rule.state, rule.district); return;
+  }
+  if (ruleType === 'state' && rule.state) {
+    await drawStateBoundary(rule.state); return;
+  }
+  if (ruleType === 'universal') {
+    setMapStatus('ok', '✓ Universal access — punch allowed from anywhere');
+    document.getElementById('confirm-punch-btn').disabled = false;
+    if (_pLat && _pLng) { _map.panTo({ lat: _pLat, lng: _pLng }); _map.setZoom(14); }
+    return;
+  }
+  // Office rule — blue border + pink fill (matches district/state style)
+  let data = await api('GET', '/geofence/my-locations').catch(() => null);
+  if (!data?.success || !data.data?.length) data = await api('GET', '/geofence/locations').catch(() => null);
+  const locs = data?.data || [];
+  const b = new google.maps.LatLngBounds();
+  let closestOfficeDist = Infinity;
+  let closestOfficeEdgePt = null;
+
+  locs.forEach(loc => {
+    if (!loc.latitude || loc.radius_meters >= 10000) return;
+    const lat = +loc.latitude, lng = +loc.longitude, r = loc.radius_meters || 200;
+    const circle = new google.maps.Circle({
+      map: _map, center: { lat, lng }, radius: r,
+      strokeColor: '#1d4ed8', strokeOpacity: 1.0, strokeWeight: 3,
+      fillColor: '#ec4899', fillOpacity: 0.15
+    });
+    const infoW = new google.maps.InfoWindow({ content: `<b>${loc.name}</b><br>📏 ${r}m buffer` });
+    circle.addListener('click', () => infoW.open(_map));
+    _mapCircles.push(circle);
+    b.union(circle.getBounds());
+
+    // Track nearest office circle edge for dotted line
+    if (_pLat && _pLng) {
+      const userPt   = new google.maps.LatLng(_pLat, _pLng);
+      const centerPt = new google.maps.LatLng(lat, lng);
+      const distToCenter = google.maps.geometry.spherical.computeDistanceBetween(userPt, centerPt);
+      const distToEdge   = Math.abs(distToCenter - r);
+      if (distToEdge < closestOfficeDist) {
+        closestOfficeDist = distToEdge;
+        const heading = google.maps.geometry.spherical.computeHeading(centerPt, userPt);
+        closestOfficeEdgePt = google.maps.geometry.spherical.computeOffset(centerPt, r, heading);
+      }
+    }
+  });
+
+  if (_pLat && _pLng) b.extend({ lat: _pLat, lng: _pLng });
+  if (!b.isEmpty()) _map.fitBounds(b, { top: 60, bottom: 60, left: 60, right: 60 });
+  else if (_pLat && _pLng) { _map.panTo({ lat: _pLat, lng: _pLng }); _map.setZoom(14); }
+
+  // Draw dotted line from user to nearest office circle edge
+  if (_pLat && _pLng && closestOfficeEdgePt) {
+    const dottedLine = new google.maps.Polyline({
+      path: [new google.maps.LatLng(_pLat, _pLng), closestOfficeEdgePt],
+      map: _map,
+      strokeColor: '#1d4ed8',
+      strokeOpacity: 0,
+      strokeWeight: 2,
+      icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.8, strokeColor: '#1d4ed8', strokeWeight: 2, scale: 3 }, offset: '0', repeat: '12px' }]
+    });
+    _mapCircles.push(dottedLine);
+    // Distance to edge in status bar
+    const dTxt = closestOfficeDist < 1000
+      ? `${Math.round(closestOfficeDist)} m from boundary`
+      : `${(closestOfficeDist/1000).toFixed(1)} km from boundary`;
+    const el = document.getElementById('map-status');
+    if (el) el.dataset.distText = `&nbsp;|&nbsp; 📏 <b>${dTxt}</b>`;
+  }
+}
+
+async function drawDistrictBoundary(state, district) {
+  try {
+    const res = await api('GET', `/geofence/boundary?state=${encodeURIComponent(state)}&district=${encodeURIComponent(district)}`);
+    const coords = res?.data?.coordinates;
+    if (!coords || !coords[0]) return;
+    const ring = coords[0].map(pt => ({ lat: pt[1], lng: pt[0] }));
+    new google.maps.Polygon({
+      paths: ring, map: _map,
+      strokeColor: '#1d4ed8', strokeOpacity: 1.0, strokeWeight: 4,
+      fillColor: '#ec4899', fillOpacity: 0.35
+    });
+    // fitBounds auto-calculates the tightest zoom that fits both points.
+    // No manual zoom override needed — Google Maps handles it perfectly.
+    const bounds = new google.maps.LatLngBounds();
+    ring.forEach(p => bounds.extend(p));
+    if (_pLat && _pLng) bounds.extend({ lat: _pLat, lng: _pLng });
+    _map.fitBounds(bounds, { top: 60, bottom: 60, left: 60, right: 60 });
+
+    // Distance calculation + dotted line from user to nearest boundary point
+    if (_pLat && _pLng) {
+      const u = new google.maps.LatLng(_pLat, _pLng);
+      let minDist = Infinity;
+      let nearestPt = null;
+      for (let i = 0; i < ring.length; i++) {
+        const a = new google.maps.LatLng(ring[i].lat, ring[i].lng);
+        const b2 = new google.maps.LatLng(ring[(i+1)%ring.length].lat, ring[(i+1)%ring.length].lng);
+        const t = Math.max(0, Math.min(1,
+          ((u.lat()-a.lat())*(b2.lat()-a.lat()) + (u.lng()-a.lng())*(b2.lng()-a.lng())) /
+          ((b2.lat()-a.lat())**2 + (b2.lng()-a.lng())**2)
+        ));
+        const near = new google.maps.LatLng(
+          a.lat() + t*(b2.lat()-a.lat()),
+          a.lng() + t*(b2.lng()-a.lng())
+        );
+        const d = google.maps.geometry.spherical.computeDistanceBetween(u, near);
+        if (d < minDist) { minDist = d; nearestPt = near; }
+      }
+      // Distance in status bar
+      const dTxt = minDist < 1000
+        ? `${Math.round(minDist)} m from boundary`
+        : `${(minDist/1000).toFixed(1)} km from boundary`;
+      const el = document.getElementById('map-status');
+      if (el) el.dataset.distText = `&nbsp;|&nbsp; 📏 <b>${dTxt}</b>`;
+
+      // Draw dotted line: user → nearest boundary point
+      if (nearestPt) {
+        const dottedLine = new google.maps.Polyline({
+          path: [u, nearestPt],
+          map: _map,
+          strokeColor: '#1d4ed8',
+          strokeOpacity: 0,        // must be 0 for icons/dash to show
+          strokeWeight: 2,
+          icons: [{
+            icon: {
+              path: 'M 0,-1 0,1',  // vertical tick = dash segment
+              strokeOpacity: 0.8,
+              strokeColor: '#1d4ed8',
+              strokeWeight: 2,
+              scale: 3
+            },
+            offset: '0',
+            repeat: '12px'
+          }]
+        });
+        _mapCircles.push(dottedLine);
+      }
+    }
+  } catch(e) { console.error('drawDistrictBoundary:', e); }
+}
+
+async function drawStateBoundary(state) {
+  try {
+    const res = await api('GET', `/geofence/boundary?state=${encodeURIComponent(state)}`);
+    const districts = res?.data;
+    if (!districts?.length) return;
+    const bounds = new google.maps.LatLngBounds();
+    districts.forEach(d => {
+      if (!d.coordinates?.[0]) return;
+      const ring = d.coordinates[0].map(pt => ({ lat: pt[1], lng: pt[0] }));
+      new google.maps.Polygon({ paths: ring, map: _map, strokeColor: '#1d4ed8', strokeOpacity: 0.85, strokeWeight: 2, fillColor: '#ec4899', fillOpacity: 0.08 });
+      ring.forEach(pt => bounds.extend(pt));
+    });
+    // Fit to state boundary only — not user location (could be in different state)
+    if (!bounds.isEmpty()) _map.fitBounds(bounds, { top: 40, bottom: 40, left: 40, right: 40 });
+  } catch(e) { console.error('drawStateBoundary:', e); }
+}
+
+async function validateGeo(lat, lng) {
+  const data = await api('POST', '/geofence/validate', { latitude: lat, longitude: lng });
+  if (!data) { setMapStatus('loading', '⚠ Could not validate — proceeding anyway'); document.getElementById('confirm-punch-btn').disabled = false; return; }
+  const r = data.data;
+  if (r.valid) { setMapStatus('ok', '✓ ' + r.message); document.getElementById('confirm-punch-btn').disabled = false; }
+  else         { setMapStatus('fail', '✗ ' + r.message); document.getElementById('confirm-punch-btn').disabled = true; }
+}
+
+function setMapStatus(type, msg) {
+  const el = document.getElementById('map-status');
+  el.className = 'map-status ' + type;
+  const distText = el.dataset.distText || '';
+  el.innerHTML = msg + (distText ? ' ' + distText : '');
+}
+
+async function confirmPunch() {
+  const btn = document.getElementById('confirm-punch-btn');
+  btn.disabled = true; btn.textContent = 'Confirming…';
+  const body = {};
+  if (_pLat && _pLng) {
+    body.location_lat = _pLat;
+    body.location_lng = _pLng;
+    body[`punch_${_punchType}_location`] = `GPS: ${_pLat.toFixed(4)},${_pLng.toFixed(4)}`;
+  } else {
+    body[`punch_${_punchType}_location`] = 'No GPS';
+  }
+  const data = await api('POST', `/attendance/punch-${_punchType}`, body);
+  if (data?.success) {
+    toast(data.message);
+    document.getElementById('map-punch-backdrop').classList.remove('open');
+    // ── GPS movement tracking ──────────────────────────────────────────────
+    // FIX: await tracking start fully before reloading — reload was racing SW registration
+    if (_punchType === 'in') {
+      await startMovementTracking();
+      // Force an immediate GPS ping so employee appears in movement summary right away
+      await _forceImmediatePing();
+    } else {
+      await stopMovementTracking();
+    }
+    location.reload();
+  } else {
+    toast(data?.message || 'Failed', 'error');
+    btn.disabled = false; btn.textContent = 'Confirm Punch';
+  }
+}
+
+async function doPunch(type) { openMapPunch(type); }
+
+function switchTab(name) {
+  ['calendar','summary','team','locations','regularize','download','import','odwfh','mark'].forEach(t => {
+    const el = document.getElementById('tab-'+t);
+    if (el) el.style.display = t === name ? '' : 'none';
+});
+  // Map tab name to exact onclick attribute to avoid first-char false matches
+  const tabMap = {
+    'calendar': "switchTab('calendar')",
+    'summary':  "switchTab('summary')",
+    'team':     "switchTab('team')",
+    'locations':"switchTab('locations')",
+    'regularize':"switchTab('regularize')",
+    'download': "switchTab('download')",
+    'import':   "switchTab('import')",
+    'odwfh':    "switchTab('odwfh')",
+    'mark':     "switchTab('mark')",
+  };
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const onclick = b.getAttribute('onclick') || '';
+    b.classList.toggle('active', onclick === tabMap[name]);
+  });
+  if (name==='summary') loadSummary();
+  if (name==='team') {
+    const dateEl = document.getElementById('team-date');
+    if (dateEl && !dateEl.value) {
+      dateEl.value = new Intl.DateTimeFormat('en-CA', { timeZone: window.CFG.timezone,
+        year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+    }
+    loadTeamToday();
+  }
+  if (name==='regularize') loadRegularizations();
+  if (name==='locations') { document.getElementById('loc-date').value = new Date().toISOString().split('T')[0]; loadLocationMap(); }
+  if (name==='import') initImportTab();
+  if (name==='odwfh') loadMyODWFH();
+  if (name==='mark') {
+    // Pre-fill today's IST date if fields are empty
+    const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: window.CFG.timezone,
+      year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+    const fromEl = document.getElementById('mark-from');
+    const toEl   = document.getElementById('mark-to');
+    if (fromEl && !fromEl.value) fromEl.value = todayIST;
+    if (toEl   && !toEl.value)   toEl.value   = todayIST;
+  }
+}
+
+async function loadSummary() {
+  const month  = document.getElementById('sum-month').value;
+  const year   = document.getElementById('sum-year').value;
+  const empSel = document.getElementById('sum-emp-select');
+  const empVal = empSel?.value || '';
+
+  // ── ALL EMPLOYEES MODE ────────────────────────────────────────────────────
+  if (empVal === '__all__') {
+    await loadAllEmployeesSummary(month, year);
+    return;
+  }
+
+  const empQ = empVal ? `&employee_id=${empVal}` : '';
+
+  // Restore single-employee table header (in case all-emp view was shown before)
+  const _cardEl = document.getElementById('month-table-card');
+  if (_cardEl) {
+    _cardEl.style.display = '';
+    const _titleEl = _cardEl.querySelector('.card-title');
+    if (_titleEl) _titleEl.textContent = 'Daily Records';
+    const _thead = _cardEl.querySelector('thead tr');
+    if (_thead) _thead.innerHTML = '<th>Date</th><th>Day</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Hours</th><th>Remarks</th><th>Action</th>';
+  }
+
+  const [sum, att, holRes] = await Promise.all([
+    api('GET', `/attendance/summary?month=${month}&year=${year}${empQ}`),
+    api('GET', `/attendance?month=${month}&year=${year}${empQ}`),
+    api('GET', `/holidays?year=${year}`).catch(() => null)
+  ]);
+
+  const holSet = new Set(
+    (holRes?.data || [])
+      .map(h => h.date_str || (h.date ? h.date.toString().split('T')[0] : null))
+      .filter(k => k && k.startsWith(`${year}-${String(parseInt(month)).padStart(2,'0')}`))
+  );
+  if (sum?.success) {
+    const s = sum.data;
+    document.getElementById('summary-content').innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px">
+        ${[
+          ['Present',   s.present,  '#22a855', '#d1fae5'],
+          ['Absent',    s.absent,   '#ef4444', '#fee2e2'],
+          ['Late',      s.late,     '#f59e0b', '#fef3c7'],
+          ['On Leave',  s.on_leave, '#3b82f6', '#dbeafe'],
+          ['OD',        s.od,       '#8b5cf6', '#ede9fe'],
+          ['LWP',       s.lwp,      '#e11d48', '#ffe4e6']
+        ].map(([l,v,c,bg])=>`
+          <div style="text-align:center;background:${bg};border-radius:12px;padding:18px 10px;border:1.5px solid ${c}22">
+            <div style="font-size:32px;font-weight:800;color:${c};line-height:1;font-family:Manrope,sans-serif">${v||0}</div>
+            <div style="font-size:11px;font-weight:700;color:${c};margin-top:6px;text-transform:uppercase;letter-spacing:.5px">${l}</div>
+          </div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:4px">
+        <div style="background:var(--cfg-pale);border-radius:10px;padding:12px 16px;border:1px solid var(--cfg-border)">
+          <div style="font-size:11px;font-weight:700;color:#5a7a42;text-transform:uppercase;letter-spacing:.4px">Half Days</div>
+          <div style="font-size:22px;font-weight:800;color:var(--cfg-accent);margin-top:4px">${s.half_day||0}</div>
+        </div>
+        <div style="background:var(--cfg-pale);border-radius:10px;padding:12px 16px;border:1px solid var(--cfg-border)">
+          <div style="font-size:11px;font-weight:700;color:#5a7a42;text-transform:uppercase;letter-spacing:.4px">Public Holidays</div>
+          <div style="font-size:22px;font-weight:800;color:var(--cfg-accent);margin-top:4px">${holSet.size||0}</div>
+        </div>
+        <div style="background:var(--cfg-pale);border-radius:10px;padding:12px 16px;border:1px solid var(--cfg-border)">
+          <div style="font-size:11px;font-weight:700;color:#5a7a42;text-transform:uppercase;letter-spacing:.4px">Avg Working Hours</div>
+          <div style="font-size:22px;font-weight:800;color:var(--cfg-accent);margin-top:4px">${
+            parseFloat(s.avg_hours || 0) > 0 ? parseFloat(s.avg_hours).toFixed(1) + 'h' : '—'
+          }</div>
+          <div style="font-size:10px;color:#5a7a42;margin-top:2px">per working day · ${s.worked_days_with_hours || 0} days</div>
+        </div>
+      </div>`;
+  }
+  if (att?.success) {
+    const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const _n=new Date(); const todayStr=`${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,'0')}-${String(_n.getDate()).padStart(2,'0')}`;
+    const yr  = parseInt(year), mon = parseInt(month);
+    const daysInMonth = new Date(yr, mon, 0).getDate();
+
+    // Build a map from the API records (backend uses date_str or date)
+    const recMap = {};
+    (att.data || []).forEach(a => {
+      const key = a.date_str || (a.date ? a.date.toString().split('T')[0] : null);
+      if (key) recMap[key] = a;
+    });
+
+    // Build leaveMap for summary — same approach as calendar leaveMap
+    const sumLeaveMap = {};
+    const pad2 = n => String(n).padStart(2,'0');
+    const _mn = String(parseInt(month)).padStart(2,'0');
+    const _lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+    const leaveData = await api('GET', `/leave/requests?from_date=${year}-${_mn}-01&to_date=${year}-${_mn}-${_lastDay}${empQ}`);
+    (leaveData?.data || []).forEach(l => {
+      if (l.status !== 'approved') return;
+      // Handle ISO timestamps: convert UTC to local date string properly
+      const toLocalDS = s => {
+        const raw = (s||'').toString();
+        if (raw.length === 10) return raw; // already "YYYY-MM-DD"
+        const dt = new Date(raw);
+        return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+      };
+      const fromStr = toLocalDS(l.from_date);
+      const toStr   = toLocalDS(l.to_date);
+      const [lfy,lfm,lfd] = fromStr.split('-').map(Number);
+      const [lty,ltm,ltd] = toStr.split('-').map(Number);
+      if (!lfy || !lfm || !lfd) return;
+      let ld = new Date(lfy,lfm-1,lfd), lend = new Date(lty,ltm-1,ltd);
+      while(ld<=lend){
+        const lk=`${ld.getFullYear()}-${pad2(ld.getMonth()+1)}-${pad2(ld.getDate())}`;
+        sumLeaveMap[lk] = l;
+        ld.setDate(ld.getDate()+1);
+      }
+    });
+
+    // Generate every day of the month
+    let rows = '';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds  = `${yr}-${String(mon).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dow = new Date(ds).getDay();
+      const isFuture = ds > todayStr;
+
+      const a = recMap[ds];
+      // Future days — show blank UNLESS there's an approved leave
+      if (isFuture && !sumLeaveMap[ds]) {
+        // Still need to show weekends, holidays, 2nd/4th Sat for future dates
+        let futureStatus = '';
+        let futureRemarks = '';
+        let futureBadgeColor = '#64748b';
+        let futureBadgeBg = '#f1f5f9';
+
+        if (dow === 0) {
+          futureStatus = 'Weekend'; futureBadgeColor = '#64748b'; futureBadgeBg = '#f1f5f9';
+        } else if (holSet.has(ds)) {
+          futureStatus = 'Holiday';
+          const hol = (holRes?.data || []).find(h => (h.date||'').toString().split('T')[0] === ds);
+          futureRemarks = hol?.name || 'Public Holiday';
+          futureBadgeColor = '#c2410c'; futureBadgeBg = '#fff7ed';
+        } else if (dow === 6) {
+          let sc = 0;
+          for (let dd = 1; dd <= d; dd++) if (new Date(yr, mon-1, dd).getDay() === 6) sc++;
+          if (sc === 2 || sc === 4) {
+            futureStatus = sc === 2 ? '2nd Saturday' : '4th Saturday';
+            futureBadgeColor = '#7c3aed'; futureBadgeBg = '#ede9fe';
+          }
+        }
+
+        if (futureStatus) {
+          rows += `<tr style="opacity:0.7">
+            <td style="font-weight:600">${fmt.date(ds)}</td>
+            <td style="color:var(--muted)">${DAYS[dow]}</td>
+            <td><span style="background:${futureBadgeBg};color:${futureBadgeColor};border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">${futureStatus}</span>${futureRemarks ? `<span style="font-size:11px;color:var(--muted);margin-left:8px">${futureRemarks}</span>` : ''}</td>
+            <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+          </tr>`;
+        } else {
+          rows += `<tr style="opacity:0.35">
+            <td style="font-weight:600">${fmt.date(ds)}</td>
+            <td style="color:var(--muted)">${DAYS[dow]}</td>
+            <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+          </tr>`;
+        }
+        continue;
+      }
+      // Determine status — holidays & weekends take priority
+      let status = a?.status || '';
+      let remarks = a?.remarks || '';
+      if (!status) {
+        if (dow === 0) { status = 'weekend'; }
+        else if (holSet.has(ds)) { status = 'holiday'; }
+        else if (dow === 6) {
+          let sc = 0;
+          for (let dd = 1; dd <= d; dd++) if (new Date(yr, mon-1, dd).getDay() === 6) sc++;
+          status = (sc === 2 || sc === 4) ? '2nd/4th Sat' : (sumLeaveMap[ds] ? 'on-leave' : 'absent');
+        } else if (sumLeaveMap[ds]) {
+          status = 'on-leave';
+          remarks = sumLeaveMap[ds].leave_type_code || sumLeaveMap[ds].leave_type_name || 'Leave';
+        } else {
+          status = 'absent';
+        }
+      } else if (holSet.has(ds) && status === 'absent') {
+        status = 'holiday';
+      }
+      if (status === 'holiday' && !remarks) {
+        const hol = (holRes?.data || []).find(h =>
+          (h.date_str || (h.date ? h.date.toString().split('T')[0] : null)) === ds
+        );
+        if (hol?.name) remarks = hol.name;
+      }
+
+      // Enrich half-day status with leave type from remarks
+      let displayStatus = status;
+      if (status === 'half-day') {
+        const rmk = (remarks || '').toUpperCase();
+        if (rmk.includes('H-SL') || rmk.includes('HALF-DAY SL') || rmk.includes('HALF DAY SL')) displayStatus = 'H-SL';
+        else if (rmk.includes('H-EL') || rmk.includes('HALF-DAY EL') || rmk.includes('HALF DAY EL')) displayStatus = 'H-EL';
+        else if (rmk.includes('H-CL') || rmk.includes('HALF-DAY CL') || rmk.includes('HALF DAY CL')) displayStatus = 'H-CL';
+        else if (rmk.includes('H-LWP') || rmk.includes('HALF-DAY LWP') || rmk.includes('HALF DAY LWP')) displayStatus = 'H-LWP';
+        else if (rmk.includes('WFH') || rmk.includes('HALF-DAY WFH') || rmk.includes('HALF DAY WFH')) displayStatus = 'H-WFH';
+        else displayStatus = '½ Day';
+      } else if (status === 'present' && (a?.punch_in_location||'').toLowerCase().includes('work from home')) {
+        displayStatus = (a?.working_hours && parseFloat(a.working_hours) <= 4.5) ? 'H-WFH' : 'WFH';
+      } else if (status === 'on-leave' && remarks) {
+        const rmk2 = remarks.toUpperCase();
+        if (['EL','SL','CL'].includes(rmk2)) displayStatus = rmk2;
+      }
+      const isHalfDay = status === 'half-day';
+      const badgeColor = status === 'present' ? '#22a855' : status === 'absent' ? '#ef4444'
+        : status === 'late' ? '#f59e0b' : status === 'on-leave' ? '#3b82f6'
+        : isHalfDay ? '#92400e'
+        : status === 'holiday' || status === 'weekend' ? '#64748b' : '#8b5cf6';
+      const badgeBg = status === 'present' ? '#d1fae5' : status === 'absent' ? '#fee2e2'
+        : status === 'late' ? '#fef3c7' : status === 'on-leave' ? '#dbeafe'
+        : isHalfDay ? '#fde68a'
+        : '#f1f5f9';
+
+      const pIn  = a?.punch_in_time  || (a?.punch_in  ? fmt.time(a.punch_in)  : '—');
+      const pOut = a?.punch_out_time || (a?.punch_out ? fmt.time(a.punch_out) : '—');
+
+      // Action button — only for absent days that are not holidays/weekends
+      let actionCell = '—';
+      const isHolidayOrWeekend = status === 'holiday' || status === 'weekend';
+      const regStatus = a?.regularization_status;
+      const canReg = !isHolidayOrWeekend && regStatus !== 'pending'
+        && ['absent','late','half-day'].includes(status.toLowerCase())
+        || (a?.punch_in && !a?.punch_out && !isHolidayOrWeekend && regStatus !== 'pending');
+      if (canReg) {
+        const lbl = regStatus === 'rejected' ? '↩ Re-Regularize'
+          : status.toLowerCase() === 'late' ? '🕐 Correct Late Punch'
+          : status.toLowerCase() === 'half-day' ? '½ Correct Half Day'
+          : (a?.punch_in && !a?.punch_out) ? '🔓 Add Punch Out'
+          : '+ Regularize';
+        const col = status.toLowerCase() === 'late' ? {b:'#fef3c7',c:'#92400e',bc:'#f59e0b'} : {b:'#d1fae5',c:'#065f46',bc:'#22a855'};
+        actionCell = `<button onclick="openRegModal('${ds}','${status}')" style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px;border:1.5px solid ${col.bc};background:${col.b};color:${col.c};cursor:pointer">${lbl}</button>`;
+      } else if (regStatus === 'pending') {
+        actionCell = `<span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px;background:#fef3c7;color:#d97706">Pending</span>`;
+      }
+
+      rows += `<tr>
+        <td style="font-weight:600">${fmt.date(ds)}</td>
+        <td style="color:var(--muted)">${DAYS[dow]}</td>
+        <td>
+          <span style="background:${badgeBg};color:${badgeColor};border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;text-transform:capitalize">${displayStatus}</span>
+          ${(status === 'holiday' || status === '2nd/4th Sat') && remarks ? `<span style="font-size:11px;color:var(--muted);margin-left:6px">${remarks}</span>` : ''}
+        </td>
+        <td>${a ? pIn : '—'}</td>
+        <td>${a ? pOut : '—'}</td>
+        <td style="font-weight:600">${fmtHours(a?.working_hours)}</td>
+        <td class="text-muted">${(status === 'holiday' || status === '2nd/4th Sat') ? '—' : (remarks || '—')}</td>
+        <td>${actionCell}</td>
+      </tr>`;
+    }
+    document.getElementById('month-records').innerHTML = rows ||
+      '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">No records</td></tr>';
+  }
+}
+
+async function loadTeamToday() {
+  // Use selected date or default to today (IST)
+  const dateEl = document.getElementById('team-date');
+  const today  = new Intl.DateTimeFormat('en-CA', { timeZone: window.CFG.timezone,
+    year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+
+  // Set date picker to today if not set
+  if (dateEl && !dateEl.value) dateEl.value = today;
+  const selectedDate = dateEl?.value || today;
+
+  // Always use team-today endpoint — pass date as query param
+  // This fixes the bug where past dates showed wrong/monthly data
+  const data = await api('GET', `/attendance/team-today?date=${selectedDate}`);
+  if (data?.success) {
+    teamData = data.data;
+    renderTeam(teamData);
+  }
+
+  // Load pending OD/WFH for approvers
+  const isApprover = Role.isManagerUp() || Role.is('hr','admin','super_admin','tl');
+  if (isApprover) loadTeamODWFHPending();
+}
+
+async function loadTeamODWFHPending() {
+  const section = document.getElementById('team-pending-section');
+  const listEl  = document.getElementById('team-pending-list');
+  if (!section || !listEl) return;
+  section.style.display = '';
+
+  const [odData, wfhData] = await Promise.all([
+    api('GET', '/attendance/od?status=pending'),
+    api('GET', '/attendance/wfh?status=pending')
+  ]);
+
+  // Group consecutive OD rows (same employee+reason+location) into one card
+  function groupOdRows(rows) {
+    const sorted = [...rows].sort((a,b) =>
+      a.employee_code === b.employee_code ? a.date.localeCompare(b.date) : (a.employee_code||'').localeCompare(b.employee_code||'')
+    );
+    const groups = [];
+    for (const row of sorted) {
+      const last = groups[groups.length-1];
+      const sameEmp = last && last.employee_code === row.employee_code;
+      const sameReason = last && last.reason === row.reason;
+      const sameLoc = last && last.location === row.location;
+      const dayAfter = last && (() => {
+        const d = new Date(last.to_date); d.setDate(d.getDate()+1);
+        if (d.getDay()===0) d.setDate(d.getDate()+1);
+        return d.toISOString().split('T')[0] === row.date;
+      })();
+      if (sameEmp && sameReason && sameLoc && dayAfter) {
+        last.to_date = row.date; last.ids.push(row.id); last.days++;
+      } else {
+        groups.push({...row, from_date:row.date, to_date:row.date, ids:[row.id], days:1});
+      }
+    }
+    return groups;
+  }
+
+  const odItems = groupOdRows(odData?.data||[]).map(g => {
+    const dateLabel = g.days > 1
+      ? `${fmt.date(g.from_date)} → ${fmt.date(g.to_date)} <span style="font-size:11px;color:#5b21b6;font-weight:700">(${g.days} days)</span>`
+      : fmt.date(g.from_date);
+    const idsJson = JSON.stringify(g.ids);
+    return `
+    <div class="req-card" style="border-left:4px solid #8b5cf6;margin-bottom:10px">
+      <div class="req-top">
+        <div>
+          <div class="req-name">${g.emp_name} <span style="font-size:10px;background:#ede9fe;color:#5b21b6;padding:2px 6px;border-radius:20px;font-weight:700">🚗 OD</span></div>
+          <div class="req-meta">${g.dept||'—'} · ${dateLabel}</div>
+          <div class="req-meta">${g.reason||''} ${g.location ? '· '+g.location : ''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <button class="btn btn-sm" style="background:#16a34a;color:#fff;border:none;padding:5px 14px;border-radius:8px;cursor:pointer"
+            onclick="quickActionOD(${idsJson},'approve',this)">✅ Approve</button>
+          <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:none;padding:5px 14px;border-radius:8px;cursor:pointer"
+            onclick="quickActionOD(${idsJson},'reject',this)">❌ Reject</button>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  const wfhItems = (wfhData?.data||[]).map(r => {
+    const wfhDtLabel = (r.from_date && r.to_date && r.from_date !== r.to_date)
+      ? `${fmt.date(r.from_date)} → ${fmt.date(r.to_date)}`
+      : fmt.date(r.from_date || r.date);
+    return `
+    <div class="req-card" style="border-left:4px solid #0ea5e9;margin-bottom:10px">
+      <div class="req-top">
+        <div>
+          <div class="req-name">${r.emp_name} <span style="font-size:10px;background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:20px;font-weight:700">🏠 WFH</span></div>
+          <div class="req-meta">${r.dept||'—'} · ${wfhDtLabel}</div>
+          <div class="req-meta">${r.reason||''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <button class="btn btn-sm" style="background:#16a34a;color:#fff;border:none;padding:5px 14px;border-radius:8px;cursor:pointer"
+            onclick="quickActionWFH(${r.id},'approve',this)">✅ Approve</button>
+          <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:none;padding:5px 14px;border-radius:8px;cursor:pointer"
+            onclick="quickActionWFH(${r.id},'reject',this)">❌ Reject</button>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  const all = [...odItems, ...wfhItems];
+  listEl.innerHTML = all.length
+    ? all.join('')
+    : '<div class="empty-state"><div class="empty-icon">✅</div><p>No pending OD/WFH requests</p></div>';
+}
+
+async function quickActionOD(ids, action, btn) {
+  btn.disabled = true; btn.textContent = '...';
+  const idArr = Array.isArray(ids) ? ids : [ids];
+  const res = idArr.length === 1
+    ? await api('POST', `/attendance/od/${idArr[0]}/action`, { action })
+    : await api('POST', '/attendance/od/bulk-action', { ids: idArr, action });
+  if (res?.success) { toast(`OD ${action}d ✅`); loadTeamODWFHPending(); }
+  else { toast(res?.message||'Failed','error'); btn.disabled=false; btn.textContent = action==='approve'?'✅ Approve':'❌ Reject'; }
+}
+
+async function quickActionWFH(id, action, btn) {
+  btn.disabled = true; btn.textContent = '...';
+  const res = await api('POST', `/attendance/wfh/${id}/action`, { action });
+  if (res?.success) { toast(`WFH ${action}d ✅`); loadTeamODWFHPending(); }
+  else { toast(res?.message||'Failed','error'); btn.disabled=false; btn.textContent = action==='approve'?'✅ Approve':'❌ Reject'; }
+}
+
+function filterTeam() {
+  const q    = document.getElementById('team-search').value.toLowerCase();
+  const stat = document.getElementById('team-status-filter').value;
+  renderTeam(teamData.filter(e =>
+    (!q    || e.employee_name.toLowerCase().includes(q)) &&
+    (!stat || (e.status||'absent') === stat)
+  ));
+}
+
+function renderTeam(list) {
+  const counts = list.reduce((a,e) => { const s = e.status||'absent'; a[s]=(a[s]||0)+1; return a; }, {});
+  document.getElementById('team-stats-bar').innerHTML =
+    [
+      ['present','#22a855','#d1fae5'],
+      ['absent', '#ef4444','#fee2e2'],
+      ['late',   '#f59e0b','#fef3c7'],
+      ['on-leave','#3b82f6','#dbeafe'],
+      ['od',     '#8b5cf6','#ede9fe'],
+      ['holiday','#ea580c','#fff7ed'],
+    ].map(([s,c,bg])=>`
+      <div style="text-align:center;background:${bg};border-radius:12px;padding:14px 8px;border:1.5px solid ${c}33">
+        <div style="font-size:28px;font-weight:800;color:${c};line-height:1;font-family:Manrope,sans-serif">${counts[s]||0}</div>
+        <div style="font-size:10px;font-weight:700;color:${c};margin-top:5px;text-transform:uppercase;letter-spacing:.5px">${s}</div>
+      </div>`).join('');
+
+  // Badge styles per status
+  const statusBadge = (e) => {
+    const s = e.status || 'absent';
+    const styles = {
+      present:   'background:#d1fae5;color:#065f46',
+      late:      'background:#fef3c7;color:#92400e',
+      'half-day':'background:#fef9c3;color:#713f12',
+      'on-leave':'background:#dbeafe;color:#1e40af',
+      od:        'background:#ede9fe;color:#5b21b6',
+      wfh:       'background:#e0f2fe;color:#075985',
+      lwp:       'background:#fee2e2;color:#991b1b',
+      holiday:   'background:#fff7ed;color:#c2410c;border:1px solid #fed7aa',
+      absent:    'background:#fee2e2;color:#991b1b',
+    };
+    const style = styles[s] || styles.absent;
+    const label = s === 'holiday' ? `🏖 ${e.holiday_name || 'Holiday'}` : s;
+    return `<span class="badge" style="${style};padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600">${label}</span>`;
+  };
+
+  document.getElementById('team-tbody').innerHTML = list.map(e=>`
+    <tr>
+      <td>
+        <div class="flex gap-2">
+          <div class="avatar">${e.employee_name?.[0]||'?'}</div>
+          <div>
+            <div style="font-weight:600">${e.employee_name}</div>
+            <div class="text-muted">${e.employee_code}</div>
+          </div>
+        </div>
+      </td>
+      <td>${e.department_name||'—'}</td>
+      <td>${statusBadge(e)}</td>
+      <td style="font-weight:600">${fmt.time(e.punch_in)}</td>
+      <td style="font-weight:600">${fmt.time(e.punch_out)}</td>
+      <td>${fmtHours(e.working_hours)}</td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">No records</td></tr>';
+}
+
+async function loadRegularizations() {
+  const isApprover = Role.isManagerUp() || Role.is('tl','hr','admin','super_admin');
+
+  // ── MY PENDING REQUESTS — always pending only, hidden when empty ──────────
+  const myEl      = document.getElementById('reg-my-list');
+  const mySection = document.getElementById('reg-my-section');
+  if (myEl) {
+    myEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0">Loading…</div>';
+    try {
+      const myData = await api('GET', '/attendance/regularizations?status=pending');
+      if (!myData?.success || !myData.data?.length) {
+        // No pending requests — hide section entirely, nothing to show
+        if (mySection) mySection.style.display = 'none';
+      } else {
+        if (mySection) mySection.style.display = '';
+        myEl.innerHTML = myData.data.map(r => `
+          <div class="req-card" style="margin-bottom:10px;border-left:4px solid #d97706">
+            <div class="req-top">
+              <div>
+                <div class="req-name" style="font-weight:700">${fmt.date(r.date)}</div>
+                <div class="req-meta">Reason: ${r.regularization_reason||r.reason||'—'}</div>
+                ${r.punch_in ? `<div class="req-meta">Requested: ${r.punch_in} → ${r.punch_out||'—'}</div>` : ''}
+              </div>
+              <span class="badge" style="background:#fef3c7;color:#d97706;border:1px solid #d97706">⏳ Pending</span>
+            </div>
+          </div>`).join('');
+      }
+    } catch(e) {
+      myEl.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>Failed to load</p></div>';
+    }
+  }
+
+  // ── APPROVAL QUEUE — only for managers / HR / admin ───────────────────────
+  const approveSection = document.getElementById('reg-approve-section');
+  const listEl         = document.getElementById('reg-list');
+  if (!isApprover || !approveSection || !listEl) return;
+
+  approveSection.style.display = '';
+  const statusFilter = document.getElementById('reg-status-filter')?.value ?? 'pending';
+  const qs = statusFilter ? `?status=${statusFilter}` : '';
+
+  try {
+    const data = await api('GET', `/attendance/regularizations${qs}`);
+    if (!data?.success || !data.data?.length) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><p>No ${statusFilter||''} regularizations</p></div>`;
+      return;
+    }
+    listEl.innerHTML = data.data.map(r => {
+      const s  = r.status || 'pending';
+      const sc = s==='approved' ? '#16a34a' : s==='rejected' ? '#dc2626' : '#d97706';
+      const sb = s==='approved' ? '#dcfce7'  : s==='rejected' ? '#fee2e2'  : '#fef3c7';
+      const si = s==='approved' ? '✅ Approved' : s==='rejected' ? '❌ Rejected' : '⏳ Pending';
+      // Only show approve/reject buttons if still pending
+      const canAction = s === 'pending';
+      return `
+      <div class="req-card" style="cursor:${canAction?'pointer':'default'};border-left:4px solid ${sc}"
+        ${canAction ? `onclick="openApproveReg(${r.id},'${(r.emp_name||'').replace(/'/g,"\\'")}','${r.date}','${(r.regularization_reason||r.reason||'').replace(/'/g,"\\'")}','${r.punch_in||''}','${r.punch_out||''}')"` : ''}>
+        <div class="req-top">
+          <div>
+            <div class="req-name">${r.emp_name} <span class="text-muted fs-sm">(${r.employee_code})</span></div>
+            <div class="req-meta">${r.dept||'—'} · ${fmt.date(r.date)}</div>
+            <div class="req-meta" style="margin-top:4px">Reason: ${r.regularization_reason||r.reason||'—'}</div>
+            ${r.punch_in ? `<div class="req-meta">Requested: ${r.punch_in} → ${r.punch_out||'—'}</div>` : ''}
+            ${r.regularization_remarks ? `<div class="req-meta" style="color:#7c3aed">💬 ${r.regularization_remarks}</div>` : ''}
+          </div>
+          <span class="badge" style="background:${sb};color:${sc};border:1px solid ${sc}">${si}</span>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>Failed to load approval queue</p></div>';
+  }
+}
+
+function openRegModal(date='', status='') {
+  document.getElementById('reg-date').value = date;
+  // Pre-fill title based on status
+  const titleEl = document.querySelector('#reg-modal .modal-title');
+  if (titleEl) {
+    if (status === 'late') titleEl.textContent = '🕐 Correct Late Punch-In';
+    else if (status === 'half-day') titleEl.textContent = '½ Correct Half Day';
+    else if (status === 'present') titleEl.textContent = '🔓 Add Missing Punch Out';
+    else titleEl.textContent = 'Request Regularization';
+  }
+  // If late, hint to fill correct punch-in time
+  const punchInEl = document.getElementById('reg-punchin');
+  if (punchInEl && status === 'late') {
+    punchInEl.placeholder = 'Enter correct punch-in time';
+    punchInEl.focus();
+  }
+  openModal('reg-modal');
+}
+
+async function submitReg() {
+  const date   = document.getElementById('reg-date').value;
+  const reason = document.getElementById('reg-reason').value.trim();
+  const punchIn  = document.getElementById('reg-punchin').value;
+  const punchOut = document.getElementById('reg-punchout').value;
+  if (!date||!reason) { toast('Date and reason required','error'); return; }
+  // Validate punch_out is after punch_in (must use 24hr HH:MM format)
+  if (punchIn && punchOut) {
+    const [inH, inM]   = punchIn.split(':').map(Number);
+    const [outH, outM] = punchOut.split(':').map(Number);
+    if (outH * 60 + outM <= inH * 60 + inM) {
+      toast('Punch Out must be after Punch In — use 24hr format (e.g. 18:30 for 6:30 PM)', 'error');
+      return;
+    }
+  }
+  const data = await api('POST','/attendance/regularize',{date,reason,punch_in:punchIn||null,punch_out:punchOut||null});
+  if (data?.success) { toast(data.message); closeModal('reg-modal'); loadCalendar(); }
+  else toast(data?.message||'Failed','error');
+}
+
+function openApproveReg(id,name,date,reason,pIn,pOut) {
+  activeRegId = id;
+  document.getElementById('approve-reg-content').innerHTML = `
+    <div class="form-row">
+      <div><div class="form-label">Employee</div><b>${name}</b></div>
+      <div><div class="form-label">Date</div>${fmt.date(date)}</div>
+    </div>
+    <div class="form-group mt-2"><div class="form-label">Reason</div>${reason||'—'}</div>
+    <div class="form-row">
+      <div><div class="form-label">Requested Punch In</div>${pIn||'Not provided'}</div>
+      <div><div class="form-label">Requested Punch Out</div>${pOut||'Not provided'}</div>
+    </div>
+    <div class="form-group mt-2">
+      <label class="form-label">Remarks (optional)</label>
+      <input id="reg-action-remarks" class="form-control" placeholder="Add remarks…">
+    </div>`;
+  openModal('approve-reg-modal');
+}
+
+async function actionReg(action) {
+  const remarks = document.getElementById('reg-action-remarks')?.value || '';
+  const data = await api('POST','/attendance/regularize/action',{attendance_id:activeRegId,action,remarks});
+  if (data?.success) { toast(`Regularization ${action}d`); closeModal('approve-reg-modal'); loadRegularizations(); }
+  else toast(data?.message||'Failed','error');
+}
+// download tab init moved to isAdminOrHR block above
+
+async function downloadAttendanceExcel() {
+  const month  = document.getElementById('dl-month').value;
+  const year   = document.getElementById('dl-year').value;
+  const deptId = document.getElementById('dl-department')?.value || '';
+  const btn    = document.getElementById('dl-btn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Generating…';
+  try {
+    const token = Auth.getToken();
+    let url = `${API_BASE}/attendance/export-register?month=${month}&year=${year}`;
+    if (deptId) url += `&department_id=${deptId}`;
+    const res = await fetch(url, {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Download failed' }));
+      toast(err.message || 'Download failed', 'error'); return;
+    }
+    const blob = await res.blob();
+    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: `${window.CFG.clientName}_Attendance_${MONTHS[parseInt(month)-1]}_${year}.xlsx`
+    });
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    toast('✅ Attendance register downloaded!', 'success');
+  } catch (err) {
+    toast('Download failed: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '⬇ Download Attendance';
+  }
+}
+
+
+// ── OD Modal ──────────────────────────────────────────────────────────────────
+function openODModal() {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: window.CFG.timezone,
+    year:'numeric', month:'2-digit', day:'2-digit'
+  }).format(new Date());
+  document.getElementById('od-from').value = today;
+  document.getElementById('od-to').value   = today;
+  document.getElementById('od-days-info').style.display = 'none';
+  openModal('od-modal');
+}
+
+function countWorkingDays(from, to) {
+  let count = 0, cur = new Date(from), end = new Date(to);
+  while (cur <= end) { if (cur.getDay()!==0 && cur.getDay()!==6) count++; cur.setDate(cur.getDate()+1); }
+  return count;
+}
+
+function odDateCheck() {
+  const from = document.getElementById('od-from').value;
+  const to   = document.getElementById('od-to').value;
+  const info = document.getElementById('od-days-info');
+  if (from && to) {
+    if (to < from) { document.getElementById('od-to').value = from; return; }
+    const days = countWorkingDays(from, to);
+    info.textContent = `📅 ${days} working day(s) selected`;
+    info.style.display = 'block';
+  }
+}
+
+function wfhDateCheck() {
+  const from = document.getElementById('wfh-from').value;
+  const to   = document.getElementById('wfh-to').value;
+  const info = document.getElementById('wfh-days-info');
+  if (from && to) {
+    if (to < from) { document.getElementById('wfh-to').value = from; return; }
+    const days = countWorkingDays(from, to);
+    info.textContent = `📅 ${days} working day(s) selected`;
+    info.style.display = 'block';
+  }
+}
+
+async function submitOD() {
+  const from_date = document.getElementById('od-from').value;
+  const to_date   = document.getElementById('od-to').value;
+  const reason    = document.getElementById('od-reason').value.trim();
+  const location  = document.getElementById('od-location').value.trim();
+  if (!from_date || !reason) { toast('Date and reason required', 'error'); return; }
+  const data = await api('POST', '/attendance/od', { from_date, to_date: to_date||from_date, reason, location });
+  if (data?.success) {
+    toast(data.message || 'OD request submitted — awaiting approval ⏳');
+    closeModal('od-modal');
+    document.getElementById('od-reason').value = '';
+    document.getElementById('od-location').value = '';
+    if (document.getElementById('tab-odwfh')?.style.display !== 'none') loadMyODWFH();
+  } else toast(data?.message || 'Failed', 'error');
+}
+
+// ── WFH Modal ─────────────────────────────────────────────────────────────────
+function openWFHModal() {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: window.CFG.timezone,
+    year:'numeric', month:'2-digit', day:'2-digit'
+  }).format(new Date());
+  document.getElementById('wfh-from').value = today;
+  document.getElementById('wfh-to').value   = today;
+  document.getElementById('wfh-days-info').style.display = 'none';
+  openModal('wfh-modal');
+}
+
+async function submitWFH() {
+  const from_date = document.getElementById('wfh-from').value;
+  const to_date   = document.getElementById('wfh-to').value;
+  const reason    = document.getElementById('wfh-reason').value.trim();
+  if (!from_date || !reason) { toast('Date and reason required', 'error'); return; }
+  const data = await api('POST', '/attendance/wfh', { from_date, to_date: to_date||from_date, reason });
+  if (data?.success) {
+    toast(data.message || 'WFH request submitted — awaiting approval ⏳');
+    closeModal('wfh-modal');
+    document.getElementById('wfh-reason').value = '';
+    if (document.getElementById('tab-odwfh')?.style.display !== 'none') loadMyODWFH();
+  } else toast(data?.message || 'Failed', 'error');
+}
+
+// ── My OD/WFH Tab ──────────────────────────────────────────────────────────────
+async function loadMyODWFH() {
+  const typeFilter   = document.getElementById('odwfh-type-filter')?.value || '';
+  const statusFilter = document.getElementById('odwfh-status-filter')?.value || '';
+  const el = document.getElementById('my-odwfh-list');
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+
+  const statusQ = statusFilter ? `&status=${statusFilter}` : '&status=';
+  const [odRes, wfhRes] = await Promise.all([
+    typeFilter === 'wfh' ? null : api('GET', `/attendance/od?own=true${statusQ}`),
+    typeFilter === 'od'  ? null : api('GET', `/attendance/wfh?own=true${statusQ}`)
+  ]);
+
+  const odItems  = (odRes?.data  || []).map(r => ({ ...r, _type: 'od' }));
+  const wfhItems = (wfhRes?.data || []).map(r => ({ ...r, _type: 'wfh' }));
+
+  // Sort combined by applied_at desc
+  const all = [...odItems, ...wfhItems].sort((a,b) =>
+    new Date(b.applied_at||0) - new Date(a.applied_at||0)
+  );
+
+  if (!all.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>No OD/WFH requests found.</p></div>';
+    return;
+  }
+
+  el.innerHTML = all.map(r => {
+    const isOD  = r._type === 'od';
+    const color = isOD ? '#8b5cf6' : '#0284c7';
+    const bg    = isOD ? '#f3e8ff' : '#e0f2fe';
+    const icon  = isOD ? '🚗' : '🏠';
+    const label = isOD ? 'OD' : 'WFH';
+
+    // Date display: single day or range
+    const fromDate = r.from_date || r.date || '';
+    const toDate   = r.to_date   || r.date || fromDate;
+    const dateDisplay = (fromDate === toDate || !toDate || toDate === fromDate)
+      ? fmt.date(fromDate)
+      : `${fmt.date(fromDate)} → ${fmt.date(toDate)}`;
+
+    const st = r.status || 'pending';
+    const stColor = st === 'approved' ? '#16a34a' : st === 'rejected' ? '#dc2626' : '#d97706';
+    const stBg    = st === 'approved' ? '#dcfce7'  : st === 'rejected' ? '#fee2e2'  : '#fef3c7';
+    const stLabel = st === 'approved' ? '✅ Approved' : st === 'rejected' ? '❌ Rejected' : '⏳ Pending';
+
+    return `
+    <div class="card" style="margin-bottom:10px;border-left:3px solid ${color};padding:14px 16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="background:${bg};color:${color};font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;">${icon} ${label}</span>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--text);">${dateDisplay}</div>
+            ${r.location ? `<div style="font-size:12px;color:var(--muted);margin-top:2px;">📍 ${r.location}</div>` : ''}
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;font-style:italic;">${r.reason||''}</div>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <span style="background:${stBg};color:${stColor};font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;">${stLabel}</span>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">${r.applied_at ? fmt.date(r.applied_at) : ''}</div>
+          ${r.remarks ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;font-style:italic;">Remarks: ${r.remarks}</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Show OD/WFH buttons (for employees who are allowed)
+function showODWFHButtons() {
+  const user = Auth.getUser();
+  // Show for all employees (they can apply OD/WFH for today)
+  document.getElementById('od-btn').style.display = 'flex';
+  document.getElementById('wfh-btn').style.display = 'flex';
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── LOCATION MAP ─────────────────────────────────────────────────────────────
+let _locMap = null, _locMarkers = [], _locInfoWin = null;
+
+async function loadLocationMap() {
+  const date = document.getElementById('loc-date').value || new Date().toISOString().split('T')[0];
+  const data = await api('GET', `/attendance/punch-locations?date=${date}`);
+  if (!data?.success) { toast('Failed to load locations', 'error'); return; }
+
+  // Init Google Map
+  waitForMaps(async () => {
+  document.getElementById('loc-map').innerHTML = '';
+  _locMap = new google.maps.Map(document.getElementById('loc-map'), { mapId: 'DEMO_MAP_ID',
+    zoom: 5,
+    center: { lat: 20.5937, lng: 78.9629 },
+    mapTypeId: 'roadmap',
+    streetViewControl: false,
+    mapTypeControl: true,
+    mapTypeControlOptions: { style: google.maps.MapTypeControlStyle.DROPDOWN_MENU }
+  });
+  _locInfoWin = new google.maps.InfoWindow();
+  _locMarkers.forEach(m => { try { m.map = null; } catch(_) {} });
+  _locMarkers = [];
+
+  // ✅ FIX: Use /geofence/my-locations so employee sees their own assigned buffers
+  const offData = await api('GET', '/geofence/my-locations');
+  if (offData?.success) {
+    offData.data.forEach(loc => {
+      const lat = +loc.latitude, lng = +loc.longitude;
+      const locCircleColor = loc.is_universal ? '#3b82f6' : window.CFG.accentColor;
+      new google.maps.Circle({
+        map: _locMap,
+        center: { lat, lng },
+        radius: loc.radius_meters,
+        strokeColor: locCircleColor, strokeOpacity: 0.7, strokeWeight: 2,
+        fillColor: locCircleColor, fillOpacity: 0.08
+      });
+      const offPinEl = document.createElement('div');
+      offPinEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="24"><rect rx="6" width="80" height="24" fill="${window.CFG.accentColor}"/><text x="40" y="17" text-anchor="middle" font-size="11" font-weight="700" fill="white" font-family="Arial,sans-serif">${loc.name.substring(0,12)}</text></svg>`;
+      const offMarker = new google.maps.marker.AdvancedMarkerElement({
+        position: { lat, lng }, map: _locMap, title: loc.name,
+        content: offPinEl.firstChild
+      });
+      _locMarkers.push(offMarker);
+    });
+  }
+
+  const gmBounds = new google.maps.LatLngBounds();
+  let hasPoints = false;
+  const rows = data.data;
+
+  rows.forEach(emp => {
+    if (!emp.location_lat || !emp.location_lng) return;
+    const lat = parseFloat(emp.location_lat);
+    const lng = parseFloat(emp.location_lng);
+    const color = emp.status === 'present' || emp.status === 'regularized' ? '#22a855'
+                : emp.status === 'late'    ? '#f59e0b'
+                : emp.status === 'half-day'? '#f97316'
+                : '#ef4444';
+    const firstName = (emp.employee_name || '?').split(' ')[0].substring(0, 8);
+    const svgLabel = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="90" height="28"><rect rx="14" width="90" height="28" fill="${color}" stroke="white" stroke-width="2"/><text x="45" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="white" font-family="Arial,sans-serif">${firstName}</text></svg>`);
+    const empPinEl = document.createElement('div');
+    empPinEl.innerHTML = decodeURIComponent(svgLabel);
+    const marker = new google.maps.marker.AdvancedMarkerElement({
+      position: { lat, lng }, map: _locMap, title: emp.employee_name,
+      content: empPinEl.firstChild, zIndex: 10
+    });
+    marker.addListener('click', () => {
+      _locInfoWin.setContent(`
+        <div style="min-width:180px;font-family:sans-serif;padding:4px">
+          <div style="font-weight:700;font-size:13px;margin-bottom:6px">${emp.employee_name}</div>
+          <div style="font-size:11px;color:#64748b;margin-bottom:4px">${emp.designation_title||''} · ${emp.department_name||''}</div>
+          <div style="margin-bottom:4px"><span style="background:${color};color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">${emp.status}</span></div>
+          <div style="font-size:12px;color:#334155">
+            🕐 In: <b>${emp.punch_in ? emp.punch_in.slice(0,5) : '—'}</b><br>
+            🕐 Out: <b>${emp.punch_out ? emp.punch_out.slice(0,5) : '—'}</b><br>
+            ⏱ Hours: <b>${fmtHours(emp.working_hours)}</b><br>
+            📍 ${emp.punch_in_location || 'GPS: ' + lat.toFixed(4) + ',' + lng.toFixed(4)}
+          </div>
+        </div>`);
+      _locInfoWin.open(_locMap, marker);
+    });
+    _locMarkers.push(marker);
+    gmBounds.extend({ lat, lng });
+    hasPoints = true;
+  });
+
+  if (hasPoints) _locMap.fitBounds(gmBounds, { top: 50, right: 50, bottom: 50, left: 50 });
+  }); // end waitForMaps
+
+  // Table
+  document.getElementById('loc-tbody').innerHTML = rows.map(emp => `
+    <tr>
+      <td>
+        <div class="flex gap-2">
+          <div class="avatar" style="background:linear-gradient(135deg,var(--cfg-primary),var(--cfg-accent))">${emp.employee_name?.[0]||'?'}</div>
+          <div>
+            <div style="font-weight:600">${emp.employee_name}</div>
+            <div class="text-muted">${emp.employee_code} · ${emp.department_name||'—'}</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="badge badge-${emp.status||'absent'}">${emp.status||'absent'}</span></td>
+      <td style="font-weight:600">${emp.punch_in ? emp.punch_in.slice(0,5) : '—'}</td>
+      <td style="font-weight:600">${emp.punch_out ? emp.punch_out.slice(0,5) : '—'}</td>
+      <td>${fmtHours(emp.working_hours)}</td>
+      <td style="font-size:12px;color:var(--muted)">
+        ${emp.location_lat
+          ? `<a href="https://maps.google.com/?q=${emp.location_lat},${emp.location_lng}" target="_blank" style="color:var(--accent);font-weight:600">📍 View on Google Maps</a>`
+          : '<span style="color:var(--red)">No GPS data</span>'}
+      </td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">No records for this date</td></tr>';
+}
+
+// ── IMPORT ATTENDANCE ─────────────────────────────────────────────────────────
+const MONTHS_IMP = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+
+function initImportTab() {
+  const impMonth = document.getElementById('imp-month');
+  const impYear  = document.getElementById('imp-year');
+  if (impMonth && !impMonth.options.length) {
+    const now = new Date();
+    MONTHS_IMP.forEach((m,i) =>
+      impMonth.innerHTML += `<option value="${i+1}" ${i+1===now.getMonth()+1?'selected':''}>${m}</option>`
+    );
+    for (let y = now.getFullYear(); y >= 2020; y--)
+      impYear.innerHTML += `<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`;
+  }
+}
+
+function downloadImportTemplate() {
+  const month = parseInt(document.getElementById('imp-month').value);
+  const year  = parseInt(document.getElementById('imp-year').value);
+  if (!month || !year) { toast('Please select month and year first', 'error'); return; }
+
+  const monthName = MONTHS_IMP[month - 1];
+  const numDays   = new Date(year, month, 0).getDate();
+
+  // Build CSV content
+  // Row 1: Title
+  // Row 2: Headers  — Emp Code | Name | Department | Day1 … DayN
+  // Row 3+: Data rows (blank for HR to fill)
+
+  const dayHeaders = [];
+  const dayOfWeek  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  for (let d = 1; d <= numDays; d++) {
+    const dow = dayOfWeek[new Date(year, month-1, d).getDay()];
+    dayHeaders.push(`${d}-${dow}`);
+  }
+
+  const titleRow   = [`Attendance Template — ${monthName} ${year}`, '', '', ...Array(numDays).fill('')];
+  const headerRow  = ['Emp Code', 'Name', 'Department', ...dayHeaders];
+  const codeRow    = ['// CODES:', 'P=Present  A=Absent  H=HalfDay', 'EL/SL/CL=FullDayLeave  H-EL/H-SL/H-CL=HalfDayLeave', ...['OD=OutdoorDuty','WFH=WorkFromHome','H-WFH=HalfDayWFH','LWP=LossOfPay','H-LWP=HalfLWP','WO=WeeklyOff(skip)','HO=Holiday(skip)'].concat(Array(numDays).fill(''))];
+  const blankRow   = ['', '', '', ...Array(numDays).fill('')];
+
+  // Generate 5 sample blank data rows
+  const dataRows = Array.from({length:5}, () => ['', '', '', ...Array(numDays).fill('')]);
+
+  const allRows = [titleRow, headerRow, codeRow, blankRow, ...dataRows];
+
+  // Convert to CSV
+  const csv = allRows.map(row =>
+    row.map(cell => {
+      const s = String(cell);
+      return s.includes(',') || s.includes('"') || s.includes('\n')
+        ? `"${s.replace(/"/g,'""')}"` : s;
+    }).join(',')
+  ).join('\r\n');
+
+  // Download as .csv (HR can open in Excel)
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `Attendance_Template_${monthName}_${year}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`Template downloaded for ${monthName} ${year}`);
+}
+
+let impSelectedFile = null;
+
+const MONTH_NAME_MAP = {
+  'jan':1,'feb':2,'mar':3,'apr':4,'may':5,'jun':6,
+  'jul':7,'aug':8,'sep':9,'oct':10,'nov':11,'dec':12,
+  'january':1,'february':2,'march':3,'april':4,'june':6,
+  'july':7,'august':8,'september':9,'october':10,'november':11,'december':12
+};
+
+function autoDetectMonthYear(filename) {
+  // Try to detect month and year from filename like "JAN.xlsx", "January 2026.xlsx", "Attendance_Mar_2026.xlsx"
+  const name = filename.toLowerCase().replace(/[_\-\.]/g,' ');
+  let detectedMonth = null, detectedYear = null;
+
+  // Detect year (4-digit)
+  const yearMatch = name.match(/\b(202\d|203\d)\b/);
+  if (yearMatch) detectedYear = parseInt(yearMatch[1]);
+
+  // Detect month name
+  for (const [key, val] of Object.entries(MONTH_NAME_MAP)) {
+    if (name.includes(key)) { detectedMonth = val; break; }
+  }
+
+  if (detectedMonth) {
+    const sel = document.getElementById('imp-month');
+    if (sel) sel.value = detectedMonth;
+  }
+  if (detectedYear) {
+    const sel = document.getElementById('imp-year');
+    if (sel) sel.value = detectedYear;
+  }
+  if (detectedMonth || detectedYear) {
+    const MONTHS_IMP_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const mLabel = detectedMonth ? MONTHS_IMP_NAMES[detectedMonth-1] : '';
+    const yLabel = detectedYear || '';
+    toast(`📅 Auto-detected: ${mLabel} ${yLabel}`);
+  }
+}
+
+function onImpFileSelect(input) {
+  if (input.files && input.files[0]) {
+    impSelectedFile = input.files[0];
+    document.getElementById('imp-filename').textContent = '✅ ' + impSelectedFile.name;
+    document.getElementById('imp-dropzone').style.borderColor = window.CFG.accentColor;
+    document.getElementById('imp-dropzone').style.background  = '#f0fdf4';
+    autoDetectMonthYear(impSelectedFile.name);
+  }
+}
+
+function handleImpDrop(event) {
+  event.preventDefault();
+  const dz = document.getElementById('imp-dropzone');
+  dz.style.borderColor = '#cbd5e1';
+  dz.style.background  = '#fff';
+  const file = event.dataTransfer.files[0];
+  if (!file) return;
+  if (!/\.(xlsx|xls)$/i.test(file.name)) {
+    toast('Only .xlsx or .xls files allowed', 'error'); return;
+  }
+  impSelectedFile = file;
+  document.getElementById('imp-filename').textContent = '✅ ' + file.name;
+  dz.style.borderColor = window.CFG.accentColor;
+  dz.style.background  = '#f0fdf4';
+  autoDetectMonthYear(file.name);
+}
+
+async function uploadAttendance() {
+  const month     = document.getElementById('imp-month').value;
+  const year      = document.getElementById('imp-year').value;
+  const overwrite = document.getElementById('imp-overwrite').checked;
+  const resultEl  = document.getElementById('imp-result');
+  const spinner   = document.getElementById('imp-spinner');
+  const btn       = document.getElementById('imp-upload-btn');
+
+  if (!month || !year)    { toast('Select month and year first', 'error'); return; }
+  if (!impSelectedFile)   { toast('Please select an Excel file first', 'error'); return; }
+
+  const fd = new FormData();
+  fd.append('file', impSelectedFile);
+  fd.append('month', month);
+  fd.append('year',  year);
+  fd.append('overwrite', overwrite ? 'true' : 'false');
+
+  btn.disabled     = true;
+  spinner.style.display = '';
+  resultEl.style.display = 'none';
+
+  try {
+    const token = localStorage.getItem(window.CFG.tokenKey);
+    const resp  = await fetch(API_BASE + '/attendance/import', {
+      method: 'POST',
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+      body: fd,
+    });
+    const data = await resp.json();
+
+    resultEl.style.display = '';
+    if (data.success) {
+      resultEl.style.cssText = 'display:block;margin-top:20px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;font-size:13px';
+      let html = `<div style="font-weight:700;color:#15803d;font-size:15px;margin-bottom:8px">✅ Import Successful!</div>`;
+      html += `<div style="color:#166534">${data.message}</div>`;
+      if (data.data?.errors?.length) {
+        html += `<div style="margin-top:10px;font-weight:600;color:#92400e">⚠ Skipped rows:</div>`;
+        html += `<ul style="margin:6px 0 0 16px;color:#78350f">`;
+        data.data.errors.forEach(e => html += `<li>${e}</li>`);
+        html += `</ul>`;
+      }
+      resultEl.innerHTML = html;
+      toast(data.message);
+      // Reset file
+      impSelectedFile = null;
+      document.getElementById('imp-filename').textContent = '';
+      document.getElementById('imp-file').value = '';
+      document.getElementById('imp-dropzone').style.borderColor = '#cbd5e1';
+      document.getElementById('imp-dropzone').style.background  = '#fff';
+    } else {
+      resultEl.style.cssText = 'display:block;margin-top:20px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:16px;font-size:13px';
+      resultEl.innerHTML = `<div style="font-weight:700;color:#dc2626;margin-bottom:4px">❌ Import Failed</div><div style="color:#991b1b">${data.message || 'Unknown error'}</div>`;
+    }
+  } catch (err) {
+    resultEl.style.display = '';
+    resultEl.style.cssText = 'display:block;margin-top:20px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:16px;font-size:13px';
+    resultEl.innerHTML = `<div style="font-weight:700;color:#dc2626">❌ Network Error</div><div style="color:#991b1b">${err.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    spinner.style.display = 'none';
+  }
+}
+
+// ── Mark Attendance Range (COO / super_admin) ───────────────────────────────
+async function submitMarkRange() {
+  const from    = document.getElementById('mark-from').value;
+  const to      = document.getElementById('mark-to').value || from;
+  const status  = document.getElementById('mark-status').value;
+  const remarks = document.getElementById('mark-remarks').value;
+
+  if (!from) { toast('Please select a From Date', 'error'); return; }
+
+  const btn = document.querySelector('#tab-mark .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
+
+  try {
+    const res = await api('POST', '/attendance/mark-range', {
+      from_date: from,
+      to_date:   to,
+      status,
+      remarks
+    });
+    if (res?.success) {
+      toast(res.message || 'Attendance marked successfully');
+      // Reset form
+      document.getElementById('mark-from').value   = '';
+      document.getElementById('mark-to').value     = '';
+      document.getElementById('mark-remarks').value = '';
+      // Refresh the calendar view
+      loadCalendar();
+      switchTab('calendar');
+    } else {
+      toast(res?.message || 'Failed to mark attendance', 'error');
+    }
+  } catch (err) {
+    toast('Network error. Please try again.', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Submit Attendance'; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── Movement Tracking via Service Worker ─────────────────────────────────────
+// SW pings GPS every 30s and POSTs to /attendance/movement/log
+// Watchdog runs every 25s from main thread to restart SW loop if Android killed it
+// Falls back to main-thread interval if SW not supported
+// ─────────────────────────────────────────────────────────────────────────────
+let _swRegistration  = null;
+let _watchdogTimer   = null;
+let _fallbackTimer   = null;   // used if SW not supported
+
+async function startMovementTracking() {
+  if (!('serviceWorker' in navigator)) {
+    console.warn('[Tracking] SW not supported — using fallback interval');
+    _startFallbackTracking();
+    return;
+  }
+  try {
+    _swRegistration = await navigator.serviceWorker.register('/tracking-sw.js', { scope: '/' });
+    await navigator.serviceWorker.ready;
+    const token = Auth.getToken();
+    const sw    = (await navigator.serviceWorker.ready).active;
+    if (sw) {
+      // FIX: wait for SW to acknowledge START_TRACKING before returning
+      // This prevents page.reload() from firing before the SW has the token
+      await new Promise((resolve) => {
+        const onMsg = (e) => {
+          if (e.data?.type === 'TRACKING_STARTED') {
+            navigator.serviceWorker.removeEventListener('message', onMsg);
+            resolve();
+          }
+        };
+        navigator.serviceWorker.addEventListener('message', onMsg);
+        sw.postMessage({ type: 'START_TRACKING', token, apiBase: API_BASE });
+        // Safety timeout: resolve after 2s even if SW doesn't ack (e.g. old SW version)
+        setTimeout(resolve, 2000);
+      });
+      console.log('[Tracking] ✅ SW tracking started');
+    }
+    // Register for periodic sync if supported (keeps SW alive on Android)
+    try {
+      const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+      if (status.state === 'granted') {
+        await _swRegistration.periodicSync.register(window.CFG.swSyncTag, { minInterval: 30 * 1000 });
+        console.log('[Tracking] ✅ Periodic sync registered');
+      }
+    } catch (e) { /* periodic sync not supported — fine */ }
+
+    _startWatchdog();
+  } catch (err) {
+    console.error('[Tracking] SW registration failed — using fallback:', err);
+    _startFallbackTracking();
+  }
+}
+
+// FIX: force an immediate GPS ping right after punch-in so the employee
+// shows up in the movement summary instantly (not after the first 30s interval)
+async function _forceImmediatePing() {
+  try {
+    if (!navigator.geolocation) return;
+    const pos = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject,
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 });
+    });
+    await api('POST', '/attendance/movement/log', {
+      lat:      pos.coords.latitude,
+      lng:      pos.coords.longitude,
+      accuracy: pos.coords.accuracy
+    });
+    console.log('[Tracking] ✅ Immediate ping sent after punch-in');
+    // Also tell SW to do a tick now (covers Android where direct fetch may be blocked)
+    const reg = _swRegistration || await navigator.serviceWorker.getRegistration('/tracking-sw.js').catch(() => null);
+    if (reg?.active) reg.active.postMessage({ type: 'FORCE_TICK' });
+  } catch (e) {
+    console.warn('[Tracking] Immediate ping failed (non-fatal):', e.message);
+  }
+}
+
+async function stopMovementTracking() {
+  // Stop watchdog
+  if (_watchdogTimer) { clearInterval(_watchdogTimer); _watchdogTimer = null; }
+  // Stop fallback
+  if (_fallbackTimer) { clearInterval(_fallbackTimer); _fallbackTimer = null; }
+  // Stop SW
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = _swRegistration || await navigator.serviceWorker.getRegistration('/tracking-sw.js');
+    const sw  = reg?.active;
+    if (sw) {
+      // FIX: await SW ack before reloading on punch-out too
+      await new Promise((resolve) => {
+        const onMsg = (e) => {
+          if (e.data?.type === 'TRACKING_STOPPED') {
+            navigator.serviceWorker.removeEventListener('message', onMsg);
+            resolve();
+          }
+        };
+        navigator.serviceWorker.addEventListener('message', onMsg);
+        sw.postMessage({ type: 'STOP_TRACKING' });
+        setTimeout(resolve, 1500);
+      });
+    }
+  } catch (err) {
+    console.warn('[Tracking] Could not stop SW:', err);
+  }
+}
+
+// Watchdog: ping SW every 25s from main thread
+// If SW loop died (Android killed it), the PING handler in SW will restart it
+function _startWatchdog() {
+  if (_watchdogTimer) clearInterval(_watchdogTimer);
+  _watchdogTimer = setInterval(async () => {
+    try {
+      const reg = _swRegistration || await navigator.serviceWorker.getRegistration('/tracking-sw.js');
+      const sw  = reg?.active;
+      if (sw) {
+        sw.postMessage({ type: 'PING' });
+      } else {
+        // SW is completely dead — re-register and restart
+        console.warn('[Watchdog] SW is dead — re-registering');
+        await startMovementTracking();
+      }
+    } catch (e) { console.warn('[Watchdog] error:', e); }
+  }, 25000);
+}
+
+// Fallback: direct interval from main thread (if SW not supported)
+function _startFallbackTracking() {
+  if (_fallbackTimer) clearInterval(_fallbackTimer);
+  _fallbackTimer = setInterval(async () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      if (pos.coords.accuracy > 150) return;
+      try {
+        await api('POST', '/attendance/movement/log', {
+          lat:      pos.coords.latitude,
+          lng:      pos.coords.longitude,
+          accuracy: pos.coords.accuracy
+        });
+      } catch (e) { console.warn('[Fallback] ping failed:', e); }
+    }, null, { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 });
+  }, 30000);
+}
+
+// On page load: check if SW already running (employee came back to page)
+(async function checkSWState() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration('/tracking-sw.js');
+    if (reg?.active) {
+      reg.active.postMessage({ type: 'PING' });
+      // If SW is alive and was tracking, restart watchdog
+      _swRegistration = reg;
+      _startWatchdog();
+    }
+  } catch (e) { /* ignore */ }
+})();
+
+
+</script>
+
+
+<!-- OD MODAL -->
+<div class="modal-backdrop" id="od-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🚗 Apply Outdoor Duty (OD)</div>
+      <button class="modal-close" onclick="closeModal('od-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">From Date *</label>
+          <input id="od-from" class="form-control" type="date" onchange="odDateCheck()">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">To Date *</label>
+          <input id="od-to" class="form-control" type="date" onchange="odDateCheck()">
+        </div>
+      </div>
+      <div id="od-days-info" style="margin-top:8px;font-size:12px;color:var(--accent);font-weight:600;display:none;"></div>
+      <div class="form-group">
+        <label class="form-label">Location / Destination</label>
+        <input id="od-location" class="form-control" type="text" placeholder="e.g. Client Site, Field Visit, Mumbai…">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason *</label>
+        <textarea id="od-reason" class="form-control" rows="3" placeholder="Purpose of outdoor duty…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('od-modal')">Cancel</button>
+      <button class="btn btn-primary" style="background:#8b5cf6;border-color:#8b5cf6" onclick="submitOD()">Submit OD</button>
+    </div>
+  </div>
+</div>
+
+<!-- WFH MODAL -->
+<div class="modal-backdrop" id="wfh-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🏠 Apply Work From Home (WFH)</div>
+      <button class="modal-close" onclick="closeModal('wfh-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">From Date *</label>
+          <input id="wfh-from" class="form-control" type="date" onchange="wfhDateCheck()">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">To Date *</label>
+          <input id="wfh-to" class="form-control" type="date" onchange="wfhDateCheck()">
+        </div>
+      </div>
+      <div id="wfh-days-info" style="margin-top:8px;font-size:12px;color:#0284c7;font-weight:600;display:none;"></div>
+      <div class="form-group">
+        <label class="form-label">Reason *</label>
+        <textarea id="wfh-reason" class="form-control" rows="3" placeholder="Reason for working from home…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('wfh-modal')">Cancel</button>
+      <button class="btn btn-primary" style="background:#0284c7;border-color:#0284c7" onclick="submitWFH()">Submit WFH</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
