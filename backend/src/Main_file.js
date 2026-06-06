@@ -29,7 +29,7 @@ const CONFIG = {
   apiBasePath:       "/api",
 
   // ── 🖥️ Frontend / App URLs ─────────────────────────────────────────────────
-  frontendUrl:       "https://riskcare-hr.vercel.app",
+  frontendUrl:       "https://riskcare-hrms.vercel.app",
   websiteUrl:        "riskcareinsure.com",
   appDeepLinkScheme: "riskcarehr",
 
