@@ -16,17 +16,19 @@ exports.uploadMiddleware = multer({
 }).single('file');
 
 // Column mapping from our Excel template (0-indexed)
+// NOTE: must stay in sync with the headers in row 3 of the Employee Import
+// template (columns A..AE, 31 columns total). There are NO salary columns
+// (basic_salary/hra/special_allowance/travel_allowance/ctc) in this template.
 const COL = {
   employee_code: 0, password: 1, first_name: 2, last_name: 3,
   email: 4, phone: 5, alternate_phone: 6, gender: 7, date_of_birth: 8,
   blood_group: 9, marital_status: 10, joining_date: 11, employment_type: 12,
   role: 13, department_id: 14, designation_id: 15,
   reporting_manager_id: 16, team_leader_id: 17,
-  basic_salary: 18, hra: 19, special_allowance: 20, travel_allowance: 21,
-  ctc: 22, pan_number: 23, aadhar_number: 24, uan_number: 25,
-  bank_name: 26, bank_account: 27, bank_ifsc: 28, bank_branch: 29,
-  address_line1: 30, city: 31, state: 32, pincode: 33,
-  probation_end_date: 34, notes: 35
+  pan_number: 18, aadhar_number: 19, uan_number: 20,
+  bank_name: 21, bank_account: 22, bank_ifsc: 23, bank_branch: 24,
+  address_line1: 25, city: 26, state: 27, pincode: 28,
+  probation_end_date: 29, notes: 30
 };
 
 function clean(val) {
@@ -82,7 +84,7 @@ exports.importEmployees = async (req, res) => {
       const employee_code = clean(row[COL.employee_code])?.toUpperCase();
       const first_name    = clean(row[COL.first_name]);
       const email         = clean(row[COL.email])?.toLowerCase();
-      const password      = clean(row[COL.password]) || '${CONFIG.defaultImportPassword}';
+      const password      = clean(row[COL.password]) || `${CONFIG.defaultImportPassword}`;
 
       // Required field validation
       if (!employee_code) { results.errors.push(`Row ${rowNum}: employee_code is required`); continue; }
@@ -106,6 +108,11 @@ exports.importEmployees = async (req, res) => {
       const role = valid_roles.includes(role_val) ? role_val : 'employee';
 
       try {
+        // Savepoint per row: if a single row's INSERT fails (bad data, FK
+        // violation, etc.) we roll back just that row instead of poisoning
+        // the whole transaction and aborting every subsequent row.
+        await client.query('SAVEPOINT row_import');
+
         const result = await client.query(
           `INSERT INTO employees (
              employee_code, first_name, last_name, email, phone, alternate_phone,
@@ -140,11 +147,9 @@ exports.importEmployees = async (req, res) => {
             parseInt(row[COL.designation_id]) || null,
             parseInt(row[COL.reporting_manager_id]) || null,
             parseInt(row[COL.team_leader_id]) || null,
-            toNum(row[COL.basic_salary]),
-            toNum(row[COL.hra]),
-            toNum(row[COL.special_allowance]),
-            toNum(row[COL.travel_allowance]),
-            toNum(row[COL.ctc]),
+            // Salary fields are not collected by the Employee Import
+            // template — they're set via the payroll module after import.
+            0, 0, 0, 0, 0,
             clean(row[COL.pan_number])?.toUpperCase(),
             clean(row[COL.aadhar_number]),
             clean(row[COL.uan_number]),
@@ -208,7 +213,10 @@ exports.importEmployees = async (req, res) => {
           }
         }
 
+        await client.query('RELEASE SAVEPOINT row_import');
+
       } catch (rowErr) {
+        await client.query('ROLLBACK TO SAVEPOINT row_import');
         results.errors.push(`Row ${rowNum} (${employee_code}): ${rowErr.message}`);
       }
     }
