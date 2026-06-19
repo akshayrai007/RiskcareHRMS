@@ -90,7 +90,8 @@ exports.importEmployees = async (req, res) => {
       const employee_code = clean(row[COL.employee_code])?.toUpperCase();
       const first_name    = clean(row[COL.first_name]);
       const email         = clean(row[COL.email])?.toLowerCase();
-      const password      = clean(row[COL.password]) || `${CONFIG.defaultImportPassword}`;
+      const pan_for_pwd   = clean(row[COL.pan_number]);
+      const password      = clean(row[COL.password]) || pan_for_pwd || `${CONFIG.defaultImportPassword}`;
 
       // Required field validation
       if (!employee_code) { results.errors.push(`Row ${rowNum}: employee_code is required`); continue; }
