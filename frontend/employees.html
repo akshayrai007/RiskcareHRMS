@@ -2074,8 +2074,11 @@ async function importExcel(input) {
     const res = await fetch(`${API_BASE}/employees/import`, { method: 'POST', headers: { Authorization: 'Bearer ' + Auth.getToken() }, body: fd });
     const data = await res.json();
     if (data.success) {
-      const d = data.data;
-      toast(`Imported: ${d.imported}${d.skipped ? ', Skipped: ' + d.skipped : ''}`);
+      const s = data.data.summary;
+      let msg = `Imported: ${s.imported}, Skipped: ${s.skipped}`;
+      if (s.errors) msg += `, Errors: ${s.errors}`;
+      toast(msg, s.imported > 0 ? 'success' : 'error');
+      if (data.data.errors?.length) console.warn('Import errors:', data.data.errors);
       loadEmployees();
     } else toast(data.message || 'Import failed', 'error');
   } catch(e) { toast('Import failed', 'error'); }
@@ -2120,16 +2123,19 @@ async function submitImport() {
     const el = document.getElementById('import-results');
     el.style.display = '';
     if (data.success) {
-      const { imported, skipped, errors } = data.data;
+      const { summary, errors, skipped } = data.data;
       el.innerHTML = `<div style="background:#f0fdf4;border:1.5px solid rgba(16,185,129,.2);border-radius:12px;padding:20px">
         <div style="font-size:16px;font-weight:800;color:#065f46;margin-bottom:12px">✅ Import Complete</div>
         <div style="display:flex;gap:24px">
-          <div style="text-align:center"><div style="font-size:28px;font-weight:800;color:#10b981">${imported}</div><div style="font-size:12px;color:#64748b">Imported</div></div>
-          <div style="text-align:center"><div style="font-size:28px;font-weight:800;color:#f59e0b">${skipped}</div><div style="font-size:12px;color:#64748b">Skipped</div></div>
+          <div style="text-align:center"><div style="font-size:28px;font-weight:800;color:#10b981">${summary.imported}</div><div style="font-size:12px;color:#64748b">Imported</div></div>
+          <div style="text-align:center"><div style="font-size:28px;font-weight:800;color:#f59e0b">${summary.skipped}</div><div style="font-size:12px;color:#64748b">Skipped</div></div>
+          <div style="text-align:center"><div style="font-size:28px;font-weight:800;color:#dc2626">${summary.errors}</div><div style="font-size:12px;color:#64748b">Errors</div></div>
         </div>
-        ${errors?.length ? `<div style="margin-top:12px;font-size:13px;color:#dc2626">⚠ ${errors.length} error(s): ${errors.slice(0,3).map(e=>`Row ${e.row}: ${e.error}`).join('; ')}</div>` : ''}
+        ${skipped?.length ? `<div style="margin-top:12px;font-size:13px;color:#b45309">⚠ Skipped: ${skipped.slice(0,3).join('; ')}</div>` : ''}
+        ${errors?.length ? `<div style="margin-top:8px;font-size:13px;color:#dc2626">⚠ Errors: ${errors.slice(0,3).join('; ')}</div>` : ''}
       </div>`;
-      if (imported > 0) { toast(`${imported} employees imported`); loadEmployees(); }
+      if (summary.imported > 0) { toast(`${summary.imported} employees imported`); loadEmployees(); }
+      else toast('No employees imported — see details below', 'error');
     } else {
       el.innerHTML = `<div style="background:#fef2f2;border:1.5px solid rgba(239,68,68,.2);border-radius:12px;padding:16px;color:#dc2626"><b>❌ Import failed:</b> ${data.message}</div>`;
       toast(data.message, 'error');
@@ -3035,4 +3041,3 @@ async function executeDangerAction() {
 </script>
 </body>
 </html>
-
