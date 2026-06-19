@@ -626,8 +626,8 @@ exports.getTeamToday = async (req, res) => {
                 WHEN a.status IN ('present','late')
                       AND a.punch_in IS NOT NULL
                       AND a.punch_out IS NULL
-                      AND a.date = (CURRENT_TIMESTAMP AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata')::date
-                      AND EXTRACT(HOUR FROM CURRENT_TIMESTAMP AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata') >= 21
+                      AND a.date = (CURRENT_TIMESTAMP AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}')::date
+                      AND EXTRACT(HOUR FROM CURRENT_TIMESTAMP AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}') >= 21
                  THEN 'missing_punch_out'
                 WHEN a.status IS NOT NULL THEN a.status
                 WHEN EXISTS (
@@ -741,8 +741,8 @@ exports.getPunchLocations = async (req, res) => {
                 WHEN a.status IN ('present','late')
                       AND a.punch_in IS NOT NULL
                       AND a.punch_out IS NULL
-                      AND a.date = (CURRENT_TIMESTAMP AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata')::date
-                      AND EXTRACT(HOUR FROM CURRENT_TIMESTAMP AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata') >= 21
+                      AND a.date = (CURRENT_TIMESTAMP AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}')::date
+                      AND EXTRACT(HOUR FROM CURRENT_TIMESTAMP AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}') >= 21
                  THEN 'missing_punch_out'
                 WHEN a.status IS NOT NULL THEN a.status
                 WHEN EXISTS (
@@ -1988,11 +1988,11 @@ exports.getMovementSegmented = async (req, res) => {
          lat::float, lng::float, accuracy,
          gps_status, internet_status, battery,
          logged_at,
-         TO_CHAR(logged_at AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata', 'HH12:MI:SS AM') AS time_label,
+         TO_CHAR(logged_at AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}', 'HH12:MI:SS AM') AS time_label,
          EXTRACT(EPOCH FROM logged_at)*1000 AS ts
        FROM employee_movement_log
        WHERE employee_id = $1
-         AND DATE(logged_at AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata') = $2
+         AND DATE(logged_at AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}') = $2
        ORDER BY logged_at ASC`,
       [employee_id, date]
     );
@@ -2235,10 +2235,10 @@ exports.getMovementHistory = async (req, res) => {
               lat::float  AS lat,
               lng::float  AS lng,
               accuracy,
-              TO_CHAR(logged_at AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata', 'HH12:MI:SS AM') AS time_label,
+              TO_CHAR(logged_at AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}', 'HH12:MI:SS AM') AS time_label,
               logged_at
        FROM employee_movement_log
-       WHERE employee_id=$1 AND TO_CHAR(logged_at AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata','YYYY-MM-DD')=$2
+       WHERE employee_id=$1 AND TO_CHAR(logged_at AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}','YYYY-MM-DD')=$2
        ORDER BY logged_at ASC`,
       [employee_id, date]
     );
@@ -2263,7 +2263,7 @@ exports.getMovementSummary = async (req, res) => {
     const isHR = caller.role === 'hr';
     const seeAll = isKC718 || isSuperAdmin || isHR;
 
-    let whereClauses = `TO_CHAR(m.logged_at AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata','YYYY-MM-DD') BETWEEN $1 AND $2`;
+    let whereClauses = `TO_CHAR(m.logged_at AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}','YYYY-MM-DD') BETWEEN $1 AND $2`;
     const params = [fromD, toD];
 
     if (employee_id) {
@@ -2291,7 +2291,7 @@ exports.getMovementSummary = async (req, res) => {
       `SELECT m.employee_id,
               CONCAT(e.first_name,' ',e.last_name)  AS emp_name,
               e.employee_code,
-              TO_CHAR(m.logged_at AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata', 'YYYY-MM-DD') AS date,
+              TO_CHAR(m.logged_at AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}', 'YYYY-MM-DD') AS date,
               m.lat::float AS lat,
               m.lng::float AS lng,
               m.logged_at
@@ -2346,7 +2346,7 @@ exports.getMovementSummary = async (req, res) => {
        WHERE NOT EXISTS (
          SELECT 1 FROM employee_movement_log m2
          WHERE m2.employee_id = candidates.id
-           AND TO_CHAR(m2.logged_at AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata','YYYY-MM-DD') = candidates.day_date
+           AND TO_CHAR(m2.logged_at AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}','YYYY-MM-DD') = candidates.day_date
        )
        ORDER BY date, emp_name`,
       zeroParams

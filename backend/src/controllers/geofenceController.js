@@ -568,16 +568,16 @@ exports.getLogs = async (req, res) => {
     }
 
     if (employee_id) { conds.push(`gl.employee_id=$${idx++}`); params.push(employee_id); }
-    if (from_date)   { conds.push(`(gl.created_at AT TIME ZONE 'UTC' AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata')::date>=$${idx++}`); params.push(from_date); }
-    if (to_date)     { conds.push(`(gl.created_at AT TIME ZONE 'UTC' AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata')::date<=$${idx++}`); params.push(to_date); }
+    if (from_date)   { conds.push(`(gl.created_at AT TIME ZONE 'UTC' AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}')::date>=$${idx++}`); params.push(from_date); }
+    if (to_date)     { conds.push(`(gl.created_at AT TIME ZONE 'UTC' AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}')::date<=$${idx++}`); params.push(to_date); }
 
     const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
 
     const r = await db.query(
       `SELECT gl.*,
               -- FIX: Convert UTC created_at to IST for display
-              (gl.created_at AT TIME ZONE 'UTC' AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata') AS created_at_ist,
-              TO_CHAR(gl.created_at AT TIME ZONE 'UTC' AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata', 'DD/MM/YYYY, HH12:MI:SS AM') AS punch_time_ist,
+              (gl.created_at AT TIME ZONE 'UTC' AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}') AS created_at_ist,
+              TO_CHAR(gl.created_at AT TIME ZONE 'UTC' AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}', 'DD/MM/YYYY, HH12:MI:SS AM') AS punch_time_ist,
               CONCAT(e.first_name,' ',e.last_name) AS employee_name,
               e.employee_code, d.name AS department_name,
               ol.name AS location_name

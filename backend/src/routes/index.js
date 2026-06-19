@@ -615,7 +615,7 @@ router.get('/birthdays/upcoming', authenticate, async (req, res) => {
         COALESCE(EXISTS(SELECT 1 FROM birthday_wishes bw WHERE bw.birthday_emp_id=e.id AND bw.from_emp_id=$2 AND bw.wish_date=$1),false) AS i_wished
       FROM employees e
       JOIN generate_series(0, 7) AS gs(offset_days)
-        ON TO_CHAR(e.date_of_birth, 'MM-DD') = TO_CHAR((NOW() AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata')::date + (gs.offset_days || ' days')::interval, 'MM-DD')
+        ON TO_CHAR(e.date_of_birth, 'MM-DD') = TO_CHAR((NOW() AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}')::date + (gs.offset_days || ' days')::interval, 'MM-DD')
       LEFT JOIN departments  d   ON e.department_id  = d.id
       LEFT JOIN designations des ON e.designation_id = des.id
       WHERE e.is_active = TRUE
@@ -782,7 +782,7 @@ router.get('/anniversaries/upcoming', authenticate, async (req, res) => {
          TO_CHAR(e.joining_date,'DD Mon') AS join_display,
          ($1::int - EXTRACT(YEAR FROM e.joining_date)::int) AS years_completed,
          CASE
-           WHEN TO_CHAR(e.joining_date,'MMDD') = TO_CHAR(NOW() AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata','MMDD')
+           WHEN TO_CHAR(e.joining_date,'MMDD') = TO_CHAR(NOW() AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}','MMDD')
            THEN 0
            ELSE (
              TO_DATE(TO_CHAR($1::int,'9999') || '-' || TO_CHAR(e.joining_date,'MM-DD'), 'YYYY-MM-DD')
@@ -808,10 +808,10 @@ router.get('/anniversaries/upcoming', authenticate, async (req, res) => {
          AND e.joining_date IS NOT NULL
          AND EXTRACT(YEAR FROM e.joining_date) < $1
          AND (
-           TO_CHAR(e.joining_date,'MMDD') = TO_CHAR(NOW() AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata','MMDD')
+           TO_CHAR(e.joining_date,'MMDD') = TO_CHAR(NOW() AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}','MMDD')
            OR (
-             TO_CHAR(e.joining_date,'MMDD') > TO_CHAR(NOW() AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata','MMDD')
-             AND TO_CHAR(e.joining_date,'MMDD') <= TO_CHAR((NOW() AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata' + INTERVAL '7 days'),'MMDD')
+             TO_CHAR(e.joining_date,'MMDD') > TO_CHAR(NOW() AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}','MMDD')
+             AND TO_CHAR(e.joining_date,'MMDD') <= TO_CHAR((NOW() AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}' + INTERVAL '7 days'),'MMDD')
            )
          )
        ORDER BY TO_CHAR(e.joining_date,'MMDD') ASC`,

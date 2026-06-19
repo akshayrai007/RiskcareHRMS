@@ -606,7 +606,7 @@ async function runAllMigrations() {
     await client.query(`ALTER TABLE employee_movement_log ADD COLUMN IF NOT EXISTS internet_status BOOLEAN NOT NULL DEFAULT TRUE`);
     await client.query(`ALTER TABLE employee_movement_log ADD COLUMN IF NOT EXISTS battery SMALLINT`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_movement_emp_date
-      ON employee_movement_log(employee_id, DATE(logged_at AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata'))`);
+      ON employee_movement_log(employee_id, DATE(logged_at AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}'))`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_movement_emp_logged
       ON employee_movement_log(employee_id, logged_at)`);
 

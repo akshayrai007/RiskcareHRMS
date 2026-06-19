@@ -254,13 +254,13 @@ exports.getLeaderboard = async (req, res) => {
 
     let dateFilter = '';
     if (period === 'week') {
-      dateFilter = `AND gr.answered_at AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata' >= DATE_TRUNC('week', NOW() AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata')`;
+      dateFilter = `AND gr.answered_at AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}' >= DATE_TRUNC('week', NOW() AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}')`;
     } else if (period === 'month') {
-      dateFilter = `AND gr.answered_at AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata' >= DATE_TRUNC('month', NOW() AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata')`;
+      dateFilter = `AND gr.answered_at AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}' >= DATE_TRUNC('month', NOW() AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}')`;
     } else if (period === 'all') {
       dateFilter = '';
     } else {
-      dateFilter = `AND EXTRACT(YEAR FROM gr.answered_at AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata') = ${year}`;
+      dateFilter = `AND EXTRACT(YEAR FROM gr.answered_at AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}') = ${year}`;
     }
 
     // ── Step 1: Compute streak for ALL employees in one query ──
@@ -927,11 +927,11 @@ exports.announceTop5 = async (req, res) => {
                         'July','August','September','October','November','December'];
 
     if (period === 'month') {
-      dateFilter = `AND EXTRACT(MONTH FROM gr.answered_at AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata') = ${month}
-                    AND EXTRACT(YEAR  FROM gr.answered_at AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata') = ${year}`;
+      dateFilter = `AND EXTRACT(MONTH FROM gr.answered_at AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}') = ${month}
+                    AND EXTRACT(YEAR  FROM gr.answered_at AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}') = ${year}`;
       periodLabel = `${monthNames[month - 1]} ${year}`;
     } else {
-      dateFilter = `AND EXTRACT(YEAR FROM gr.answered_at AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata') = ${year}`;
+      dateFilter = `AND EXTRACT(YEAR FROM gr.answered_at AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}') = ${year}`;
       periodLabel = `Year ${year}`;
     }
 

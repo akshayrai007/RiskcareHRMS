@@ -271,7 +271,7 @@ exports.getActiveAlerts = async (req, res) => {
         ma.resolution_note,
         ma.updated_at,
         -- Last ping info
-        (SELECT TO_CHAR(logged_at AT TIME ZONE CONFIG.timezone || 'Asia/Kolkata','HH12:MI AM')
+        (SELECT TO_CHAR(logged_at AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}','HH12:MI AM')
          FROM employee_movement_log
          WHERE employee_id = ma.employee_id
          ORDER BY logged_at DESC LIMIT 1) AS last_ping_time,
