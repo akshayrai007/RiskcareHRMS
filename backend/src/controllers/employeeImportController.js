@@ -56,21 +56,27 @@ function toNum(val) {
 }
 
 exports.importEmployees = async (req, res) => {
+  if (!req.file)
+    return res.status(400).json({ success: false, message: 'Excel file required' });
+
   const client = await db.getClient();
   try {
     await client.query('BEGIN');
-    if (!req.file)
-      return res.status(400).json({ success: false, message: 'Excel file required' });
 
     const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+    console.log(`[Import] Sheet names in uploaded file: ${wb.SheetNames.join(', ')}`);
     const ws = wb.Sheets['Employee Import'] || wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    console.log(`[Import] Total rows read from sheet: ${rows.length}`);
+    console.log(`[Import] Row 3 (header, 0-indexed):`, rows[2]);
+    console.log(`[Import] Row 4 (first data row, 0-indexed):`, rows[4]);
 
     // Skip title row (1) + header row (2) + hint row (3) = start at index 3
     const dataRows = rows.slice(3).filter(r => {
       const code = clean(r[COL.employee_code]);
       return code && !code.toLowerCase().startsWith('emp code') && !code.toLowerCase().startsWith('kcms00');
     });
+    console.log(`[Import] Data rows after filter: ${dataRows.length}`);
 
     if (!dataRows.length)
       return res.status(400).json({ success: false, message: 'No data rows found (delete sample rows first)' });
@@ -222,6 +228,9 @@ exports.importEmployees = async (req, res) => {
     }
 
     await client.query('COMMIT');
+    console.log(`[Import] Done: ${results.imported.length} imported, ${results.skipped.length} skipped, ${results.errors.length} errors`);
+    if (results.errors.length) console.log('[Import] Errors:', results.errors);
+    if (results.skipped.length) console.log('[Import] Skipped:', results.skipped);
     res.json({
       success: true,
       message: `Import complete: ${results.imported.length} imported, ${results.skipped.length} skipped, ${results.errors.length} errors`,
