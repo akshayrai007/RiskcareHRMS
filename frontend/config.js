@@ -13,14 +13,14 @@
 window.CFG = {
 
   // ── 🏢 Client Identity ──────────────────────────────────────────────────
-  clientName:        "RiskCareHR",
+  clientName:        "RiskCare-HRMS",
   companyShortName:  "",
   companyFullName:   "Risk Care Insurance Broking Services Pvt. Ltd.",
   companyCity:       "Mumbai",
   tagline:           "Servicing All Risks",
 
   // Logo rendered in sidebar (use HTML for styled spans, plain text also fine)
-  logoHtml:          'Risk<span>Care</span>HR',
+  logoHtml:          'Risk<span>Care</span>-HRMS',
 
   // Logo image for printed docs (payslip, offer letter). Path relative to frontend/.
   logoUrl:           "Logo.png",
@@ -123,13 +123,13 @@ window.CFG = {
 
   // ── 📄 Page Titles ────────────────────────────────────────────────────────
   // Used in <title> tags across HTML pages
-  pageTitleITDeclaration:  "RiskCareHR - IT Declaration",
-  pageTitleProjects:       "RiskCareHR — Project Budget Tracking",
-  pageTitleReimbursement:  "Reimbursement – RiskCareHR",
+  pageTitleITDeclaration:  "RiskCare-HRMS - IT Declaration",
+  pageTitleProjects:       "RiskCare-HRMS — Project Budget Tracking",
+  pageTitleReimbursement:  "Reimbursement – RiskCare-HRMS",
 
   // ── 📡 Service Worker ─────────────────────────────────────────────────────
   swSyncTag:         "riskcare-tracking",
-  swDbName:          "RiskCareHR_SW",
+  swDbName:          "RiskCare-HRMS_SW",
 
   // ── ⏰ Attendance Cutoffs ─────────────────────────────────────────────────
   punchInCutoffHour:    10,
