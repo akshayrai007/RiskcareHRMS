@@ -579,7 +579,23 @@
             <div class="form-group" style="margin:0"><label class="form-label">City</label><input id="edit-city" class="form-control" type="text"></div>
             <div class="form-group" style="margin:0"><label class="form-label">State</label><input id="edit-state" class="form-control" type="text"></div>
             <div class="form-group" style="margin:0"><label class="form-label">Pincode</label><input id="edit-pincode" class="form-control" type="text"></div>
-            <div class="form-group" style="margin:0;grid-column:1/-1"><label class="form-label">Address</label><input id="edit-address" class="form-control" type="text"></div>
+            <!-- Current Address -->
+            <div class="form-group" style="margin:0;grid-column:1/-1">
+              <label class="form-label">Current Address</label>
+              <textarea id="edit-address" class="form-control" rows="2" placeholder="House/Flat No., Street, Area, City, State, Pincode…"></textarea>
+            </div>
+            <!-- Permanent Address -->
+            <div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-top:4px">
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer">
+                <input type="checkbox" id="same-address-chk" style="width:15px;height:15px;cursor:pointer"
+                  onchange="toggleSameAddress()">
+                Permanent address same as current address
+              </label>
+            </div>
+            <div class="form-group" style="margin:0;grid-column:1/-1">
+              <label class="form-label">Permanent Address</label>
+              <textarea id="edit-permanent-address" class="form-control" rows="2" placeholder="House/Flat No., Street, Area, City, State, Pincode…"></textarea>
+            </div>
           </div>
         </div>
 
@@ -647,8 +663,8 @@
       <!-- ── Tab: Salary Structure ── -->
       <div id="etab-salary" style="padding:20px 24px;display:none">
 
-        <div style="background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1b5e20;display:flex;align-items:center;gap:8px">
-          💡 Statutory amounts (PF, ESI, PT, LWF) are <b>auto-calculated</b> when you save. Just fill in the earnings below.
+        <div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#6d4c00;display:flex;align-items:center;gap:8px">
+          📝 All deduction amounts are entered manually by HR. Tick the checkbox to enable each deduction and enter the exact monthly amount.
         </div>
 
         <!-- Earnings -->
@@ -666,28 +682,66 @@
           </div>
         </div>
 
-        <!-- Statutory -->
+        <!-- Statutory Deductions — manual amounts -->
         <div style="background:#fff;border:1.5px solid #d4e5be;border-radius:14px;padding:18px 20px;margin-bottom:16px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #eef5e6">
             <div style="width:28px;height:28px;background:#eaf3d8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">📋</div>
-            <span style="font-size:12px;font-weight:800;color:#2e7d32;letter-spacing:.5px;text-transform:uppercase">Statutory Applicability</span>
+            <span style="font-size:12px;font-weight:800;color:#2e7d32;letter-spacing:.5px;text-transform:uppercase">Statutory Deductions (₹/month) — HR Defined</span>
           </div>
-          <div style="display:flex;gap:12px;flex-wrap:wrap">
-            <label style="display:flex;align-items:center;gap:7px;padding:8px 14px;background:#f7faf3;border:1.5px solid #d4e5be;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#2e7d32">
-              <input type="checkbox" id="edit-pf" checked onchange="recalcSalaryPreview()" style="accent-color:#4a8c1c;width:15px;height:15px"> PF
-            </label>
-            <label style="display:flex;align-items:center;gap:7px;padding:8px 14px;background:#f7faf3;border:1.5px solid #d4e5be;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#2e7d32">
-              <input type="checkbox" id="edit-esi" checked onchange="recalcSalaryPreview()" style="accent-color:#4a8c1c;width:15px;height:15px"> ESI
-            </label>
-            <label style="display:flex;align-items:center;gap:7px;padding:8px 14px;background:#f7faf3;border:1.5px solid #d4e5be;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#2e7d32">
-              <input type="checkbox" id="edit-pt" checked onchange="recalcSalaryPreview()" style="accent-color:#4a8c1c;width:15px;height:15px"> PT
-            </label>
-            <label style="display:flex;align-items:center;gap:7px;padding:8px 14px;background:#f7faf3;border:1.5px solid #d4e5be;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#2e7d32">
-              <input type="checkbox" id="edit-lwf" checked onchange="recalcSalaryPreview()" style="accent-color:#4a8c1c;width:15px;height:15px"> LWF
-            </label>
-            <label style="display:flex;align-items:center;gap:7px;padding:8px 14px;background:#f7faf3;border:1.5px solid #d4e5be;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#2e7d32">
-              <input type="checkbox" id="edit-tds" onchange="recalcSalaryPreview()" style="accent-color:#4a8c1c;width:15px;height:15px"> TDS
-            </label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <!-- PF -->
+            <div style="background:#f7faf3;border:1.5px solid #d4e5be;border-radius:10px;padding:12px 14px">
+              <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:#2e7d32">
+                <input type="checkbox" id="edit-pf" style="accent-color:#4a8c1c;width:15px;height:15px"> PF (Provident Fund)
+              </label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">EMPLOYEE (₹)</div>
+                  <input id="edit-pf-emp-amt" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"></div>
+                <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">EMPLOYER (₹)</div>
+                  <input id="edit-pf-emr-amt" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"></div>
+              </div>
+            </div>
+            <!-- ESI -->
+            <div style="background:#f7faf3;border:1.5px solid #d4e5be;border-radius:10px;padding:12px 14px">
+              <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:#2e7d32">
+                <input type="checkbox" id="edit-esi" style="accent-color:#4a8c1c;width:15px;height:15px"> ESI (Employee State Insurance)
+              </label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">EMPLOYEE (₹)</div>
+                  <input id="edit-esi-emp-amt" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"></div>
+                <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">EMPLOYER (₹)</div>
+                  <input id="edit-esi-emr-amt" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"></div>
+              </div>
+            </div>
+            <!-- PT -->
+            <div style="background:#f7faf3;border:1.5px solid #d4e5be;border-radius:10px;padding:12px 14px">
+              <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:#2e7d32">
+                <input type="checkbox" id="edit-pt" style="accent-color:#4a8c1c;width:15px;height:15px"> PT (Professional Tax)
+              </label>
+              <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">AMOUNT (₹)</div>
+                <input id="edit-pt-amt" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"></div>
+            </div>
+            <!-- LWF -->
+            <div style="background:#f7faf3;border:1.5px solid #d4e5be;border-radius:10px;padding:12px 14px">
+              <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:#2e7d32">
+                <input type="checkbox" id="edit-lwf" style="accent-color:#4a8c1c;width:15px;height:15px"> LWF (Labour Welfare Fund)
+              </label>
+              <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">AMOUNT (₹)</div>
+                <input id="edit-lwf-amt" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"></div>
+            </div>
+            <!-- TDS -->
+            <div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:12px 14px;grid-column:1/-1">
+              <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:#e65100">
+                <input type="checkbox" id="edit-tds" style="accent-color:#e65100;width:15px;height:15px"> TDS (Tax Deducted at Source)
+              </label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">MONTHLY TDS (₹)</div>
+                  <input id="edit-tds-amt" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"></div>
+                <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">ANNUAL TDS (₹) — auto fills monthly</div>
+                  <input id="edit-tds-annual" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"
+                    oninput="document.getElementById('edit-tds-amt').value = Math.round(parseFloat(this.value||0)/12) || ''"></div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2202,10 +2256,14 @@ async function openEditEmp(id) {
   document.getElementById('edit-dob').value      = e.date_of_birth ? e.date_of_birth.split('T')[0] : '';
   document.getElementById('edit-blood').value    = e.blood_group || '';
   document.getElementById('edit-marital').value  = e.marital_status || '';
-  document.getElementById('edit-city').value     = e.city       || '';
-  document.getElementById('edit-state').value    = e.state      || '';
-  document.getElementById('edit-pincode').value  = e.pincode    || '';
-  document.getElementById('edit-address').value  = e.address_line1 || '';
+  document.getElementById('edit-city').value               = e.city        || '';
+  document.getElementById('edit-state').value              = e.state       || '';
+  document.getElementById('edit-pincode').value            = e.pincode     || '';
+  document.getElementById('edit-address').value            = e.address_line1    || '';
+  document.getElementById('edit-permanent-address').value  = e.permanent_address || e.address_line2 || '';
+  // Tick same-address if both match
+  const sameChk = document.getElementById('same-address-chk');
+  if (sameChk) sameChk.checked = (e.address_line1 || '') === (e.permanent_address || e.address_line2 || '') && !!(e.address_line1);
   document.getElementById('edit-joining').value  = e.joining_date ? e.joining_date.split('T')[0] : '';
   document.getElementById('edit-emptype').value  = e.employment_type  || 'Full-Time';
   document.getElementById('edit-category').value = e.employee_category || 'permanent';
@@ -2221,12 +2279,20 @@ async function openEditEmp(id) {
   document.getElementById('edit-conveyance').value  = s.conveyance  || '';
   document.getElementById('edit-special').value     = s.special_allowance || e.special_allowance || '';
   document.getElementById('edit-gratuity').value    = s.gratuity    || '';
-  document.getElementById('edit-pf').checked        = s.pf_applicable  !== false;
-  document.getElementById('edit-esi').checked       = s.esi_applicable !== false;
-  document.getElementById('edit-pt').checked        = s.pt_applicable  !== false;
-  document.getElementById('edit-lwf').checked       = s.lwf_applicable !== false;
-  document.getElementById('edit-tds').checked       = !!s.tds_applicable;
-  document.getElementById('edit-sal-notes').value   = s.notes || '';
+  document.getElementById('edit-pf').checked          = !!s.pf_applicable;
+  document.getElementById('edit-esi').checked         = !!s.esi_applicable;
+  document.getElementById('edit-pt').checked          = !!s.pt_applicable;
+  document.getElementById('edit-lwf').checked         = !!s.lwf_applicable;
+  document.getElementById('edit-tds').checked         = !!s.tds_applicable;
+  document.getElementById('edit-pf-emp-amt').value    = s.pf_employee  || '';
+  document.getElementById('edit-pf-emr-amt').value    = s.pf_employer  || '';
+  document.getElementById('edit-esi-emp-amt').value   = s.esi_employee || '';
+  document.getElementById('edit-esi-emr-amt').value   = s.esi_employer || '';
+  document.getElementById('edit-pt-amt').value        = s.pt_amount    || '';
+  document.getElementById('edit-lwf-amt').value       = s.lwf_amount   || '';
+  document.getElementById('edit-tds-amt').value       = s.tds_monthly  || '';
+  document.getElementById('edit-tds-annual').value    = s.tds_amount   || '';
+  document.getElementById('edit-sal-notes').value     = s.notes || '';
 
   // Bank tab
   document.getElementById('edit-bank-name').value   = e.bank_name    || '';
@@ -2244,6 +2310,28 @@ async function openEditEmp(id) {
   switchEditTab('info');
   recalcSalaryPreview();
   openModal('edit-emp-modal');
+}
+
+function toggleSameAddress() {
+  const chk   = document.getElementById('same-address-chk');
+  const permEl= document.getElementById('edit-permanent-address');
+  if (!chk || !permEl) return;
+  if (chk.checked) {
+    permEl.value    = document.getElementById('edit-address').value;
+    permEl.readOnly = true;
+    permEl.style.background = '#f1f5f9';
+    permEl.style.color      = 'var(--muted)';
+    // Keep them in sync as current address changes
+    document.getElementById('edit-address').oninput = () => {
+      if (document.getElementById('same-address-chk')?.checked)
+        permEl.value = document.getElementById('edit-address').value;
+    };
+  } else {
+    permEl.readOnly = false;
+    permEl.style.background = '';
+    permEl.style.color      = '';
+    document.getElementById('edit-address').oninput = null;
+  }
 }
 
 function onRoleChange() {
@@ -2280,18 +2368,18 @@ function recalcSalaryPreview() {
   const gratuity   = v('edit-gratuity');
   if (!basic) { document.getElementById('salary-preview').style.display = 'none'; return; }
 
-  const gross     = basic + hra + conveyance + special + gratuity;
-  const pfBase    = Math.min(basic, 15000);
-  const pfEmp     = document.getElementById('edit-pf').checked  ? Math.round(pfBase * 0.12)  : 0;
-  const pfEmr     = document.getElementById('edit-pf').checked  ? Math.round(pfBase * 0.12)  : 0;
-  const pfAdm     = document.getElementById('edit-pf').checked  ? 150 : 0;  // Fixed ₹150
-  const esiEmp    = document.getElementById('edit-esi').checked && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
-  const esiEmr    = document.getElementById('edit-esi').checked && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
-  const pt        = document.getElementById('edit-pt').checked  && gross >= 10000 ? 200 : 0;
-  const lwf       = document.getElementById('edit-lwf').checked ? 6 : 0;
-  const totalDed  = pfEmp + esiEmp + pt + lwf;
-  const net       = gross - totalDed;
-  const ctc       = gross + pfEmr + esiEmr + pfAdm;
+  const gross   = basic + hra + conveyance + special + gratuity;
+  // Use HR-defined manual amounts
+  const pfEmp   = document.getElementById('edit-pf').checked  ? (parseFloat(document.getElementById('edit-pf-emp-amt')?.value) || 0) : 0;
+  const pfEmr   = document.getElementById('edit-pf').checked  ? (parseFloat(document.getElementById('edit-pf-emr-amt')?.value) || 0) : 0;
+  const esiEmp  = document.getElementById('edit-esi').checked ? (parseFloat(document.getElementById('edit-esi-emp-amt')?.value) || 0) : 0;
+  const esiEmr  = document.getElementById('edit-esi').checked ? (parseFloat(document.getElementById('edit-esi-emr-amt')?.value) || 0) : 0;
+  const pt      = document.getElementById('edit-pt').checked  ? (parseFloat(document.getElementById('edit-pt-amt')?.value) || 0) : 0;
+  const lwf     = document.getElementById('edit-lwf').checked ? (parseFloat(document.getElementById('edit-lwf-amt')?.value) || 0) : 0;
+  const tds     = document.getElementById('edit-tds').checked ? (parseFloat(document.getElementById('edit-tds-amt')?.value) || 0) : 0;
+  const totalDed = pfEmp + esiEmp + pt + lwf + tds;
+  const net      = gross - totalDed;
+  const ctc      = gross + pfEmr + esiEmr;
 
   const fmt2 = n => '₹' + Math.round(n).toLocaleString('en-IN');
   document.getElementById('prev-gross').textContent   = fmt2(gross);
@@ -2324,7 +2412,9 @@ async function saveEmployeeEdit() {
     city:                document.getElementById('edit-city').value.trim()       || null,
     state:               document.getElementById('edit-state').value.trim()      || null,
     pincode:             document.getElementById('edit-pincode').value.trim()    || null,
-    address_line1:       document.getElementById('edit-address').value.trim()    || null,
+    address_line1:       document.getElementById('edit-address').value.trim()          || null,
+    permanent_address:   document.getElementById('edit-permanent-address').value.trim() || null,
+    address_line2:       document.getElementById('edit-permanent-address').value.trim() || null,
     joining_date:        document.getElementById('edit-joining').value           || null,
     employment_type:     document.getElementById('edit-emptype').value,
     employee_category:   document.getElementById('edit-category').value,
@@ -2373,6 +2463,14 @@ async function saveEmployeeEdit() {
       pt_applicable:  document.getElementById('edit-pt').checked,
       lwf_applicable: document.getElementById('edit-lwf').checked,
       tds_applicable: document.getElementById('edit-tds').checked,
+      pf_employee:    parseFloat(document.getElementById('edit-pf-emp-amt').value)  || 0,
+      pf_employer:    parseFloat(document.getElementById('edit-pf-emr-amt').value)  || 0,
+      esi_employee:   parseFloat(document.getElementById('edit-esi-emp-amt').value) || 0,
+      esi_employer:   parseFloat(document.getElementById('edit-esi-emr-amt').value) || 0,
+      pt_amount:      parseFloat(document.getElementById('edit-pt-amt').value)      || 0,
+      lwf_amount:     parseFloat(document.getElementById('edit-lwf-amt').value)     || 0,
+      tds_monthly:    parseFloat(document.getElementById('edit-tds-amt').value)     || 0,
+      tds_amount:     parseFloat(document.getElementById('edit-tds-annual').value)  || 0,
       notes:          document.getElementById('edit-sal-notes').value.trim() || null,
     };
     const salRes = await api('POST', '/payroll/salary-structure', salBody);
