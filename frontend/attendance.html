@@ -419,7 +419,7 @@
         </div>
       </div>
 
-      <!-- HR FORCE REGULARIZATION PANEL (HR / super_admin only) -->
+      <!-- HR BULK FORCE REGULARIZATION PANEL (HR / super_admin only) -->
       <div id="force-reg-panel" style="display:none;margin-top:18px">
         <div class="card">
           <div class="card-header">
@@ -427,35 +427,79 @@
             <div style="font-size:12px;color:var(--muted)">HR submits on behalf of employee → goes to their reporting manager</div>
           </div>
           <div style="padding:8px 0 16px">
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
+
+            <!-- Row 1: Employee + Month + Year -->
+            <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;align-items:end">
               <div class="form-group" style="margin:0">
                 <label class="form-label">Employee</label>
-                <select id="force-emp-id" class="form-control" onchange="">
+                <select id="force-emp-id" class="form-control" onchange="loadEmpAbsentDates()">
                   <option value="">Select employee…</option>
                 </select>
               </div>
               <div class="form-group" style="margin:0">
-                <label class="form-label">Date to Regularize</label>
-                <input id="force-date" type="date" class="form-control">
+                <label class="form-label">Month</label>
+                <select id="force-month" class="form-control" onchange="loadEmpAbsentDates()"></select>
               </div>
               <div class="form-group" style="margin:0">
-                <label class="form-label">Punch In (optional)</label>
-                <input id="force-punch-in" type="time" class="form-control">
+                <label class="form-label">Year</label>
+                <select id="force-year" class="form-control" onchange="loadEmpAbsentDates()"></select>
+              </div>
+            </div>
+
+            <!-- Absent dates checklist -->
+            <div id="force-dates-area" style="margin-top:16px;display:none">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <label class="form-label" style="margin:0">Select Dates to Regularize</label>
+                <div style="display:flex;gap:8px">
+                  <button type="button" class="btn btn-sm" style="padding:3px 10px;font-size:12px"
+                          onclick="forceRegSelectAll(true)">Select All</button>
+                  <button type="button" class="btn btn-sm" style="padding:3px 10px;font-size:12px"
+                          onclick="forceRegSelectAll(false)">Deselect All</button>
+                </div>
+              </div>
+              <div id="force-dates-grid" style="
+                display:grid;
+                grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+                gap:8px;
+                max-height:280px;
+                overflow-y:auto;
+                border:1px solid var(--border);
+                border-radius:8px;
+                padding:10px;
+                background:var(--bg-alt,#f9fafb)
+              "></div>
+              <div id="force-no-dates" style="display:none;color:var(--green);font-size:13px;padding:12px 4px">
+                ✅ No absent / late days found for this period.
+              </div>
+            </div>
+
+            <!-- Global punch times + reason -->
+            <div id="force-reason-area" style="display:none;margin-top:14px">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Default Punch In (optional)</label>
+                  <input id="force-punch-in" type="time" class="form-control">
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Default Punch Out (optional)</label>
+                  <input id="force-punch-out" type="time" class="form-control">
+                </div>
               </div>
               <div class="form-group" style="margin:0">
-                <label class="form-label">Punch Out (optional)</label>
-                <input id="force-punch-out" type="time" class="form-control">
+                <label class="form-label">Reason * <span style="font-weight:400;color:var(--muted)">(applies to all selected dates)</span></label>
+                <textarea id="force-reason" class="form-control" rows="2"
+                  placeholder="Reason for regularization (will be prefixed with [HR Force])…"></textarea>
               </div>
             </div>
-            <div class="form-group" style="margin-top:14px">
-              <label class="form-label">Reason *</label>
-              <textarea id="force-reason" class="form-control" rows="2"
-                placeholder="Reason for regularization (will be prefixed with [HR Force])…"></textarea>
-            </div>
-            <div style="margin-top:14px;display:flex;align-items:center;gap:10px">
-              <button class="btn btn-primary" onclick="submitForceRegularization()">⚡ Submit Force Regularization</button>
+
+            <!-- Submit row -->
+            <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-primary" onclick="submitBulkForceRegularization()" id="force-submit-btn" style="display:none">
+                ⚡ Submit Force Regularization (<span id="force-selected-count">0</span> date(s))
+              </button>
               <span id="force-reg-msg" style="font-size:13px"></span>
             </div>
+
           </div>
         </div>
       </div>
@@ -806,14 +850,18 @@ if (Role.is('hr','super_admin')) {
   loadSummaryEmployeePicker();
   // Show force regularization panel and populate employees
   document.getElementById('force-reg-panel').style.display = '';
-  // Set max date to today (prevents future date selection)
-  const forceDateEl = document.getElementById('force-date');
-  if (forceDateEl) {
-    forceDateEl.max = new Intl.DateTimeFormat('en-CA', {
-      timeZone: window.CFG?.timezone || 'Asia/Kolkata',
-      year: 'numeric', month: '2-digit', day: '2-digit'
-    }).format(new Date());
-  }
+  // Populate month/year selectors
+  (function initForceRegSelectors() {
+    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const NOW = new Date();
+    const mSel = document.getElementById('force-month');
+    const ySel = document.getElementById('force-year');
+    if (mSel && !mSel.options.length)
+      MONTHS.forEach((m,i) => mSel.innerHTML += `<option value="${i+1}" ${i+1===NOW.getMonth()+1?'selected':''}>${m}</option>`);
+    if (ySel && !ySel.options.length)
+      for (let y = NOW.getFullYear(); y >= NOW.getFullYear()-3; y--)
+        ySel.innerHTML += `<option value="${y}" ${y===NOW.getFullYear()?'selected':''}>${y}</option>`;
+  })();
   api('GET','/employees').then(resp => {
     if (!resp?.success) return;
     const sel = document.getElementById('force-emp-id');
@@ -2246,39 +2294,134 @@ async function actionReg(action) {
   else toast(data?.message||'Failed','error');
 }
 
-// ── HR Force Regularization ───────────────────────────────────────────────────
-async function submitForceRegularization() {
-  const empId    = document.getElementById('force-emp-id')?.value;
-  const date     = document.getElementById('force-date')?.value;
-  const reason   = document.getElementById('force-reason')?.value?.trim();
-  const punchIn  = document.getElementById('force-punch-in')?.value;
-  const punchOut = document.getElementById('force-punch-out')?.value;
-  const msgEl    = document.getElementById('force-reg-msg');
+// ── HR Bulk Force Regularization ─────────────────────────────────────────────
 
-  if (!empId || !date || !reason) {
-    msgEl.textContent = '⚠ Employee, date, and reason are required.';
-    msgEl.style.color = 'var(--red)';
+let _forceRegDates = []; // fetched absent dates for current employee+month
+
+async function loadEmpAbsentDates() {
+  const empId = document.getElementById('force-emp-id')?.value;
+  const mon   = document.getElementById('force-month')?.value;
+  const yr    = document.getElementById('force-year')?.value;
+
+  const datesArea  = document.getElementById('force-dates-area');
+  const reasonArea = document.getElementById('force-reason-area');
+  const submitBtn  = document.getElementById('force-submit-btn');
+  const msgEl      = document.getElementById('force-reg-msg');
+
+  msgEl.textContent = '';
+  if (!empId || !mon || !yr) return;
+
+  datesArea.style.display = '';
+  document.getElementById('force-dates-grid').innerHTML =
+    '<div style="color:var(--muted);font-size:13px;padding:8px">Loading…</div>';
+  document.getElementById('force-no-dates').style.display = 'none';
+  reasonArea.style.display = 'none';
+  submitBtn.style.display  = 'none';
+  _forceRegDates = [];
+
+  const data = await api('GET', `/attendance/emp-absent-dates?employee_id=${empId}&month=${mon}&year=${yr}`);
+  const grid = document.getElementById('force-dates-grid');
+  grid.innerHTML = '';
+
+  if (!data?.success || !data.data?.length) {
+    document.getElementById('force-no-dates').style.display = '';
     return;
   }
 
-  msgEl.textContent = 'Submitting…';
-  msgEl.style.color = 'var(--muted)';
+  _forceRegDates = data.data;
 
-  const body = { employee_id: parseInt(empId), date, reason };
+  const STATUS_LABELS = {
+    absent:             { label:'Absent',           color:'#ef4444' },
+    late:               { label:'Late Punch-In',    color:'#f59e0b' },
+    'half-day':         { label:'Half Day',         color:'#8b5cf6' },
+    missing_punch_out:  { label:'Missing Punch-Out',color:'#f97316' }
+  };
+
+  _forceRegDates.forEach((d, idx) => {
+    const info = STATUS_LABELS[d.status] || { label: d.status, color:'#6b7280' };
+    const dateObj = new Date(d.date + 'T00:00:00');
+    const dayName = dateObj.toLocaleDateString('en-IN',{weekday:'short'});
+    const dateStr = dateObj.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+
+    const item = document.createElement('label');
+    item.style.cssText = `
+      display:flex;align-items:flex-start;gap:10px;
+      padding:8px 10px;border-radius:6px;cursor:pointer;
+      border:1px solid var(--border);background:var(--bg,#fff);
+      transition:background .15s
+    `;
+    item.innerHTML = `
+      <input type="checkbox" data-idx="${idx}" checked
+             style="margin-top:3px;accent-color:var(--primary,#6366f1);width:15px;height:15px;flex-shrink:0"
+             onchange="updateForceSelectedCount()">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px;color:var(--text)">${dayName}, ${dateStr}</div>
+        <span style="font-size:11px;color:${info.color};font-weight:600">${info.label}</span>
+        ${d.punch_in  ? `<span style="font-size:11px;color:var(--muted);margin-left:6px">In: ${d.punch_in.slice(0,5)}</span>` : ''}
+        ${d.punch_out ? `<span style="font-size:11px;color:var(--muted);margin-left:6px">Out: ${d.punch_out.slice(0,5)}</span>` : ''}
+        ${d.reg_status === 'rejected' ? `<span style="font-size:11px;color:#ef4444;margin-left:6px">(Prev. rejected)</span>` : ''}
+      </div>
+    `;
+    item.querySelector('input').addEventListener('change', () => item.style.background = '');
+    grid.appendChild(item);
+  });
+
+  reasonArea.style.display = '';
+  submitBtn.style.display  = '';
+  updateForceSelectedCount();
+}
+
+function updateForceSelectedCount() {
+  const checked = document.querySelectorAll('#force-dates-grid input[type=checkbox]:checked').length;
+  const el = document.getElementById('force-selected-count');
+  if (el) el.textContent = checked;
+}
+
+function forceRegSelectAll(val) {
+  document.querySelectorAll('#force-dates-grid input[type=checkbox]')
+    .forEach(cb => { cb.checked = val; });
+  updateForceSelectedCount();
+}
+
+async function submitBulkForceRegularization() {
+  const empId   = document.getElementById('force-emp-id')?.value;
+  const reason  = document.getElementById('force-reason')?.value?.trim();
+  const punchIn = document.getElementById('force-punch-in')?.value;
+  const punchOut= document.getElementById('force-punch-out')?.value;
+  const msgEl   = document.getElementById('force-reg-msg');
+
+  if (!empId)   { msgEl.textContent='⚠ Select an employee.'; msgEl.style.color='var(--red)'; return; }
+  if (!reason)  { msgEl.textContent='⚠ Reason is required.'; msgEl.style.color='var(--red)'; return; }
+
+  const checked = [...document.querySelectorAll('#force-dates-grid input[type=checkbox]:checked')];
+  if (!checked.length) { msgEl.textContent='⚠ Select at least one date.'; msgEl.style.color='var(--red)'; return; }
+
+  const dates = checked.map(cb => {
+    const d = _forceRegDates[parseInt(cb.dataset.idx)];
+    return { date: d.date };  // punch_in/out overridden by global if set
+  });
+
+  msgEl.textContent = 'Submitting…'; msgEl.style.color = 'var(--muted)';
+  const btn = document.getElementById('force-submit-btn');
+  btn.disabled = true;
+
+  const body = { employee_id: parseInt(empId), dates, reason };
   if (punchIn)  body.punch_in  = punchIn;
   if (punchOut) body.punch_out = punchOut;
 
-  const data = await api('POST', '/attendance/force-regularize', body);
+  const data = await api('POST', '/attendance/bulk-force-regularize', body);
+  btn.disabled = false;
+
   if (data?.success) {
-    toast(data.message || 'Force regularization submitted — sent to reporting manager', 'success');
+    const errs = data.errors?.length ? ` (${data.errors.length} skipped)` : '';
+    toast(`✅ ${data.submitted} regularization(s) submitted${errs}`, 'success');
     msgEl.textContent = '✅ ' + (data.message || 'Submitted successfully');
     msgEl.style.color = 'var(--green)';
-    // Reset form
-    document.getElementById('force-emp-id').value   = '';
-    document.getElementById('force-date').value     = '';
-    document.getElementById('force-reason').value   = '';
-    document.getElementById('force-punch-in').value = '';
-    document.getElementById('force-punch-out').value= '';
+    // Reload list to remove now-pending dates
+    loadEmpAbsentDates();
+    document.getElementById('force-reason').value    = '';
+    document.getElementById('force-punch-in').value  = '';
+    document.getElementById('force-punch-out').value = '';
   } else {
     msgEl.textContent = '❌ ' + (data?.message || 'Failed');
     msgEl.style.color = 'var(--red)';
