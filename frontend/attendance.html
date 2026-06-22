@@ -2418,6 +2418,7 @@ async function loadAbsentReport() {
 }
 
 // ── OD Modal ──────────────────────────────────────────────────────────────────
+function openODModal() {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: window.CFG.timezone,
     year:'numeric', month:'2-digit', day:'2-digit'
   }).format(new Date());
