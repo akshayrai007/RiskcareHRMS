@@ -507,7 +507,7 @@
   <div class="modal" style="width:700px;max-height:94vh;border-radius:20px;overflow:hidden;border:none;box-shadow:0 24px 60px rgba(0,0,0,.18)">
 
     <!-- Colored header -->
-    <div style="background:linear-gradient(135deg,var(--accent),var(--accent2));padding:20px 24px;display:flex;align-items:center;justify-content:space-between">
+    <div style="background:linear-gradient(135deg,#1e293b,#334155);padding:20px 24px;display:flex;align-items:center;justify-content:space-between">
       <div style="display:flex;align-items:center;gap:12px">
         <div style="width:38px;height:38px;background:rgba(255,255,255,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">✏️</div>
         <div>
@@ -782,7 +782,7 @@
         </div>
 
         <!-- Live Preview -->
-        <div id="salary-preview" style="display:none;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:14px;padding:18px 20px;margin-bottom:16px">
+        <div id="salary-preview" style="display:none;background:linear-gradient(135deg,#1e293b,#334155);border-radius:14px;padding:18px 20px;margin-bottom:16px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.2)">
             <span style="font-size:12px;font-weight:800;color:rgba(255,255,255,.9);letter-spacing:.5px;text-transform:uppercase">📊 Live Salary Preview</span>
           </div>
@@ -856,7 +856,7 @@
     <!-- Footer -->
     <div style="padding:16px 24px;border-top:1.5px solid var(--border);display:flex;gap:10px;justify-content:flex-end;background:#fff;border-radius:0 0 20px 20px">
       <button class="btn btn-outline" onclick="closeModal('edit-emp-modal')" style="min-width:90px">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEmployeeEdit()" id="edit-save-btn" style="min-width:140px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none">💾 Save Changes</button>
+      <button class="btn btn-primary" onclick="saveEmployeeEdit()" id="edit-save-btn" style="min-width:140px;background:linear-gradient(135deg,#1e293b,#334155);border:none">💾 Save Changes</button>
     </div>
 
   </div><!-- /.modal -->
@@ -1382,7 +1382,7 @@ async function showEmpDetail(id) {
     <div style="background:var(--bg)">
 
       <!-- Header Banner -->
-      <div style="background:linear-gradient(135deg,var(--accent),var(--accent2));padding:20px 24px;display:flex;align-items:center;gap:16px">
+      <div style="background:linear-gradient(135deg,#1e293b,#334155);padding:20px 24px;display:flex;align-items:center;gap:16px">
         <div style="width:52px;height:52px;min-width:52px;border-radius:14px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;letter-spacing:-1px">${e.first_name?.[0]}${e.last_name?.[0]||''}</div>
         <div style="flex:1">
           <div style="font-size:17px;font-weight:800;color:#fff;letter-spacing:-.3px">${e.first_name} ${e.last_name}</div>
