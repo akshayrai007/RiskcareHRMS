@@ -2422,3 +2422,180 @@ exports.getMovementSummary = async (req, res) => {
   }
 };
 
+
+// ── HR: Force Regularization for an employee (bypasses employee request) ─────
+// Request is created by HR and immediately sent to the employee's reporting manager
+exports.forceRegularization = async (req, res) => {
+  const client = await db.getClient();
+  try {
+    await client.query('BEGIN');
+    const actorRole = req.user.role;
+    if (!['hr','super_admin'].includes(actorRole))
+      return res.status(403).json({ success: false, message: 'Only HR or Super Admin can force regularization' });
+
+    const { employee_id, date, reason, punch_in, punch_out, reg_type } = req.body;
+    if (!employee_id || !date || !reason)
+      return res.status(400).json({ success: false, message: 'employee_id, date, and reason are required' });
+
+    if (new Date(date) > new Date())
+      return res.status(400).json({ success: false, message: 'Cannot regularize a future date' });
+
+    // Get employee details
+    const empRes = await client.query(
+      `SELECT e.id, e.first_name, e.last_name, e.employee_code,
+              e.reporting_manager_id,
+              CONCAT(m.first_name,' ',m.last_name) AS manager_name,
+              m.id AS manager_id
+       FROM employees e
+       LEFT JOIN employees m ON e.reporting_manager_id = m.id
+       WHERE e.id = $1 AND e.is_active = true`, [employee_id]
+    );
+    if (!empRes.rows.length)
+      return res.status(404).json({ success: false, message: 'Employee not found' });
+
+    const emp = empRes.rows[0];
+
+    // Upsert attendance record with pending regularization
+    await client.query(
+      `INSERT INTO attendance(employee_id, date, status, regularization_status, regularization_reason,
+                              regularization_punch_in, regularization_punch_out, regularization_requested_at)
+       VALUES($1,$2,COALESCE((SELECT status FROM attendance WHERE employee_id=$1 AND date=$2),'absent'),'pending',$3,$4,$5,NOW())
+       ON CONFLICT(employee_id, date) DO UPDATE
+         SET regularization_status      = 'pending',
+             regularization_reason      = EXCLUDED.regularization_reason,
+             regularization_punch_in    = EXCLUDED.regularization_punch_in,
+             regularization_punch_out   = EXCLUDED.regularization_punch_out,
+             regularization_requested_at= NOW()`,
+      [employee_id, date, `[HR Force] ${reason}`, punch_in || null, punch_out || null]
+    );
+
+    // Notify the reporting manager of the employee
+    if (emp.manager_id) {
+      const notifMsg = `HR has forced an attendance regularization for ${emp.first_name} ${emp.last_name} (${emp.employee_code}) on ${date}. Reason: ${reason}. Please review and approve/reject.`;
+      await client.query(
+        `INSERT INTO notifications(employee_id, title, message, type)
+         VALUES($1,'📋 HR Forced Regularization',$2,'regularization')`,
+        [emp.manager_id, notifMsg]
+      );
+    }
+
+    // Also notify the employee
+    await client.query(
+      `INSERT INTO notifications(employee_id, title, message, type)
+       VALUES($1,'📋 Attendance Regularization Submitted','HR has submitted an attendance regularization request for your record on ${date}. It is pending approval from your reporting manager.','regularization')`,
+      [employee_id]
+    );
+
+    await client.query('COMMIT');
+    res.json({
+      success: true,
+      message: `Regularization forced for ${emp.first_name} ${emp.last_name} on ${date}. Request sent to manager: ${emp.manager_name || 'Not assigned'}.`
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  } finally { client.release(); }
+};
+
+// ── Attendance Report: Absent Days per Employee ───────────────────────────────
+exports.getAbsentReport = async (req, res) => {
+  try {
+    const role = req.user.role;
+    if (!['hr','super_admin','admin','accounts'].includes(role))
+      return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const mon  = parseInt(req.query.month) || new Date().getMonth() + 1;
+    const yr   = parseInt(req.query.year)  || new Date().getFullYear();
+    const search = req.query.search || '';
+    const department_id = req.query.department_id ? parseInt(req.query.department_id) : null;
+
+    const numDays = new Date(yr, mon, 0).getDate();
+
+    // Build weekly off days (2nd & 4th Saturday + Sunday)
+    const weeklyOff = new Set();
+    for (let d = 1; d <= numDays; d++) {
+      const dt  = new Date(yr, mon - 1, d);
+      const dow = dt.getDay();
+      if (dow === 0) { weeklyOff.add(d); continue; }
+      if (dow === 6) {
+        let satCount = 0;
+        for (let dd = 1; dd <= d; dd++)
+          if (new Date(yr, mon - 1, dd).getDay() === 6) satCount++;
+        if (satCount === 2 || satCount === 4) weeklyOff.add(d);
+      }
+    }
+
+    const holidays = await db.query(
+      `SELECT TO_CHAR(date,'YYYY-MM-DD') AS ds FROM holidays
+       WHERE EXTRACT(MONTH FROM date)=$1 AND EXTRACT(YEAR FROM date)=$2`, [mon, yr]
+    );
+    const holSet = new Set(holidays.rows.map(h => h.ds));
+
+    // Fetch employees
+    let empWhere = 'WHERE e.is_active = true';
+    let empParams = [];
+    let pidx = 1;
+    if (department_id) { empWhere += ` AND e.department_id = $${pidx++}`; empParams.push(department_id); }
+    if (search) {
+      empWhere += ` AND (LOWER(CONCAT(e.first_name,' ',e.last_name)) LIKE $${pidx} OR LOWER(e.employee_code) LIKE $${pidx})`;
+      empParams.push(`%${search.toLowerCase()}%`);
+      pidx++;
+    }
+    const employees = await db.query(
+      `SELECT e.id, e.employee_code, CONCAT(e.first_name,' ',e.last_name) AS name,
+              d.name AS department, des.title AS designation
+       FROM employees e
+       LEFT JOIN departments d ON e.department_id = d.id
+       LEFT JOIN designations des ON e.designation_id = des.id
+       ${empWhere} ORDER BY d.name, e.first_name`, empParams
+    );
+
+    // Fetch attendance
+    let attQ = `SELECT employee_id, EXTRACT(DAY FROM date)::int AS day, status, TO_CHAR(date,'YYYY-MM-DD') AS ds
+                FROM attendance
+                WHERE EXTRACT(MONTH FROM date)=$1 AND EXTRACT(YEAR FROM date)=$2`;
+    let attP = [mon, yr];
+    if (department_id) { attQ += ` AND employee_id IN (SELECT id FROM employees WHERE department_id=$3)`; attP.push(department_id); }
+    const attendance = await db.query(attQ, attP);
+
+    const attIndex = {};
+    for (const rec of attendance.rows) {
+      if (!attIndex[rec.employee_id]) attIndex[rec.employee_id] = {};
+      attIndex[rec.employee_id][rec.day] = rec;
+    }
+
+    const workingDays = numDays - weeklyOff.size - holSet.size;
+
+    const report = employees.rows.map(emp => {
+      const empAtt = attIndex[emp.id] || {};
+      const absentDates = [];
+      let absentCount = 0;
+
+      for (let d = 1; d <= numDays; d++) {
+        const ds = `${yr}-${String(mon).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        if (holSet.has(ds) || weeklyOff.has(d)) continue;
+        const rec = empAtt[d];
+        if (!rec || rec.status === 'absent') {
+          absentDates.push(ds);
+          absentCount++;
+        }
+      }
+
+      return {
+        employee_code: emp.employee_code,
+        name: emp.name,
+        department: emp.department || '—',
+        designation: emp.designation || '—',
+        working_days: workingDays,
+        absent_count: absentCount,
+        absent_dates: absentDates
+      };
+    });
+
+    res.json({ success: true, month: mon, year: yr, working_days: workingDays, count: report.length, data: report });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

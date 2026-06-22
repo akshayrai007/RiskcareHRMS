@@ -592,15 +592,31 @@ exports.getUploads = async (req, res) => {
 // ── Get All Salary Structures (HR/Admin) ──────────────────────────────────────
 exports.getAllSalaryStructures = async (req, res) => {
   try {
+    const search      = req.query.search      || '';
+    const employee_id = req.query.employee_id ? parseInt(req.query.employee_id) : null;
+    let where  = 'WHERE e.is_active=true';
+    let params = [];
+    let pidx   = 1;
+    if (employee_id) {
+      where += ` AND ess.employee_id = $${pidx++}`;
+      params.push(employee_id);
+    } else if (search) {
+      where += ` AND (LOWER(CONCAT(e.first_name,' ',e.last_name)) LIKE $${pidx} OR LOWER(e.employee_code) LIKE $${pidx})`;
+      params.push(`%${search.toLowerCase()}%`);
+      pidx++;
+    }
     const result = await db.query(
       `SELECT ess.*,
               CONCAT(e.first_name,' ',e.last_name) AS employee_name,
-              e.employee_code, d.name AS department_name
+              e.employee_code, d.name AS department_name,
+              des.title AS designation_title
        FROM employee_salary_structure ess
        JOIN employees e ON ess.employee_id = e.id
        LEFT JOIN departments d ON e.department_id = d.id
-       WHERE e.is_active=true
-       ORDER BY d.name, e.first_name`
+       LEFT JOIN designations des ON e.designation_id = des.id
+       ${where}
+       ORDER BY d.name, e.first_name`,
+      params
     );
     res.json({ success: true, data: result.rows });
   } catch (err) {

@@ -58,6 +58,8 @@
       <button class="tab-btn" onclick="switchTab('compoff-credits')">🔄 My Comp Off</button>
       <button class="tab-btn" id="approvals-tab" style="display:none" onclick="switchTab('approvals')">✅ Approvals</button>
       <button class="tab-btn" id="all-tab"        style="display:none" onclick="switchTab('all-leaves')">📂 All Applications</button>
+      <button class="tab-btn" id="summary-tab"    style="display:none" onclick="switchTab('leave-summary')">📊 Leave Summary</button>
+      <button class="tab-btn" id="txn-tab"        style="display:none" onclick="switchTab('leave-transactions')">🔄 Leave Transactions</button>
       <!-- Accrual tab removed — runs automatically via cron on 1st of every month -->
     </div>
 
@@ -201,6 +203,51 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- LEAVE SUMMARY TAB -->
+<div id="tab-leave-summary" style="display:none">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon">📊</span>Leave Summary — EL / SL / CL</div>
+      <div class="flex gap-2">
+        <input id="summary-search" class="form-control" style="width:240px" placeholder="Search by name or ID…" oninput="loadLeaveSummary()">
+        <select id="summary-year" class="form-control" style="width:110px" onchange="loadLeaveSummary()">
+        </select>
+      </div>
+    </div>
+    <div id="leave-summary-content"><div class="loader"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- LEAVE TRANSACTIONS TAB -->
+<div id="tab-leave-transactions" style="display:none">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-icon">🔄</span>Leave Transactions</div>
+      <div class="flex gap-2" style="flex-wrap:wrap">
+        <input id="txn-search" class="form-control" style="width:200px" placeholder="Search by name or ID…" oninput="loadLeaveTransactions()">
+        <select id="txn-type" class="form-control" style="width:130px" onchange="loadLeaveTransactions()">
+          <option value="">All Types</option>
+          <option value="EL">EL (Earned)</option>
+          <option value="SL">SL (Sick)</option>
+          <option value="CL">CL (Casual)</option>
+          <option value="OD">OD</option>
+          <option value="LWP">LWP</option>
+        </select>
+        <select id="txn-status" class="form-control" style="width:130px" onchange="loadLeaveTransactions()">
+          <option value="">All Status</option>
+          <option value="approved">Approved</option>
+          <option value="pending">Pending</option>
+          <option value="rejected">Rejected</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <select id="txn-year" class="form-control" style="width:110px" onchange="loadLeaveTransactions()">
+        </select>
+      </div>
+    </div>
+    <div id="leave-txn-content"><div class="loader"><div class="spinner"></div></div></div>
   </div>
 </div>
 
@@ -350,6 +397,22 @@ if (Role.is('admin','super_admin','hr','manager','tl','accounts')) document.getE
 if (Role.isAdminOrHR() || Role.is('accounts')) {
   document.getElementById('all-tab').style.display = '';
   // accrual tab hidden — auto-runs via cron
+}
+if (Role.is('hr','super_admin')) {
+  document.getElementById('summary-tab').style.display = '';
+  document.getElementById('txn-tab').style.display = '';
+  // Populate year dropdowns
+  const curYr = new Date().getFullYear();
+  ['summary-year','txn-year'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    for (let y = curYr; y >= curYr - 3; y--) {
+      const o = document.createElement('option');
+      o.value = y; o.textContent = y;
+      if (y === curYr) o.selected = true;
+      sel.appendChild(o);
+    }
+  });
 }
 
 if (location.hash === '#approvals') switchTab('approvals');
@@ -829,7 +892,7 @@ async function revokeLeave(id, fromDate) {
 // runAccrual removed — handled by cron automatically
 
 function switchTab(name) {
-  ['my-leaves','compoff-credits','approvals','all-leaves'].forEach(t => {
+  ['my-leaves','compoff-credits','approvals','all-leaves','leave-summary','leave-transactions'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t===name?'':'none';
   });
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -837,6 +900,8 @@ function switchTab(name) {
   if (name==='approvals' && document.getElementById('approvals-list').innerHTML.includes('spinner')) loadApprovals();
   if (name==='all-leaves') loadAllLeaves();
   if (name==='compoff-credits') loadCompOffCredits();
+  if (name==='leave-summary') loadLeaveSummary();
+  if (name==='leave-transactions') loadLeaveTransactions();
 }
 
 async function loadCompOffCredits() {
@@ -924,6 +989,77 @@ function onCategoryChange() {
       }
     }
   }
+}
+
+// ── Leave Summary (EL/SL/CL counts for HR) ──────────────────────────────────
+async function loadLeaveSummary() {
+  const el   = document.getElementById('leave-summary-content');
+  const yr   = document.getElementById('summary-year')?.value || new Date().getFullYear();
+  const srch = document.getElementById('summary-search')?.value || '';
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const data = await api('GET', `/leave/summary?year=${yr}&search=${encodeURIComponent(srch)}`);
+  if (!data?.success || !data.data?.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><p>No data found.</p></div>';
+    return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Code</th><th>Name</th><th>Department</th><th>Designation</th>
+      <th>EL Alloc</th><th>EL Used</th><th>EL Avail</th>
+      <th>SL Alloc</th><th>SL Used</th><th>SL Avail</th>
+      <th>CL Alloc</th><th>CL Used</th><th>CL Avail</th>
+    </tr></thead>
+    <tbody>${data.data.map(r => `<tr>
+      <td style="font-weight:600">${r.employee_code}</td>
+      <td>${r.employee_name}</td>
+      <td>${r.department||'—'}</td>
+      <td>${r.designation||'—'}</td>
+      <td>${fmt.num(r.el_allocated)}</td>
+      <td style="color:var(--red)">${fmt.num(r.el_used)}</td>
+      <td style="color:var(--green);font-weight:700">${fmt.num(r.el_available)}</td>
+      <td>${fmt.num(r.sl_allocated)}</td>
+      <td style="color:var(--red)">${fmt.num(r.sl_used)}</td>
+      <td style="color:var(--green);font-weight:700">${fmt.num(r.sl_available)}</td>
+      <td>${fmt.num(r.cl_allocated)}</td>
+      <td style="color:var(--red)">${fmt.num(r.cl_used)}</td>
+      <td style="color:var(--green);font-weight:700">${fmt.num(r.cl_available)}</td>
+    </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+// ── Leave Transactions (individual search for HR) ────────────────────────────
+async function loadLeaveTransactions() {
+  const el     = document.getElementById('leave-txn-content');
+  const yr     = document.getElementById('txn-year')?.value || new Date().getFullYear();
+  const srch   = document.getElementById('txn-search')?.value || '';
+  const ltype  = document.getElementById('txn-type')?.value || '';
+  const status = document.getElementById('txn-status')?.value || '';
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const params = `year=${yr}&search=${encodeURIComponent(srch)}&leave_type=${ltype}&status=${status}`;
+  const data   = await api('GET', `/leave/transactions?${params}`);
+  if (!data?.success || !data.data?.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔄</div><p>No transactions found.</p></div>';
+    return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Code</th><th>Name</th><th>Dept</th>
+      <th>Type</th><th>From</th><th>To</th><th>Days</th>
+      <th>Reason</th><th>Status</th><th>Applied</th>
+    </tr></thead>
+    <tbody>${data.data.map(r => `<tr>
+      <td style="font-weight:600">${r.employee_code}</td>
+      <td>${r.employee_name}</td>
+      <td>${r.department||'—'}</td>
+      <td><span class="badge" style="background:var(--accent-l);color:var(--accent)">${r.leave_type_code}</span></td>
+      <td>${fmt.date(r.from_date)}</td>
+      <td>${fmt.date(r.to_date)}</td>
+      <td style="font-weight:700">${r.days_requested}${r.is_half_day?' <span style="color:#7e22ce;font-size:10px">½</span>':''}</td>
+      <td style="max-width:200px;word-break:break-word;font-size:12px">${r.reason||'—'}</td>
+      <td><span class="badge badge-${r.status}">${r.status}</span></td>
+      <td style="font-size:11px;color:var(--muted)">${fmt.date(r.applied_at)}</td>
+    </tr>`).join('')}
+    </tbody></table></div>`;
 }
 
 function openModal(id)  { document.getElementById(id).classList.add('open'); }

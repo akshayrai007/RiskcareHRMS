@@ -86,7 +86,8 @@ const SEP_SELECT = `
   SELECT s.*,
     CONCAT(e.first_name,' ',e.last_name)   AS employee_name,
     e.employee_code, e.role AS employee_role,
-    e.joining_date, e.phone,
+    e.joining_date, e.phone, e.is_active,
+    e.separation_date, e.separation_type, e.separation_reason AS separation_remark,
     d.name  AS department_name,
     des.title AS designation_title,
     CONCAT(i.first_name,' ',i.last_name)   AS initiated_by_name,
@@ -95,7 +96,7 @@ const SEP_SELECT = `
     CONCAT(aa.first_name,' ',aa.last_name)  AS accounts_actioned_by_name,
     CONCAT(ad.first_name,' ',ad.last_name)  AS admin_actioned_by_name
   FROM separations s
-  JOIN employees e        ON s.employee_id = e.id
+  JOIN employees e        ON s.employee_id = e.id  -- includes inactive (resigned) employees
   LEFT JOIN departments d    ON e.department_id = d.id
   LEFT JOIN designations des ON e.designation_id = des.id
   LEFT JOIN employees i   ON s.initiated_by         = i.id
@@ -654,13 +655,38 @@ exports.getOne = async (req, res) => {
 // ── 10. Get all separations (HR/Admin only) ───────────────────────────────────
 exports.getAll = async (req, res) => {
   try {
-    const { status, employee_id } = req.query;
+    const { status, employee_id, include_inactive, search } = req.query;
     let conds = [], params = [], idx = 1;
     if (status)      { conds.push(`s.status=$${idx++}`);      params.push(status); }
     if (employee_id) { conds.push(`s.employee_id=$${idx++}`); params.push(employee_id); }
+    // Search by name or employee code
+    if (search) {
+      conds.push(`(LOWER(CONCAT(e.first_name,' ',e.last_name)) LIKE $${idx} OR LOWER(e.employee_code) LIKE $${idx})`);
+      params.push(`%${search.toLowerCase()}%`);
+      idx++;
+    }
+    // By default only active; HR/admin can pass include_inactive=true to see resigned employees
+    if (!include_inactive || include_inactive === 'false') {
+      conds.push(`e.is_active = true`);
+    }
     const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
-    const result = await db.query(SEP_SELECT + ` ${where} ORDER BY s.created_at DESC`, params);
-    res.json({ success: true, data: result.rows, total: result.rows.length });
+    const result = await db.query(
+      SEP_SELECT + ` ${where} ORDER BY s.created_at DESC`,
+      params
+    );
+    // Attach deactivation info for inactive employees
+    const data = result.rows.map(r => ({
+      ...r,
+      is_active:           r.is_active ?? true,
+      separation_date:     r.separation_date     || null,
+      separation_type:     r.separation_type     || null,
+      separation_reason:   r.separation_reason   || null,
+      hr_remarks:          r.hr_remarks          || null,
+      manager_remarks:     r.manager_remarks     || null,
+      accounts_remarks:    r.accounts_remarks    || null,
+      admin_remarks:       r.admin_remarks       || null,
+    }));
+    res.json({ success: true, data, total: data.length });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Server error: ' + err.message });

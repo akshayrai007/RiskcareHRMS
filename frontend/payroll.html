@@ -48,6 +48,7 @@
       <button class="tab-btn active" id="upload-tab" onclick="switchTab('upload')">📤 Upload Payroll Excel</button>
       <button class="tab-btn" id="process-tab" style="display:none" onclick="switchTab('process')">⚙ Process Payroll</button>
       <button class="tab-btn" id="list-tab"    style="display:none" onclick="switchTab('payroll-list')">📋 Payroll List</button>
+      <button class="tab-btn" id="struct-tab"  style="display:none" onclick="switchTab('salary-structure')">🏦 Salary Structures</button>
     </div>
 
 
@@ -172,6 +173,25 @@
       </div>
     </div>
 
+    <!-- SALARY STRUCTURE TAB (HR / Super Admin) -->
+    <div id="tab-salary-structure" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">🏦</span>Salary Structures</div>
+          <div class="flex gap-2" style="flex-wrap:wrap">
+            <input id="struct-search" class="form-control" style="width:240px"
+              placeholder="Search by name or employee code…"
+              oninput="loadSalaryStructures()">
+            <button class="btn btn-outline btn-sm" onclick="loadSalaryStructures()">🔍 Search</button>
+          </div>
+        </div>
+        <div id="struct-summary" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px"></div>
+        <div id="struct-table-wrap">
+          <div class="loader"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -241,6 +261,7 @@ if (user && user.role === 'hr') {
   document.getElementById('list-tab').style.display = '';
   document.getElementById('upload-tab').style.display = 'none';
   document.getElementById('process-tab').style.display = 'none';
+  document.getElementById('struct-tab').style.display = '';
   switchTab('list');
 }
 
@@ -249,6 +270,7 @@ if (user && user.role === 'accounts') {
   document.getElementById('upload-tab').style.display = '';
   document.getElementById('process-tab').style.display = '';
   document.getElementById('list-tab').style.display = '';
+  document.getElementById('struct-tab').style.display = '';
 }
 
 // Super Admin: List only — payroll upload is accounts' job
@@ -256,6 +278,7 @@ if (user && user.role === 'super_admin') {
   document.getElementById('upload-tab').style.display = 'none';
   document.getElementById('process-tab').style.display = 'none';
   document.getElementById('list-tab').style.display = '';
+  document.getElementById('struct-tab').style.display = '';
   switchTab('list');
 }
 
@@ -584,13 +607,72 @@ async function markPaid(id) {
 }
 
 function switchTab(name) {
-  ['upload','process','payroll-list'].forEach(t => {
+  ['upload','process','payroll-list','salary-structure'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t===name?'':'none';
   });
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   event?.target?.classList?.add('active');
   if (name==='process') loadPayrollStats();
   if (name==='payroll-list') loadPayrollList();
+  if (name==='salary-structure') loadSalaryStructures();
+}
+
+async function loadSalaryStructures() {
+  const el     = document.getElementById('struct-table-wrap');
+  const search = document.getElementById('struct-search')?.value?.trim() || '';
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+
+  const qs   = search ? `?search=${encodeURIComponent(search)}` : '';
+  const data = await api('GET', '/payroll/salary-structures' + qs);
+
+  if (!data?.success || !data.data?.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏦</div><p>${search?'No salary structure found for "'+search+'"':'No salary structures configured yet.'}</p></div>`;
+    document.getElementById('struct-summary').innerHTML = '';
+    return;
+  }
+
+  const rows = data.data;
+  // Summary stats
+  const avgGross = rows.reduce((s,r)=>s+parseFloat(r.gross_salary||0),0)/rows.length;
+  const avgNet   = rows.reduce((s,r)=>s+parseFloat(r.net_salary||0),0)/rows.length;
+  const totalCTC = rows.reduce((s,r)=>s+parseFloat(r.ctc_annual||0),0);
+  document.getElementById('struct-summary').innerHTML = [
+    {icon:'👥', val:rows.length,            lbl:'Employees',     cls:'blue'},
+    {icon:'💰', val:fmt.money(avgGross),    lbl:'Avg Gross/mo',  cls:'green'},
+    {icon:'🏦', val:fmt.money(totalCTC/12), lbl:'Total CTC/mo',  cls:'purple'},
+  ].map(s=>`
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:24px">${s.icon}</div>
+      <div>
+        <div style="font-size:20px;font-weight:800;color:var(--text)">${s.val}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.4px;text-transform:uppercase">${s.lbl}</div>
+      </div>
+    </div>`).join('');
+
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Code</th><th>Name</th><th>Department</th><th>Designation</th>
+      <th>Basic</th><th>HRA</th><th>Conveyance</th><th>Gross</th>
+      <th>PF(Emp)</th><th>ESI(Emp)</th><th>Deductions</th><th>Net Salary</th><th>CTC/mo</th>
+    </tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <td style="font-weight:700;color:var(--accent)">${r.employee_code}</td>
+      <td>
+        <div style="font-weight:600">${r.employee_name}</div>
+      </td>
+      <td style="font-size:12px;color:var(--muted)">${r.department_name||'—'}</td>
+      <td style="font-size:12px;color:var(--muted)">${r.designation_title||'—'}</td>
+      <td>${fmt.money(r.basic)}</td>
+      <td>${fmt.money(r.hra)}</td>
+      <td>${fmt.money(r.conveyance)}</td>
+      <td style="font-weight:700">${fmt.money(r.gross_salary)}</td>
+      <td style="color:var(--red)">${fmt.money(r.pf_employee)}</td>
+      <td style="color:var(--red)">${fmt.money(r.esi_employee)}</td>
+      <td style="color:var(--red)">- ${fmt.money(r.total_deductions)}</td>
+      <td style="font-weight:800;color:var(--green)">${fmt.money(r.net_salary)}</td>
+      <td style="font-size:12px;color:var(--muted)">${fmt.money(r.ctc_monthly)}</td>
+    </tr>`).join('')}
+    </tbody></table></div>`;
 }
 
 function openModal(id)  { document.getElementById(id).classList.add('open'); }

@@ -1230,3 +1230,111 @@ exports.revoke = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   } finally { client.release(); }
 };
+
+// ── HR: Get Leave Summary per Employee (EL, SL balance counts) ───────────────
+exports.getLeaveSummary = async (req, res) => {
+  try {
+    const role = req.user.role;
+    if (!['hr','super_admin','admin','accounts'].includes(role))
+      return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const search = req.query.search || ''; // name or employee_code
+
+    let empWhere = `WHERE e.is_active = true`;
+    let empParams = [year];
+    let idx = 2;
+    if (search) {
+      empWhere += ` AND (LOWER(CONCAT(e.first_name,' ',e.last_name)) LIKE $${idx} OR LOWER(e.employee_code) LIKE $${idx})`;
+      empParams.push(`%${search.toLowerCase()}%`);
+      idx++;
+    }
+
+    const result = await db.query(
+      `SELECT e.id, CONCAT(e.first_name,' ',e.last_name) AS employee_name,
+              e.employee_code, d.name AS department,
+              des.title AS designation,
+              SUM(CASE WHEN lt.code='EL' THEN lb.allocated + lb.carry_forward ELSE 0 END) AS el_allocated,
+              SUM(CASE WHEN lt.code='EL' THEN lb.used ELSE 0 END) AS el_used,
+              SUM(CASE WHEN lt.code='EL' THEN lb.pending ELSE 0 END) AS el_pending,
+              SUM(CASE WHEN lt.code='EL' THEN GREATEST(0, lb.allocated + lb.carry_forward - lb.used - lb.pending) ELSE 0 END) AS el_available,
+              SUM(CASE WHEN lt.code='SL' THEN lb.allocated + lb.carry_forward ELSE 0 END) AS sl_allocated,
+              SUM(CASE WHEN lt.code='SL' THEN lb.used ELSE 0 END) AS sl_used,
+              SUM(CASE WHEN lt.code='SL' THEN lb.pending ELSE 0 END) AS sl_pending,
+              SUM(CASE WHEN lt.code='SL' THEN GREATEST(0, lb.allocated + lb.carry_forward - lb.used - lb.pending) ELSE 0 END) AS sl_available,
+              SUM(CASE WHEN lt.code='CL' THEN lb.allocated + lb.carry_forward ELSE 0 END) AS cl_allocated,
+              SUM(CASE WHEN lt.code='CL' THEN lb.used ELSE 0 END) AS cl_used,
+              SUM(CASE WHEN lt.code='CL' THEN lb.pending ELSE 0 END) AS cl_pending,
+              SUM(CASE WHEN lt.code='CL' THEN GREATEST(0, lb.allocated + lb.carry_forward - lb.used - lb.pending) ELSE 0 END) AS cl_available
+       FROM employees e
+       LEFT JOIN departments d ON e.department_id = d.id
+       LEFT JOIN designations des ON e.designation_id = des.id
+       LEFT JOIN leave_balances lb ON lb.employee_id = e.id AND lb.year = $1
+       LEFT JOIN leave_types lt ON lt.id = lb.leave_type_id
+       ${empWhere}
+       GROUP BY e.id, e.first_name, e.last_name, e.employee_code, d.name, des.title
+       ORDER BY d.name, e.first_name`,
+      empParams
+    );
+
+    res.json({ success: true, year, count: result.rows.length, data: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ── HR: Leave Transaction — individual search by name or ID ─────────────────
+exports.getLeaveTransactions = async (req, res) => {
+  try {
+    const role = req.user.role;
+    if (!['hr','super_admin','admin','accounts'].includes(role))
+      return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const search = req.query.search || '';
+    const employee_id = req.query.employee_id ? parseInt(req.query.employee_id) : null;
+    const leave_type = req.query.leave_type || '';
+    const status = req.query.status || '';
+
+    let conds = [`EXTRACT(YEAR FROM lr.from_date) = $1`];
+    let params = [year];
+    let idx = 2;
+
+    if (employee_id) {
+      conds.push(`lr.employee_id = $${idx++}`);
+      params.push(employee_id);
+    } else if (search) {
+      conds.push(`(LOWER(CONCAT(e.first_name,' ',e.last_name)) LIKE $${idx} OR LOWER(e.employee_code) LIKE $${idx})`);
+      params.push(`%${search.toLowerCase()}%`);
+      idx++;
+    }
+    if (leave_type) { conds.push(`lt.code = $${idx++}`); params.push(leave_type); }
+    if (status)     { conds.push(`lr.status = $${idx++}`); params.push(status); }
+
+    const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
+    const result = await db.query(
+      `SELECT lr.id, lr.employee_id,
+              CONCAT(e.first_name,' ',e.last_name) AS employee_name,
+              e.employee_code, d.name AS department,
+              lt.name AS leave_type_name, lt.code AS leave_type_code,
+              lr.from_date, lr.to_date, lr.days_requested,
+              lr.reason, lr.status, lr.is_half_day,
+              lr.created_at AS applied_at,
+              lr.remarks AS action_remarks
+       FROM leave_requests lr
+       JOIN employees e ON lr.employee_id = e.id
+       JOIN leave_types lt ON lr.leave_type_id = lt.id
+       LEFT JOIN departments d ON e.department_id = d.id
+       ${where}
+       ORDER BY lr.created_at DESC
+       LIMIT 500`,
+      params
+    );
+
+    res.json({ success: true, count: result.rows.length, data: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

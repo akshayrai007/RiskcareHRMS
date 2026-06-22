@@ -100,6 +100,8 @@ router.get ('/attendance/punch-locations',  authenticate, attCtrl.getPunchLocati
 router.post('/attendance/regularize',       authenticate, attCtrl.requestRegularization);
 router.get ('/attendance/regularizations',  authenticate, attCtrl.getRegularizations);
 router.post('/attendance/regularize/action',authenticate, attCtrl.actionRegularization);
+router.post('/attendance/force-regularize', authenticate, authorize('hr','super_admin'), attCtrl.forceRegularization);
+router.get ('/attendance/absent-report',    authenticate, authorize('hr','super_admin','admin','accounts'), attCtrl.getAbsentReport);
 
 // ── Attendance Bulk Import (Excel) — kept here for reference (defined above) ──
 
@@ -197,6 +199,8 @@ router.put ('/leave/balance',         authenticate, authorize(...HR_ADMIN), leav
 router.post('/leave/monthly-accrual',        authenticate, authorize(...HR_ADMIN), leaveCtrl.monthlyAccrual);
 router.post('/leave/recalculate/:id',        authenticate, authorize(...HR_ADMIN), leaveCtrl.recalculateEmployee);
 router.get ('/leave/report',                 authenticate,                        leaveCtrl.getLeaveReport);
+router.get ('/leave/summary',                authenticate, authorize(...HR_ADMIN), leaveCtrl.getLeaveSummary);
+router.get ('/leave/transactions',           authenticate, authorize(...HR_ADMIN), leaveCtrl.getLeaveTransactions);
 
 // ── Comp Off ──────────────────────────────────────────────────────────────────
 router.post  ('/compoff/grant',        authenticate, authorize('hr','admin','super_admin'), compoffCtrl.grantCredit);

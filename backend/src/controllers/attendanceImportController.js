@@ -666,6 +666,100 @@ exports.downloadAttendanceReport = async (req, res) => {
 
     XLSX.utils.book_append_sheet(wb, wsPunch, `Punch Register ${mon}-${yr}`);
 
+    // ── Sheet 4: Leave Details (dates, reason, remaining EL/SL/CL) ───────
+    const leaveEmpIds = employees.rows.map(e => e.id);
+    const leaveYear   = yr;
+
+    // Fetch approved leave requests for the month
+    const leaveReqs = await db.query(
+      `SELECT lr.employee_id,
+              lt.code AS leave_code, lt.name AS leave_name,
+              TO_CHAR(lr.from_date,'YYYY-MM-DD') AS from_date,
+              TO_CHAR(lr.to_date,'YYYY-MM-DD') AS to_date,
+              lr.days_requested, lr.is_half_day, lr.reason, lr.status,
+              TO_CHAR(lr.created_at,'YYYY-MM-DD') AS applied_date
+       FROM leave_requests lr
+       JOIN leave_types lt ON lr.leave_type_id = lt.id
+       WHERE lr.employee_id = ANY($1)
+         AND lr.status = 'approved'
+         AND (EXTRACT(MONTH FROM lr.from_date) = $2 OR EXTRACT(MONTH FROM lr.to_date) = $2)
+         AND (EXTRACT(YEAR FROM lr.from_date) = $3 OR EXTRACT(YEAR FROM lr.to_date) = $3)
+       ORDER BY lr.employee_id, lr.from_date`,
+      [leaveEmpIds, mon, leaveYear]
+    );
+
+    // Fetch leave balances (CL, SL, EL remaining)
+    const leaveBalRes = await db.query(
+      `SELECT lb.employee_id, lt.code,
+              GREATEST(0, lb.allocated + lb.carry_forward - lb.used - lb.pending) AS remaining
+       FROM leave_balances lb
+       JOIN leave_types lt ON lt.id = lb.leave_type_id
+       WHERE lb.employee_id = ANY($1)
+         AND lb.year = $2
+         AND lt.code IN ('EL','SL','CL')`,
+      [leaveEmpIds, leaveYear]
+    );
+    const leaveBalMap = {};
+    for (const r of leaveBalRes.rows) {
+      if (!leaveBalMap[r.employee_id]) leaveBalMap[r.employee_id] = { EL:0, SL:0, CL:0 };
+      leaveBalMap[r.employee_id][r.code] = parseFloat(r.remaining || 0);
+    }
+
+    // Build emp name map
+    const empNameMap = {};
+    for (const emp of employees.rows) empNameMap[emp.id] = { name: emp.name, code: emp.employee_code, dept: emp.department || '—' };
+
+    const leaveHeaders = [
+      'Emp Code', 'Name', 'Department',
+      'Leave Type', 'From Date', 'To Date', 'Days',
+      'Half Day?', 'Reason', 'Applied On',
+      'Remaining EL', 'Remaining SL', 'Remaining CL'
+    ];
+
+    const leaveData = [
+      [`HRMS — Leave Details | ${monthName} ${yr}`],
+      [`Employee leave transactions with remaining balances as of report date`],
+      [],
+      leaveHeaders,
+      ...leaveReqs.rows.map(r => {
+        const emp = empNameMap[r.employee_id] || {};
+        const bal = leaveBalMap[r.employee_id] || { EL:0, SL:0, CL:0 };
+        return [
+          emp.code || '',
+          emp.name || '',
+          emp.dept || '—',
+          `${r.leave_name} (${r.leave_code})`,
+          r.from_date,
+          r.to_date,
+          parseFloat(r.days_requested),
+          r.is_half_day ? 'Yes' : 'No',
+          r.reason || '—',
+          r.applied_date,
+          bal.EL,
+          bal.SL,
+          bal.CL,
+        ];
+      }),
+    ];
+
+    // If no leaves this month, add a note row
+    if (leaveReqs.rows.length === 0) {
+      leaveData.push(['', '', '', 'No approved leaves found for this month', '', '', '', '', '', '', '', '', '']);
+    }
+
+    const wsLeave = XLSX.utils.aoa_to_sheet(leaveData);
+    wsLeave['!cols'] = [
+      {wch:10},{wch:22},{wch:16},
+      {wch:20},{wch:12},{wch:12},{wch:6},
+      {wch:10},{wch:40},{wch:12},
+      {wch:13},{wch:13},{wch:13},
+    ];
+    wsLeave['!merges'] = [
+      { s:{r:0,c:0}, e:{r:0,c:12} },
+      { s:{r:1,c:0}, e:{r:1,c:12} },
+    ];
+    XLSX.utils.book_append_sheet(wb, wsLeave, `Leave Details ${mon}-${yr}`);
+
     // ── 9. Stream response ────────────────────────────────────────────────
     const buf      = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     const filename = `Attendance_${monthName}_${yr}${department_id ? '_Dept'+department_id : ''}.xlsx`;

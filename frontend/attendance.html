@@ -276,6 +276,7 @@
       <button class="tab-btn" id="reg-tab"  style="display:none" onclick="switchTab('regularize')">🔄 Regularizations</button>
       <button class="tab-btn" id="odwfh-tab" onclick="switchTab('odwfh')">🚗 My OD/WFH</button>
       <button class="tab-btn" id="download-tab" style="display:none" onclick="switchTab('download')">⬇ Download Attendance</button>
+      <button class="tab-btn" id="absent-tab"   style="display:none" onclick="switchTab('absent-report')">📉 Absent Report</button>
       <button class="tab-btn" id="import-tab" style="display:none" onclick="switchTab('import')">⬆ Import Attendance</button>
       <button class="tab-btn" id="mark-tab"   style="display:none" onclick="switchTab('mark')">✏️ Mark Attendance</button>
     </div>
@@ -441,6 +442,47 @@
           <div id="reg-list"><div class="empty-state"><div class="empty-icon">✅</div><p>No pending regularizations</p></div></div>
         </div>
       </div>
+
+      <!-- HR FORCE REGULARIZATION PANEL (HR / super_admin only) -->
+      <div id="force-reg-panel" style="display:none;margin-top:18px">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">⚡</span>Force Regularization for Employee</div>
+            <div style="font-size:12px;color:var(--muted)">HR submits on behalf of employee → goes to their reporting manager</div>
+          </div>
+          <div style="padding:8px 0 16px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Employee</label>
+                <select id="force-emp-id" class="form-control" onchange="">
+                  <option value="">Select employee…</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Date to Regularize</label>
+                <input id="force-date" type="date" class="form-control">
+              </div>
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Punch In (optional)</label>
+                <input id="force-punch-in" type="time" class="form-control">
+              </div>
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Punch Out (optional)</label>
+                <input id="force-punch-out" type="time" class="form-control">
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:14px">
+              <label class="form-label">Reason *</label>
+              <textarea id="force-reason" class="form-control" rows="2"
+                placeholder="Reason for regularization (will be prefixed with [HR Force])…"></textarea>
+            </div>
+            <div style="margin-top:14px;display:flex;align-items:center;gap:10px">
+              <button class="btn btn-primary" onclick="submitForceRegularization()">⚡ Submit Force Regularization</button>
+              <span id="force-reg-msg" style="font-size:13px"></span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- MY OD/WFH TAB -->
@@ -503,14 +545,23 @@
       </div>
     </div>
 
+    <!-- ABSENT REPORT TAB (HR / Admin / Super Admin) -->
+    <div id="tab-absent-report" style="display:none">
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap;gap:10px">
+          <div class="card-title"><span class="card-title-icon">📉</span>Absent Days Report</div>
+          <div class="flex gap-2" style="flex-wrap:wrap">
+            <select id="ab-month" class="form-control" style="width:140px" onchange="loadAbsentReport()"></select>
+            <select id="ab-year"  class="form-control" style="width:95px"  onchange="loadAbsentReport()"></select>
+            <input  id="ab-search" class="form-control" style="width:200px" placeholder="Search by name or ID…" oninput="loadAbsentReport()">
+          </div>
+        </div>
+        <div id="absent-report-content"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
     <!-- IMPORT ATTENDANCE TAB -->
     <div id="tab-import" style="display:none">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title"><span class="card-title-icon">⬆</span>Import Attendance (Bulk Upload)</div>
-        </div>
-
-        <!-- Info box -->
         <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px;margin-bottom:20px">
           <div style="font-weight:700;color:#1e40af;margin-bottom:8px;font-size:14px">📋 How to Import</div>
           <div style="font-size:13px;color:#1e3a8a;line-height:1.8">
@@ -778,6 +829,26 @@ if (Role.is('hr','super_admin')) {
   loadEmployeeFilter();
   document.getElementById('sum-emp-select').style.display = '';
   loadSummaryEmployeePicker();
+  // Show force regularization panel and populate employees
+  document.getElementById('force-reg-panel').style.display = '';
+  // Set max date to today (prevents future date selection)
+  const forceDateEl = document.getElementById('force-date');
+  if (forceDateEl) {
+    forceDateEl.max = new Intl.DateTimeFormat('en-CA', {
+      timeZone: window.CFG?.timezone || 'Asia/Kolkata',
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date());
+  }
+  api('GET','/employees').then(resp => {
+    if (!resp?.success) return;
+    const sel = document.getElementById('force-emp-id');
+    (resp.data||[]).filter(e=>e.is_active).sort((a,b)=>a.first_name.localeCompare(b.first_name)).forEach(e => {
+      const o = document.createElement('option');
+      o.value = e.id;
+      o.textContent = `${e.first_name} ${e.last_name} (${e.employee_code})`;
+      sel.appendChild(o);
+    });
+  });
 }
 // Admin sees their own team (direct reports) only — no emp-filter
 if (Role.is('admin')) {
@@ -794,6 +865,19 @@ if (Role.is('accounts')) {
 // Only HR, Accounts, Super Admin can download attendance report — NOT admin
 if (Role.is('hr','accounts','super_admin')) {
   document.getElementById('download-tab').style.display = '';
+  document.getElementById('absent-tab').style.display = '';
+  // Populate absent report month/year dropdowns
+  (function initAbsentTab() {
+    const NOW = new Date();
+    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const abMonth = document.getElementById('ab-month');
+    const abYear  = document.getElementById('ab-year');
+    if (abMonth && !abMonth.options.length)
+      MONTHS.forEach((m,i) => abMonth.innerHTML += `<option value="${i+1}" ${i+1===NOW.getMonth()+1?'selected':''}>${m}</option>`);
+    if (abYear && !abYear.options.length)
+      for (let y = NOW.getFullYear(); y >= 2020; y--)
+        abYear.innerHTML += `<option value="${y}" ${y===NOW.getFullYear()?'selected':''}>${y}</option>`;
+  })();
   (function initDownloadTab() {
     const NOW = new Date();
     const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -1573,7 +1657,7 @@ async function confirmPunch() {
 async function doPunch(type) { openMapPunch(type); }
 
 function switchTab(name) {
-  ['calendar','summary','team','locations','regularize','download','import','odwfh','mark'].forEach(t => {
+  ['calendar','summary','team','locations','regularize','download','absent-report','import','odwfh','mark'].forEach(t => {
     const el = document.getElementById('tab-'+t);
     if (el) el.style.display = t === name ? '' : 'none';
 });
@@ -1585,6 +1669,7 @@ function switchTab(name) {
     'locations':"switchTab('locations')",
     'regularize':"switchTab('regularize')",
     'download': "switchTab('download')",
+    'absent-report':"switchTab('absent-report')",
     'import':   "switchTab('import')",
     'odwfh':    "switchTab('odwfh')",
     'mark':     "switchTab('mark')",
@@ -1594,6 +1679,7 @@ function switchTab(name) {
     b.classList.toggle('active', onclick === tabMap[name]);
   });
   if (name==='summary') loadSummary();
+  if (name==='absent-report') loadAbsentReport();
   if (name==='team') {
     const dateEl = document.getElementById('team-date');
     if (dateEl && !dateEl.value) {
@@ -2197,7 +2283,45 @@ async function actionReg(action) {
   if (data?.success) { toast(`Regularization ${action}d`); closeModal('approve-reg-modal'); loadRegularizations(); }
   else toast(data?.message||'Failed','error');
 }
-// download tab init moved to isAdminOrHR block above
+
+// ── HR Force Regularization ───────────────────────────────────────────────────
+async function submitForceRegularization() {
+  const empId    = document.getElementById('force-emp-id')?.value;
+  const date     = document.getElementById('force-date')?.value;
+  const reason   = document.getElementById('force-reason')?.value?.trim();
+  const punchIn  = document.getElementById('force-punch-in')?.value;
+  const punchOut = document.getElementById('force-punch-out')?.value;
+  const msgEl    = document.getElementById('force-reg-msg');
+
+  if (!empId || !date || !reason) {
+    msgEl.textContent = '⚠ Employee, date, and reason are required.';
+    msgEl.style.color = 'var(--red)';
+    return;
+  }
+
+  msgEl.textContent = 'Submitting…';
+  msgEl.style.color = 'var(--muted)';
+
+  const body = { employee_id: parseInt(empId), date, reason };
+  if (punchIn)  body.punch_in  = punchIn;
+  if (punchOut) body.punch_out = punchOut;
+
+  const data = await api('POST', '/attendance/force-regularize', body);
+  if (data?.success) {
+    toast(data.message || 'Force regularization submitted — sent to reporting manager', 'success');
+    msgEl.textContent = '✅ ' + (data.message || 'Submitted successfully');
+    msgEl.style.color = 'var(--green)';
+    // Reset form
+    document.getElementById('force-emp-id').value   = '';
+    document.getElementById('force-date').value     = '';
+    document.getElementById('force-reason').value   = '';
+    document.getElementById('force-punch-in').value = '';
+    document.getElementById('force-punch-out').value= '';
+  } else {
+    msgEl.textContent = '❌ ' + (data?.message || 'Failed');
+    msgEl.style.color = 'var(--red)';
+  }
+}
 
 async function downloadAttendanceExcel() {
   const month  = document.getElementById('dl-month').value;
@@ -2237,8 +2361,63 @@ async function downloadAttendanceExcel() {
 }
 
 
+// ── Absent Report ─────────────────────────────────────────────────────────────
+async function loadAbsentReport() {
+  const el     = document.getElementById('absent-report-content');
+  const month  = document.getElementById('ab-month')?.value || (new Date().getMonth() + 1);
+  const year   = document.getElementById('ab-year')?.value  || new Date().getFullYear();
+  const search = document.getElementById('ab-search')?.value?.trim() || '';
+  if (!el) return;
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const qs = `month=${month}&year=${year}${search ? '&search=' + encodeURIComponent(search) : ''}`;
+  const data = await api('GET', `/attendance/absent-report?${qs}`);
+  if (!data?.success || !data.data?.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📉</div><p>${search ? 'No records found for "'+search+'"' : 'No absent days found for this period.'}</p></div>`;
+    return;
+  }
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const monthLabel = MONTHS[parseInt(month)-1] + ' ' + year;
+  const totalAbsent = data.data.reduce((s,r) => s + r.absent_count, 0);
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 18px">
+        <div style="font-size:22px;font-weight:800;color:var(--text)">${data.count}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase">Employees</div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 18px">
+        <div style="font-size:22px;font-weight:800;color:var(--accent)">${data.working_days}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase">Working Days</div>
+      </div>
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:14px 18px">
+        <div style="font-size:22px;font-weight:800;color:#ef4444">${totalAbsent}</div>
+        <div style="font-size:11px;color:#b91c1c;font-weight:600;text-transform:uppercase">Total Absent Days</div>
+      </div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th>Code</th><th>Name</th><th>Department</th><th>Designation</th>
+        <th>Absent Days</th><th style="min-width:280px">Absent Dates</th>
+      </tr></thead>
+      <tbody>${data.data.map(r => `<tr>
+        <td style="font-weight:700;color:var(--accent)">${r.employee_code}</td>
+        <td>${r.name}</td>
+        <td style="font-size:12px;color:var(--muted)">${r.department||'—'}</td>
+        <td style="font-size:12px;color:var(--muted)">${r.designation||'—'}</td>
+        <td style="font-weight:800;color:${r.absent_count>5?'#ef4444':r.absent_count>2?'#f59e0b':'var(--text)'};text-align:center">
+          ${r.absent_count}
+        </td>
+        <td style="font-size:11px;color:var(--muted)">
+          ${r.absent_dates.map(d => {
+            const dt = new Date(d);
+            return `<span style="display:inline-block;margin:2px;padding:2px 8px;background:#fee2e2;color:#b91c1c;border-radius:6px;font-weight:600">${dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span>`;
+          }).join('') || '—'}
+        </td>
+      </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+}
+
 // ── OD Modal ──────────────────────────────────────────────────────────────────
-function openODModal() {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: window.CFG.timezone,
     year:'numeric', month:'2-digit', day:'2-digit'
   }).format(new Date());
