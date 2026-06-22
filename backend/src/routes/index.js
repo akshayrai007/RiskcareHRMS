@@ -98,6 +98,8 @@ router.post('/attendance/regularize',       authenticate, attCtrl.requestRegular
 router.get ('/attendance/regularizations',  authenticate, attCtrl.getRegularizations);
 router.post('/attendance/regularize/action',authenticate, attCtrl.actionRegularization);
 router.post('/attendance/force-regularize', authenticate, authorize('hr','super_admin'), attCtrl.forceRegularization);
+router.get ('/attendance/emp-absent-dates',  authenticate, authorize('hr','super_admin'), attCtrl.getEmpAbsentDates);
+router.post('/attendance/bulk-force-regularize', authenticate, authorize('hr','super_admin'), attCtrl.bulkForceRegularization);
 router.get ('/attendance/absent-report',    authenticate, authorize('hr','super_admin','admin','accounts'), attCtrl.getAbsentReport);
 
 // ── Attendance Bulk Import (Excel) — kept here for reference (defined above) ──
