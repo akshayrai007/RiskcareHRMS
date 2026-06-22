@@ -2599,3 +2599,195 @@ exports.getAbsentReport = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+// ── Get Employee Absent/Late Dates for a Month (for bulk force-regularize UI) ──
+exports.getEmpAbsentDates = async (req, res) => {
+  try {
+    const role = req.user.role;
+    if (!['hr','super_admin'].includes(role))
+      return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const empId = parseInt(req.query.employee_id);
+    const mon   = parseInt(req.query.month)  || new Date().getMonth() + 1;
+    const yr    = parseInt(req.query.year)   || new Date().getFullYear();
+
+    if (!empId) return res.status(400).json({ success: false, message: 'employee_id required' });
+
+    const numDays = new Date(yr, mon, 0).getDate();
+    const today   = new Date(); today.setHours(0,0,0,0);
+
+    // Holidays
+    const holidays = await db.query(
+      `SELECT TO_CHAR(date,'YYYY-MM-DD') AS ds FROM holidays
+       WHERE EXTRACT(MONTH FROM date)=$1 AND EXTRACT(YEAR FROM date)=$2`, [mon, yr]
+    );
+    const holSet = new Set(holidays.rows.map(h => h.ds));
+
+    // Weekly offs (Sunday + 2nd & 4th Saturday)
+    const weeklyOff = new Set();
+    for (let d = 1; d <= numDays; d++) {
+      const dt = new Date(yr, mon - 1, d);
+      const dow = dt.getDay();
+      if (dow === 0) { weeklyOff.add(d); continue; }
+      if (dow === 6) {
+        let satCount = 0;
+        for (let dd = 1; dd <= d; dd++)
+          if (new Date(yr, mon - 1, dd).getDay() === 6) satCount++;
+        if (satCount === 2 || satCount === 4) weeklyOff.add(d);
+      }
+    }
+
+    // Attendance records
+    const att = await db.query(
+      `SELECT TO_CHAR(date,'YYYY-MM-DD') AS ds, status, punch_in, punch_out,
+              regularization_status
+       FROM attendance
+       WHERE employee_id=$1
+         AND EXTRACT(MONTH FROM date)=$2
+         AND EXTRACT(YEAR FROM date)=$3`,
+      [empId, mon, yr]
+    );
+    const attMap = {};
+    for (const r of att.rows) attMap[r.ds] = r;
+
+    // Approved leaves
+    const leaves = await db.query(
+      `SELECT generate_series(start_date, end_date, '1 day'::interval)::date AS d
+       FROM leave_requests
+       WHERE employee_id=$1 AND status='approved'
+         AND EXTRACT(MONTH FROM start_date)=$2 AND EXTRACT(YEAR FROM start_date)=$3
+         OR (employee_id=$1 AND status='approved'
+             AND EXTRACT(MONTH FROM end_date)=$2 AND EXTRACT(YEAR FROM end_date)=$3)`,
+      [empId, mon, yr]
+    ).catch(() => ({ rows: [] }));
+    const leaveSet = new Set(leaves.rows.map(r => {
+      const d = new Date(r.d);
+      return `${yr}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }));
+
+    const days = [];
+    for (let d = 1; d <= numDays; d++) {
+      const ds  = `${yr}-${String(mon).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dt  = new Date(yr, mon - 1, d);
+      if (dt > today) continue;                         // skip future
+      if (holSet.has(ds) || weeklyOff.has(d)) continue; // skip holiday/off
+      if (leaveSet.has(ds)) continue;                   // skip approved leave
+
+      const rec = attMap[ds];
+      const status = rec?.status || 'absent';
+      const regStatus = rec?.regularization_status || null;
+
+      // Only include absent / late / half-day / missing_punch_out
+      if (!['absent','late','half-day','missing_punch_out'].includes(status)) continue;
+      // Skip already pending/approved regularizations
+      if (regStatus === 'pending' || regStatus === 'approved') continue;
+
+      days.push({
+        date:      ds,
+        status,
+        punch_in:  rec?.punch_in  || null,
+        punch_out: rec?.punch_out || null,
+        reg_status: regStatus
+      });
+    }
+
+    res.json({ success: true, data: days });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ── Bulk Force Regularization ──────────────────────────────────────────────────
+exports.bulkForceRegularization = async (req, res) => {
+  const client = await db.getClient();
+  try {
+    await client.query('BEGIN');
+    const actorRole = req.user.role;
+    if (!['hr','super_admin'].includes(actorRole))
+      return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const { employee_id, dates, reason, punch_in, punch_out } = req.body;
+    // dates: array of { date, punch_in?, punch_out? }
+    if (!employee_id || !Array.isArray(dates) || !dates.length || !reason)
+      return res.status(400).json({ success: false, message: 'employee_id, dates[], and reason are required' });
+
+    // Get employee
+    const empRes = await client.query(
+      `SELECT e.id, e.first_name, e.last_name, e.employee_code,
+              e.reporting_manager_id,
+              CONCAT(m.first_name,' ',m.last_name) AS manager_name,
+              m.id AS manager_id
+       FROM employees e
+       LEFT JOIN employees m ON e.reporting_manager_id = m.id
+       WHERE e.id=$1 AND e.is_active=true`, [employee_id]
+    );
+    if (!empRes.rows.length)
+      return res.status(404).json({ success: false, message: 'Employee not found' });
+    const emp = empRes.rows[0];
+
+    let successCount = 0;
+    const errors = [];
+
+    for (const entry of dates) {
+      const { date, punch_in: pi, punch_out: po } = entry;
+      if (!date) continue;
+      if (new Date(date) > new Date()) { errors.push(`${date}: future date`); continue; }
+
+      const usePunchIn  = pi  || punch_in  || null;
+      const usePunchOut = po  || punch_out || null;
+
+      try {
+        await client.query(
+          `INSERT INTO attendance(employee_id, date, status, regularization_status, regularization_reason,
+                                  regularization_punch_in, regularization_punch_out, regularization_requested_at)
+           VALUES($1,$2,
+             COALESCE((SELECT status FROM attendance WHERE employee_id=$1 AND date=$2),'absent'),
+             'pending',$3,$4,$5,NOW())
+           ON CONFLICT(employee_id, date) DO UPDATE
+             SET regularization_status       = 'pending',
+                 regularization_reason       = EXCLUDED.regularization_reason,
+                 regularization_punch_in     = EXCLUDED.regularization_punch_in,
+                 regularization_punch_out    = EXCLUDED.regularization_punch_out,
+                 regularization_requested_at = NOW()`,
+          [employee_id, date, `[HR Force] ${reason}`, usePunchIn, usePunchOut]
+        );
+        successCount++;
+      } catch (e) {
+        errors.push(`${date}: ${e.message}`);
+      }
+    }
+
+    // Notify manager
+    if (emp.manager_id && successCount > 0) {
+      const dateList = dates.map(d => d.date).join(', ');
+      await client.query(
+        `INSERT INTO notifications(employee_id, title, message, type)
+         VALUES($1,'📋 HR Forced Regularization',$2,'regularization')`,
+        [emp.manager_id,
+         `HR has forced attendance regularization for ${emp.first_name} ${emp.last_name} (${emp.employee_code}) on ${successCount} date(s): ${dateList}. Reason: ${reason}. Please review.`]
+      );
+    }
+    // Notify employee
+    if (successCount > 0) {
+      await client.query(
+        `INSERT INTO notifications(employee_id, title, message, type)
+         VALUES($1,'📋 Bulk Attendance Regularization Submitted',$2,'regularization')`,
+        [employee_id,
+         `HR has submitted attendance regularization for ${successCount} date(s). Pending approval from your reporting manager.`]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({
+      success: true,
+      submitted: successCount,
+      errors,
+      message: `${successCount} regularization(s) submitted for ${emp.first_name} ${emp.last_name}. Sent to manager: ${emp.manager_name || 'Not assigned'}.`
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  } finally { client.release(); }
+};
