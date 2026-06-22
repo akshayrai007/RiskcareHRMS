@@ -141,51 +141,51 @@
       </div>
     </div>
 
-  </div>
-</div>
-
-<!-- LEAVE SUMMARY TAB -->
-<div id="tab-leave-summary" style="display:none">
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title"><span class="card-title-icon">📊</span>Leave Summary — EL / SL / CL</div>
-      <div class="flex gap-2">
-        <input id="summary-search" class="form-control" style="width:240px" placeholder="Search by name or ID…" oninput="loadLeaveSummary()">
-        <select id="summary-year" class="form-control" style="width:110px" onchange="loadLeaveSummary()">
-        </select>
+    <!-- LEAVE SUMMARY TAB -->
+    <div id="tab-leave-summary" style="display:none">
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap;gap:10px">
+          <div class="card-title"><span class="card-title-icon">📊</span>Leave Summary — EL / SL / CL</div>
+          <div class="flex gap-2" style="flex-wrap:wrap">
+            <input id="summary-search" class="form-control" style="width:240px" placeholder="Search by name or ID…" oninput="loadLeaveSummary()">
+            <select id="summary-year" class="form-control" style="width:110px" onchange="loadLeaveSummary()">
+            </select>
+          </div>
+        </div>
+        <div id="leave-summary-content"><div class="loader"><div class="spinner"></div></div></div>
       </div>
     </div>
-    <div id="leave-summary-content"><div class="loader"><div class="spinner"></div></div></div>
-  </div>
-</div>
 
-<!-- LEAVE TRANSACTIONS TAB -->
-<div id="tab-leave-transactions" style="display:none">
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title"><span class="card-title-icon">🔄</span>Leave Transactions</div>
-      <div class="flex gap-2" style="flex-wrap:wrap">
-        <input id="txn-search" class="form-control" style="width:200px" placeholder="Search by name or ID…" oninput="loadLeaveTransactions()">
-        <select id="txn-type" class="form-control" style="width:130px" onchange="loadLeaveTransactions()">
-          <option value="">All Types</option>
-          <option value="EL">EL (Earned)</option>
-          <option value="SL">SL (Sick)</option>
-          <option value="CL">CL (Casual)</option>
-          <option value="OD">OD</option>
-          <option value="LWP">LWP</option>
-        </select>
-        <select id="txn-status" class="form-control" style="width:130px" onchange="loadLeaveTransactions()">
-          <option value="">All Status</option>
-          <option value="approved">Approved</option>
-          <option value="pending">Pending</option>
-          <option value="rejected">Rejected</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-        <select id="txn-year" class="form-control" style="width:110px" onchange="loadLeaveTransactions()">
-        </select>
+    <!-- LEAVE TRANSACTIONS TAB -->
+    <div id="tab-leave-transactions" style="display:none">
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap;gap:10px">
+          <div class="card-title"><span class="card-title-icon">🔄</span>Leave Transactions</div>
+          <div class="flex gap-2" style="flex-wrap:wrap">
+            <input id="txn-search" class="form-control" style="width:200px" placeholder="Search by name or ID…" oninput="loadLeaveTransactions()">
+            <select id="txn-type" class="form-control" style="width:130px" onchange="loadLeaveTransactions()">
+              <option value="">All Types</option>
+              <option value="EL">EL (Earned)</option>
+              <option value="SL">SL (Sick)</option>
+              <option value="CL">CL (Casual)</option>
+              <option value="OD">OD</option>
+              <option value="LWP">LWP</option>
+            </select>
+            <select id="txn-status" class="form-control" style="width:130px" onchange="loadLeaveTransactions()">
+              <option value="">All Status</option>
+              <option value="approved">Approved</option>
+              <option value="pending">Pending</option>
+              <option value="rejected">Rejected</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <select id="txn-year" class="form-control" style="width:110px" onchange="loadLeaveTransactions()">
+            </select>
+          </div>
+        </div>
+        <div id="leave-txn-content"><div class="loader"><div class="spinner"></div></div></div>
       </div>
     </div>
-    <div id="leave-txn-content"><div class="loader"><div class="spinner"></div></div></div>
+
   </div>
 </div>
 
@@ -841,29 +841,57 @@ async function loadLeaveSummary() {
     el.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><p>No data found.</p></div>';
     return;
   }
-  el.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr>
-      <th>Code</th><th>Name</th><th>Department</th><th>Designation</th>
-      <th>EL Alloc</th><th>EL Used</th><th>EL Avail</th>
-      <th>SL Alloc</th><th>SL Used</th><th>SL Avail</th>
-      <th>CL Alloc</th><th>CL Used</th><th>CL Avail</th>
-    </tr></thead>
-    <tbody>${data.data.map(r => `<tr>
-      <td style="font-weight:600">${r.employee_code}</td>
-      <td>${r.employee_name}</td>
-      <td>${r.department||'—'}</td>
-      <td>${r.designation||'—'}</td>
-      <td>${fmt.num(r.el_allocated)}</td>
-      <td style="color:var(--red)">${fmt.num(r.el_used)}</td>
-      <td style="color:var(--green);font-weight:700">${fmt.num(r.el_available)}</td>
-      <td>${fmt.num(r.sl_allocated)}</td>
-      <td style="color:var(--red)">${fmt.num(r.sl_used)}</td>
-      <td style="color:var(--green);font-weight:700">${fmt.num(r.sl_available)}</td>
-      <td>${fmt.num(r.cl_allocated)}</td>
-      <td style="color:var(--red)">${fmt.num(r.cl_used)}</td>
-      <td style="color:var(--green);font-weight:700">${fmt.num(r.cl_available)}</td>
-    </tr>`).join('')}
-    </tbody></table></div>`;
+  const XL = `border:1px solid #d1d5db`;
+  const XLH = `border:1px solid #9ca3af;background:#f0f4ff;font-weight:700;font-size:11px;padding:8px 10px;text-align:center;white-space:nowrap`;
+  const XLD = `border:1px solid #e5e7eb;padding:7px 10px;font-size:12px`;
+  el.innerHTML = `
+    <div style="overflow-x:auto;margin-top:4px">
+    <table style="border-collapse:collapse;width:100%;min-width:900px">
+      <thead>
+        <tr>
+          <th colspan="4" style="${XLH};background:#e8eaf6;border:1px solid #9fa8da"></th>
+          <th colspan="3" style="${XLH};background:#fce4ec;border:1px solid #f48fb1;color:#880e4f">📅 Earned Leave (EL)</th>
+          <th colspan="3" style="${XLH};background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20">🤒 Sick Leave (SL)</th>
+          <th colspan="3" style="${XLH};background:#fff8e1;border:1px solid #ffe082;color:#e65100">📋 Casual Leave (CL)</th>
+        </tr>
+        <tr>
+          <th style="${XLH}">Emp Code</th>
+          <th style="${XLH}">Employee Name</th>
+          <th style="${XLH}">Department</th>
+          <th style="${XLH}">Designation</th>
+          <th style="${XLH};background:#fce4ec">Allocated</th>
+          <th style="${XLH};background:#fce4ec">Used</th>
+          <th style="${XLH};background:#fce4ec">Available</th>
+          <th style="${XLH};background:#e8f5e9">Allocated</th>
+          <th style="${XLH};background:#e8f5e9">Used</th>
+          <th style="${XLH};background:#e8f5e9">Available</th>
+          <th style="${XLH};background:#fff8e1">Allocated</th>
+          <th style="${XLH};background:#fff8e1">Used</th>
+          <th style="${XLH};background:#fff8e1">Available</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.data.map((r, i) => `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
+          <td style="${XLD};font-weight:700;color:var(--accent)">${r.employee_code}</td>
+          <td style="${XLD};font-weight:600">${r.employee_name}</td>
+          <td style="${XLD};color:var(--muted)">${r.department||'—'}</td>
+          <td style="${XLD};color:var(--muted)">${r.designation||'—'}</td>
+          <td style="${XLD};text-align:center">${fmt.num(r.el_allocated)}</td>
+          <td style="${XLD};text-align:center;color:#c62828;font-weight:600">${fmt.num(r.el_used)}</td>
+          <td style="${XLD};text-align:center;color:#2e7d32;font-weight:700">${fmt.num(r.el_available)}</td>
+          <td style="${XLD};text-align:center">${fmt.num(r.sl_allocated)}</td>
+          <td style="${XLD};text-align:center;color:#c62828;font-weight:600">${fmt.num(r.sl_used)}</td>
+          <td style="${XLD};text-align:center;color:#2e7d32;font-weight:700">${fmt.num(r.sl_available)}</td>
+          <td style="${XLD};text-align:center">${fmt.num(r.cl_allocated)}</td>
+          <td style="${XLD};text-align:center;color:#c62828;font-weight:600">${fmt.num(r.cl_used)}</td>
+          <td style="${XLD};text-align:center;color:#2e7d32;font-weight:700">${fmt.num(r.cl_available)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;padding:4px 2px">
+      Showing ${data.data.length} employee(s) · Year ${yr}
+    </div>
+    </div>`;
 }
 
 // ── Leave Transactions (individual search for HR) ────────────────────────────
@@ -880,25 +908,52 @@ async function loadLeaveTransactions() {
     el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔄</div><p>No transactions found.</p></div>';
     return;
   }
-  el.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr>
-      <th>Code</th><th>Name</th><th>Dept</th>
-      <th>Type</th><th>From</th><th>To</th><th>Days</th>
-      <th>Reason</th><th>Status</th><th>Applied</th>
-    </tr></thead>
-    <tbody>${data.data.map(r => `<tr>
-      <td style="font-weight:600">${r.employee_code}</td>
-      <td>${r.employee_name}</td>
-      <td>${r.department||'—'}</td>
-      <td><span class="badge" style="background:var(--accent-l);color:var(--accent)">${r.leave_type_code}</span></td>
-      <td>${fmt.date(r.from_date)}</td>
-      <td>${fmt.date(r.to_date)}</td>
-      <td style="font-weight:700">${r.days_requested}${r.is_half_day?' <span style="color:#7e22ce;font-size:10px">½</span>':''}</td>
-      <td style="max-width:200px;word-break:break-word;font-size:12px">${r.reason||'—'}</td>
-      <td><span class="badge badge-${r.status}">${r.status}</span></td>
-      <td style="font-size:11px;color:var(--muted)">${fmt.date(r.applied_at)}</td>
-    </tr>`).join('')}
-    </tbody></table></div>`;
+  const statusColors = {
+    approved:  'background:#dcfce7;color:#166534',
+    pending:   'background:#fef9c3;color:#854d0e',
+    rejected:  'background:#fee2e2;color:#991b1b',
+    cancelled: 'background:#f3f4f6;color:#6b7280',
+  };
+  const XLH = `border:1px solid #9ca3af;background:#f0f4ff;font-weight:700;font-size:11px;padding:8px 10px;white-space:nowrap`;
+  const XLD = `border:1px solid #e5e7eb;padding:7px 10px;font-size:12px`;
+  el.innerHTML = `
+    <div style="overflow-x:auto;margin-top:4px">
+    <table style="border-collapse:collapse;width:100%;min-width:800px">
+      <thead>
+        <tr>
+          <th style="${XLH}">Emp Code</th>
+          <th style="${XLH}">Employee Name</th>
+          <th style="${XLH}">Department</th>
+          <th style="${XLH}">Leave Type</th>
+          <th style="${XLH}">From Date</th>
+          <th style="${XLH}">To Date</th>
+          <th style="${XLH}">Days</th>
+          <th style="${XLH}">Half Day</th>
+          <th style="${XLH}">Reason</th>
+          <th style="${XLH}">Status</th>
+          <th style="${XLH}">Applied On</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.data.map((r, i) => `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
+          <td style="${XLD};font-weight:700;color:var(--accent)">${r.employee_code}</td>
+          <td style="${XLD};font-weight:600">${r.employee_name}</td>
+          <td style="${XLD};color:var(--muted)">${r.department||'—'}</td>
+          <td style="${XLD}"><span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;background:#e0e7ff;color:#3730a3">${r.leave_type_name||r.leave_type_code} (${r.leave_type_code})</span></td>
+          <td style="${XLD}">${fmt.date(r.from_date)}</td>
+          <td style="${XLD}">${fmt.date(r.to_date)}</td>
+          <td style="${XLD};text-align:center;font-weight:700">${r.days_requested}</td>
+          <td style="${XLD};text-align:center">${r.is_half_day?'<span style="color:#7e22ce;font-weight:700">½ Yes</span>':'No'}</td>
+          <td style="${XLD};max-width:220px;word-break:break-word;color:var(--muted)">${r.reason||'—'}</td>
+          <td style="${XLD};text-align:center"><span style="padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;${statusColors[r.status]||statusColors.cancelled}">${r.status.charAt(0).toUpperCase()+r.status.slice(1)}</span></td>
+          <td style="${XLD};white-space:nowrap;color:var(--muted)">${fmt.date(r.applied_at)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;padding:4px 2px">
+      ${data.count} transaction(s) · Year ${yr}
+    </div>
+    </div>`;
 }
 
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
