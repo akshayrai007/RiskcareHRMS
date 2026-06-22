@@ -720,7 +720,13 @@ function renderBalance(data) {
     el.innerHTML = '<div class="empty-state" style="padding:20px"><p>No leave balances found.</p></div>';
     return;
   }
-  const items = data.filter(b => ['EL','SL','CL'].includes(b.code));
+  // Always show EL/SL/CL — use API data if present, default to 0
+  const byCode = {};
+  (data||[]).forEach(b => { byCode[b.code] = b; });
+  const items = ['EL','SL','CL'].map(code => byCode[code] || {
+    code, name: code==='EL'?'Earned Leave':code==='SL'?'Sick Leave':'Casual Leave',
+    allocated:0, used:0, pending:0, carry_forward:0, available:0
+  });
   const cards = items.map(b => {
     const avail = parseFloat(b.available||0);
     const alloc = parseFloat(b.allocated||0) + parseFloat(b.carry_forward||0);

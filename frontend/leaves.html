@@ -360,34 +360,49 @@ Promise.all([loadBalance(), loadLeaveTypes(), loadMyLeaves(), loadManagerInfo()]
 
 async function loadBalance() {
   const data = await api('GET', '/leave/balance');
-
-  if (!data?.success) {
-    document.getElementById('balance-cards').innerHTML =
-      '<div style="grid-column:span 4;text-align:center;color:#e53935;padding:24px">⚠ Could not load leave balances. Please refresh.</div>';
-    return;
-  }
-  balanceData = data.data;
   const el = document.getElementById('balance-cards');
 
-  // Show provisional banner for contractual employees still under 6 months
+  if (!data?.success) {
+    el.innerHTML = '<div style="grid-column:span 4;text-align:center;color:#e53935;padding:24px">⚠ Could not load leave balances. Please refresh.</div>';
+    return;
+  }
+  balanceData = data.data || [];
+
+  // Show provisional banner
   if (data.is_provisional && data.provision_ends) {
     const banner = document.createElement('div');
     banner.style.cssText = 'grid-column:span 4;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:12px 16px;margin-bottom:8px;color:#795548;font-size:13px;';
-    banner.innerHTML = `⏳ <strong>Provisional Period</strong> — You are on provisional leave (PL only) until <strong>${data.provision_ends}</strong>. EL, CL &amp; SL will be available once your 6-month period is complete.`;
+    banner.innerHTML = `⏳ <strong>Provisional Period</strong> — PL only until <strong>${data.provision_ends}</strong>. EL, CL &amp; SL available after 6 months.`;
     el.parentNode.insertBefore(banner, el);
   }
 
-  // Show all leave types (including zero balance) so EL/SL/CL always appear
-  const items = balanceData;
+  // Always show EL, SL, CL cards — look up values from API, default to 0
+  const ALWAYS_SHOW = [
+    { code: 'EL', name: 'Earned Leave' },
+    { code: 'SL', name: 'Sick Leave' },
+    { code: 'CL', name: 'Casual Leave' },
+  ];
 
-  // Build regular leave balance cards
-  let cardsHtml = items.map(b => {
+  // Index API data by code
+  const byCode = {};
+  balanceData.forEach(b => { byCode[b.code] = b; });
+
+  // Build from whichever codes the API returned, but guarantee EL/SL/CL
+  const apiCodes = balanceData.map(b => b.code);
+  const showCodes = [...new Set([...ALWAYS_SHOW.map(x => x.code), ...apiCodes])];
+  const items = showCodes.map(code => {
+    const api = byCode[code];
+    return api || { code, name: ALWAYS_SHOW.find(x=>x.code===code)?.name || code, allocated:0, used:0, pending:0, carry_forward:0, available:0 };
+  });
+
+  const cardsHtml = items.map(b => {
     const avail = parseFloat(b.available||0);
-    const alloc = parseFloat(b.allocated||0)+parseFloat(b.carry_forward||0);
+    const alloc = parseFloat(b.allocated||0) + parseFloat(b.carry_forward||0);
     const used  = parseFloat(b.used||0);
     const pend  = parseFloat(b.pending||0);
-    const pct   = alloc>0 ? Math.max(0,Math.min(100,(used/alloc)*100)) : 0;
-    return `<div class="bal-card">
+    const pct   = alloc > 0 ? Math.max(0, Math.min(100, (used/alloc)*100)) : 0;
+    const isZero = alloc === 0 && used === 0;
+    return `<div class="bal-card" style="${isZero?'opacity:.7':''}">
       <div class="bal-code">${b.code}</div>
       <div class="bal-val">${fmt.num(avail)}</div>
       <div class="bal-meta">${b.name}</div>
@@ -395,17 +410,12 @@ async function loadBalance() {
         <span style="color:var(--green)">Used: ${fmt.num(used)}</span> / Alloc: ${fmt.num(alloc)}
         ${pend>0?`<span style="color:var(--yellow)"> · Pending: ${fmt.num(pend)}</span>`:''}
         ${parseFloat(b.carry_forward||0)>0?`<br><span style="color:var(--purple)">Carry Fwd: ${fmt.num(b.carry_forward)}</span>`:''}
+        ${isZero?`<br><span style="color:var(--muted);font-size:10px">Balance credited on 1st of month</span>`:''}
       </div>
       <div class="bal-bar"><div class="bal-fill" style="width:${pct}%"></div></div>
     </div>`;
   }).join('');
 
-  if (!cardsHtml) {
-    el.innerHTML = `<div style="grid-column:span 4;text-align:center;color:var(--muted);padding:24px">
-      No leave balances yet. Balances are credited automatically on the 1st of every month.
-    </div>`;
-    return;
-  }
   el.innerHTML = cardsHtml;
 }
 
