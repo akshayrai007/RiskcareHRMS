@@ -526,10 +526,11 @@
       <div class="card">
         <div class="card-header" style="flex-wrap:wrap;gap:10px">
           <div class="card-title"><span class="card-title-icon">📉</span>Absent Days Report</div>
-          <div class="flex gap-2" style="flex-wrap:wrap">
-            <select id="ab-month" class="form-control" style="width:140px" onchange="loadAbsentReport()"></select>
-            <select id="ab-year"  class="form-control" style="width:95px"  onchange="loadAbsentReport()"></select>
-            <input  id="ab-search" class="form-control" style="width:200px" placeholder="Search by name or ID…" oninput="loadAbsentReport()">
+          <div class="flex gap-2" style="flex-wrap:wrap;align-items:center">
+            <select id="ab-month" class="form-control" style="width:130px" onchange="loadAbsentReport()"></select>
+            <select id="ab-year"  class="form-control" style="width:90px"  onchange="loadAbsentReport()"></select>
+            <input  id="ab-search" class="form-control" style="width:180px" placeholder="Search by name or ID…" oninput="loadAbsentReport()">
+            <button class="btn btn-outline btn-sm" onclick="downloadAbsentReportCSV()">⬇ Download Excel</button>
           </div>
         </div>
         <div id="absent-report-content"><div class="loader"><div class="spinner"></div></div></div>
@@ -2323,6 +2324,8 @@ async function downloadAttendanceExcel() {
 
 
 // ── Absent Report ─────────────────────────────────────────────────────────────
+let _absentReportData = null;
+
 async function loadAbsentReport() {
   const el     = document.getElementById('absent-report-content');
   const month  = document.getElementById('ab-month')?.value || (new Date().getMonth() + 1);
@@ -2333,49 +2336,89 @@ async function loadAbsentReport() {
   const qs = `month=${month}&year=${year}${search ? '&search=' + encodeURIComponent(search) : ''}`;
   const data = await api('GET', `/attendance/absent-report?${qs}`);
   if (!data?.success || !data.data?.length) {
+    _absentReportData = null;
     el.innerHTML = `<div class="empty-state"><div class="empty-icon">📉</div><p>${search ? 'No records found for "'+search+'"' : 'No absent days found for this period.'}</p></div>`;
     return;
   }
+  _absentReportData = data;
   const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const monthLabel = MONTHS[parseInt(month)-1] + ' ' + year;
   const totalAbsent = data.data.reduce((s,r) => s + r.absent_count, 0);
+  const XLH = `border:1px solid #9ca3af;background:#f0f4ff;font-weight:700;font-size:11px;padding:8px 10px;white-space:nowrap`;
+  const XLD = `border:1px solid #e5e7eb;padding:7px 10px;font-size:12px;vertical-align:top`;
+
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 18px">
-        <div style="font-size:22px;font-weight:800;color:var(--text)">${data.count}</div>
-        <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase">Employees</div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-align:center">
+        <div style="font-size:28px;font-weight:800;color:var(--accent)">${data.count}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-top:4px">Employees</div>
       </div>
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 18px">
-        <div style="font-size:22px;font-weight:800;color:var(--accent)">${data.working_days}</div>
-        <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase">Working Days</div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;text-align:center">
+        <div style="font-size:28px;font-weight:800;color:var(--accent)">${data.working_days}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-top:4px">Working Days in ${monthLabel}</div>
       </div>
-      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:14px 18px">
-        <div style="font-size:22px;font-weight:800;color:#ef4444">${totalAbsent}</div>
-        <div style="font-size:11px;color:#b91c1c;font-weight:600;text-transform:uppercase">Total Absent Days</div>
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:14px 18px;text-align:center">
+        <div style="font-size:28px;font-weight:800;color:#ef4444">${totalAbsent}</div>
+        <div style="font-size:11px;color:#b91c1c;font-weight:700;text-transform:uppercase;margin-top:4px">Total Absent Days</div>
       </div>
     </div>
-    <div class="table-wrap"><table>
-      <thead><tr>
-        <th>Code</th><th>Name</th><th>Department</th><th>Designation</th>
-        <th>Absent Days</th><th style="min-width:280px">Absent Dates</th>
-      </tr></thead>
-      <tbody>${data.data.map(r => `<tr>
-        <td style="font-weight:700;color:var(--accent)">${r.employee_code}</td>
-        <td>${r.name}</td>
-        <td style="font-size:12px;color:var(--muted)">${r.department||'—'}</td>
-        <td style="font-size:12px;color:var(--muted)">${r.designation||'—'}</td>
-        <td style="font-weight:800;color:${r.absent_count>5?'#ef4444':r.absent_count>2?'#f59e0b':'var(--text)'};text-align:center">
-          ${r.absent_count}
-        </td>
-        <td style="font-size:11px;color:var(--muted)">
-          ${r.absent_dates.map(d => {
-            const dt = new Date(d);
-            return `<span style="display:inline-block;margin:2px;padding:2px 8px;background:#fee2e2;color:#b91c1c;border-radius:6px;font-weight:600">${dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span>`;
-          }).join('') || '—'}
-        </td>
-      </tr>`).join('')}
+    <div style="overflow-x:auto">
+    <table id="absent-report-table" style="border-collapse:collapse;width:100%;min-width:700px">
+      <thead>
+        <tr>
+          <th style="${XLH}">Emp Code</th>
+          <th style="${XLH}">Employee Name</th>
+          <th style="${XLH}">Department</th>
+          <th style="${XLH}">Designation</th>
+          <th style="${XLH};text-align:center">Absent Days</th>
+          <th style="${XLH};min-width:300px">Absent Dates</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.data.map((r, i) => `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
+          <td style="${XLD};font-weight:700;color:var(--accent)">${r.employee_code}</td>
+          <td style="${XLD};font-weight:600">${r.name}</td>
+          <td style="${XLD};color:var(--muted)">${r.department||'—'}</td>
+          <td style="${XLD};color:var(--muted)">${r.designation||'—'}</td>
+          <td style="${XLD};text-align:center;font-weight:800;font-size:16px;color:${r.absent_count>5?'#ef4444':r.absent_count>2?'#f59e0b':'var(--text)'}">${r.absent_count}</td>
+          <td style="${XLD}">
+            ${r.absent_dates.map(d => {
+              const dt = new Date(d);
+              return `<span style="display:inline-block;margin:2px;padding:2px 8px;background:#fee2e2;color:#b91c1c;border-radius:6px;font-weight:600;font-size:11px">${dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span>`;
+            }).join('') || '—'}
+          </td>
+        </tr>`).join('')}
       </tbody>
-    </table></div>`;
+    </table>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">${data.count} employee(s) · ${monthLabel} · ${data.working_days} working days</div>
+    </div>`;
+}
+
+function downloadAbsentReportCSV() {
+  const tbl = document.getElementById('absent-report-table');
+  if (!tbl || !_absentReportData) { toast('Load the report first','error'); return; }
+  const month = document.getElementById('ab-month')?.value || (new Date().getMonth()+1);
+  const year  = document.getElementById('ab-year')?.value  || new Date().getFullYear();
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const mLabel = MONTHS[parseInt(month)-1];
+
+  // Build CSV with dates as comma-separated in last column
+  let csv = '"Emp Code","Employee Name","Department","Designation","Absent Days","Absent Dates"\n';
+  for (const r of _absentReportData.data) {
+    const dates = r.absent_dates.map(d => new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})).join(', ');
+    csv += `"${r.employee_code}","${r.name}","${r.department||''}","${r.designation||''}","${r.absent_count}","${dates}"\n`;
+  }
+  // Add summary row
+  csv += `\n"Total",,,,"${_absentReportData.data.reduce((s,r)=>s+r.absent_count,0)}","Working days: ${_absentReportData.working_days}"\n`;
+
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(blob),
+    download: `Absent_Report_${mLabel}_${year}.csv`
+  });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  toast('Absent report downloaded ✅');
 }
 
 // ── OD Modal ──────────────────────────────────────────────────────────────────

@@ -1010,7 +1010,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
    ═══════════════════════════════════════════════════════════════════ */
 .bal-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   margin-bottom: 0;
   padding: 0 0 4px;

@@ -146,10 +146,11 @@
       <div class="card">
         <div class="card-header" style="flex-wrap:wrap;gap:10px">
           <div class="card-title"><span class="card-title-icon">📊</span>Leave Summary — EL / SL / CL</div>
-          <div class="flex gap-2" style="flex-wrap:wrap">
-            <input id="summary-search" class="form-control" style="width:240px" placeholder="Search by name or ID…" oninput="loadLeaveSummary()">
-            <select id="summary-year" class="form-control" style="width:110px" onchange="loadLeaveSummary()">
+          <div class="flex gap-2" style="flex-wrap:wrap;align-items:center">
+            <input id="summary-search" class="form-control" style="width:220px" placeholder="Search by name or ID…" oninput="loadLeaveSummary()">
+            <select id="summary-year" class="form-control" style="width:100px" onchange="loadLeaveSummary()">
             </select>
+            <button class="btn btn-outline btn-sm" onclick="downloadLeaveSummaryExcel()">⬇ Download Excel</button>
           </div>
         </div>
         <div id="leave-summary-content"><div class="loader"><div class="spinner"></div></div></div>
@@ -161,8 +162,8 @@
       <div class="card">
         <div class="card-header" style="flex-wrap:wrap;gap:10px">
           <div class="card-title"><span class="card-title-icon">🔄</span>Leave Transactions</div>
-          <div class="flex gap-2" style="flex-wrap:wrap">
-            <input id="txn-search" class="form-control" style="width:200px" placeholder="Search by name or ID…" oninput="loadLeaveTransactions()">
+          <div class="flex gap-2" style="flex-wrap:wrap;align-items:center">
+            <input id="txn-search" class="form-control" style="width:180px" placeholder="Search by name or ID…" oninput="loadLeaveTransactions()">
             <select id="txn-type" class="form-control" style="width:130px" onchange="loadLeaveTransactions()">
               <option value="">All Types</option>
               <option value="EL">EL (Earned)</option>
@@ -178,8 +179,9 @@
               <option value="rejected">Rejected</option>
               <option value="cancelled">Cancelled</option>
             </select>
-            <select id="txn-year" class="form-control" style="width:110px" onchange="loadLeaveTransactions()">
+            <select id="txn-year" class="form-control" style="width:100px" onchange="loadLeaveTransactions()">
             </select>
+            <button class="btn btn-outline btn-sm" onclick="downloadLeaveTransactionsExcel()">⬇ Download Excel</button>
           </div>
         </div>
         <div id="leave-txn-content"><div class="loader"><div class="spinner"></div></div></div>
@@ -956,6 +958,43 @@ async function loadLeaveTransactions() {
       ${data.count} transaction(s) · Year ${yr}
     </div>
     </div>`;
+}
+
+
+// ── Excel Download Helpers ────────────────────────────────────────────────────
+function tableToCSV(tableEl) {
+  const rows = [...tableEl.querySelectorAll('tr')];
+  return rows.map(r =>
+    [...r.querySelectorAll('th,td')].map(c => {
+      const t = c.innerText.replace(/"/g, '""').replace(/\n/g, ' ').trim();
+      return `"${t}"`;
+    }).join(',')
+  ).join('\n');
+}
+
+function downloadCSV(csv, filename) {
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(blob), download: filename
+  });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+function downloadLeaveSummaryExcel() {
+  const tbl = document.querySelector('#leave-summary-content table');
+  if (!tbl) { toast('No data to download','error'); return; }
+  const yr = document.getElementById('summary-year')?.value || new Date().getFullYear();
+  downloadCSV(tableToCSV(tbl), `Leave_Summary_${yr}.csv`);
+  toast('Leave Summary downloaded ✅');
+}
+
+function downloadLeaveTransactionsExcel() {
+  const tbl = document.querySelector('#leave-txn-content table');
+  if (!tbl) { toast('No data to download','error'); return; }
+  const yr = document.getElementById('txn-year')?.value || new Date().getFullYear();
+  downloadCSV(tableToCSV(tbl), `Leave_Transactions_${yr}.csv`);
+  toast('Leave Transactions downloaded ✅');
 }
 
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
