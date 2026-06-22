@@ -448,7 +448,8 @@ async function loadBalance() {
     el.parentNode.insertBefore(banner, el);
   }
 
-  const items = balanceData.filter(b => parseFloat(b.allocated||0) > 0 || parseFloat(b.available||0) > 0);
+  // Show all leave types (including zero balance) so EL/SL/CL always appear
+  const items = balanceData;
 
   // Build regular leave balance cards
   let cardsHtml = items.map(b => {

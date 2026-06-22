@@ -616,11 +616,23 @@ exports.getBalance = async (req, res) => {
       : `AND lt.code IN ('EL','CL','SL','OD','LWP')`;
 
     const result = await db.query(
-      `SELECT lb.*, lt.name, lt.code, lt.days_allowed,
-              GREATEST(0, lb.allocated + lb.carry_forward - lb.used - lb.pending) AS available
-       FROM leave_balances lb
-       JOIN leave_types lt ON lb.leave_type_id = lt.id
-       WHERE lb.employee_id=$1 AND lb.year=$2
+      `SELECT
+         lt.id AS leave_type_id,
+         lt.name, lt.code, lt.days_allowed,
+         COALESCE(lb.allocated,     0) AS allocated,
+         COALESCE(lb.used,          0) AS used,
+         COALESCE(lb.pending,       0) AS pending,
+         COALESCE(lb.carry_forward, 0) AS carry_forward,
+         GREATEST(0,
+           COALESCE(lb.allocated,0) + COALESCE(lb.carry_forward,0)
+           - COALESCE(lb.used,0) - COALESCE(lb.pending,0)
+         ) AS available
+       FROM leave_types lt
+       LEFT JOIN leave_balances lb
+         ON lb.leave_type_id = lt.id
+        AND lb.employee_id = $1
+        AND lb.year = $2
+       WHERE lt.is_active = true
          ${codeFilter}
        ORDER BY lt.code`, [empId, year]
     );
