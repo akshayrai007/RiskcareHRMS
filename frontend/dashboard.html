@@ -581,10 +581,9 @@ loadNotifBadge();
 setInterval(loadNotifBadge, 30000);
 
 async function loadDashboard() {
-  const [dash, balance, compoff, holidays, feed, birthdays, anniversaries] = await Promise.all([
+  const [dash, balance, holidays, feed, birthdays, anniversaries] = await Promise.all([
     api('GET', '/dashboard'),
     api('GET', '/leave/balance'),
-    api('GET', '/compoff/balance').catch(() => null),
     api('GET', '/holidays?year=' + today.getFullYear()),
     api('GET', '/announcements/feed'),
     api('GET', '/birthdays/upcoming'),
@@ -607,7 +606,7 @@ async function loadDashboard() {
 
   // Leave balance — clear spinner if API failed
   if (balance?.success) {
-    renderBalance(balance.data, compoff?.data || null);
+    renderBalance(balance.data);
   } else {
     document.getElementById('balance-cards').innerHTML =
       `<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center">
@@ -715,7 +714,7 @@ function renderDash(d) {
     </div>`).join('');
 }
 
-function renderBalance(data, compoffData) {
+function renderBalance(data) {
   const el = document.getElementById('balance-cards');
   if (!data?.length) {
     el.innerHTML = '<div class="empty-state" style="padding:20px"><p>No leave balances found.</p></div>';
@@ -735,20 +734,6 @@ function renderBalance(data, compoffData) {
       <div class="bal-meta" style="font-size:10px">Used ${fmt.num(used)} / ${fmt.num(alloc)}</div>
     </div>`;
   });
-
-  // Append COMPOFF card — always show (use 0 values if API returned nothing)
-  const coAvail = parseFloat(compoffData?.available || 0);
-  const coTotal = parseFloat(compoffData?.total_credited || 0);
-  const coUsed  = parseFloat(compoffData?.used || 0);
-  const coPct   = coTotal > 0 ? Math.max(0, Math.min(100, (coUsed/coTotal)*100)) : 0;
-  const coColor = (window.CFG && window.CFG.primaryColor) ? window.CFG.primaryColor : '#ef4444';
-  cards.push(`<div class="bal-card" style="border-color:${coColor}">
-    <div class="bal-code" style="color:${coColor}">COMPOFF</div>
-    <div class="bal-val" style="font-size:30px;margin:4px 0 2px">${fmt.num(coAvail)}</div>
-    <div class="bal-meta" style="font-size:11px">Compensatory Off</div>
-    <div class="bal-bar" style="margin:8px 0 5px"><div class="bal-fill" style="width:${coPct}%;background:${coColor}"></div></div>
-    <div class="bal-meta" style="font-size:10px">Used ${fmt.num(coUsed)} / Earned: ${fmt.num(coTotal)}</div>
-  </div>`);
 
   el.innerHTML = `<div class="bal-grid" style="padding:4px 0 0">${cards.join('')}</div>`;
 }

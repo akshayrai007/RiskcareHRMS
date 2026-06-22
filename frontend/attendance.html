@@ -272,7 +272,6 @@
       <button class="tab-btn active" onclick="switchTab('calendar')">📅 My Calendar</button>
       <button class="tab-btn" onclick="switchTab('summary')">📊 Summary</button>
       <button class="tab-btn" id="team-tab" style="display:none" onclick="switchTab('team')">👥 Team Today</button>
-      <button class="tab-btn" id="loc-tab"  style="display:none" onclick="switchTab('locations')">🗺 Location Map</button>
       <button class="tab-btn" id="reg-tab"  style="display:none" onclick="switchTab('regularize')">🔄 Regularizations</button>
       <button class="tab-btn" id="odwfh-tab" onclick="switchTab('odwfh')">🚗 My OD/WFH</button>
       <button class="tab-btn" id="download-tab" style="display:none" onclick="switchTab('download')">⬇ Download Attendance</button>
@@ -391,29 +390,6 @@
     </div>
 
     <!-- LOCATION MAP TAB -->
-    <div id="tab-locations" style="display:none">
-      <div class="card">
-        <div class="card-header" style="flex-wrap:wrap;gap:12px">
-          <div class="card-title">📍 Team Punch Locations</div>
-          <div class="flex gap-2">
-            <input type="date" id="loc-date" class="form-control" style="width:160px">
-            <button class="btn btn-primary btn-sm" onclick="loadLocationMap()">Load</button>
-          </div>
-        </div>
-        <div id="loc-map" style="width:100%;height:420px;border-radius:12px;border:1.5px solid var(--border);margin-bottom:16px"></div>
-        <div id="loc-legend" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;font-size:12px;font-weight:600;color:var(--muted)">
-          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:50%;background:#22a855;display:inline-block"></span>Present</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Late</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:50%;background:#ef4444;display:inline-block"></span>Absent/No GPS</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:50%;background:var(--cfg-accent);display:inline-block"></span>Office Location</span>
-        </div>
-        <div class="table-wrap"><table>
-          <thead><tr><th>Employee</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Hours</th><th>Location</th></tr></thead>
-          <tbody id="loc-tbody"></tbody>
-        </table></div>
-      </div>
-    </div>
-
     <!-- REGULARIZATIONS TAB -->
     <div id="tab-regularize" style="display:none">
       <div class="card">
@@ -815,7 +791,6 @@ document.getElementById('reg-tab').style.display = '';
 
 if (Role.isManagerUp() || Role.is('tl')) {
   document.getElementById('team-tab').style.display = '';
-  document.getElementById('loc-tab').style.display = '';
   document.getElementById('reg-status-filter').style.display = '';
   document.getElementById('reg-filter-label').style.display = '';
 }
@@ -823,7 +798,6 @@ if (Role.isManagerUp() || Role.is('tl')) {
 if (Role.is('hr','super_admin')) {
   document.getElementById('emp-filter').style.display = '';
   document.getElementById('team-tab').style.display = '';
-  document.getElementById('loc-tab').style.display = '';
   document.getElementById('reg-status-filter').style.display = '';
   document.getElementById('reg-filter-label').style.display = '';
   loadEmployeeFilter();
@@ -853,7 +827,6 @@ if (Role.is('hr','super_admin')) {
 // Admin sees their own team (direct reports) only — no emp-filter
 if (Role.is('admin')) {
   document.getElementById('team-tab').style.display = '';
-  document.getElementById('loc-tab').style.display = '';
   document.getElementById('reg-status-filter').style.display = '';
   document.getElementById('reg-filter-label').style.display = '';
 }
@@ -998,7 +971,6 @@ async function checkTodayPunch() {
   else if (!todayRec.punch_out) {
     outBtn.style.display = 'flex';
     // FIX: wrap in catch so a slow/failed API call never silently skips tracking
-    startMovementTracking().catch(e => console.warn('[Tracking] page-load restart failed:', e));
   }
 }
 
@@ -1638,15 +1610,6 @@ async function confirmPunch() {
   if (data?.success) {
     toast(data.message);
     document.getElementById('map-punch-backdrop').classList.remove('open');
-    // ── GPS movement tracking ──────────────────────────────────────────────
-    // FIX: await tracking start fully before reloading — reload was racing SW registration
-    if (_punchType === 'in') {
-      await startMovementTracking();
-      // Force an immediate GPS ping so employee appears in movement summary right away
-      await _forceImmediatePing();
-    } else {
-      await stopMovementTracking();
-    }
     location.reload();
   } else {
     toast(data?.message || 'Failed', 'error');
@@ -1657,7 +1620,7 @@ async function confirmPunch() {
 async function doPunch(type) { openMapPunch(type); }
 
 function switchTab(name) {
-  ['calendar','summary','team','locations','regularize','download','absent-report','import','odwfh','mark'].forEach(t => {
+  ['calendar','summary','team','regularize','download','absent-report','import','odwfh','mark'].forEach(t => {
     const el = document.getElementById('tab-'+t);
     if (el) el.style.display = t === name ? '' : 'none';
 });
@@ -1666,7 +1629,6 @@ function switchTab(name) {
     'calendar': "switchTab('calendar')",
     'summary':  "switchTab('summary')",
     'team':     "switchTab('team')",
-    'locations':"switchTab('locations')",
     'regularize':"switchTab('regularize')",
     'download': "switchTab('download')",
     'absent-report':"switchTab('absent-report')",
@@ -1689,7 +1651,6 @@ function switchTab(name) {
     loadTeamToday();
   }
   if (name==='regularize') loadRegularizations();
-  if (name==='locations') { document.getElementById('loc-date').value = new Date().toISOString().split('T')[0]; loadLocationMap(); }
   if (name==='import') initImportTab();
   if (name==='odwfh') loadMyODWFH();
   if (name==='mark') {
@@ -2579,116 +2540,6 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 // ── LOCATION MAP ─────────────────────────────────────────────────────────────
 let _locMap = null, _locMarkers = [], _locInfoWin = null;
 
-async function loadLocationMap() {
-  const date = document.getElementById('loc-date').value || new Date().toISOString().split('T')[0];
-  const data = await api('GET', `/attendance/punch-locations?date=${date}`);
-  if (!data?.success) { toast('Failed to load locations', 'error'); return; }
-
-  // Init Google Map
-  waitForMaps(async () => {
-  document.getElementById('loc-map').innerHTML = '';
-  _locMap = new google.maps.Map(document.getElementById('loc-map'), { mapId: 'DEMO_MAP_ID',
-    zoom: 5,
-    center: { lat: 20.5937, lng: 78.9629 },
-    mapTypeId: 'roadmap',
-    streetViewControl: false,
-    mapTypeControl: true,
-    mapTypeControlOptions: { style: google.maps.MapTypeControlStyle.DROPDOWN_MENU }
-  });
-  _locInfoWin = new google.maps.InfoWindow();
-  _locMarkers.forEach(m => { try { m.map = null; } catch(_) {} });
-  _locMarkers = [];
-
-  // ✅ FIX: Use /geofence/my-locations so employee sees their own assigned buffers
-  const offData = await api('GET', '/geofence/my-locations');
-  if (offData?.success) {
-    offData.data.forEach(loc => {
-      const lat = +loc.latitude, lng = +loc.longitude;
-      const locCircleColor = loc.is_universal ? '#3b82f6' : window.CFG.accentColor;
-      new google.maps.Circle({
-        map: _locMap,
-        center: { lat, lng },
-        radius: loc.radius_meters,
-        strokeColor: locCircleColor, strokeOpacity: 0.7, strokeWeight: 2,
-        fillColor: locCircleColor, fillOpacity: 0.08
-      });
-      const offPinEl = document.createElement('div');
-      offPinEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="24"><rect rx="6" width="80" height="24" fill="${window.CFG.accentColor}"/><text x="40" y="17" text-anchor="middle" font-size="11" font-weight="700" fill="white" font-family="Arial,sans-serif">${loc.name.substring(0,12)}</text></svg>`;
-      const offMarker = new google.maps.marker.AdvancedMarkerElement({
-        position: { lat, lng }, map: _locMap, title: loc.name,
-        content: offPinEl.firstChild
-      });
-      _locMarkers.push(offMarker);
-    });
-  }
-
-  const gmBounds = new google.maps.LatLngBounds();
-  let hasPoints = false;
-  const rows = data.data;
-
-  rows.forEach(emp => {
-    if (!emp.location_lat || !emp.location_lng) return;
-    const lat = parseFloat(emp.location_lat);
-    const lng = parseFloat(emp.location_lng);
-    const color = emp.status === 'present' || emp.status === 'regularized' ? '#22a855'
-                : emp.status === 'late'    ? '#f59e0b'
-                : emp.status === 'half-day'? '#f97316'
-                : '#ef4444';
-    const firstName = (emp.employee_name || '?').split(' ')[0].substring(0, 8);
-    const svgLabel = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="90" height="28"><rect rx="14" width="90" height="28" fill="${color}" stroke="white" stroke-width="2"/><text x="45" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="white" font-family="Arial,sans-serif">${firstName}</text></svg>`);
-    const empPinEl = document.createElement('div');
-    empPinEl.innerHTML = decodeURIComponent(svgLabel);
-    const marker = new google.maps.marker.AdvancedMarkerElement({
-      position: { lat, lng }, map: _locMap, title: emp.employee_name,
-      content: empPinEl.firstChild, zIndex: 10
-    });
-    marker.addListener('click', () => {
-      _locInfoWin.setContent(`
-        <div style="min-width:180px;font-family:sans-serif;padding:4px">
-          <div style="font-weight:700;font-size:13px;margin-bottom:6px">${emp.employee_name}</div>
-          <div style="font-size:11px;color:#64748b;margin-bottom:4px">${emp.designation_title||''} · ${emp.department_name||''}</div>
-          <div style="margin-bottom:4px"><span style="background:${color};color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">${emp.status}</span></div>
-          <div style="font-size:12px;color:#334155">
-            🕐 In: <b>${emp.punch_in ? emp.punch_in.slice(0,5) : '—'}</b><br>
-            🕐 Out: <b>${emp.punch_out ? emp.punch_out.slice(0,5) : '—'}</b><br>
-            ⏱ Hours: <b>${fmtHours(emp.working_hours)}</b><br>
-            📍 ${emp.punch_in_location || 'GPS: ' + lat.toFixed(4) + ',' + lng.toFixed(4)}
-          </div>
-        </div>`);
-      _locInfoWin.open(_locMap, marker);
-    });
-    _locMarkers.push(marker);
-    gmBounds.extend({ lat, lng });
-    hasPoints = true;
-  });
-
-  if (hasPoints) _locMap.fitBounds(gmBounds, { top: 50, right: 50, bottom: 50, left: 50 });
-  }); // end waitForMaps
-
-  // Table
-  document.getElementById('loc-tbody').innerHTML = rows.map(emp => `
-    <tr>
-      <td>
-        <div class="flex gap-2">
-          <div class="avatar" style="background:linear-gradient(135deg,var(--cfg-primary),var(--cfg-accent))">${emp.employee_name?.[0]||'?'}</div>
-          <div>
-            <div style="font-weight:600">${emp.employee_name}</div>
-            <div class="text-muted">${emp.employee_code} · ${emp.department_name||'—'}</div>
-          </div>
-        </div>
-      </td>
-      <td><span class="badge badge-${emp.status||'absent'}">${emp.status||'absent'}</span></td>
-      <td style="font-weight:600">${emp.punch_in ? emp.punch_in.slice(0,5) : '—'}</td>
-      <td style="font-weight:600">${emp.punch_out ? emp.punch_out.slice(0,5) : '—'}</td>
-      <td>${fmtHours(emp.working_hours)}</td>
-      <td style="font-size:12px;color:var(--muted)">
-        ${emp.location_lat
-          ? `<a href="https://maps.google.com/?q=${emp.location_lat},${emp.location_lng}" target="_blank" style="color:var(--accent);font-weight:600">📍 View on Google Maps</a>`
-          : '<span style="color:var(--red)">No GPS data</span>'}
-      </td>
-    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">No records for this date</td></tr>';
-}
-
 // ── IMPORT ATTENDANCE ─────────────────────────────────────────────────────────
 const MONTHS_IMP = ['January','February','March','April','May','June',
                     'July','August','September','October','November','December'];
@@ -2924,163 +2775,6 @@ async function submitMarkRange() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ── Movement Tracking via Service Worker ─────────────────────────────────────
-// SW pings GPS every 30s and POSTs to /attendance/movement/log
-// Watchdog runs every 25s from main thread to restart SW loop if Android killed it
-// Falls back to main-thread interval if SW not supported
-// ─────────────────────────────────────────────────────────────────────────────
-let _swRegistration  = null;
-let _watchdogTimer   = null;
-let _fallbackTimer   = null;   // used if SW not supported
-
-async function startMovementTracking() {
-  if (!('serviceWorker' in navigator)) {
-    console.warn('[Tracking] SW not supported — using fallback interval');
-    _startFallbackTracking();
-    return;
-  }
-  try {
-    _swRegistration = await navigator.serviceWorker.register('/tracking-sw.js', { scope: '/' });
-    await navigator.serviceWorker.ready;
-    const token = Auth.getToken();
-    const sw    = (await navigator.serviceWorker.ready).active;
-    if (sw) {
-      // FIX: wait for SW to acknowledge START_TRACKING before returning
-      // This prevents page.reload() from firing before the SW has the token
-      await new Promise((resolve) => {
-        const onMsg = (e) => {
-          if (e.data?.type === 'TRACKING_STARTED') {
-            navigator.serviceWorker.removeEventListener('message', onMsg);
-            resolve();
-          }
-        };
-        navigator.serviceWorker.addEventListener('message', onMsg);
-        sw.postMessage({ type: 'START_TRACKING', token, apiBase: API_BASE });
-        // Safety timeout: resolve after 2s even if SW doesn't ack (e.g. old SW version)
-        setTimeout(resolve, 2000);
-      });
-      console.log('[Tracking] ✅ SW tracking started');
-    }
-    // Register for periodic sync if supported (keeps SW alive on Android)
-    try {
-      const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
-      if (status.state === 'granted') {
-        await _swRegistration.periodicSync.register(window.CFG.swSyncTag, { minInterval: 30 * 1000 });
-        console.log('[Tracking] ✅ Periodic sync registered');
-      }
-    } catch (e) { /* periodic sync not supported — fine */ }
-
-    _startWatchdog();
-  } catch (err) {
-    console.error('[Tracking] SW registration failed — using fallback:', err);
-    _startFallbackTracking();
-  }
-}
-
-// FIX: force an immediate GPS ping right after punch-in so the employee
-// shows up in the movement summary instantly (not after the first 30s interval)
-async function _forceImmediatePing() {
-  try {
-    if (!navigator.geolocation) return;
-    const pos = await new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject,
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 });
-    });
-    await api('POST', '/attendance/movement/log', {
-      lat:      pos.coords.latitude,
-      lng:      pos.coords.longitude,
-      accuracy: pos.coords.accuracy
-    });
-    console.log('[Tracking] ✅ Immediate ping sent after punch-in');
-    // Also tell SW to do a tick now (covers Android where direct fetch may be blocked)
-    const reg = _swRegistration || await navigator.serviceWorker.getRegistration('/tracking-sw.js').catch(() => null);
-    if (reg?.active) reg.active.postMessage({ type: 'FORCE_TICK' });
-  } catch (e) {
-    console.warn('[Tracking] Immediate ping failed (non-fatal):', e.message);
-  }
-}
-
-async function stopMovementTracking() {
-  // Stop watchdog
-  if (_watchdogTimer) { clearInterval(_watchdogTimer); _watchdogTimer = null; }
-  // Stop fallback
-  if (_fallbackTimer) { clearInterval(_fallbackTimer); _fallbackTimer = null; }
-  // Stop SW
-  if (!('serviceWorker' in navigator)) return;
-  try {
-    const reg = _swRegistration || await navigator.serviceWorker.getRegistration('/tracking-sw.js');
-    const sw  = reg?.active;
-    if (sw) {
-      // FIX: await SW ack before reloading on punch-out too
-      await new Promise((resolve) => {
-        const onMsg = (e) => {
-          if (e.data?.type === 'TRACKING_STOPPED') {
-            navigator.serviceWorker.removeEventListener('message', onMsg);
-            resolve();
-          }
-        };
-        navigator.serviceWorker.addEventListener('message', onMsg);
-        sw.postMessage({ type: 'STOP_TRACKING' });
-        setTimeout(resolve, 1500);
-      });
-    }
-  } catch (err) {
-    console.warn('[Tracking] Could not stop SW:', err);
-  }
-}
-
-// Watchdog: ping SW every 25s from main thread
-// If SW loop died (Android killed it), the PING handler in SW will restart it
-function _startWatchdog() {
-  if (_watchdogTimer) clearInterval(_watchdogTimer);
-  _watchdogTimer = setInterval(async () => {
-    try {
-      const reg = _swRegistration || await navigator.serviceWorker.getRegistration('/tracking-sw.js');
-      const sw  = reg?.active;
-      if (sw) {
-        sw.postMessage({ type: 'PING' });
-      } else {
-        // SW is completely dead — re-register and restart
-        console.warn('[Watchdog] SW is dead — re-registering');
-        await startMovementTracking();
-      }
-    } catch (e) { console.warn('[Watchdog] error:', e); }
-  }, 25000);
-}
-
-// Fallback: direct interval from main thread (if SW not supported)
-function _startFallbackTracking() {
-  if (_fallbackTimer) clearInterval(_fallbackTimer);
-  _fallbackTimer = setInterval(async () => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      if (pos.coords.accuracy > 150) return;
-      try {
-        await api('POST', '/attendance/movement/log', {
-          lat:      pos.coords.latitude,
-          lng:      pos.coords.longitude,
-          accuracy: pos.coords.accuracy
-        });
-      } catch (e) { console.warn('[Fallback] ping failed:', e); }
-    }, null, { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 });
-  }, 30000);
-}
-
-// On page load: check if SW already running (employee came back to page)
-(async function checkSWState() {
-  if (!('serviceWorker' in navigator)) return;
-  try {
-    const reg = await navigator.serviceWorker.getRegistration('/tracking-sw.js');
-    if (reg?.active) {
-      reg.active.postMessage({ type: 'PING' });
-      // If SW is alive and was tracking, restart watchdog
-      _swRegistration = reg;
-      _startWatchdog();
-    }
-  } catch (e) { /* ignore */ }
-})();
-
-
 </script>
 
 

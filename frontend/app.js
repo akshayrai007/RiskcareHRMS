@@ -126,7 +126,6 @@ const ICONS = {
   dashboard:    `🏠`,
   attendance:   `🕐`,
   leaves:       `🌿`,
-  movement:     `🚶`,
   announcements:`📢`,
   form16:       `📋`,
   itdecl:       `🧾`,
@@ -139,7 +138,6 @@ const ICONS = {
   reimbursement:`🧾`,
   provision:    `⏳`,
   geofence:     `📍`,
-  compoff:      `🔄`,
   projects:     `📊`,
   performance:  `🎯`,
   aivoice:      `🤖`,
@@ -159,7 +157,6 @@ const NAV_GROUPS = [
     items: [
       { href:'attendance.html',     icon: ICONS.attendance,   label:'Attendance',       always:true },
       { href:'leaves.html',         icon: ICONS.leaves,       label:'Leaves',           always:true },
-      { href:'movement.html',       icon: ICONS.movement,     label:'Movement',         roles:['admin','super_admin','hr','manager','tl'] },
       { href:'announcements.html',  icon: ICONS.announcements,label:'Announcements',    roles:['employee'] },
       { href:'performance.html',    icon: ICONS.performance,  label:'Performance',      always:true },
       { href:'chat.html',           icon: ICONS.chat,         label:'Chat & Meetings',  always:true }

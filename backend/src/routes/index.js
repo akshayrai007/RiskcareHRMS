@@ -11,8 +11,6 @@ const chatCtrl       = require('../controllers/chatController');
 const authCtrl       = require('../controllers/authController');
 const empCtrl        = require('../controllers/employeeController');
 const attCtrl        = require('../controllers/attendanceController');
-const alertsCtrl     = require('../controllers/movementAlertsController');
-const beatPlanCtrl   = require('../controllers/beatPlanController');
 const leaveCtrl      = require('../controllers/leaveController');
 const advCtrl        = require('../controllers/advanceController');
 const payCtrl        = require('../controllers/payrollController');
@@ -25,7 +23,6 @@ const gkCtrl         = require('../controllers/gkController');
 const provCtrl       = require('../controllers/provisionController');
 const offerCtrl      = require('../controllers/offerLetterController');
 const itDeclCtrl     = require('../controllers/itDeclarationController');
-const compoffCtrl    = require('../controllers/compoffController');
 
 const ADMIN      = ['admin','super_admin'];
 const HR_ADMIN   = ['hr','admin','super_admin','accounts'];
@@ -119,26 +116,8 @@ router.get ('/attendance/report/download',  authenticate, authorize('hr','accoun
 // KC718 / super_admin: mark own attendance for a date range without punch in/out
 router.post('/attendance/mark-range',      authenticate, attCtrl.markRange);
 
-// ── Movement Tracking ──────────────────────────────────────────────────────
-router.post('/attendance/movement/log',           authenticate, attCtrl.logMovement);
-router.post('/attendance/movement/log-batch',     authenticate, attCtrl.logMovementBatch);
-router.get ('/attendance/movement/segmented',     authenticate, authorize('hr','super_admin','admin','manager','tl'), attCtrl.getMovementSegmented);
-router.get ('/attendance/movement/history',       authenticate, authorize('hr','super_admin','admin','manager','tl','employee'), attCtrl.getMovementHistory); // employee allowed for multi-live map self-query
-router.get ('/attendance/movement/summary', authenticate, authorize('hr','super_admin','admin','manager','tl'), attCtrl.getMovementSummary);
 
-// ── Feature #10: Tracking Alerts ──────────────────────────────────────────────
-router.get ('/attendance/movement/alerts',              authenticate, authorize('hr','super_admin','admin','manager','tl'), alertsCtrl.getActiveAlerts);
-router.post('/attendance/movement/alerts/:id/resolve',  authenticate, authorize('hr','super_admin','admin','manager','tl'), alertsCtrl.resolveAlert);
-router.get ('/attendance/movement/alerts/employee/:employee_id', authenticate, authorize('hr','super_admin','admin','manager','tl'), alertsCtrl.getEmployeeAlertHistory);
 
-// ── Feature #7: Beat Plan / PJP ───────────────────────────────────────────────
-router.post('/attendance/beat-plan',                    authenticate, authorize('hr','super_admin','admin','manager','tl'), beatPlanCtrl.createPlan);
-router.get ('/attendance/beat-plan',                    authenticate, beatPlanCtrl.listPlans);
-router.get ('/attendance/beat-plan/compare',            authenticate, beatPlanCtrl.comparePlanVsActual);
-router.get ('/attendance/beat-plan/:id',                authenticate, beatPlanCtrl.getPlan);
-router.delete('/attendance/beat-plan/:id',              authenticate, authorize('hr','super_admin','admin','manager','tl'), beatPlanCtrl.deletePlan);
-router.post('/attendance/beat-plan/:id/stop',           authenticate, authorize('hr','super_admin','admin','manager','tl'), beatPlanCtrl.addStop);
-router.delete('/attendance/beat-plan/stop/:stopId',     authenticate, authorize('hr','super_admin','admin','manager','tl'), beatPlanCtrl.removeStop);
 
 // ── WFH (Work From Home) ──────────────────────────────────────────────────────
 router.post('/wfh/apply',       authenticate, attImportCtrl.applyWFH);
@@ -202,12 +181,6 @@ router.get ('/leave/report',                 authenticate,                      
 router.get ('/leave/summary',                authenticate, authorize(...HR_ADMIN), leaveCtrl.getLeaveSummary);
 router.get ('/leave/transactions',           authenticate, authorize(...HR_ADMIN), leaveCtrl.getLeaveTransactions);
 
-// ── Comp Off ──────────────────────────────────────────────────────────────────
-router.post  ('/compoff/grant',        authenticate, authorize('hr','admin','super_admin'), compoffCtrl.grantCredit);
-router.post  ('/compoff/bulk-grant',   authenticate, authorize('hr','admin','super_admin'), compoffCtrl.bulkGrant);
-router.get   ('/compoff/credits',      authenticate,                                        compoffCtrl.listCredits);
-router.get   ('/compoff/balance',      authenticate,                                        compoffCtrl.getBalance);
-router.delete('/compoff/:id/revoke',   authenticate, authorize('hr','admin','super_admin'), compoffCtrl.revokeCredit);
 
 // ── Advance Salary ────────────────────────────────────────────────────────────
 router.post('/advance/apply',                authenticate, advCtrl.apply);

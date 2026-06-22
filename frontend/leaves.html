@@ -55,7 +55,6 @@
     <!-- TABS -->
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('my-leaves')">📋 My Leaves</button>
-      <button class="tab-btn" onclick="switchTab('compoff-credits')">🔄 My Comp Off</button>
       <button class="tab-btn" id="approvals-tab" style="display:none" onclick="switchTab('approvals')">✅ Approvals</button>
       <button class="tab-btn" id="all-tab"        style="display:none" onclick="switchTab('all-leaves')">📂 All Applications</button>
       <button class="tab-btn" id="summary-tab"    style="display:none" onclick="switchTab('leave-summary')">📊 Leave Summary</button>
@@ -82,67 +81,6 @@
 
     <!-- PENDING APPROVALS -->
     <!-- COMP OFF CREDITS TAB -->
-    <div id="tab-compoff-credits" style="display:none">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title"><span class="card-title-icon">🔄</span>My Comp Off Credits</div>
-          <div style="font-size:12px;color:var(--muted)">Auto-credited when you work on holidays or weekends</div>
-        </div>
-        <!-- Balance summary strip -->
-        <div id="co-balance-strip" style="padding:20px 24px;background:linear-gradient(135deg,#fffbeb 0%,#fef9ec 100%);border-bottom:1px solid #fde68a">
-          <!-- Stats row -->
-          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
-            <div style="flex:1;min-width:100px;background:#fff;border-radius:12px;padding:16px 20px;border:1.5px solid #fde68a;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
-              <div style="font-size:28px;font-weight:800;color:#d97706;line-height:1" id="co-avail-big">—</div>
-              <div style="font-size:11px;color:#b45309;font-weight:700;margin-top:4px;letter-spacing:0.5px">AVAILABLE</div>
-            </div>
-            <div style="flex:1;min-width:100px;background:#fff;border-radius:12px;padding:16px 20px;border:1.5px solid #a7f3d0;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
-              <div style="font-size:28px;font-weight:800;color:#059669;line-height:1" id="co-earned-big">—</div>
-              <div style="font-size:11px;color:#065f46;font-weight:700;margin-top:4px;letter-spacing:0.5px">TOTAL EARNED</div>
-            </div>
-            <div style="flex:1;min-width:100px;background:#fff;border-radius:12px;padding:16px 20px;border:1.5px solid #e5e7eb;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
-              <div style="font-size:28px;font-weight:800;color:#6b7280;line-height:1" id="co-used-big">—</div>
-              <div style="font-size:11px;color:#6b7280;font-weight:700;margin-top:4px;letter-spacing:0.5px">USED</div>
-            </div>
-          </div>
-          <!-- Rules row -->
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <div style="flex:1;min-width:140px;display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 14px;border:1px solid #fde68a">
-              <span style="font-size:20px">🌟</span>
-              <div>
-                <div style="font-size:12px;font-weight:700;color:#92400e">Full Day</div>
-                <div style="font-size:11px;color:#b45309">8+ hours worked</div>
-              </div>
-            </div>
-            <div style="flex:1;min-width:140px;display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 14px;border:1px solid #fde68a">
-              <span style="font-size:20px">✨</span>
-              <div>
-                <div style="font-size:12px;font-weight:700;color:#92400e">Half Day</div>
-                <div style="font-size:11px;color:#b45309">4 – 7.99 hours worked</div>
-              </div>
-            </div>
-            <div style="flex:1;min-width:140px;display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 14px;border:1px solid #fde68a">
-              <span style="font-size:20px">❌</span>
-              <div>
-                <div style="font-size:12px;font-weight:700;color:#92400e">No Credit</div>
-                <div style="font-size:11px;color:#b45309">Under 4 hours</div>
-              </div>
-            </div>
-            <div style="flex:1;min-width:140px;display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 14px;border:1px solid #fde68a">
-              <span style="font-size:20px">📅</span>
-              <div>
-                <div style="font-size:12px;font-weight:700;color:#92400e">Expires In</div>
-                <div style="font-size:11px;color:#b45309">30 days from work date</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div id="co-credits-list" style="padding:8px 0">
-          <div style="text-align:center;color:var(--muted);padding:40px">Loading…</div>
-        </div>
-      </div>
-    </div>
-
     <div id="tab-approvals" style="display:none">
       <div class="card">
         <div class="card-header">
@@ -301,12 +239,7 @@
           <option value="leave">Leave</option>
           <option value="od">On Duty (OD)</option>
           <option value="lwp">Loss of Pay (LWP)</option>
-          <option value="compoff">🔄 Comp Off (Compensatory Off)</option>
         </select>
-      </div>
-      <div id="compoff-info-box" style="display:none;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#92400e">
-        🔄 <strong>Comp Off:</strong> You can use this only if HR has credited comp off days to your account for working on a holiday or weekend.
-        Your available balance is shown above as <strong>COMPOFF</strong>.
       </div>
       <div class="form-group">
         <label class="form-label">Reason</label>
@@ -426,11 +359,7 @@ if (location.hash === '#approvals') switchTab('approvals');
 Promise.all([loadBalance(), loadLeaveTypes(), loadMyLeaves(), loadManagerInfo()]);
 
 async function loadBalance() {
-  // Fetch regular leave balance + comp off balance in parallel
-  const [data, compoffData] = await Promise.all([
-    api('GET', '/leave/balance'),
-    api('GET', '/compoff/balance').catch(() => null)
-  ]);
+  const data = await api('GET', '/leave/balance');
 
   if (!data?.success) {
     document.getElementById('balance-cards').innerHTML =
@@ -471,18 +400,6 @@ async function loadBalance() {
     </div>`;
   }).join('');
 
-  // Always append COMPOFF balance card
-  {
-    const coAvail = parseFloat(compoffData?.data?.available || 0);
-    const coTotal = parseFloat(compoffData?.data?.total_credited || 0);
-    const coUsed  = parseFloat(compoffData?.data?.used || 0);
-    const coPct = coTotal > 0 ? Math.max(0, Math.min(100, (coUsed / coTotal) * 100)) : 0;
-    cardsHtml += `<div class="bal-card">
-      <div class="bal-code">COMPOFF</div>
-      <div class="bal-val">${fmt.num(coAvail)}</div>
-      <div class="bal-meta">Compensatory Off</div>
-      <div class="bal-meta" style="margin-top:3px">
-        <span style="color:var(--green)">Used: ${fmt.num(coUsed)}</span> / Earned: ${fmt.num(coTotal)}
       </div>
       <div class="bal-bar"><div class="bal-fill" style="width:${coPct}%"></div></div>
     </div>`;
@@ -893,101 +810,22 @@ async function revokeLeave(id, fromDate) {
 // runAccrual removed — handled by cron automatically
 
 function switchTab(name) {
-  ['my-leaves','compoff-credits','approvals','all-leaves','leave-summary','leave-transactions'].forEach(t => {
+  ['my-leaves','approvals','all-leaves','leave-summary','leave-transactions'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t===name?'':'none';
   });
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   event?.target?.classList.add('active');
   if (name==='approvals' && document.getElementById('approvals-list').innerHTML.includes('spinner')) loadApprovals();
   if (name==='all-leaves') loadAllLeaves();
-  if (name==='compoff-credits') loadCompOffCredits();
   if (name==='leave-summary') loadLeaveSummary();
   if (name==='leave-transactions') loadLeaveTransactions();
 }
 
-async function loadCompOffCredits() {
-  const [balRes, credRes] = await Promise.all([
-    api('GET', '/compoff/balance').catch(() => null),
-    api('GET', '/compoff/credits').catch(() => null)
-  ]);
-
-  // Update balance strip
-  if (balRes?.success) {
-    const d = balRes.data;
-    const avail  = parseFloat(d.available       || 0);
-    const earned = parseFloat(d.total_credited   || 0);
-    const used   = parseFloat(d.used             || 0);
-    document.getElementById('co-avail-big').textContent  = avail.toFixed(1);
-    document.getElementById('co-earned-big').textContent = earned.toFixed(1);
-    document.getElementById('co-used-big').textContent   = used.toFixed(1);
-  }
-
-  // Render credits table
-  const el = document.getElementById('co-credits-list');
-  if (!credRes?.success || !credRes.data.length) {
-    el.innerHTML = `<div style="text-align:center;padding:48px 24px;color:var(--muted)">
-      <div style="font-size:48px;margin-bottom:12px">🗓️</div>
-      <div style="font-weight:700;font-size:15px;color:#374151;margin-bottom:6px">No comp off credits yet</div>
-      <div style="font-size:13px;color:#6b7280;max-width:340px;margin:0 auto;line-height:1.6">Work on a holiday or weekend — <strong>8+ hrs</strong> earns 1 full day, <strong>4–7.99 hrs</strong> earns 0.5 day. Credits are auto-added after you punch out.</div>
-    </div>`;
-    return;
-  }
-  el.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
-    <thead><tr style="background:#f9fafb;text-align:left">
-      <th style="padding:10px 16px;color:var(--muted);font-weight:600">Date Worked</th>
-      <th style="padding:10px 16px;color:var(--muted);font-weight:600">Type</th>
-      <th style="padding:10px 16px;color:var(--muted);font-weight:600">Occasion</th>
-      <th style="padding:10px 16px;color:var(--muted);font-weight:600">Days</th>
-      <th style="padding:10px 16px;color:var(--muted);font-weight:600">Status</th>
-      <th style="padding:10px 16px;color:var(--muted);font-weight:600">Expiry</th>
-      <th style="padding:10px 16px;color:var(--muted);font-weight:600">Remarks</th>
-    </tr></thead>
-    <tbody>
-      ${credRes.data.map(c => `<tr style="border-top:1px solid #f3f4f6">
-        <td style="padding:10px 16px;font-weight:600">${fmtDateCo(c.worked_date)}</td>
-        <td style="padding:10px 16px">
-          <span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;${c.worked_type==='holiday'?'background:#fef3c7;color:#92400e':'background:#e0e7ff;color:#3730a3'}">
-            ${c.worked_type==='holiday'?'🗓 Holiday':'📅 Weekend'}
-          </span>
-        </td>
-        <td style="padding:10px 16px;color:var(--muted)">${c.holiday_name||'—'}</td>
-        <td style="padding:10px 16px;font-weight:700;color:#92400e">${parseFloat(c.days_credited).toFixed(1)}</td>
-        <td style="padding:10px 16px">
-          <span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;${
-            c.status==='available'?'background:#dcfce7;color:#166534':
-            c.status==='used'?'background:#f3f4f6;color:#6b7280':'background:#fee2e2;color:#991b1b'}">
-            ${c.status.charAt(0).toUpperCase()+c.status.slice(1)}
-          </span>
-        </td>
-        <td style="padding:10px 16px;font-size:12px;color:var(--muted)">${c.expiry_date?fmtDateCo(c.expiry_date):'No expiry'}</td>
-        <td style="padding:10px 16px;font-size:12px;color:var(--muted)">${c.remarks||'—'}</td>
-      </tr>`).join('')}
-    </tbody>
-  </table></div>`;
-}
-
-function fmtDateCo(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString(window.CFG.currencyLocale, { day:'2-digit', month:'short', year:'numeric' });
-}
-
 
 function onCategoryChange() {
-  const cat = document.getElementById('apply-category').value;
-  const infoBox = document.getElementById('compoff-info-box');
-
-  // Show/hide comp off info box
-  if (infoBox) infoBox.style.display = (cat === 'compoff') ? '' : 'none';
-
-  // Auto-select COMPOFF leave type when category is compoff
-  if (cat === 'compoff') {
-    const sel = document.getElementById('apply-type');
-    for (let i = 0; i < sel.options.length; i++) {
-      if (sel.options[i].dataset.code === 'COMPOFF') {
-        sel.selectedIndex = i;
-        updateAvailable();
-        break;
-      }
+  // Category changed — update half-day badge
+  updateHalfDayBadge();
+}
     }
   }
 }
@@ -1072,7 +910,6 @@ function resetApplyModal() {
   document.getElementById('apply-reason').value = '';
   document.getElementById('days-count').style.display = 'none';
   document.getElementById('apply-available').textContent = '';
-  const ib = document.getElementById('compoff-info-box'); if(ib) ib.style.display='none';
   document.getElementById('apply-category').value = 'leave';
 }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
