@@ -2545,31 +2545,26 @@ async function loadAbsentReport() {
     </div>`;
 }
 
-function downloadAbsentReportCSV() {
-  const tbl = document.getElementById('absent-report-table');
-  if (!tbl || !_absentReportData) { toast('Load the report first','error'); return; }
-  const month = document.getElementById('ab-month')?.value || (new Date().getMonth()+1);
-  const year  = document.getElementById('ab-year')?.value  || new Date().getFullYear();
-  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const mLabel = MONTHS[parseInt(month)-1];
-
-  // Build CSV with dates as comma-separated in last column
-  let csv = '"Emp Code","Employee Name","Department","Designation","Absent Days","Absent Dates"\n';
-  for (const r of _absentReportData.data) {
-    const dates = r.absent_dates.map(d => new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})).join(', ');
-    csv += `"${r.employee_code}","${r.name}","${r.department||''}","${r.designation||''}","${r.absent_count}","${dates}"\n`;
-  }
-  // Add summary row
-  csv += `\n"Total",,,,"${_absentReportData.data.reduce((s,r)=>s+r.absent_count,0)}","Working days: ${_absentReportData.working_days}"\n`;
-
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const a = Object.assign(document.createElement('a'), {
-    href: URL.createObjectURL(blob),
-    download: `Absent_Report_${mLabel}_${year}.csv`
-  });
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
-  toast('Absent report downloaded ✅');
+async function downloadAbsentReportCSV() {
+  const month  = document.getElementById('ab-month')?.value || (new Date().getMonth()+1);
+  const year   = document.getElementById('ab-year')?.value  || new Date().getFullYear();
+  const search = document.getElementById('ab-search')?.value?.trim() || '';
+  if (!search) { toast('Search for an employee first','error'); return; }
+  try {
+    const token = Auth.getToken();
+    const url = `${API_BASE}/attendance/absent-report/excel?month=${month}&year=${year}&search=${encodeURIComponent(search)}`;
+    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) { toast('Download failed','error'); return; }
+    const blob = await res.blob();
+    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: `Absent_Report_${MONTHS[parseInt(month)-1]}_${year}.xlsx`
+    });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    toast('✅ Colored Excel downloaded!','success');
+  } catch(e) { toast('Download failed: '+e.message,'error'); }
 }
 
 // ── OD Modal ──────────────────────────────────────────────────────────────────

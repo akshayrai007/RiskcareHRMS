@@ -993,12 +993,24 @@ function downloadCSV(csv, filename) {
   URL.revokeObjectURL(a.href);
 }
 
-function downloadLeaveSummaryExcel() {
-  const tbl = document.querySelector('#leave-summary-content table');
-  if (!tbl) { toast('No data to download','error'); return; }
-  const yr = document.getElementById('summary-year')?.value || new Date().getFullYear();
-  downloadCSV(tableToCSV(tbl), `Leave_Summary_${yr}.csv`);
-  toast('Leave Summary downloaded ✅');
+async function downloadLeaveSummaryExcel() {
+  const yr     = document.getElementById('summary-year')?.value || new Date().getFullYear();
+  const search = document.getElementById('summary-search')?.value?.trim() || '';
+  if (!search) { toast('Search for an employee first','error'); return; }
+  try {
+    const token = Auth.getToken();
+    const url = `${API_BASE}/leave/summary/excel?year=${yr}&search=${encodeURIComponent(search)}`;
+    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) { toast('Download failed','error'); return; }
+    const blob = await res.blob();
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: `Leave_Summary_${yr}.xlsx`
+    });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    toast('✅ Colored Excel downloaded!','success');
+  } catch(e) { toast('Download failed: '+e.message,'error'); }
 }
 
 function downloadLeaveTransactionsExcel() {
