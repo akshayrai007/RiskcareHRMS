@@ -760,6 +760,72 @@ exports.downloadAttendanceReport = async (req, res) => {
     ];
     XLSX.utils.book_append_sheet(wb, wsLeave, `Leave Details ${mon}-${yr}`);
 
+    // ── Sheet 5: Leave Balance Summary (EL / SL / CL per employee) ──────────
+    // Fetch full balances: allocated, used, pending, carry_forward, available
+    const balSummaryRes = await db.query(
+      `SELECT lb.employee_id,
+              lt.code,
+              COALESCE(lb.allocated,0)     AS allocated,
+              COALESCE(lb.carry_forward,0) AS carry_forward,
+              COALESCE(lb.used,0)          AS used,
+              COALESCE(lb.pending,0)       AS pending,
+              GREATEST(0, COALESCE(lb.allocated,0) + COALESCE(lb.carry_forward,0)
+                        - COALESCE(lb.used,0) - COALESCE(lb.pending,0)) AS available
+       FROM leave_types lt
+       LEFT JOIN leave_balances lb
+         ON lb.leave_type_id = lt.id
+        AND lb.employee_id = ANY($1)
+        AND lb.year = $2
+       WHERE lt.code IN ('EL','SL','CL') AND lt.is_active = true
+       ORDER BY lb.employee_id, lt.code`,
+      [leaveEmpIds, leaveYear]
+    );
+
+    // Index: empId → { EL:{}, SL:{}, CL:{} }
+    const balSumMap = {};
+    for (const r of balSummaryRes.rows) {
+      if (!balSumMap[r.employee_id]) balSumMap[r.employee_id] = {};
+      balSumMap[r.employee_id][r.code] = r;
+    }
+
+    const balSumHeaders = [
+      'Emp Code', 'Name', 'Department', 'Designation',
+      'EL Allocated', 'EL Used', 'EL Pending', 'EL Carry Fwd', 'EL Available',
+      'SL Allocated', 'SL Used', 'SL Pending', 'SL Carry Fwd', 'SL Available',
+      'CL Allocated', 'CL Used', 'CL Pending', 'CL Carry Fwd', 'CL Available',
+    ];
+
+    const empty = { allocated:0, carry_forward:0, used:0, pending:0, available:0 };
+    const balSumData = [
+      [`HRMS — Leave Balance Summary | Year ${yr}${department_id ? ' | Dept #'+department_id : ''}`],
+      [`EL / SL / CL balances as of ${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}`],
+      [],
+      balSumHeaders,
+      ...employees.rows.map(emp => {
+        const b = balSumMap[emp.id] || {};
+        const el = b.EL || empty, sl = b.SL || empty, cl = b.CL || empty;
+        return [
+          emp.employee_code, emp.name, emp.department || '—', emp.designation || '—',
+          parseFloat(el.allocated),    parseFloat(el.used),    parseFloat(el.pending),    parseFloat(el.carry_forward),    parseFloat(el.available),
+          parseFloat(sl.allocated),    parseFloat(sl.used),    parseFloat(sl.pending),    parseFloat(sl.carry_forward),    parseFloat(sl.available),
+          parseFloat(cl.allocated),    parseFloat(cl.used),    parseFloat(cl.pending),    parseFloat(cl.carry_forward),    parseFloat(cl.available),
+        ];
+      }),
+    ];
+
+    const wsBalSum = XLSX.utils.aoa_to_sheet(balSumData);
+    wsBalSum['!cols'] = [
+      {wch:10},{wch:22},{wch:16},{wch:18},
+      {wch:13},{wch:10},{wch:10},{wch:12},{wch:13},
+      {wch:13},{wch:10},{wch:10},{wch:12},{wch:13},
+      {wch:13},{wch:10},{wch:10},{wch:12},{wch:13},
+    ];
+    wsBalSum['!merges'] = [
+      { s:{r:0,c:0}, e:{r:0,c:18} },
+      { s:{r:1,c:0}, e:{r:1,c:18} },
+    ];
+    XLSX.utils.book_append_sheet(wb, wsBalSum, `Leave Balance ${yr}`);
+
     // ── 9. Stream response ────────────────────────────────────────────────
     const buf      = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     const filename = `Attendance_${monthName}_${yr}${department_id ? '_Dept'+department_id : ''}.xlsx`;

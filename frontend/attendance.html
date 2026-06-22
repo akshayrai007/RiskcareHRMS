@@ -477,12 +477,12 @@
             <div id="force-reason-area" style="display:none;margin-top:14px">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
                 <div class="form-group" style="margin:0">
-                  <label class="form-label">Default Punch In (optional)</label>
-                  <input id="force-punch-in" type="time" class="form-control">
+                  <label class="form-label">Default Punch In</label>
+                  <input id="force-punch-in" type="time" class="form-control" value="10:00">
                 </div>
                 <div class="form-group" style="margin:0">
-                  <label class="form-label">Default Punch Out (optional)</label>
-                  <input id="force-punch-out" type="time" class="form-control">
+                  <label class="form-label">Default Punch Out</label>
+                  <input id="force-punch-out" type="time" class="form-control" value="18:30">
                 </div>
               </div>
               <div class="form-group" style="margin:0">
@@ -577,7 +577,7 @@
             <button class="btn btn-outline btn-sm" onclick="downloadAbsentReportCSV()">⬇ Download Excel</button>
           </div>
         </div>
-        <div id="absent-report-content"><div class="loader"><div class="spinner"></div></div></div>
+        <div id="absent-report-content"><div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><p style="color:var(--muted)">Enter an employee name or ID above to load the absent report.</p></div></div>
       </div>
     </div>
 
@@ -2475,6 +2475,11 @@ async function loadAbsentReport() {
   const year   = document.getElementById('ab-year')?.value  || new Date().getFullYear();
   const search = document.getElementById('ab-search')?.value?.trim() || '';
   if (!el) return;
+  if (!search) {
+    el.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><p style="color:var(--muted)">Enter an employee name or ID above to load the absent report.</p></div>';
+    _absentReportData = null;
+    return;
+  }
   el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
   const qs = `month=${month}&year=${year}${search ? '&search=' + encodeURIComponent(search) : ''}`;
   const data = await api('GET', `/attendance/absent-report?${qs}`);

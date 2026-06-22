@@ -1333,11 +1333,14 @@ exports.getLeaveTransactions = async (req, res) => {
               lr.from_date, lr.to_date, lr.days_requested,
               lr.reason, lr.status, lr.is_half_day,
               lr.created_at AS applied_at,
-              lr.remarks AS action_remarks
+              lr.remarks AS action_remarks,
+              lr.actioned_remarks,
+              CONCAT(ab.first_name,' ',ab.last_name) AS actioned_by_name
        FROM leave_requests lr
        JOIN employees e ON lr.employee_id = e.id
        JOIN leave_types lt ON lr.leave_type_id = lt.id
        LEFT JOIN departments d ON e.department_id = d.id
+       LEFT JOIN employees ab ON ab.id = lr.actioned_by
        ${where}
        ORDER BY lr.created_at DESC
        LIMIT 500`,

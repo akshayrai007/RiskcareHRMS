@@ -840,9 +840,13 @@ async function loadLeaveSummary() {
   const yr   = document.getElementById('summary-year')?.value || new Date().getFullYear();
   const srch = document.getElementById('summary-search')?.value || '';
   el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  if (!srch) {
+    el.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><p style="color:var(--muted)">Enter an employee name or ID to view their leave summary.</p></div>';
+    return;
+  }
   const data = await api('GET', `/leave/summary?year=${yr}&search=${encodeURIComponent(srch)}`);
   if (!data?.success || !data.data?.length) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><p>No data found.</p></div>';
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div><p>No leave summary found for "<b>${srch}</b>".</p></div>`;
     return;
   }
   const XL = `border:1px solid #d1d5db`;
@@ -908,8 +912,12 @@ async function loadLeaveTransactions() {
   el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
   const params = `year=${yr}&search=${encodeURIComponent(srch)}&leave_type=${ltype}&status=${status}`;
   const data   = await api('GET', `/leave/transactions?${params}`);
+  if (!srch) {
+    el.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><p style="color:var(--muted)">Enter an employee name or ID to view their leave transactions.</p></div>';
+    return;
+  }
   if (!data?.success || !data.data?.length) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔄</div><p>No transactions found.</p></div>';
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🔄</div><p>No transactions found for "<b>${srch}</b>".</p></div>`;
     return;
   }
   const statusColors = {
@@ -936,6 +944,8 @@ async function loadLeaveTransactions() {
           <th style="${XLH}">Reason</th>
           <th style="${XLH}">Status</th>
           <th style="${XLH}">Applied On</th>
+          <th style="${XLH}">Approved/Rejected By</th>
+          <th style="${XLH}">Approver Remarks</th>
         </tr>
       </thead>
       <tbody>
@@ -951,6 +961,8 @@ async function loadLeaveTransactions() {
           <td style="${XLD};max-width:220px;word-break:break-word;color:var(--muted)">${r.reason||'—'}</td>
           <td style="${XLD};text-align:center"><span style="padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;${statusColors[r.status]||statusColors.cancelled}">${r.status.charAt(0).toUpperCase()+r.status.slice(1)}</span></td>
           <td style="${XLD};white-space:nowrap;color:var(--muted)">${fmt.date(r.applied_at)}</td>
+          <td style="${XLD};color:var(--muted)">${r.actioned_by_name||'—'}</td>
+          <td style="${XLD};color:var(--muted);max-width:180px;word-break:break-word">${r.actioned_remarks||r.remarks||'—'}</td>
         </tr>`).join('')}
       </tbody>
     </table>
