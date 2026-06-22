@@ -674,11 +674,47 @@
             <span style="font-size:12px;font-weight:800;color:#2e7d32;letter-spacing:.5px;text-transform:uppercase">Earnings (₹/month)</span>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-            <div class="form-group" style="margin:0"><label class="form-label">Basic Salary *</label><input id="edit-basic" class="form-control" type="number" placeholder="0" oninput="recalcSalaryPreview()"></div>
-            <div class="form-group" style="margin:0"><label class="form-label">HRA</label><input id="edit-hra" class="form-control" type="number" placeholder="0" oninput="recalcSalaryPreview()"></div>
-            <div class="form-group" style="margin:0"><label class="form-label">Conveyance Allowance</label><input id="edit-conveyance" class="form-control" type="number" placeholder="0" oninput="recalcSalaryPreview()"></div>
-            <div class="form-group" style="margin:0"><label class="form-label">Special Allowance</label><input id="edit-special" class="form-control" type="number" placeholder="0" oninput="recalcSalaryPreview()"></div>
-            <div class="form-group" style="margin:0"><label class="form-label">Gratuity</label><input id="edit-gratuity" class="form-control" type="number" placeholder="0" oninput="recalcSalaryPreview()"></div>
+
+            <!-- Basic Salary -->
+            <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 14px">
+              <div style="font-size:10px;color:#166534;font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Basic Salary * (₹)</div>
+              <input id="edit-basic" type="number" class="form-control" placeholder="0.00"
+                style="padding:8px 12px;font-size:15px;font-weight:700;border-color:#86efac"
+                oninput="recalcSalaryPreview()">
+            </div>
+
+            <!-- HRA -->
+            <div style="background:#f7faf3;border:1.5px solid #d4e5be;border-radius:10px;padding:12px 14px">
+              <div style="font-size:10px;color:#2e7d32;font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">HRA — House Rent Allowance (₹)</div>
+              <input id="edit-hra" type="number" class="form-control" placeholder="0.00"
+                style="padding:8px 12px;font-size:14px;font-weight:600"
+                oninput="recalcSalaryPreview()">
+            </div>
+
+            <!-- Conveyance -->
+            <div style="background:#f7faf3;border:1.5px solid #d4e5be;border-radius:10px;padding:12px 14px">
+              <div style="font-size:10px;color:#2e7d32;font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Conveyance Allowance (₹)</div>
+              <input id="edit-conveyance" type="number" class="form-control" placeholder="0.00"
+                style="padding:8px 12px;font-size:14px;font-weight:600"
+                oninput="recalcSalaryPreview()">
+            </div>
+
+            <!-- Special Allowance -->
+            <div style="background:#f7faf3;border:1.5px solid #d4e5be;border-radius:10px;padding:12px 14px">
+              <div style="font-size:10px;color:#2e7d32;font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Special Allowance (₹)</div>
+              <input id="edit-special" type="number" class="form-control" placeholder="0.00"
+                style="padding:8px 12px;font-size:14px;font-weight:600"
+                oninput="recalcSalaryPreview()">
+            </div>
+
+            <!-- Gratuity — full width -->
+            <div style="background:#f7faf3;border:1.5px solid #d4e5be;border-radius:10px;padding:12px 14px;grid-column:1/-1">
+              <div style="font-size:10px;color:#2e7d32;font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Gratuity (₹) — monthly provision</div>
+              <input id="edit-gratuity" type="number" class="form-control" placeholder="0.00"
+                style="padding:8px 12px;font-size:14px;font-weight:600;max-width:280px"
+                oninput="recalcSalaryPreview()">
+            </div>
+
           </div>
         </div>
 
@@ -746,35 +782,34 @@
         </div>
 
         <!-- Live Preview -->
-        <div id="salary-preview" style="display:none;background:#fff;border:2px solid #4a8c1c;border-radius:14px;padding:18px 20px;margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #eef5e6">
-            <div style="width:28px;height:28px;background:#eaf3d8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">📊</div>
-            <span style="font-size:12px;font-weight:800;color:#2e7d32;letter-spacing:.5px;text-transform:uppercase">Live Preview</span>
+        <div id="salary-preview" style="display:none;background:linear-gradient(135deg,#1b5e20,#2e7d32);border-radius:14px;padding:18px 20px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.2)">
+            <span style="font-size:12px;font-weight:800;color:rgba(255,255,255,.9);letter-spacing:.5px;text-transform:uppercase">📊 Live Salary Preview</span>
           </div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-            <div style="background:#f7faf3;border-radius:10px;padding:12px;text-align:center">
-              <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px">GROSS</div>
-              <b id="prev-gross" style="font-size:16px;color:#1e293b">₹0</b>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+            <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:14px;text-align:center">
+              <div style="font-size:10px;color:rgba(255,255,255,.7);font-weight:700;margin-bottom:5px;text-transform:uppercase">Gross Earnings</div>
+              <b id="prev-gross" style="font-size:17px;color:#fff">₹0</b>
             </div>
-            <div style="background:#fef2f2;border-radius:10px;padding:12px;text-align:center">
-              <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px">DEDUCTIONS</div>
-              <b id="prev-ded" style="font-size:16px;color:#dc2626">₹0</b>
+            <div style="background:rgba(239,68,68,.25);border-radius:10px;padding:14px;text-align:center">
+              <div style="font-size:10px;color:rgba(255,255,255,.7);font-weight:700;margin-bottom:5px;text-transform:uppercase">Total Deductions</div>
+              <b id="prev-ded" style="font-size:17px;color:#fca5a5">₹0</b>
             </div>
-            <div style="background:#f0fdf4;border-radius:10px;padding:12px;text-align:center;border:1.5px solid #86efac">
-              <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px">NET SALARY</div>
-              <b id="prev-net" style="font-size:18px;color:#16a34a">₹0</b>
+            <div style="background:rgba(255,255,255,.95);border-radius:10px;padding:14px;text-align:center;border:2px solid #86efac">
+              <div style="font-size:10px;color:#166534;font-weight:700;margin-bottom:5px;text-transform:uppercase">Net Take-Home</div>
+              <b id="prev-net" style="font-size:20px;color:#16a34a">₹0</b>
             </div>
-            <div style="background:#f7faf3;border-radius:10px;padding:12px;text-align:center">
-              <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px">PF (EMP)</div>
-              <b id="prev-pf-emp" style="font-size:15px;color:#1e293b">₹0</b>
+            <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">
+              <div style="font-size:10px;color:rgba(255,255,255,.6);font-weight:600;margin-bottom:3px">PF (Employee)</div>
+              <b id="prev-pf-emp" style="font-size:14px;color:#fff">₹0</b>
             </div>
-            <div style="background:#f7faf3;border-radius:10px;padding:12px;text-align:center">
-              <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px">ESI (EMP)</div>
-              <b id="prev-esi-emp" style="font-size:15px;color:#1e293b">₹0</b>
+            <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">
+              <div style="font-size:10px;color:rgba(255,255,255,.6);font-weight:600;margin-bottom:3px">ESI (Employee)</div>
+              <b id="prev-esi-emp" style="font-size:14px;color:#fff">₹0</b>
             </div>
-            <div style="background:#eaf3d8;border-radius:10px;padding:12px;text-align:center;border:1.5px solid #4a8c1c">
-              <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px">CTC</div>
-              <b id="prev-ctc" style="font-size:15px;color:#4a8c1c">₹0</b>
+            <div style="background:rgba(255,255,255,.15);border-radius:10px;padding:10px;text-align:center;border:1px solid rgba(255,255,255,.3)">
+              <div style="font-size:10px;color:rgba(255,255,255,.7);font-weight:700;margin-bottom:3px;text-transform:uppercase">Annual CTC</div>
+              <b id="prev-ctc" style="font-size:14px;color:#d9f99d">₹0</b>
             </div>
           </div>
         </div>
