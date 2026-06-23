@@ -202,6 +202,13 @@ select.form-control{background:#fff}
     </div>
 
     <!-- Content Area -->
+    <div id="reimb-bulk-bar" style="display:none;background:#1e293b;color:#fff;padding:12px 18px;border-radius:10px;margin-bottom:14px;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="font-size:13px;font-weight:700;flex:1">⚡ <span id="reimb-bulk-count">0</span> selected</div>
+      <input id="reimb-bulk-remarks" class="form-control" placeholder="Remarks (optional)…"
+        style="flex:2;min-width:160px;background:rgba(255,255,255,.1);border:none;color:#fff;padding:7px 12px;border-radius:7px">
+      <button class="btn btn-success btn-sm" onclick="bulkReimbAction('approve')">✅ Approve Selected</button>
+      <button class="btn btn-danger  btn-sm" onclick="bulkReimbAction('reject')">✗ Reject Selected</button>
+    </div>
     <div id="contentArea"></div>
   </div>
 </div>
@@ -330,8 +337,11 @@ function renderList(data, tab) {
     return;
   }
 
+  const isPending = tab === 'pending';
+  const selectHdr = isPending && data.length > 0 ? `<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;font-weight:700"><input type="checkbox" id="reimb-chk-all" style="width:16px;height:16px;cursor:pointer" onchange="reimbSelectAll(this.checked)"> ☑ Select All Pending (${data.length})</label></div>` : '';
   const html = data.map(r => renderCard(r, tab)).join('');
-  document.getElementById('contentArea').innerHTML = `<div class="reimb-list">${html}</div>`;
+  document.getElementById('contentArea').innerHTML = selectHdr + `<div class="reimb-list">${html}</div>`;
+  if (isPending) reimbUpdateBulkBar();
 }
 
 function catBadge(cat) {
@@ -420,7 +430,7 @@ function renderCard(r, tab) {
 
   let actionButtons = '';
   if (isApprover) {
-    actionButtons = `
+    actionButtons = `<input type="checkbox" class="reimb-chk" data-id="${r.id}" style="width:18px;height:18px;cursor:pointer;accent-color:#16a34a;vertical-align:middle;margin-right:8px" onchange="reimbUpdateBulkBar()">
       <button class="btn btn-success btn-sm" onclick="openRevisionModal(${r.id})">✅ Review & Approve</button>
       <button class="btn btn-danger  btn-sm" onclick="rejectReimb(${r.id})">❌ Reject</button>`;
   }
@@ -1606,6 +1616,29 @@ function buildExcel(data, from, to, statusFilter) {
   const totalItems = itemRows.length;
   const totalApprovals = approvalRows.length;
   toast(`✅ Excel downloaded — ${data.length} reimbursement(s), ${totalItems} item(s), ${totalApprovals} approval action(s)`);
+}
+
+function reimbSelectAll(c) { document.querySelectorAll('.reimb-chk').forEach(x => x.checked = c); reimbUpdateBulkBar(); }
+function reimbUpdateBulkBar() {
+  const n = document.querySelectorAll('.reimb-chk:checked').length;
+  const bar = document.getElementById('reimb-bulk-bar');
+  if (bar) { bar.style.display = n > 0 ? 'flex' : 'none'; const cnt = document.getElementById('reimb-bulk-count'); if (cnt) cnt.textContent = n; }
+  const ca = document.getElementById('reimb-chk-all'); const t = document.querySelectorAll('.reimb-chk').length;
+  if (ca) ca.checked = t > 0 && n === t;
+}
+async function bulkReimbAction(action) {
+  const checked = [...document.querySelectorAll('.reimb-chk:checked')];
+  if (!checked.length) return;
+  const remarks = document.getElementById('reimb-bulk-remarks')?.value?.trim() || '';
+  let ok=0, fail=0;
+  for (const c of checked) {
+    const res = action === 'approve'
+      ? await api('POST', `/reimbursement/${c.dataset.id}/approve`, { remarks })
+      : await api('POST', `/reimbursement/${c.dataset.id}/reject`,  { remarks });
+    if (res?.success) ok++; else fail++;
+  }
+  toast(`${ok} ${action}d${fail?', '+fail+' failed':''}`, ok>0?'success':'error');
+  document.getElementById('reimb-bulk-remarks').value = ''; loadData(currentTab);
 }
 </script>
 </body>

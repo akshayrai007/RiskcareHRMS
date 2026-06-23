@@ -130,6 +130,13 @@
           <div class="card-title">Pending Approval</div>
           <span class="text-muted fs-sm">Requests awaiting your action</span>
         </div>
+        <div id="adv-bulk-bar" style="display:none;background:#1e293b;color:#fff;padding:12px 18px;border-radius:10px;margin-bottom:14px;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="font-size:13px;font-weight:700;flex:1">⚡ <span id="adv-bulk-count">0</span> selected</div>
+          <input id="adv-bulk-remarks" class="form-control" placeholder="Remarks (optional)…"
+            style="flex:2;min-width:160px;background:rgba(255,255,255,.1);border:none;color:#fff;padding:7px 12px;border-radius:7px">
+          <button class="btn btn-success btn-sm" onclick="bulkAdvanceAction('approve')">✅ Approve Selected</button>
+          <button class="btn btn-danger  btn-sm" onclick="bulkAdvanceAction('reject')">✗ Reject Selected</button>
+        </div>
         <div id="pending-list"><div class="loader"><div class="spinner"></div></div></div>
       </div>
     </div>
@@ -477,6 +484,7 @@ function advanceCard(adv, showActions = false) {
             Level ${adv.current_level || 1}/${((Array.isArray(adv.approval_chain) ? adv.approval_chain : (() => { try { return JSON.parse(adv.approval_chain); } catch(_) { return []; } })()).length || 4)}
           </div>
           ${canAct ? `
+            <input type="checkbox" class="adv-chk" data-id="${adv.id}" style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent);vertical-align:middle;margin-right:8px" onchange="advUpdateBulkBar()">
             <button class="btn btn-success btn-sm" data-adv-id="${adv.id}" onclick="openApproveById(this)">
               Review (L${currentLevel})
             </button>` : ''}
@@ -658,7 +666,36 @@ async function loadPending() {
     el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>No requests pending your action</p></div>';
     return;
   }
-  el.innerHTML = all.map(a => advanceCard(a, true)).join('');
+  el.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;font-weight:700">
+        <input type="checkbox" id="adv-chk-all" style="width:16px;height:16px;cursor:pointer"
+          onchange="advSelectAll(this.checked)"> ☑ Select All (${pending.length})
+      </label>
+    </div>
+    ${all.map(a => advanceCard(a, true)).join('')}`;
+  advUpdateBulkBar();
+}
+
+function advSelectAll(c) { document.querySelectorAll('.adv-chk').forEach(x => x.checked = c); advUpdateBulkBar(); }
+function advUpdateBulkBar() {
+  const n = document.querySelectorAll('.adv-chk:checked').length;
+  const bar = document.getElementById('adv-bulk-bar');
+  if (bar) { bar.style.display = n > 0 ? 'flex' : 'none'; const cnt = document.getElementById('adv-bulk-count'); if (cnt) cnt.textContent = n; }
+  const ca = document.getElementById('adv-chk-all'); const t = document.querySelectorAll('.adv-chk').length;
+  if (ca) ca.checked = t > 0 && n === t;
+}
+async function bulkAdvanceAction(action) {
+  const checked = [...document.querySelectorAll('.adv-chk:checked')];
+  if (!checked.length) return;
+  const remarks = document.getElementById('adv-bulk-remarks')?.value?.trim() || '';
+  let ok=0, fail=0;
+  for (const c of checked) {
+    const res = await api('POST', `/advance/${c.dataset.id}/${action}`, { remarks });
+    if (res?.success) ok++; else fail++;
+  }
+  toast(`${ok} ${action}d${fail?', '+fail+' failed':''}`, ok>0?'success':'error');
+  document.getElementById('adv-bulk-remarks').value = ''; loadPending();
 }
 
 // ── All Requests — full list for super_admin / accounts ──────────────────────
