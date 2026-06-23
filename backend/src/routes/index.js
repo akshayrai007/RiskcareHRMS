@@ -862,6 +862,12 @@ router.get   ('/documents/checklist',     authenticate,                    docsC
 router.get   ('/documents/employees',     authenticate, authorize('hr','admin','super_admin'), docsCtrl.getEmployeesForPicker);
 router.get   ('/documents',                authenticate,                    docsCtrl.getDocuments);
 router.post  ('/documents/upload',         authenticate, docsCtrl.uploadMiddleware, docsCtrl.uploadDocument);
+router.post  ('/documents/upload-multi',   authenticate, (req, res, next) => {
+  docsCtrl.uploadMultiMiddleware(req, res, (err) => {
+    if (err) return res.status(400).json({ success: false, message: err.message || 'File upload error' });
+    next();
+  });
+}, docsCtrl.uploadMultiDocument);
 router.get   ('/documents/file/:id',       authenticate,                    docsCtrl.getFile);
 router.delete('/documents/:id',            authenticate,                    docsCtrl.deleteDocument);
 
