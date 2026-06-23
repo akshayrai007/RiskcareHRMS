@@ -2210,33 +2210,84 @@ async function loadRegularizations() {
     const data = await api('GET', `/attendance/regularizations${qs}`);
     if (!data?.success || !data.data?.length) {
       listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><p>No ${statusFilter||''} regularizations</p></div>`;
+      updateRegBulkBar();
       return;
     }
-    listEl.innerHTML = data.data.map(r => {
-      const s  = r.status || 'pending';
-      const sc = s==='approved' ? '#16a34a' : s==='rejected' ? '#dc2626' : '#d97706';
-      const sb = s==='approved' ? '#dcfce7'  : s==='rejected' ? '#fee2e2'  : '#fef3c7';
-      const si = s==='approved' ? '✅ Approved' : s==='rejected' ? '❌ Rejected' : '⏳ Pending';
-      // Only show approve/reject buttons if still pending
-      const canAction = s === 'pending';
-      return `
-      <div class="req-card" style="cursor:${canAction?'pointer':'default'};border-left:4px solid ${sc}"
-        ${canAction ? `onclick="openApproveReg(${r.id},'${(r.emp_name||'').replace(/'/g,"\\'")}','${r.date}','${(r.regularization_reason||r.reason||'').replace(/'/g,"\\'")}','${r.punch_in||''}','${r.punch_out||''}')"` : ''}>
-        <div class="req-top">
-          <div>
-            <div class="req-name">${r.emp_name} <span class="text-muted fs-sm">(${r.employee_code})</span></div>
-            <div class="req-meta">${r.dept||'—'} · ${fmt.date(r.date)}</div>
-            <div class="req-meta" style="margin-top:4px">Reason: ${r.regularization_reason||r.reason||'—'}</div>
-            ${r.punch_in ? `<div class="req-meta">Requested: ${r.punch_in} → ${r.punch_out||'—'}</div>` : ''}
-            ${r.regularization_remarks ? `<div class="req-meta" style="color:#7c3aed">💬 ${r.regularization_remarks}</div>` : ''}
+    const pending = data.data.filter(r => (r.status||'pending') === 'pending');
+    listEl.innerHTML = `
+      ${pending.length > 0 ? `
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;font-weight:700">
+          <input type="checkbox" id="reg-chk-all" style="width:16px;height:16px;cursor:pointer"
+            onchange="regSelectAll(this.checked)"> ☑ Select All Pending (${pending.length})
+        </label>
+      </div>` : ''}
+      ${data.data.map(r => {
+        const s  = r.status || 'pending';
+        const sc = s==='approved' ? '#16a34a' : s==='rejected' ? '#dc2626' : '#d97706';
+        const sb = s==='approved' ? '#dcfce7'  : s==='rejected' ? '#fee2e2'  : '#fef3c7';
+        const si = s==='approved' ? '✅ Approved' : s==='rejected' ? '❌ Rejected' : '⏳ Pending';
+        const canAction = s === 'pending';
+        return `
+        <div class="req-card" style="border-left:4px solid ${sc};margin-bottom:10px">
+          <div class="req-top" style="align-items:flex-start">
+            ${canAction ? `<div style="padding-top:2px;margin-right:10px;flex-shrink:0">
+              <input type="checkbox" class="reg-chk" data-id="${r.id}"
+                style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent)"
+                onchange="updateRegBulkBar()">
+            </div>` : '<div style="width:28px"></div>'}
+            <div style="flex:1;cursor:${canAction?'pointer':'default'}"
+              ${canAction ? `onclick="openApproveReg(${r.id},'${(r.emp_name||'').replace(/'/g,"\\'")}','${r.date}','${(r.regularization_reason||r.reason||'').replace(/'/g,"\\'")}','${r.punch_in||''}','${r.punch_out||''}')"` : ''}>
+              <div class="req-name">${r.emp_name} <span class="text-muted fs-sm">(${r.employee_code})</span></div>
+              <div class="req-meta">${r.dept||'—'} · ${fmt.date(r.date)}</div>
+              <div class="req-meta" style="margin-top:4px">Reason: ${r.regularization_reason||r.reason||'—'}</div>
+              ${r.punch_in ? `<div class="req-meta">Requested: ${r.punch_in} → ${r.punch_out||'—'}</div>` : ''}
+              ${r.regularization_remarks ? `<div class="req-meta" style="color:#7c3aed">💬 ${r.regularization_remarks}</div>` : ''}
+            </div>
+            <span class="badge" style="background:${sb};color:${sc};border:1px solid ${sc};flex-shrink:0">${si}</span>
           </div>
-          <span class="badge" style="background:${sb};color:${sc};border:1px solid ${sc}">${si}</span>
-        </div>
-      </div>`;
-    }).join('');
+        </div>`;
+      }).join('')}`;
+    updateRegBulkBar();
   } catch(e) {
     listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>Failed to load approval queue</p></div>';
   }
+}
+
+function regSelectAll(checked) {
+  document.querySelectorAll('.reg-chk').forEach(c => c.checked = checked);
+  updateRegBulkBar();
+}
+
+function updateRegBulkBar() {
+  const count = document.querySelectorAll('.reg-chk:checked').length;
+  const bar   = document.getElementById('reg-bulk-bar');
+  if (bar) {
+    bar.style.display = count > 0 ? 'flex' : 'none';
+    const cnt = document.getElementById('reg-bulk-count');
+    if (cnt) cnt.textContent = count;
+  }
+  const chkAll = document.getElementById('reg-chk-all');
+  const total  = document.querySelectorAll('.reg-chk').length;
+  if (chkAll) chkAll.checked = total > 0 && count === total;
+}
+
+async function bulkActionReg(action) {
+  const checked = [...document.querySelectorAll('.reg-chk:checked')];
+  if (!checked.length) return;
+  const remarks = document.getElementById('reg-bulk-remarks')?.value?.trim() || '';
+  const ids = checked.map(c => parseInt(c.dataset.id));
+  const btn = document.getElementById('reg-bulk-'+action);
+  if (btn) { btn.disabled=true; btn.textContent=action==='approve'?'⏳ Approving…':'⏳ Rejecting…'; }
+  let ok=0, fail=0;
+  for (const id of ids) {
+    const res = await api('POST','/attendance/regularize/action',{ attendance_id:id, action, remarks });
+    if (res?.success) ok++; else fail++;
+  }
+  if (btn) { btn.disabled=false; btn.textContent=action==='approve'?'✅ Approve Selected':'✗ Reject Selected'; }
+  toast(`${ok} ${action}d${fail?', '+fail+' failed':''}`, ok>0?'success':'error');
+  if (document.getElementById('reg-bulk-remarks')) document.getElementById('reg-bulk-remarks').value='';
+  loadRegularizations();
 }
 
 function openRegModal(date='', status='') {
