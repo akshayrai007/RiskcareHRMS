@@ -88,10 +88,37 @@
         <select id="emp-picker" class="form-control" onchange="onEmployeeChange()"></select>
       </div>
 
-      <div id="table-wrap"><div class="loader"><div class="spinner"></div></div></div>
+      <!-- Tabs -->
+      <div style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:20px;flex-wrap:wrap">
+        <button class="tab-btn active" id="dtab-docs-btn" onclick="switchDocTab('docs',this)" style="padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--accent);border-bottom:3px solid var(--accent);margin-bottom:-2px">📄 Documents</button>
+        <button class="tab-btn" id="dtab-emp-btn" onclick="switchDocTab('emp',this)" style="padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px">🏢 Previous Employment</button>
+        <button class="tab-btn" id="dtab-qual-btn" onclick="switchDocTab('qual',this)" style="padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px">🎓 Qualifications</button>
+      </div>
 
-      <div style="margin-top:18px;display:flex;justify-content:flex-end;gap:10px">
-        <button class="btn btn-primary" id="save-btn" onclick="saveAll()">💾 Save</button>
+      <!-- Documents Tab -->
+      <div id="dtab-docs">
+        <div id="table-wrap"><div class="loader"><div class="spinner"></div></div></div>
+        <div style="margin-top:18px;display:flex;justify-content:flex-end;gap:10px">
+          <button class="btn btn-primary" id="save-btn" onclick="saveAll()">💾 Save</button>
+        </div>
+      </div>
+
+      <!-- Previous Employment Tab -->
+      <div id="dtab-emp" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="font-size:14px;font-weight:700;color:var(--text)">🏢 Previous Employment History</div>
+          <button class="btn btn-primary btn-sm" onclick="openPrevEmpModal()">+ Add Employment</button>
+        </div>
+        <div id="prev-emp-list"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+
+      <!-- Qualifications Tab -->
+      <div id="dtab-qual" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="font-size:14px;font-weight:700;color:var(--text)">🎓 Educational Qualifications</div>
+          <button class="btn btn-primary btn-sm" onclick="openQualModal()">+ Add Qualification</button>
+        </div>
+        <div id="qual-list"><div class="loader"><div class="spinner"></div></div></div>
       </div>
     </div>
   </div>
@@ -330,6 +357,266 @@ async function saveAll() {
   pendingFiles = {};
   loadDocuments();
 }
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchDocTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.style.color = 'var(--muted)'; b.style.borderBottomColor = 'transparent'; b.style.background = 'none';
+  });
+  btn.style.color = 'var(--accent)'; btn.style.borderBottomColor = 'var(--accent)'; btn.style.background = 'var(--accent-l)';
+  ['docs','emp','qual'].forEach(t => document.getElementById('dtab-'+t).style.display = t===tab?'':'none');
+  if (tab==='emp')  loadPrevEmp();
+  if (tab==='qual') loadQualifications();
+}
+
+// ── Previous Employment ───────────────────────────────────────────────────────
+let _prevEmpData = [], _qualData = [];
+const MONTHS = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+
+async function loadPrevEmp() {
+  const el = document.getElementById('prev-emp-list');
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const data = await api('GET', `/prev-employment/${currentEmployeeId}`);
+  _prevEmpData = data?.data || [];
+  if (!_prevEmpData.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">🏢</div><p>No previous employment added yet.</p></div>'; return; }
+  const isHR = Role.is('hr','admin','super_admin');
+  el.innerHTML = _prevEmpData.map(r => `
+    <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:15px;font-weight:700">${r.company_name}</div>
+          <div style="font-size:13px;color:var(--accent);margin-top:2px">${r.designation||''} ${r.job_type?'· '+r.job_type:''}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">📅 ${r.from_date?fmt.date(r.from_date):''} → ${r.to_date?fmt.date(r.to_date):'Present'}</div>
+          ${r.city||r.state?`<div style="font-size:12px;color:var(--muted)">${[r.city,r.state].filter(Boolean).join(', ')}</div>`:''}
+          ${r.reason_for_leaving?`<div style="font-size:12px;color:var(--muted);margin-top:4px">Reason: ${r.reason_for_leaving}</div>`:''}
+          ${r.prev_manager_name?`<div style="font-size:12px;color:var(--muted);margin-top:4px">👤 Manager: ${r.prev_manager_name}${r.prev_manager_phone?' · '+r.prev_manager_phone:''}</div>`:''}
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
+          ${r.is_relevant?'<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">Relevant</span>':''}
+          ${r.is_overseas?'<span style="background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">Overseas</span>':''}
+          ${isHR?`<button class="btn btn-outline btn-sm" onclick="editPrevEmp(${r.id})">✏️</button>
+                  <button class="btn btn-danger btn-sm" onclick="deletePrevEmp(${r.id})">🗑</button>`:''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function openPrevEmpModal(r={}) {
+  const isEdit = !!r.id;
+  const fields = {
+    'pe-id':r.id||'','pe-company':r.company_name||'','pe-address':r.company_address||'',
+    'pe-city':r.city||'','pe-state':r.state||'','pe-from':r.from_date?.split('T')[0]||'',
+    'pe-to':r.to_date?.split('T')[0]||'','pe-designation':r.designation||'',
+    'pe-mgr-name':r.prev_manager_name||'','pe-mgr-phone':r.prev_manager_phone||'',
+    'pe-mgr-email':r.prev_manager_email||'','pe-hr-name':r.prev_hr_name||'',
+    'pe-hr-phone':r.prev_hr_phone||'','pe-hr-email':r.prev_hr_email||'',
+    'pe-pf':r.pf_number||'','pe-reason':r.reason_for_leaving||''
+  };
+  Object.entries(fields).forEach(([id,val]) => { const el=document.getElementById(id); if(el) el.value=val; });
+  document.getElementById('pe-jobtype').value = r.job_type||'Full Time';
+  document.getElementById('pe-overseas').checked = !!r.is_overseas;
+  document.getElementById('pe-relevant').checked = !!r.is_relevant;
+  document.getElementById('pe-modal-title').textContent = isEdit ? '🏢 Edit Employment' : '🏢 Add Previous Employment';
+  openModal('prev-emp-modal');
+}
+
+function editPrevEmp(id) { openPrevEmpModal(_prevEmpData.find(r=>r.id===id)||{}); }
+
+async function deletePrevEmp(id) {
+  if (!confirm('Delete this employment record?')) return;
+  const d = await api('DELETE', `/prev-employment/${id}`);
+  if (d?.success) { toast('Deleted','success'); loadPrevEmp(); } else toast('Failed','error');
+}
+
+async function savePrevEmp() {
+  const btn = document.getElementById('pe-save-btn');
+  btn.disabled=true; btn.textContent='⏳ Saving…';
+  const body = {
+    id: document.getElementById('pe-id').value||undefined,
+    employee_id: currentEmployeeId,
+    company_name: document.getElementById('pe-company').value.trim(),
+    company_address: document.getElementById('pe-address').value.trim(),
+    city: document.getElementById('pe-city').value.trim(),
+    state: document.getElementById('pe-state').value.trim(),
+    from_date: document.getElementById('pe-from').value||null,
+    to_date: document.getElementById('pe-to').value||null,
+    designation: document.getElementById('pe-designation').value.trim(),
+    job_type: document.getElementById('pe-jobtype').value,
+    prev_manager_name: document.getElementById('pe-mgr-name').value.trim(),
+    prev_manager_phone: document.getElementById('pe-mgr-phone').value.trim(),
+    prev_manager_email: document.getElementById('pe-mgr-email').value.trim(),
+    prev_hr_name: document.getElementById('pe-hr-name').value.trim(),
+    prev_hr_phone: document.getElementById('pe-hr-phone').value.trim(),
+    prev_hr_email: document.getElementById('pe-hr-email').value.trim(),
+    pf_number: document.getElementById('pe-pf').value.trim(),
+    reason_for_leaving: document.getElementById('pe-reason').value.trim(),
+    is_overseas: document.getElementById('pe-overseas').checked,
+    is_relevant: document.getElementById('pe-relevant').checked,
+  };
+  const d = await api('POST', '/prev-employment', body);
+  btn.disabled=false; btn.textContent='💾 Save';
+  if (d?.success) { toast('Saved ✅','success'); closeModal('prev-emp-modal'); loadPrevEmp(); }
+  else toast(d?.message||'Failed','error');
+}
+
+// ── Qualifications ────────────────────────────────────────────────────────────
+async function loadQualifications() {
+  const el = document.getElementById('qual-list');
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const data = await api('GET', `/qualifications/${currentEmployeeId}`);
+  _qualData = data?.data || [];
+  if (!_qualData.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">🎓</div><p>No qualifications added yet.</p></div>'; return; }
+  const isHR = Role.is('hr','admin','super_admin');
+  el.innerHTML = _qualData.map(r => `
+    <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:15px;font-weight:700">${r.qualification}${r.degree?' — '+r.degree:''}</span>
+            ${r.is_highest?'<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">⭐ Highest</span>':''}
+          </div>
+          <div style="font-size:13px;color:var(--accent);font-weight:600;margin-top:2px">${r.institute_name}</div>
+          ${r.board_university?`<div style="font-size:12px;color:var(--muted)">${r.board_university}</div>`:''}
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">
+            ${r.specialization?'📚 '+r.specialization:''}
+            ${r.passing_month&&r.passing_year?' · 📅 '+MONTHS[r.passing_month]+' '+r.passing_year:''}
+            ${r.grade_percentage?' · 🏅 '+r.grade_percentage:''}
+          </div>
+        </div>
+        ${isHR?`<div style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" onclick="editQual(${r.id})">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteQual(${r.id})">🗑</button>
+        </div>`:''}
+      </div>
+    </div>`).join('');
+}
+
+function openQualModal(r={}) {
+  const isEdit = !!r.id;
+  document.getElementById('q-modal-title').textContent = isEdit ? '🎓 Edit Qualification' : '🎓 Add Qualification';
+  ['q-id','q-qual','q-degree','q-specialization','q-institute','q-board','q-mode','q-state','q-grade','q-month','q-year','q-achievements','q-remarks'].forEach(id => {
+    const keyMap = {'q-id':'id','q-qual':'qualification','q-degree':'degree','q-specialization':'specialization',
+      'q-institute':'institute_name','q-board':'board_university','q-mode':'mode_of_education',
+      'q-state':'state_location','q-grade':'grade_percentage','q-month':'passing_month','q-year':'passing_year',
+      'q-achievements':'academic_achievements','q-remarks':'remarks'};
+    const el = document.getElementById(id);
+    if (el) el.value = r[keyMap[id]]||'';
+  });
+  document.getElementById('q-highest').checked = !!r.is_highest;
+  openModal('qual-modal');
+}
+
+function editQual(id) { openQualModal(_qualData.find(r=>r.id===id)||{}); }
+
+async function deleteQual(id) {
+  if (!confirm('Delete this qualification?')) return;
+  const d = await api('DELETE', `/qualifications/${id}`);
+  if (d?.success) { toast('Deleted','success'); loadQualifications(); } else toast('Failed','error');
+}
+
+async function saveQual() {
+  const btn = document.getElementById('q-save-btn');
+  btn.disabled=true; btn.textContent='⏳ Saving…';
+  const body = {
+    id: document.getElementById('q-id').value||undefined,
+    employee_id: currentEmployeeId,
+    qualification: document.getElementById('q-qual').value,
+    degree: document.getElementById('q-degree').value.trim(),
+    specialization: document.getElementById('q-specialization').value.trim(),
+    institute_name: document.getElementById('q-institute').value.trim(),
+    board_university: document.getElementById('q-board').value.trim(),
+    mode_of_education: document.getElementById('q-mode').value,
+    state_location: document.getElementById('q-state').value.trim(),
+    grade_percentage: document.getElementById('q-grade').value.trim(),
+    passing_month: document.getElementById('q-month').value||null,
+    passing_year: document.getElementById('q-year').value||null,
+    academic_achievements: document.getElementById('q-achievements').value.trim(),
+    remarks: document.getElementById('q-remarks').value.trim(),
+    is_highest: document.getElementById('q-highest').checked,
+  };
+  const d = await api('POST', '/qualifications', body);
+  btn.disabled=false; btn.textContent='💾 Save';
+  if (d?.success) { toast('Saved ✅','success'); closeModal('qual-modal'); loadQualifications(); }
+  else toast(d?.message||'Failed','error');
+}
 </script>
+
+<!-- Previous Employment Modal -->
+<div class="modal-backdrop" id="prev-emp-modal">
+  <div class="modal" style="width:600px;max-height:90vh">
+    <div class="modal-header"><div class="modal-title" id="pe-modal-title">🏢 Add Previous Employment</div>
+      <button class="modal-close" onclick="closeModal('prev-emp-modal')">✕</button></div>
+    <div class="modal-body" style="overflow-y:auto;max-height:65vh">
+      <input type="hidden" id="pe-id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Company Name *</label><input id="pe-company" class="form-control"></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Address</label><textarea id="pe-address" class="form-control" rows="2"></textarea></div>
+        <div class="form-group"><label class="form-label">City</label><input id="pe-city" class="form-control"></div>
+        <div class="form-group"><label class="form-label">State</label><input id="pe-state" class="form-control"></div>
+        <div class="form-group"><label class="form-label">From Date</label><input id="pe-from" type="date" class="form-control"></div>
+        <div class="form-group"><label class="form-label">To Date</label><input id="pe-to" type="date" class="form-control"></div>
+        <div class="form-group"><label class="form-label">Designation</label><input id="pe-designation" class="form-control"></div>
+        <div class="form-group"><label class="form-label">Job Type</label>
+          <select id="pe-jobtype" class="form-control"><option>Full Time</option><option>Part Time</option><option>Contract</option><option>Internship</option></select></div>
+        <div class="form-group"><label class="form-label">Prev Manager Name</label><input id="pe-mgr-name" class="form-control"></div>
+        <div class="form-group"><label class="form-label">Prev Manager Phone</label><input id="pe-mgr-phone" class="form-control"></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Prev Manager Email</label><input id="pe-mgr-email" class="form-control" type="email"></div>
+        <div class="form-group"><label class="form-label">Prev HR Name</label><input id="pe-hr-name" class="form-control"></div>
+        <div class="form-group"><label class="form-label">Prev HR Phone</label><input id="pe-hr-phone" class="form-control"></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Prev HR Email</label><input id="pe-hr-email" class="form-control" type="email"></div>
+        <div class="form-group"><label class="form-label">PF Number</label><input id="pe-pf" class="form-control"></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Reason for Leaving</label><textarea id="pe-reason" class="form-control" rows="2"></textarea></div>
+        <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="pe-overseas"> Overseas</label></div>
+        <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="pe-relevant"> Is Relevant</label></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('prev-emp-modal')">Cancel</button>
+      <button class="btn btn-primary" id="pe-save-btn" onclick="savePrevEmp()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Qualification Modal -->
+<div class="modal-backdrop" id="qual-modal">
+  <div class="modal" style="width:580px;max-height:90vh">
+    <div class="modal-header"><div class="modal-title" id="q-modal-title">🎓 Add Qualification</div>
+      <button class="modal-close" onclick="closeModal('qual-modal')">✕</button></div>
+    <div class="modal-body" style="overflow-y:auto;max-height:65vh">
+      <input type="hidden" id="q-id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="form-group"><label class="form-label">Qualification *</label>
+          <select id="q-qual" class="form-control"><option value="">--Select--</option>
+            <option>10th</option><option>12th</option><option>Diploma</option>
+            <option>Bachelor's Degree</option><option>Master's Degree</option>
+            <option>PhD</option><option>Certification</option><option>Other</option></select></div>
+        <div class="form-group"><label class="form-label">Degree</label><input id="q-degree" class="form-control" placeholder="e.g. B.Sc, MBA"></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Specialization</label><input id="q-specialization" class="form-control"></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Institute Name *</label><input id="q-institute" class="form-control"></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Board / University</label><input id="q-board" class="form-control"></div>
+        <div class="form-group"><label class="form-label">Mode of Education</label>
+          <select id="q-mode" class="form-control"><option value="">--Select--</option>
+            <option>Regular</option><option>Distance</option><option>Online</option><option>Part Time</option></select></div>
+        <div class="form-group"><label class="form-label">State / Location</label><input id="q-state" class="form-control"></div>
+        <div class="form-group"><label class="form-label">Grade / %</label><input id="q-grade" class="form-control" placeholder="e.g. 75%"></div>
+        <div class="form-group"><label class="form-label">Passing Month</label>
+          <select id="q-month" class="form-control"><option value="">--Select--</option>
+            <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+            <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+            <option value="10">October</option><option value="11">November</option><option value="12">December</option></select></div>
+        <div class="form-group"><label class="form-label">Passing Year</label>
+          <select id="q-year" class="form-control"><option value="">--Select--</option>
+            ${Array.from({length:40},(_,i)=>new Date().getFullYear()-i).map(y=>`<option value="${y}">${y}</option>`).join('')}</select></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Academic Achievements</label><textarea id="q-achievements" class="form-control" rows="2"></textarea></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Remarks</label><textarea id="q-remarks" class="form-control" rows="2"></textarea></div>
+        <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="q-highest"> Highest Qualification</label></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('qual-modal')">Cancel</button>
+      <button class="btn btn-primary" id="q-save-btn" onclick="saveQual()">💾 Save</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
