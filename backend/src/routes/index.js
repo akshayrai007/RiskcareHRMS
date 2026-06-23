@@ -981,20 +981,21 @@ router.post  ('/performance/assign-reviewer',           authenticate, authorize(
 router.get   ('/geofence/unassigned-employees', authenticate, authorize('admin','super_admin','hr'), geoCtrl.getUnassignedEmployeesGlobal);
 router.post  ('/geofence/fix-office-universal',  authenticate, authorize('admin','super_admin','hr'), geoCtrl.fixOfficeUniversal);
 
-// ── Employee Documents ────────────────────────────────────────────────────────
-router.get   ('/documents/types',                                  authenticate, docsCtrl.getDocumentTypes);
-router.get   ('/documents/:employee_id',                           authenticate, docsCtrl.getDocuments);
-router.post  ('/documents/upload', docsCtrl.upload.single('file'), authenticate, docsCtrl.uploadDocument);
-router.delete('/documents/:id',                                    authenticate, docsCtrl.deleteDocument);
+// ── Employee Documents (new) ─────────────────────────────────────────────────
+const empDocsCtrl = require('../controllers/empDocsController');
+router.get   ('/emp-documents/types',                                         authenticate, empDocsCtrl.getDocumentTypes);
+router.get   ('/emp-documents/:employee_id',                                  authenticate, empDocsCtrl.getDocuments);
+router.post  ('/emp-documents/upload', empDocsCtrl.upload.single('file'),    authenticate, empDocsCtrl.uploadDocument);
+router.delete('/emp-documents/:id',                                           authenticate, empDocsCtrl.deleteDocument);
 
 // ── Previous Employment ───────────────────────────────────────────────────────
-router.get   ('/prev-employment/:employee_id', authenticate, docsCtrl.getPrevEmployment);
-router.post  ('/prev-employment',              authenticate, docsCtrl.upsertPrevEmployment);
-router.delete('/prev-employment/:id',          authenticate, docsCtrl.deletePrevEmployment);
+router.get   ('/prev-employment/:employee_id', authenticate, empDocsCtrl.getPrevEmployment);
+router.post  ('/prev-employment',              authenticate, empDocsCtrl.upsertPrevEmployment);
+router.delete('/prev-employment/:id',          authenticate, empDocsCtrl.deletePrevEmployment);
 
 // ── Qualifications ────────────────────────────────────────────────────────────
-router.get   ('/qualifications/:employee_id',  authenticate, docsCtrl.getQualifications);
-router.post  ('/qualifications',               authenticate, docsCtrl.upsertQualification);
-router.delete('/qualifications/:id',           authenticate, docsCtrl.deleteQualification);
+router.get   ('/qualifications/:employee_id',  authenticate, empDocsCtrl.getQualifications);
+router.post  ('/qualifications',               authenticate, empDocsCtrl.upsertQualification);
+router.delete('/qualifications/:id',           authenticate, empDocsCtrl.deleteQualification);
 
 module.exports = router;

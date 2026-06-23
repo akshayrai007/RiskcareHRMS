@@ -310,7 +310,7 @@ async function saveAll() {
     formData.append('doc_key', docKey);
 
     try {
-      const res = await fetch(API_BASE + '/documents/upload-multi', {
+      const res = await fetch(API_BASE + '/emp-documents/upload-multi', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token },
         body: formData
