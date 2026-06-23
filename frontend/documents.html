@@ -7,45 +7,37 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
-.doc-table-wrap { border-radius:10px;overflow:hidden;border:1px solid #9fa8da }
-.doc-table { width:100%;border-collapse:collapse;min-width:960px;table-layout:fixed }
-.doc-table col.col-doc   { width:26%   }
-.doc-table col.col-sub   { width:11%   }
-.doc-table col.col-add   { width:20%   }
-.doc-table col.col-att   { width:24%   }
-.doc-table col.col-date  { width:19%   }
-.doc-table th {
-  background:#3949ab;
-  color:#fff;font-size:11.5px;font-weight:700;letter-spacing:.03em;
-  padding:11px 14px;text-align:center;white-space:nowrap;border:1px solid #5c6bc0;
-}
-.doc-table th:first-child { text-align:left }
-.doc-table td { border:1px solid #e0e3ec;padding:11px 14px;font-size:12.5px;vertical-align:middle;text-align:center;background:#fff }
-.doc-table tr:nth-child(even) td { background:#f5f6fb }
-.doc-table tr:hover td { background:#e8eaf6 }
-.doc-table td:first-child { word-break:break-word }
-.doc-status-ok    { display:inline-flex;align-items:center;gap:5px;color:#1b5e20;font-weight:700;font-size:11.5px;background:#e8f5e9;border:1px solid #a5d6a7;padding:3px 10px;border-radius:6px }
-.doc-status-empty { display:inline-flex;align-items:center;gap:4px;color:#78909c;font-weight:600;font-size:11.5px;background:#eceff1;border:1px solid #cfd8dc;padding:3px 10px;border-radius:6px }
-.emp-picker-bar { display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap }
-.emp-picker-bar select { min-width:260px }
-.doc-file-cell { display:flex;flex-direction:column;align-items:center;gap:4px }
-.pending-badge { font-size:10.5px;color:#283593;background:#e8eaf6;border:1px solid #9fa8da;border-radius:6px;padding:3px 8px;margin-top:3px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600 }
-.attach-list { display:flex;flex-direction:column;gap:5px;align-items:center }
-.attach-chip { display:inline-flex;align-items:center;gap:6px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:4px 10px 4px 9px;font-size:11px;color:#1b5e20;cursor:pointer;transition:background .15s;max-width:175px;font-weight:600 }
-.attach-chip:hover { background:#c8e6c9 }
-.attach-chip-name { overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:115px }
-.attach-chip-del { margin-left:2px;color:#90a4ae;cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;padding:0 2px }
-.attach-chip-del:hover { color:#c62828 }
-.datetime-cell { display:flex;flex-direction:column;align-items:center;gap:2px }
-.datetime-date { font-size:12px;font-weight:700;color:#283593 }
-.datetime-time { font-size:11px;color:#5c6bc0;font-weight:600 }
-/* ── Attachment Viewer Modal (matches reimbursement.html) ── */
+/* ── Excel-style table ───────────────────────────────────────── */
+.xl-table { width:100%;border-collapse:collapse;min-width:800px }
+.xl-th { border:1px solid #9ca3af;font-size:11px;font-weight:700;padding:9px 12px;text-align:center;white-space:nowrap }
+.xl-td { border:1px solid #e5e7eb;padding:8px 12px;font-size:12px;vertical-align:middle }
+.grp-hdr td { font-size:11px;font-weight:800;padding:7px 14px;text-transform:uppercase;letter-spacing:.5px;color:#fff }
+/* ── Inline form ─────────────────────────────────────────────── */
+.inline-section { background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px }
+.inline-section-title { font-size:12px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between }
+.emp-card-row { display:grid;grid-template-columns:1fr 1fr;gap:12px }
+.emp-card-row.three { grid-template-columns:1fr 1fr 1fr }
+.emp-card-row.full { grid-template-columns:1fr }
+.field-lbl { font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px }
+.field-val { font-size:13px;font-weight:600;color:var(--text) }
+/* ── search ──────────────────────────────────────────────────── */
+.search-bar { display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap }
+.search-wrap { position:relative;flex:1;max-width:380px }
+.search-results { display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:100;max-height:240px;overflow-y:auto }
+.search-result-item { padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border) }
+.search-result-item:hover { background:var(--accent-l) }
+/* ── emp row cards ───────────────────────────────────────────── */
+.pe-row, .q-row { background:#fff;border:1.5px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden }
+.pe-row-header, .q-row-header { display:flex;justify-content:space-between;align-items:flex-start;padding:14px 16px;cursor:pointer }
+.pe-row-header:hover, .q-row-header:hover { background:var(--surface2) }
+.pe-row-body, .q-row-body { display:none;padding:16px;border-top:1px solid var(--border);background:#fafafa }
+.pe-row-body.open, .q-row-body.open { display:block }
+/* ── viewer overlay ──────────────────────────────────────────── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
 .modal-box{background:#fff;border-radius:16px;width:min(640px,95vw);max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.2)}
-.modal-box h3{font-size:17px;font-weight:700;margin-bottom:16px;color:#1b4332}
-.modal-close{float:right;background:none;border:none;font-size:22px;cursor:pointer;color:#888;margin-top:-4px}
-.viewer-frame{width:100%;height:70vh;border:none;border-radius:8px;background:#f0f0f0}
+.modal-close{float:right;background:none;border:none;font-size:22px;cursor:pointer;color:#888}
+.viewer-frame{width:100%;height:70vh;border:none;border-radius:8px}
 </style>
 </head>
 <body>
@@ -71,69 +63,185 @@
   <div class="topbar">
     <div class="topbar-left">
       <button class="hamburger-btn" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
-      <div class="topbar-title">📄 Documents</div>
+      <div class="topbar-title">📁 Documents</div>
     </div>
     <div class="topbar-right">
-      <button class="btn btn-outline btn-sm" onclick="loadDocuments()">🔄 Refresh</button>
-      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
-      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html">🏠</a>
     </div>
   </div>
 
   <div class="content fade-in">
     <div class="card">
-      <!-- HR-only employee search -->
-      <div class="emp-picker-bar" id="emp-picker-bar" style="display:none">
-        <span style="font-size:12px;font-weight:700;color:var(--muted)">VIEWING DOCUMENTS FOR:</span>
-        <div style="position:relative;flex:1;max-width:360px">
+
+      <!-- Search bar (HR only) -->
+      <div class="search-bar" id="hr-search-bar" style="display:none">
+        <span style="font-size:12px;font-weight:700;color:var(--muted)">EMPLOYEE:</span>
+        <div class="search-wrap">
           <input id="emp-search" class="form-control" placeholder="Search by name or employee code…"
-            oninput="onEmpSearch()" autocomplete="off"
-            style="padding-right:36px">
-          <div id="emp-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:100;max-height:240px;overflow-y:auto"></div>
+            oninput="onEmpSearch()" autocomplete="off">
+          <div class="search-results" id="search-results"></div>
         </div>
-        <div id="emp-selected-badge" style="display:none;background:var(--accent-l);border:1.5px solid var(--accent);border-radius:8px;padding:5px 12px;font-size:13px;font-weight:600;color:var(--accent)"></div>
+        <div id="emp-badge" style="display:none;background:var(--accent-l);border:1.5px solid var(--accent);border-radius:8px;padding:5px 14px;font-size:13px;font-weight:700;color:var(--accent)"></div>
       </div>
 
-      <!-- Tabs -->
-      <div style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:20px;flex-wrap:wrap">
-        <button class="tab-btn active" id="dtab-docs-btn" onclick="switchDocTab('docs',this)" style="padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--accent);border-bottom:3px solid var(--accent);margin-bottom:-2px">📄 Documents</button>
-        <button class="tab-btn" id="dtab-emp-btn" onclick="switchDocTab('emp',this)" style="padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px">🏢 Previous Employment</button>
-        <button class="tab-btn" id="dtab-qual-btn" onclick="switchDocTab('qual',this)" style="padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px">🎓 Qualifications</button>
+      <!-- Main content (shown after employee selected or for own) -->
+      <div id="doc-main" style="display:none">
+
+        <!-- Tabs -->
+        <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:24px">
+          <button class="doc-tab-btn active" id="tb-docs" onclick="showTab('docs',this)"
+            style="padding:10px 22px;font-size:13px;font-weight:700;border:none;background:none;cursor:pointer;color:var(--accent);border-bottom:3px solid var(--accent);margin-bottom:-2px">📄 Documents</button>
+          <button class="doc-tab-btn" id="tb-emp" onclick="showTab('emp',this)"
+            style="padding:10px 22px;font-size:13px;font-weight:700;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px">🏢 Previous Employment</button>
+          <button class="doc-tab-btn" id="tb-qual" onclick="showTab('qual',this)"
+            style="padding:10px 22px;font-size:13px;font-weight:700;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px">🎓 Qualifications</button>
+        </div>
+
+        <!-- ── Documents Tab ─────────────────────────────────────── -->
+        <div id="tab-docs">
+          <div id="docs-table-wrap"><div class="loader"><div class="spinner"></div></div></div>
+          <div style="margin-top:16px;display:flex;justify-content:flex-end">
+            <button class="btn btn-primary" onclick="saveAll()">💾 Save Changes</button>
+          </div>
+        </div>
+
+        <!-- ── Previous Employment Tab ───────────────────────────── -->
+        <div id="tab-emp" style="display:none">
+          <div id="pe-list-wrap"><div class="loader"><div class="spinner"></div></div></div>
+
+          <!-- Inline Add Form -->
+          <div id="pe-add-form" style="display:none;margin-top:20px">
+            <div class="inline-section">
+              <div class="inline-section-title">
+                <span id="pe-form-title">🏢 Add Previous Employment</span>
+                <button class="btn btn-outline btn-sm" onclick="cancelPEForm()">✕ Cancel</button>
+              </div>
+              <input type="hidden" id="pe-id">
+              <div class="emp-card-row" style="margin-bottom:12px">
+                <div><div class="field-lbl">Company Name *</div><input id="pe-company" class="form-control"></div>
+                <div><div class="field-lbl">Designation</div><input id="pe-designation" class="form-control"></div>
+              </div>
+              <div class="emp-card-row three" style="margin-bottom:12px">
+                <div><div class="field-lbl">From Date</div><input id="pe-from" type="date" class="form-control"></div>
+                <div><div class="field-lbl">To Date</div><input id="pe-to" type="date" class="form-control"></div>
+                <div><div class="field-lbl">Job Type</div>
+                  <select id="pe-jobtype" class="form-control"><option>Full Time</option><option>Part Time</option><option>Contract</option><option>Internship</option></select>
+                </div>
+              </div>
+              <div class="emp-card-row three" style="margin-bottom:12px">
+                <div><div class="field-lbl">City</div><input id="pe-city" class="form-control"></div>
+                <div><div class="field-lbl">State</div><input id="pe-state" class="form-control"></div>
+                <div><div class="field-lbl">PF Number</div><input id="pe-pf" class="form-control"></div>
+              </div>
+              <div class="emp-card-row" style="margin-bottom:12px">
+                <div><div class="field-lbl">Prev Manager Name</div><input id="pe-mgr-name" class="form-control"></div>
+                <div><div class="field-lbl">Prev Manager Phone</div><input id="pe-mgr-phone" class="form-control"></div>
+              </div>
+              <div class="emp-card-row" style="margin-bottom:12px">
+                <div><div class="field-lbl">Prev Manager Email</div><input id="pe-mgr-email" type="email" class="form-control"></div>
+                <div><div class="field-lbl">Prev HR Name</div><input id="pe-hr-name" class="form-control"></div>
+              </div>
+              <div class="emp-card-row" style="margin-bottom:12px">
+                <div><div class="field-lbl">Prev HR Phone</div><input id="pe-hr-phone" class="form-control"></div>
+                <div><div class="field-lbl">Prev HR Email</div><input id="pe-hr-email" type="email" class="form-control"></div>
+              </div>
+              <div class="emp-card-row full" style="margin-bottom:12px">
+                <div><div class="field-lbl">Company Address</div><textarea id="pe-address" class="form-control" rows="2"></textarea></div>
+              </div>
+              <div class="emp-card-row full" style="margin-bottom:16px">
+                <div><div class="field-lbl">Reason for Leaving</div><textarea id="pe-reason" class="form-control" rows="2"></textarea></div>
+              </div>
+              <div style="display:flex;gap:20px;align-items:center;margin-bottom:16px">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"><input type="checkbox" id="pe-overseas" style="width:16px;height:16px"> Overseas</label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"><input type="checkbox" id="pe-relevant" style="width:16px;height:16px"> Is Relevant</label>
+              </div>
+              <button class="btn btn-primary" id="pe-save-btn" onclick="savePrevEmp()">💾 Save Employment</button>
+            </div>
+          </div>
+
+          <div style="margin-top:16px">
+            <button class="btn btn-primary btn-sm" onclick="showPEForm()">+ Add Employment</button>
+          </div>
+        </div>
+
+        <!-- ── Qualifications Tab ─────────────────────────────────── -->
+        <div id="tab-qual" style="display:none">
+          <div id="qual-list-wrap"><div class="loader"><div class="spinner"></div></div></div>
+
+          <!-- Inline Add Form -->
+          <div id="q-add-form" style="display:none;margin-top:20px">
+            <div class="inline-section">
+              <div class="inline-section-title">
+                <span id="q-form-title">🎓 Add Qualification</span>
+                <button class="btn btn-outline btn-sm" onclick="cancelQForm()">✕ Cancel</button>
+              </div>
+              <input type="hidden" id="q-id">
+              <div class="emp-card-row" style="margin-bottom:12px">
+                <div><div class="field-lbl">Qualification *</div>
+                  <select id="q-qual" class="form-control"><option value="">--Select--</option>
+                    <option>10th</option><option>12th</option><option>Diploma</option>
+                    <option>Bachelor's Degree</option><option>Master's Degree</option>
+                    <option>PhD</option><option>Certification</option><option>Other</option></select></div>
+                <div><div class="field-lbl">Degree</div><input id="q-degree" class="form-control" placeholder="e.g. B.Sc, MBA"></div>
+              </div>
+              <div class="emp-card-row" style="margin-bottom:12px">
+                <div><div class="field-lbl">Specialization</div><input id="q-specialization" class="form-control"></div>
+                <div><div class="field-lbl">Institute Name *</div><input id="q-institute" class="form-control"></div>
+              </div>
+              <div class="emp-card-row" style="margin-bottom:12px">
+                <div><div class="field-lbl">Board / University</div><input id="q-board" class="form-control"></div>
+                <div><div class="field-lbl">Mode of Education</div>
+                  <select id="q-mode" class="form-control"><option value="">--Select--</option>
+                    <option>Regular</option><option>Distance</option><option>Online</option><option>Part Time</option></select></div>
+              </div>
+              <div class="emp-card-row three" style="margin-bottom:12px">
+                <div><div class="field-lbl">State / Location</div><input id="q-state" class="form-control"></div>
+                <div><div class="field-lbl">Grade / %</div><input id="q-grade" class="form-control" placeholder="e.g. 75%"></div>
+                <div></div>
+              </div>
+              <div class="emp-card-row three" style="margin-bottom:12px">
+                <div><div class="field-lbl">Passing Month</div>
+                  <select id="q-month" class="form-control"><option value="">--Select--</option>
+                    <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                    <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+                    <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+                    <option value="10">October</option><option value="11">November</option><option value="12">December</option></select></div>
+                <div><div class="field-lbl">Passing Year</div>
+                  <select id="q-year" class="form-control"><option value="">--Select--</option>
+                    ${Array.from({length:40},(_,i)=>new Date().getFullYear()-i).map(y=>`<option value="${y}">${y}</option>`).join('')}</select></div>
+                <div style="padding-top:20px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"><input type="checkbox" id="q-highest" style="width:16px;height:16px"> Highest Qualification</label></div>
+              </div>
+              <div class="emp-card-row" style="margin-bottom:16px">
+                <div><div class="field-lbl">Academic Achievements</div><textarea id="q-achievements" class="form-control" rows="2"></textarea></div>
+                <div><div class="field-lbl">Remarks</div><textarea id="q-remarks" class="form-control" rows="2"></textarea></div>
+              </div>
+              <button class="btn btn-primary" id="q-save-btn" onclick="saveQual()">💾 Save Qualification</button>
+            </div>
+          </div>
+
+          <div style="margin-top:16px">
+            <button class="btn btn-primary btn-sm" onclick="showQForm()">+ Add Qualification</button>
+          </div>
+        </div>
+
+      </div><!-- /#doc-main -->
+
+      <!-- Empty state when no employee selected -->
+      <div id="doc-empty" style="padding:60px 20px;text-align:center;color:var(--muted)">
+        <div style="font-size:48px;margin-bottom:12px">🔍</div>
+        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">Search for an employee</div>
+        <div style="font-size:13px">Type a name or employee code above to view their documents</div>
       </div>
 
-      <!-- Documents Tab -->
-      <div id="dtab-docs">
-        <div id="table-wrap"><div class="loader"><div class="spinner"></div></div></div>
-        <div style="margin-top:18px;display:flex;justify-content:flex-end;gap:10px">
-          <button class="btn btn-primary" id="save-btn" onclick="saveAll()">💾 Save</button>
-        </div>
-      </div>
-
-      <!-- Previous Employment Tab -->
-      <div id="dtab-emp" style="display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <div style="font-size:14px;font-weight:700;color:var(--text)">🏢 Previous Employment History</div>
-          <button class="btn btn-primary btn-sm" onclick="openPrevEmpModal()">+ Add Employment</button>
-        </div>
-        <div id="prev-emp-list"><div class="loader"><div class="spinner"></div></div></div>
-      </div>
-
-      <!-- Qualifications Tab -->
-      <div id="dtab-qual" style="display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <div style="font-size:14px;font-weight:700;color:var(--text)">🎓 Educational Qualifications</div>
-          <button class="btn btn-primary btn-sm" onclick="openQualModal()">+ Add Qualification</button>
-        </div>
-        <div id="qual-list"><div class="loader"><div class="spinner"></div></div></div>
-      </div>
     </div>
   </div>
 </div>
 
-<!-- ── Attachment Viewer Modal ── -->
+<!-- Attachment Viewer -->
 <div class="modal-overlay" id="viewerModal">
   <div class="modal-box">
-    <button class="modal-close" onclick="closeModal('viewerModal')">×</button>
+    <button class="modal-close" onclick="document.getElementById('viewerModal').classList.remove('open')">×</button>
     <h3 id="viewerTitle">Attachment</h3>
     <div id="viewerBody"></div>
   </div>
@@ -143,366 +251,284 @@
 <script>
 Auth.guard();
 
-const HR_ROLES = ['hr', 'admin', 'super_admin'];
+const HR_ROLES = ['hr','admin','super_admin'];
 let isHR = false;
-let currentEmployeeId = null;
-let checklistData = [];
-// pendingFiles[doc_key] = array of File objects selected but not yet uploaded
+let currentEmpId = null;
 let pendingFiles = {};
+let _allEmps = [], _prevEmpData = [], _qualData = [];
+const MONTHS = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+const XLH = `border:1px solid #9ca3af;font-size:11px;font-weight:700;padding:9px 12px;text-align:center;white-space:nowrap`;
+const XLD = `border:1px solid #e5e7eb;padding:8px 12px;font-size:12px;vertical-align:middle`;
 
+const DOC_GROUPS = [
+  { label:'🏆 Broker / Compliance', bg:'#1b5e20', row:'#f0fdf4', docs:['Broker Qualification & Renewal Certificate','Broker Training Certificate'] },
+  { label:'🪪 Identity Documents',  bg:'#b45309', row:'#fffbeb', docs:['Aadhaar Card','PAN Card','Proof of ID & Residence Address','Passport size photograph'] },
+  { label:'🎓 Educational',         bg:'#5b21b6', row:'#f5f3ff', docs:['10th Marksheet / Certificate','12th Marksheet / Certificate','Graduation Marksheet','Post Graduation Certificate','Qualification Certificate'] },
+  { label:'💳 Financial',           bg:'#1e3a8a', row:'#eff6ff', docs:['Last 3 Months Pay Slips or Bank Statement','Bank Statement with AC Details or Cancelled Cheque'] },
+  { label:'🏢 Employment',          bg:'#881337', row:'#fff1f2', docs:['Previous Employment Certificate','Relieving Letter','Appointment Letter (Acknowledgement)'] },
+  { label:'📄 Other',               bg:'#374151', row:'#f9fafb', docs:['Other'] },
+];
+
+// ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   buildSidebar('documents.html');
   const user = Auth.getUser();
   isHR = HR_ROLES.includes(user.role);
-  currentEmployeeId = user.id;
 
   if (isHR) {
-    document.getElementById('emp-picker-bar').style.display = 'flex';
-    await loadEmployeePicker();
+    document.getElementById('hr-search-bar').style.display = 'flex';
+    document.getElementById('doc-empty').style.display = '';
+    // Load employees for search
+    const res = await api('GET', '/documents/employees');
+    _allEmps = res?.data || [];
+  } else {
+    // Employee sees own documents immediately
+    currentEmpId = user.id;
+    document.getElementById('doc-empty').style.display = 'none';
+    document.getElementById('doc-main').style.display = '';
+    loadAll();
   }
-  await loadDocuments();
+
+  // Close search on outside click
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#hr-search-bar'))
+      document.getElementById('search-results').style.display = 'none';
+  });
 });
 
-let _allEmployees = [];
-
-async function loadEmployeePicker() {
-  const res = await api('GET', '/documents/employees');
-  if (!res?.success) return;
-  _allEmployees = res.data || [];
-  // Show own name as selected by default
-  const user = Auth.getUser();
-  const me = _allEmployees.find(e => e.id === user.id);
-  if (me) {
-    document.getElementById('emp-selected-badge').textContent = `${me.employee_code} — ${me.first_name} ${me.last_name} (Me)`;
-    document.getElementById('emp-selected-badge').style.display = '';
-  }
-}
-
+// ── Employee Search ───────────────────────────────────────────────────────────
 function onEmpSearch() {
   const q = document.getElementById('emp-search').value.trim().toLowerCase();
-  const results = document.getElementById('emp-search-results');
-  if (!q) { results.style.display = 'none'; return; }
-  const matches = _allEmployees.filter(e =>
+  const res = document.getElementById('search-results');
+  if (!q) { res.style.display = 'none'; return; }
+  const matches = _allEmps.filter(e =>
     (e.first_name+' '+e.last_name).toLowerCase().includes(q) ||
     e.employee_code.toLowerCase().includes(q)
-  ).slice(0, 10);
-  if (!matches.length) { results.style.display = 'none'; return; }
-  results.innerHTML = matches.map(e => `
-    <div onclick="selectEmployee(${e.id},'${e.employee_code}','${e.first_name} ${e.last_name}')"
-      style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)"
-      onmouseover="this.style.background='var(--accent-l)'" onmouseout="this.style.background=''">
+  ).slice(0, 8);
+  if (!matches.length) { res.style.display = 'none'; return; }
+  res.innerHTML = matches.map(e => `
+    <div class="search-result-item" onclick="selectEmp(${e.id},'${e.employee_code}','${e.first_name} ${e.last_name}')">
       <span style="font-weight:700;color:var(--accent)">${e.employee_code}</span> — ${e.first_name} ${e.last_name}
-      ${e.department_name ? `<span style="color:var(--muted);font-size:11px"> · ${e.department_name}</span>` : ''}
+      ${e.department_name?`<span style="color:var(--muted);font-size:11px"> · ${e.department_name}</span>`:''}
     </div>`).join('');
-  results.style.display = '';
+  res.style.display = '';
 }
 
-function selectEmployee(id, code, name) {
-  currentEmployeeId = id;
+function selectEmp(id, code, name) {
+  currentEmpId = id;
   pendingFiles = {};
   document.getElementById('emp-search').value = '';
-  document.getElementById('emp-search-results').style.display = 'none';
-  document.getElementById('emp-selected-badge').textContent = `${code} — ${name}`;
-  document.getElementById('emp-selected-badge').style.display = '';
+  document.getElementById('search-results').style.display = 'none';
+  const badge = document.getElementById('emp-badge');
+  badge.textContent = `${code} — ${name}`;
+  badge.style.display = '';
+  document.getElementById('doc-empty').style.display = 'none';
+  document.getElementById('doc-main').style.display = '';
+  loadAll();
+}
+
+function loadAll() {
   loadDocuments();
-  // Reload active tab
-  const active = ['emp','qual'].find(t => document.getElementById('dtab-'+t).style.display !== 'none');
-  if (active === 'emp') loadPrevEmp();
-  if (active === 'qual') loadQualifications();
+  loadPrevEmp();
+  loadQualifications();
 }
 
-// Close search results on outside click
-document.addEventListener('click', e => {
-  if (!e.target.closest('#emp-picker-bar')) {
-    const r = document.getElementById('emp-search-results');
-    if (r) r.style.display = 'none';
-  }
-});
+// ── Tab Switching ─────────────────────────────────────────────────────────────
+function showTab(tab, btn) {
+  document.querySelectorAll('.doc-tab-btn').forEach(b => {
+    b.style.color='var(--muted)'; b.style.borderBottomColor='transparent'; b.style.fontWeight='700';
+  });
+  btn.style.color='var(--accent)'; btn.style.borderBottomColor='var(--accent)';
+  ['docs','emp','qual'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'':'none');
+}
 
+// ── DOCUMENTS ─────────────────────────────────────────────────────────────────
 async function loadDocuments() {
-  document.getElementById('table-wrap').innerHTML = '<div class="loader"><div class="spinner"></div></div>';
-  const qs = currentEmployeeId ? `?employee_id=${currentEmployeeId}` : '';
-  const res = await api('GET', '/documents' + qs);
-  if (!res?.success) {
-    document.getElementById('table-wrap').innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${res?.message || 'Failed to load documents'}</p></div>`;
-    return;
+  const el = document.getElementById('docs-table-wrap');
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const qs = `?employee_id=${currentEmpId}`;
+  const res = await api('GET', `/documents${qs}`);
+  if (!res?.success) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>Failed to load</p></div>'; return; }
+
+  const checklistData = res.data || [];
+  // Build doc key→files map
+  const fileMap = {};
+  (res.attachments||[]).forEach(a => { if(!fileMap[a.doc_key])fileMap[a.doc_key]=[]; fileMap[a.doc_key].push(a); });
+  // Also support old structure
+  if (Array.isArray(checklistData)) {
+    checklistData.forEach(d => { if (d.documents) fileMap[d.key] = d.documents; });
   }
-  checklistData = res.data;
-  pendingFiles = {};
-  renderTable();
-}
 
-function renderTable() {
-  const wrap = document.getElementById('table-wrap');
-  // Color groups for Excel-style look
-  const colorGroups = [
-    { keys: ['Broker Qualification & Renewal Certificate','Broker Training Certificate'], bg: '#e8f5e9', hdr: '#1b5e20', label: '🏆 Broker / Compliance' },
-    { keys: ['Passport size photograph','Appointment Letter (Acknowledgement)'], bg: '#e3f2fd', hdr: '#0d47a1', label: '📋 Basic Documents' },
-    { keys: ['Aadhaar Card','PAN Card','Proof of ID & Residence Address'], bg: '#fff8e1', hdr: '#e65100', label: '🪪 Identity Documents' },
-    { keys: ['10th Marksheet / Certificate','12th Marksheet / Certificate','Graduation Marksheet','Post Graduation Certificate','Qualification Certificate'], bg: '#f3e5f5', hdr: '#4a148c', label: '🎓 Educational Documents' },
-    { keys: ['Last 3 Months Pay Slips or Bank Statement','Bank Statement with AC Details or Cancelled Cheque'], bg: '#e8eaf6', hdr: '#1a237e', label: '💳 Financial Documents' },
-    { keys: ['Previous Employment Certificate','Relieving Letter'], bg: '#fce4ec', hdr: '#880e4f', label: '🏢 Employment Documents' },
-  ];
+  let html = `<div style="overflow-x:auto"><table class="xl-table">
+    <thead>
+      <tr style="background:#1e293b">
+        <th class="xl-th" style="color:#fff;text-align:left;width:30%">Document</th>
+        <th class="xl-th" style="color:#fff;width:10%">Submitted</th>
+        <th class="xl-th" style="color:#fff;width:25%">Upload File</th>
+        <th class="xl-th" style="color:#fff;width:25%">Attachments</th>
+        <th class="xl-th" style="color:#fff;width:10%">Updated</th>
+      </tr>
+    </thead>
+    <tbody>`;
 
-  // Build key → group map
-  const keyGroup = {};
-  colorGroups.forEach(g => g.keys.forEach(k => keyGroup[k] = g));
-
-  wrap.innerHTML = `<div class="doc-table-wrap" style="overflow-x:auto"><table class="doc-table" style="border-collapse:collapse;width:100%">
-    <colgroup>
-      <col style="width:26%"><col style="width:10%"><col style="width:22%"><col style="width:25%"><col style="width:17%">
-    </colgroup>
-    <thead><tr style="background:#1e293b">
-      <th style="text-align:left;color:#fff;padding:11px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Document</th>
-      <th style="color:#fff;padding:11px 14px;font-size:11px;font-weight:700;text-align:center">Submitted</th>
-      <th style="color:#fff;padding:11px 14px;font-size:11px;font-weight:700;text-align:center">Add Attachments</th>
-      <th style="color:#fff;padding:11px 14px;font-size:11px;font-weight:700;text-align:center">Attachments</th>
-      <th style="color:#fff;padding:11px 14px;font-size:11px;font-weight:700;text-align:center">Updated</th>
-    </tr></thead>
-    <tbody>${(() => {
-      let html = '';
-      let lastGroup = null;
-      checklistData.forEach(d => {
-        const grp = keyGroup[d.label] || { bg:'#ffffff', hdr:'#37474f', label: '📄 Other Documents' };
-        if (grp.label !== lastGroup) {
-          lastGroup = grp.label;
-          html += `<tr><td colspan="5" style="background:${grp.hdr};color:#fff;font-size:11px;font-weight:800;padding:7px 14px;text-transform:uppercase;letter-spacing:.5px">${grp.label}</td></tr>`;
-        }
-        html += buildRow(d, grp.bg);
+  if (Array.isArray(checklistData) && checklistData.length) {
+    // Old checklist format
+    let lastGrp = null;
+    checklistData.forEach(d => {
+      const grp = DOC_GROUPS.find(g => g.docs.includes(d.label)) || DOC_GROUPS[DOC_GROUPS.length-1];
+      if (grp.label !== lastGrp) {
+        lastGrp = grp.label;
+        html += `<tr class="grp-hdr"><td colspan="5" style="background:${grp.bg};color:#fff;font-size:11px;font-weight:800;padding:7px 14px;text-transform:uppercase;letter-spacing:.5px">${grp.label}</td></tr>`;
+      }
+      html += buildDocRow(d.key, d.label, d.documents||[], grp.row);
+    });
+  } else {
+    // No checklist — show groups from DOC_GROUPS
+    DOC_GROUPS.forEach(grp => {
+      if (grp.docs.length === 1 && grp.docs[0] === 'Other') return;
+      html += `<tr class="grp-hdr"><td colspan="5" style="background:${grp.bg};color:#fff;font-size:11px;font-weight:800;padding:7px 14px;text-transform:uppercase;letter-spacing:.5px">${grp.label}</td></tr>`;
+      grp.docs.forEach(docName => {
+        html += buildDocRow(docName, docName, fileMap[docName]||[], grp.row);
       });
-      return html;
-    })()}
-    </tbody>
-  </table></div>`;
+    });
+  }
+
+  html += `</tbody></table></div>`;
+  el.innerHTML = html;
 }
 
-function buildRow(d, bg='#ffffff') {
-  const docs = d.documents || [];
-  const pend = pendingFiles[d.key] || [];
-  const hasFiles = docs.length > 0;
-  const hasPending = pend.length > 0;
+function buildDocRow(key, label, files, rowBg='#fff') {
+  const hasFiles = files.length > 0;
+  const pend = pendingFiles[key] || [];
+  const submitted = hasFiles||pend.length > 0
+    ? `<span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700">✅ Yes</span>`
+    : `<span style="background:#f1f5f9;color:#94a3b8;padding:3px 10px;border-radius:12px;font-size:11px">— No</span>`;
 
-  const submittedHtml = (hasFiles || hasPending)
-    ? `<span class="doc-status-ok" style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700">✅ Yes</span>`
-    : `<span class="doc-status-empty" style="background:#f1f5f9;color:#94a3b8;padding:3px 10px;border-radius:12px;font-size:11px">— No</span>`;
+  const pendBadge = pend.length > 0 ? `<div style="font-size:11px;color:#d97706;margin-top:3px">📎 ${pend.length} ready</div>` : '';
+  const upload = `<div style="text-align:center">
+    <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="font-size:11px;max-width:180px" onchange="onFileChosen('${key.replace(/'/g,"\\'")}',this)">
+    ${pendBadge}
+  </div>`;
 
-  const pendBadge = hasPending
-    ? `<div style="font-size:11px;color:#d97706;font-weight:600;margin-top:4px">📎 ${pend.length} ready to upload</div>` : '';
-  const fileInputHtml = `
-    <div style="text-align:center">
-      <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="font-size:11px;max-width:175px"
-        onchange="onFilesChosen('${d.key}', this)">
-      ${pendBadge}
-    </div>`;
+  const attachments = hasFiles
+    ? files.map(f => `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+        <a href="${f.file_path||f.url||'#'}" target="_blank" style="color:var(--accent);font-size:12px;font-weight:600;text-decoration:underline" title="${f.original_name||f.file_name}">📎 ${(f.original_name||f.file_name||'file').substring(0,25)}</a>
+        ${isHR?`<span onclick="removeFile(${f.id})" style="color:#dc2626;cursor:pointer;font-size:14px;font-weight:700">×</span>`:''}
+      </div>`).join('')
+    : `<span style="color:#94a3b8">—</span>`;
 
-  let attachmentHtml = `<span style="color:#94a3b8">—</span>`;
-  if (hasFiles) {
-    attachmentHtml = `<div>` + docs.map(doc => `
-        <div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;cursor:pointer" onclick="viewAttachment(${doc.id}, '${escAttr(doc.original_name)}', '${escAttr(doc.mime_type)}')">
-          <span style="color:var(--accent);font-size:12px;font-weight:600;text-decoration:underline" title="${escAttr(doc.original_name)}">📎 ${escAttr(doc.original_name)}</span>
-          <span title="Remove" onclick="event.stopPropagation();removeFile(${doc.id})" style="color:#dc2626;cursor:pointer;font-size:14px;font-weight:700;margin-left:4px">×</span>
-        </div>`).join('') + `</div>`;
-  }
+  const dt = hasFiles && files[0].uploaded_at
+    ? `<div style="text-align:center;font-size:11px;color:var(--muted)">${fmt.date(files[0].uploaded_at)}</div>`
+    : `<span style="color:#94a3b8">—</span>`;
 
-  let dtHtml = `<span style="color:#94a3b8">—</span>`;
-  if (hasFiles) {
-    const dt = docs[0].uploaded_at ? new Date(docs[0].uploaded_at) : null;
-    if (dt && !isNaN(dt)) {
-      dtHtml = `<div style="font-size:12px;color:var(--muted)">${fmt.date(docs[0].uploaded_at)}<br><span style="font-size:11px">${dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div>`;
-    }
-  }
-
-  return `<tr style="background:${bg}">
-    <td style="text-align:left;font-weight:600;color:#1e293b;padding:10px 14px;border-bottom:1px solid #e2e8f0;border-right:1px solid #e2e8f0">${d.label}</td>
-    <td style="text-align:center;padding:10px 14px;border-bottom:1px solid #e2e8f0;border-right:1px solid #e2e8f0">${submittedHtml}</td>
-    <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;border-right:1px solid #e2e8f0">${fileInputHtml}</td>
-    <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;border-right:1px solid #e2e8f0">${attachmentHtml}</td>
-    <td style="text-align:center;padding:10px 14px;border-bottom:1px solid #e2e8f0">${dtHtml}</td>
+  return `<tr style="background:${rowBg}">
+    <td class="xl-td" style="font-weight:600;color:#1e293b;text-align:left">${label}</td>
+    <td class="xl-td" style="text-align:center">${submitted}</td>
+    <td class="xl-td">${upload}</td>
+    <td class="xl-td">${attachments}</td>
+    <td class="xl-td" style="text-align:center">${dt}</td>
   </tr>`;
 }
 
-function escAttr(s) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-}
-
-function onFilesChosen(docKey, input) {
-  const newFiles = Array.from(input.files);
-  if (!newFiles.length) return;
-
-  const oversized = newFiles.filter(f => f.size > 5 * 1024 * 1024);
-  if (oversized.length) {
-    toast(`${oversized.map(f => f.name).join(', ')} exceed 5MB limit`, 'error');
-    input.value = '';
-    return;
-  }
-
-  pendingFiles[docKey] = [...(pendingFiles[docKey] || []), ...newFiles];
-  renderTable();
-}
-
-// ── Attachment Viewer ──────────────────────────────────────────────────────────
-async function viewAttachment(docId, name, mime) {
-  document.getElementById('viewerTitle').textContent = '📎 ' + (name || 'Attachment');
-  document.getElementById('viewerBody').innerHTML = '<div style="text-align:center;padding:30px;color:#888">Loading…</div>';
-  document.getElementById('viewerModal').classList.add('open');
-
-  const url   = `${API_BASE}/documents/file/${docId}`;
-  const token = Auth.getToken();
-
-  try {
-    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const blob = await res.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    const actualMime = blob.type || mime || '';
-
-    if (actualMime.startsWith('image/')) {
-      document.getElementById('viewerBody').innerHTML =
-        `<img src="${blobUrl}" style="max-width:100%;max-height:72vh;border-radius:8px;display:block;margin:0 auto" alt="${name}"/>
-         <a href="${blobUrl}" download="${name}" class="btn btn-outline btn-sm" style="margin-top:10px;display:inline-block">⬇ Download</a>`;
-    } else if (actualMime === 'application/pdf') {
-      document.getElementById('viewerBody').innerHTML =
-        `<iframe class="viewer-frame" src="${blobUrl}" style="width:100%;height:72vh;border:none;border-radius:8px"></iframe>
-         <a href="${blobUrl}" download="${name}" class="btn btn-outline btn-sm" style="margin-top:8px;display:inline-block">⬇ Download</a>`;
-    } else {
-      document.getElementById('viewerBody').innerHTML =
-        `<p style="color:#555;margin-bottom:12px">Cannot preview <b>${name}</b> in browser.</p>
-         <a href="${blobUrl}" download="${name}" class="btn btn-primary btn-sm">⬇ Download File</a>`;
-    }
-  } catch (err) {
-    document.getElementById('viewerBody').innerHTML =
-      `<p style="color:#c62828">Failed to load attachment. Please try again.<br><small>${err.message}</small></p>`;
-  }
-}
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
-document.querySelectorAll('.modal-overlay').forEach(m => {
-  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
-});
-
-async function removeFile(docId) {
-  if (!confirm('Remove this attachment?')) return;
-  const res = await api('DELETE', '/documents/' + docId);
-  if (res?.success) { toast('Attachment removed'); loadDocuments(); }
-  else toast(res?.message || 'Failed to remove', 'error');
+function onFileChosen(key, input) {
+  const files = Array.from(input.files);
+  pendingFiles[key] = [...(pendingFiles[key]||[]), ...files];
+  loadDocuments();
 }
 
 async function saveAll() {
   const keys = Object.keys(pendingFiles).filter(k => pendingFiles[k]?.length);
-  if (!keys.length) { toast('No new files selected', 'warning'); return; }
-
-  const btn = document.getElementById('save-btn');
-  btn.disabled = true; btn.textContent = '⏳ Saving...';
-
-  let okCount = 0, failCount = 0;
+  if (!keys.length) { toast('No files selected','warning'); return; }
   const token = Auth.getToken();
-
-  for (const docKey of keys) {
-    const files = pendingFiles[docKey];
-    const formData = new FormData();
-    files.forEach(f => formData.append('files', f));
-    formData.append('employee_id', currentEmployeeId);
-    formData.append('doc_key', docKey);
-
+  let ok=0, fail=0;
+  for (const key of keys) {
+    const fd = new FormData();
+    pendingFiles[key].forEach(f => fd.append('files', f));
+    fd.append('employee_id', currentEmpId);
+    fd.append('doc_key', key);
     try {
-      const res = await fetch(API_BASE + '/emp-documents/upload-multi', {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + token },
-        body: formData
-      });
-      const data = await res.json();
-      if (data.success) okCount += files.length; else failCount += files.length;
-    } catch (e) {
-      failCount += files.length;
-    }
+      const res = await fetch(API_BASE+'/emp-documents/upload-multi', { method:'POST', headers:{Authorization:'Bearer '+token}, body:fd });
+      const d = await res.json();
+      if (d.success) ok += pendingFiles[key].length; else fail += pendingFiles[key].length;
+    } catch { fail++; }
   }
-
-  btn.disabled = false; btn.textContent = '💾 Save';
-
-  if (okCount) toast(`${okCount} file(s) saved successfully`);
-  if (failCount) toast(`${failCount} file(s) failed to upload`, 'error');
-
   pendingFiles = {};
+  toast(ok ? `${ok} file(s) saved ✅` : `${fail} failed`, ok?'success':'error');
+  if (fail) toast(`${fail} failed`, 'error');
   loadDocuments();
 }
-// ── Tab switching ─────────────────────────────────────────────────────────────
-function switchDocTab(tab, btn) {
-  document.querySelectorAll('.tab-btn').forEach(b => {
-    b.style.color = 'var(--muted)'; b.style.borderBottomColor = 'transparent'; b.style.background = 'none';
-  });
-  btn.style.color = 'var(--accent)'; btn.style.borderBottomColor = 'var(--accent)'; btn.style.background = 'var(--accent-l)';
-  ['docs','emp','qual'].forEach(t => document.getElementById('dtab-'+t).style.display = t===tab?'':'none');
-  if (tab==='emp')  loadPrevEmp();
-  if (tab==='qual') loadQualifications();
+
+async function removeFile(id) {
+  if (!confirm('Remove this file?')) return;
+  const d = await api('DELETE', `/documents/file/${id}`);
+  if (d?.success) { toast('Removed','success'); loadDocuments(); }
+  else toast('Failed','error');
 }
 
-// ── Previous Employment ───────────────────────────────────────────────────────
-let _prevEmpData = [], _qualData = [];
-const MONTHS = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
-
+// ── PREVIOUS EMPLOYMENT ───────────────────────────────────────────────────────
 async function loadPrevEmp() {
-  const el = document.getElementById('prev-emp-list');
+  const el = document.getElementById('pe-list-wrap');
   el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
-  const data = await api('GET', `/prev-employment/${currentEmployeeId}`);
+  const data = await api('GET', `/prev-employment/${currentEmpId}`);
   _prevEmpData = data?.data || [];
-  if (!_prevEmpData.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">🏢</div><p>No previous employment added yet.</p></div>'; return; }
-  const isHR = Role.is('hr','admin','super_admin');
+  if (!_prevEmpData.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="empty-icon">🏢</div><p>No previous employment records found.</p></div>';
+    return;
+  }
   el.innerHTML = _prevEmpData.map(r => `
-    <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div style="border:1.5px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:14px 18px;background:#fff">
         <div>
-          <div style="font-size:15px;font-weight:700">${r.company_name}</div>
+          <div style="font-size:15px;font-weight:700;color:var(--text)">${r.company_name}</div>
           <div style="font-size:13px;color:var(--accent);margin-top:2px">${r.designation||''} ${r.job_type?'· '+r.job_type:''}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:4px">📅 ${r.from_date?fmt.date(r.from_date):''} → ${r.to_date?fmt.date(r.to_date):'Present'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">📅 ${r.from_date?fmt.date(r.from_date):'?'} → ${r.to_date?fmt.date(r.to_date):'Present'}</div>
           ${r.city||r.state?`<div style="font-size:12px;color:var(--muted)">${[r.city,r.state].filter(Boolean).join(', ')}</div>`:''}
-          ${r.reason_for_leaving?`<div style="font-size:12px;color:var(--muted);margin-top:4px">Reason: ${r.reason_for_leaving}</div>`:''}
-          ${r.prev_manager_name?`<div style="font-size:12px;color:var(--muted);margin-top:4px">👤 Manager: ${r.prev_manager_name}${r.prev_manager_phone?' · '+r.prev_manager_phone:''}</div>`:''}
+          ${r.prev_manager_name?`<div style="font-size:12px;color:var(--muted);margin-top:4px">👤 ${r.prev_manager_name}${r.prev_manager_phone?' · '+r.prev_manager_phone:''}</div>`:''}
         </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
+        <div style="display:flex;gap:6px;flex-shrink:0">
           ${r.is_relevant?'<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">Relevant</span>':''}
           ${r.is_overseas?'<span style="background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">Overseas</span>':''}
-          ${isHR?`<button class="btn btn-outline btn-sm" onclick="editPrevEmp(${r.id})">✏️</button>
-                  <button class="btn btn-danger btn-sm" onclick="deletePrevEmp(${r.id})">🗑</button>`:''}
+          ${isHR?`<button class="btn btn-outline btn-sm" onclick="editPE(${r.id})" style="font-size:11px">✏️ Edit</button>
+                  <button class="btn btn-danger btn-sm" onclick="deletePE(${r.id})" style="font-size:11px">🗑</button>`:''}
         </div>
       </div>
     </div>`).join('');
 }
 
-function openPrevEmpModal(r={}) {
-  const isEdit = !!r.id;
-  const fields = {
-    'pe-id':r.id||'','pe-company':r.company_name||'','pe-address':r.company_address||'',
-    'pe-city':r.city||'','pe-state':r.state||'','pe-from':r.from_date?.split('T')[0]||'',
-    'pe-to':r.to_date?.split('T')[0]||'','pe-designation':r.designation||'',
-    'pe-mgr-name':r.prev_manager_name||'','pe-mgr-phone':r.prev_manager_phone||'',
-    'pe-mgr-email':r.prev_manager_email||'','pe-hr-name':r.prev_hr_name||'',
-    'pe-hr-phone':r.prev_hr_phone||'','pe-hr-email':r.prev_hr_email||'',
-    'pe-pf':r.pf_number||'','pe-reason':r.reason_for_leaving||''
-  };
-  Object.entries(fields).forEach(([id,val]) => { const el=document.getElementById(id); if(el) el.value=val; });
-  document.getElementById('pe-jobtype').value = r.job_type||'Full Time';
+function showPEForm(r={}) {
+  document.getElementById('pe-form-title').textContent = r.id ? '🏢 Edit Employment' : '🏢 Add Previous Employment';
+  document.getElementById('pe-id').value        = r.id||'';
+  document.getElementById('pe-company').value   = r.company_name||'';
+  document.getElementById('pe-designation').value = r.designation||'';
+  document.getElementById('pe-from').value      = r.from_date?.split('T')[0]||'';
+  document.getElementById('pe-to').value        = r.to_date?.split('T')[0]||'';
+  document.getElementById('pe-jobtype').value   = r.job_type||'Full Time';
+  document.getElementById('pe-city').value      = r.city||'';
+  document.getElementById('pe-state').value     = r.state||'';
+  document.getElementById('pe-pf').value        = r.pf_number||'';
+  document.getElementById('pe-mgr-name').value  = r.prev_manager_name||'';
+  document.getElementById('pe-mgr-phone').value = r.prev_manager_phone||'';
+  document.getElementById('pe-mgr-email').value = r.prev_manager_email||'';
+  document.getElementById('pe-hr-name').value   = r.prev_hr_name||'';
+  document.getElementById('pe-hr-phone').value  = r.prev_hr_phone||'';
+  document.getElementById('pe-hr-email').value  = r.prev_hr_email||'';
+  document.getElementById('pe-address').value   = r.company_address||'';
+  document.getElementById('pe-reason').value    = r.reason_for_leaving||'';
   document.getElementById('pe-overseas').checked = !!r.is_overseas;
   document.getElementById('pe-relevant').checked = !!r.is_relevant;
-  document.getElementById('pe-modal-title').textContent = isEdit ? '🏢 Edit Employment' : '🏢 Add Previous Employment';
-  openModal('prev-emp-modal');
+  document.getElementById('pe-add-form').style.display = '';
+  document.getElementById('pe-add-form').scrollIntoView({behavior:'smooth'});
 }
 
-function editPrevEmp(id) { openPrevEmpModal(_prevEmpData.find(r=>r.id===id)||{}); }
-
-async function deletePrevEmp(id) {
-  if (!confirm('Delete this employment record?')) return;
-  const d = await api('DELETE', `/prev-employment/${id}`);
-  if (d?.success) { toast('Deleted','success'); loadPrevEmp(); } else toast('Failed','error');
-}
+function editPE(id) { showPEForm(_prevEmpData.find(r=>r.id===id)||{}); }
+function cancelPEForm() { document.getElementById('pe-add-form').style.display='none'; }
 
 async function savePrevEmp() {
   const btn = document.getElementById('pe-save-btn');
   btn.disabled=true; btn.textContent='⏳ Saving…';
   const body = {
     id: document.getElementById('pe-id').value||undefined,
-    employee_id: currentEmployeeId,
+    employee_id: currentEmpId,
     company_name: document.getElementById('pe-company').value.trim(),
     company_address: document.getElementById('pe-address').value.trim(),
     city: document.getElementById('pe-city').value.trim(),
@@ -523,21 +549,29 @@ async function savePrevEmp() {
     is_relevant: document.getElementById('pe-relevant').checked,
   };
   const d = await api('POST', '/prev-employment', body);
-  btn.disabled=false; btn.textContent='💾 Save';
-  if (d?.success) { toast('Saved ✅','success'); closeModal('prev-emp-modal'); loadPrevEmp(); }
+  btn.disabled=false; btn.textContent='💾 Save Employment';
+  if (d?.success) { toast('Saved ✅','success'); cancelPEForm(); loadPrevEmp(); }
   else toast(d?.message||'Failed','error');
 }
 
-// ── Qualifications ────────────────────────────────────────────────────────────
+async function deletePE(id) {
+  if (!confirm('Delete this record?')) return;
+  const d = await api('DELETE', `/prev-employment/${id}`);
+  if (d?.success) { toast('Deleted','success'); loadPrevEmp(); } else toast('Failed','error');
+}
+
+// ── QUALIFICATIONS ────────────────────────────────────────────────────────────
 async function loadQualifications() {
-  const el = document.getElementById('qual-list');
+  const el = document.getElementById('qual-list-wrap');
   el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
-  const data = await api('GET', `/qualifications/${currentEmployeeId}`);
+  const data = await api('GET', `/qualifications/${currentEmpId}`);
   _qualData = data?.data || [];
-  if (!_qualData.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">🎓</div><p>No qualifications added yet.</p></div>'; return; }
-  const isHR = Role.is('hr','admin','super_admin');
+  if (!_qualData.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="empty-icon">🎓</div><p>No qualifications added yet.</p></div>';
+    return;
+  }
   el.innerHTML = _qualData.map(r => `
-    <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:12px">
+    <div style="border:1.5px solid var(--border);border-radius:12px;margin-bottom:10px;background:#fff;padding:16px 18px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
           <div style="display:flex;align-items:center;gap:8px">
@@ -552,43 +586,43 @@ async function loadQualifications() {
             ${r.grade_percentage?' · 🏅 '+r.grade_percentage:''}
           </div>
         </div>
-        ${isHR?`<div style="display:flex;gap:6px">
-          <button class="btn btn-outline btn-sm" onclick="editQual(${r.id})">✏️</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteQual(${r.id})">🗑</button>
+        ${isHR?`<div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-outline btn-sm" onclick="editQ(${r.id})" style="font-size:11px">✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteQ(${r.id})" style="font-size:11px">🗑</button>
         </div>`:''}
       </div>
     </div>`).join('');
 }
 
-function openQualModal(r={}) {
-  const isEdit = !!r.id;
-  document.getElementById('q-modal-title').textContent = isEdit ? '🎓 Edit Qualification' : '🎓 Add Qualification';
-  ['q-id','q-qual','q-degree','q-specialization','q-institute','q-board','q-mode','q-state','q-grade','q-month','q-year','q-achievements','q-remarks'].forEach(id => {
-    const keyMap = {'q-id':'id','q-qual':'qualification','q-degree':'degree','q-specialization':'specialization',
-      'q-institute':'institute_name','q-board':'board_university','q-mode':'mode_of_education',
-      'q-state':'state_location','q-grade':'grade_percentage','q-month':'passing_month','q-year':'passing_year',
-      'q-achievements':'academic_achievements','q-remarks':'remarks'};
-    const el = document.getElementById(id);
-    if (el) el.value = r[keyMap[id]]||'';
-  });
-  document.getElementById('q-highest').checked = !!r.is_highest;
-  openModal('qual-modal');
+function showQForm(r={}) {
+  document.getElementById('q-form-title').textContent = r.id ? '🎓 Edit Qualification' : '🎓 Add Qualification';
+  document.getElementById('q-id').value           = r.id||'';
+  document.getElementById('q-qual').value         = r.qualification||'';
+  document.getElementById('q-degree').value       = r.degree||'';
+  document.getElementById('q-specialization').value = r.specialization||'';
+  document.getElementById('q-institute').value    = r.institute_name||'';
+  document.getElementById('q-board').value        = r.board_university||'';
+  document.getElementById('q-mode').value         = r.mode_of_education||'';
+  document.getElementById('q-state').value        = r.state_location||'';
+  document.getElementById('q-grade').value        = r.grade_percentage||'';
+  document.getElementById('q-month').value        = r.passing_month||'';
+  document.getElementById('q-year').value         = r.passing_year||'';
+  document.getElementById('q-achievements').value = r.academic_achievements||'';
+  document.getElementById('q-remarks').value      = r.remarks||'';
+  document.getElementById('q-highest').checked    = !!r.is_highest;
+  document.getElementById('q-add-form').style.display = '';
+  document.getElementById('q-add-form').scrollIntoView({behavior:'smooth'});
 }
 
-function editQual(id) { openQualModal(_qualData.find(r=>r.id===id)||{}); }
-
-async function deleteQual(id) {
-  if (!confirm('Delete this qualification?')) return;
-  const d = await api('DELETE', `/qualifications/${id}`);
-  if (d?.success) { toast('Deleted','success'); loadQualifications(); } else toast('Failed','error');
-}
+function editQ(id) { showQForm(_qualData.find(r=>r.id===id)||{}); }
+function cancelQForm() { document.getElementById('q-add-form').style.display='none'; }
 
 async function saveQual() {
   const btn = document.getElementById('q-save-btn');
   btn.disabled=true; btn.textContent='⏳ Saving…';
   const body = {
     id: document.getElementById('q-id').value||undefined,
-    employee_id: currentEmployeeId,
+    employee_id: currentEmpId,
     qualification: document.getElementById('q-qual').value,
     degree: document.getElementById('q-degree').value.trim(),
     specialization: document.getElementById('q-specialization').value.trim(),
@@ -604,89 +638,16 @@ async function saveQual() {
     is_highest: document.getElementById('q-highest').checked,
   };
   const d = await api('POST', '/qualifications', body);
-  btn.disabled=false; btn.textContent='💾 Save';
-  if (d?.success) { toast('Saved ✅','success'); closeModal('qual-modal'); loadQualifications(); }
+  btn.disabled=false; btn.textContent='💾 Save Qualification';
+  if (d?.success) { toast('Saved ✅','success'); cancelQForm(); loadQualifications(); }
   else toast(d?.message||'Failed','error');
 }
+
+async function deleteQ(id) {
+  if (!confirm('Delete this qualification?')) return;
+  const d = await api('DELETE', `/qualifications/${id}`);
+  if (d?.success) { toast('Deleted','success'); loadQualifications(); } else toast('Failed','error');
+}
 </script>
-
-<!-- Previous Employment Modal -->
-<div class="modal-backdrop" id="prev-emp-modal">
-  <div class="modal" style="width:600px;max-height:90vh">
-    <div class="modal-header"><div class="modal-title" id="pe-modal-title">🏢 Add Previous Employment</div>
-      <button class="modal-close" onclick="closeModal('prev-emp-modal')">✕</button></div>
-    <div class="modal-body" style="overflow-y:auto;max-height:65vh">
-      <input type="hidden" id="pe-id">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Company Name *</label><input id="pe-company" class="form-control"></div>
-        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Address</label><textarea id="pe-address" class="form-control" rows="2"></textarea></div>
-        <div class="form-group"><label class="form-label">City</label><input id="pe-city" class="form-control"></div>
-        <div class="form-group"><label class="form-label">State</label><input id="pe-state" class="form-control"></div>
-        <div class="form-group"><label class="form-label">From Date</label><input id="pe-from" type="date" class="form-control"></div>
-        <div class="form-group"><label class="form-label">To Date</label><input id="pe-to" type="date" class="form-control"></div>
-        <div class="form-group"><label class="form-label">Designation</label><input id="pe-designation" class="form-control"></div>
-        <div class="form-group"><label class="form-label">Job Type</label>
-          <select id="pe-jobtype" class="form-control"><option>Full Time</option><option>Part Time</option><option>Contract</option><option>Internship</option></select></div>
-        <div class="form-group"><label class="form-label">Prev Manager Name</label><input id="pe-mgr-name" class="form-control"></div>
-        <div class="form-group"><label class="form-label">Prev Manager Phone</label><input id="pe-mgr-phone" class="form-control"></div>
-        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Prev Manager Email</label><input id="pe-mgr-email" class="form-control" type="email"></div>
-        <div class="form-group"><label class="form-label">Prev HR Name</label><input id="pe-hr-name" class="form-control"></div>
-        <div class="form-group"><label class="form-label">Prev HR Phone</label><input id="pe-hr-phone" class="form-control"></div>
-        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Prev HR Email</label><input id="pe-hr-email" class="form-control" type="email"></div>
-        <div class="form-group"><label class="form-label">PF Number</label><input id="pe-pf" class="form-control"></div>
-        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Reason for Leaving</label><textarea id="pe-reason" class="form-control" rows="2"></textarea></div>
-        <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="pe-overseas"> Overseas</label></div>
-        <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="pe-relevant"> Is Relevant</label></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('prev-emp-modal')">Cancel</button>
-      <button class="btn btn-primary" id="pe-save-btn" onclick="savePrevEmp()">💾 Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- Qualification Modal -->
-<div class="modal-backdrop" id="qual-modal">
-  <div class="modal" style="width:580px;max-height:90vh">
-    <div class="modal-header"><div class="modal-title" id="q-modal-title">🎓 Add Qualification</div>
-      <button class="modal-close" onclick="closeModal('qual-modal')">✕</button></div>
-    <div class="modal-body" style="overflow-y:auto;max-height:65vh">
-      <input type="hidden" id="q-id">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <div class="form-group"><label class="form-label">Qualification *</label>
-          <select id="q-qual" class="form-control"><option value="">--Select--</option>
-            <option>10th</option><option>12th</option><option>Diploma</option>
-            <option>Bachelor's Degree</option><option>Master's Degree</option>
-            <option>PhD</option><option>Certification</option><option>Other</option></select></div>
-        <div class="form-group"><label class="form-label">Degree</label><input id="q-degree" class="form-control" placeholder="e.g. B.Sc, MBA"></div>
-        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Specialization</label><input id="q-specialization" class="form-control"></div>
-        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Institute Name *</label><input id="q-institute" class="form-control"></div>
-        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Board / University</label><input id="q-board" class="form-control"></div>
-        <div class="form-group"><label class="form-label">Mode of Education</label>
-          <select id="q-mode" class="form-control"><option value="">--Select--</option>
-            <option>Regular</option><option>Distance</option><option>Online</option><option>Part Time</option></select></div>
-        <div class="form-group"><label class="form-label">State / Location</label><input id="q-state" class="form-control"></div>
-        <div class="form-group"><label class="form-label">Grade / %</label><input id="q-grade" class="form-control" placeholder="e.g. 75%"></div>
-        <div class="form-group"><label class="form-label">Passing Month</label>
-          <select id="q-month" class="form-control"><option value="">--Select--</option>
-            <option value="1">January</option><option value="2">February</option><option value="3">March</option>
-            <option value="4">April</option><option value="5">May</option><option value="6">June</option>
-            <option value="7">July</option><option value="8">August</option><option value="9">September</option>
-            <option value="10">October</option><option value="11">November</option><option value="12">December</option></select></div>
-        <div class="form-group"><label class="form-label">Passing Year</label>
-          <select id="q-year" class="form-control"><option value="">--Select--</option>
-            ${Array.from({length:40},(_,i)=>new Date().getFullYear()-i).map(y=>`<option value="${y}">${y}</option>`).join('')}</select></div>
-        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Academic Achievements</label><textarea id="q-achievements" class="form-control" rows="2"></textarea></div>
-        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Remarks</label><textarea id="q-remarks" class="form-control" rows="2"></textarea></div>
-        <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="q-highest"> Highest Qualification</label></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('qual-modal')">Cancel</button>
-      <button class="btn btn-primary" id="q-save-btn" onclick="saveQual()">💾 Save</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>
