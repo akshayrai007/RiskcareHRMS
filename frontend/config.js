@@ -13,14 +13,14 @@
 window.CFG = {
 
   // ── 🏢 Client Identity ──────────────────────────────────────────────────
-  clientName:        "RiskCare-HRMS",
+  clientName:        "RiskCare",
   companyShortName:  "",
   companyFullName:   "Risk Care Insurance Broking Services Pvt. Ltd.",
   companyCity:       "Mumbai",
   tagline:           "Servicing All Risks",
 
   // Logo rendered in sidebar (use HTML for styled spans, plain text also fine)
-  logoHtml:          'Risk<span>Care</span>-HRMS',
+  logoHtml:          'Risk<span>Care</span>',
 
   // Logo image for printed docs (payslip, offer letter). Path relative to frontend/.
   logoUrl:           "Logo.png",
