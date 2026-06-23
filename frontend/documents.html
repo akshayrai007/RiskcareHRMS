@@ -290,8 +290,11 @@ let _empsLoading = false;
 async function loadEmployees() {
   if (_empsLoading) return;
   _empsLoading = true;
+  const inp = document.getElementById('emp-search');
+  if (inp) inp.placeholder = '⏳ Loading…';
   try {
     const r = await api('GET', '/employees');
+    console.log('[docs] /employees response:', r?.success, 'count:', r?.data?.length);
     _allEmps = (r?.data || []).map(e => ({
       id: e.id,
       employee_code: e.employee_code || '',
@@ -299,10 +302,12 @@ async function loadEmployees() {
       last_name: e.last_name || '',
       department_name: e.department_name || ''
     }));
-  } catch(e) { _allEmps = []; }
+  } catch(e) {
+    console.error('[docs] loadEmployees error:', e);
+    _allEmps = [];
+  }
   _empsLoading = false;
-  const inp = document.getElementById('emp-search');
-  if (inp) inp.placeholder = _allEmps.length ? `Search ${_allEmps.length} employees…` : 'Search by name or code…';
+  if (inp) inp.placeholder = _allEmps.length ? `🔍 Search ${_allEmps.length} employees…` : '⚠️ Failed to load employees';
   if (inp && inp.value.trim()) onEmpSearch();
 }
 function onEmpSearch() {
