@@ -85,8 +85,8 @@
         <div id="emp-badge" style="display:none;background:var(--accent-l);border:1.5px solid var(--accent);border-radius:8px;padding:5px 14px;font-size:13px;font-weight:700;color:var(--accent)"></div>
       </div>
 
-      <!-- Main content (shown after employee selected or for own) -->
-      <div id="doc-main" style="display:none">
+      <!-- Main content - tabs always visible for HR -->
+      <div id="doc-main">
 
         <!-- Tabs -->
         <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:24px">
@@ -100,7 +100,9 @@
 
         <!-- ── Documents Tab ─────────────────────────────────────── -->
         <div id="tab-docs">
-          <div id="docs-table-wrap"><div class="loader"><div class="spinner"></div></div></div>
+          <div id="docs-table-wrap">
+            <div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><p style="color:var(--muted)">Search for an employee above to view their documents.</p></div>
+          </div>
           <div style="margin-top:16px;display:flex;justify-content:flex-end">
             <button class="btn btn-primary" onclick="saveAll()">💾 Save Changes</button>
           </div>
@@ -227,12 +229,6 @@
 
       </div><!-- /#doc-main -->
 
-      <!-- Empty state when no employee selected -->
-      <div id="doc-empty" style="padding:60px 20px;text-align:center;color:var(--muted)">
-        <div style="font-size:48px;margin-bottom:12px">🔍</div>
-        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">Search for an employee</div>
-        <div style="font-size:13px">Type a name or employee code above to view their documents</div>
-      </div>
 
     </div>
   </div>
@@ -276,12 +272,9 @@ window.addEventListener('load', async function() {
 
   if (isHR) {
     document.getElementById('hr-search-bar').style.display = 'flex';
-    document.getElementById('doc-empty').style.display = '';
-    loadEmployees(); // Start loading immediately in background
+    loadEmployees();
   } else {
     currentEmpId = user.id;
-    document.getElementById('doc-empty').style.display = 'none';
-    document.getElementById('doc-main').style.display = '';
     loadAll();
   }
 
@@ -357,8 +350,6 @@ function selectEmp(id, code, name) {
   const badge = document.getElementById('emp-badge');
   badge.textContent = `${code} — ${name}`;
   badge.style.display = '';
-  document.getElementById('doc-empty').style.display = 'none';
-  document.getElementById('doc-main').style.display = '';
   loadAll();
 }
 
