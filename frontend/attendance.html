@@ -415,6 +415,13 @@
         <!-- APPROVAL QUEUE — managers/HR/admin only -->
         <div id="reg-approve-section" style="display:none;margin-top:28px">
           <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">📋 Approval Queue</div>
+          <div id="reg-bulk-bar" style="display:none;background:#1e293b;color:#fff;padding:12px 18px;border-radius:10px;margin-bottom:14px;align-items:center;gap:12px;flex-wrap:wrap">
+            <div style="font-size:13px;font-weight:700;flex:1">⚡ <span id="reg-bulk-count">0</span> selected</div>
+            <input id="reg-bulk-remarks" class="form-control" placeholder="Remarks (optional)…"
+              style="flex:2;min-width:160px;background:rgba(255,255,255,.1);border:none;color:#fff;padding:7px 12px;border-radius:7px">
+            <button id="reg-bulk-approve" class="btn btn-success btn-sm" onclick="bulkActionReg('approve')">✅ Approve Selected</button>
+            <button id="reg-bulk-reject"  class="btn btn-danger  btn-sm" onclick="bulkActionReg('reject')">✗ Reject Selected</button>
+          </div>
           <div id="reg-list"><div class="empty-state"><div class="empty-icon">✅</div><p>No pending regularizations</p></div></div>
         </div>
       </div>
