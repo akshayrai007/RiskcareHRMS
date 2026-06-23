@@ -691,7 +691,7 @@ async function loadSalaryStructures() {
           <th style="${XLH};background:#fce4ec">ESI (Empr)</th>
           <th style="${XLH};background:#fce4ec">PT</th>
           <th style="${XLH};background:#fce4ec">LWF</th>
-          <th style="${XLH};background:#fce4ec">TDS</th>
+          <th style="${XLH};background:#fce4ec">Total Ded.</th>
           <th style="${XLH};background:#e3f2fd">Net Salary</th>
           <th style="${XLH};background:#e3f2fd">CTC/mo</th>
           <th style="${XLH};background:#e3f2fd">CTC/yr</th>
@@ -714,7 +714,7 @@ async function loadSalaryStructures() {
           <td style="${XLD};text-align:right;color:#9f1239">${fmt.money(r.esi_employer)}</td>
           <td style="${XLD};text-align:right;color:#dc2626">${fmt.money(r.professional_tax||r.pt_amount||0)}</td>
           <td style="${XLD};text-align:right;color:#dc2626">${fmt.money(r.lwf)}</td>
-          <td style="${XLD};text-align:right;color:#dc2626">${fmt.money(r.tds||r.tds_monthly||0)}</td>
+          <td style="${XLD};text-align:right;color:#dc2626">- ${fmt.money(r.total_deductions)}</td>
           <td style="${XLD};text-align:right;font-weight:800;color:#16a34a;font-size:13px">${fmt.money(r.net_salary)}</td>
           <td style="${XLD};text-align:right;color:#1d4ed8">${fmt.money(r.ctc_monthly)}</td>
           <td style="${XLD};text-align:right;color:#1d4ed8">${fmt.money(r.ctc_annual)}</td>

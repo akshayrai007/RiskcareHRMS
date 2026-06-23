@@ -592,11 +592,6 @@ exports.getUploads = async (req, res) => {
 // ── Get All Salary Structures (HR/Admin) ──────────────────────────────────────
 exports.getAllSalaryStructures = async (req, res) => {
   try {
-    // Ensure optional columns exist (safe no-op if already there)
-    await db.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS tds NUMERIC(12,2) DEFAULT 0`).catch(()=>{});
-    await db.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS tds_monthly NUMERIC(12,2) DEFAULT 0`).catch(()=>{});
-    await db.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS pf_admin NUMERIC(12,2) DEFAULT 0`).catch(()=>{});
-    await db.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS loan_emi_recovery NUMERIC(12,2) DEFAULT 0`).catch(()=>{});
     const search      = req.query.search      || '';
     const employee_id = req.query.employee_id ? parseInt(req.query.employee_id) : null;
     let where  = 'WHERE e.is_active=true';
@@ -627,7 +622,6 @@ exports.getAllSalaryStructures = async (req, res) => {
          COALESCE(ess.esi_employer,0)      AS esi_employer,
          COALESCE(ess.professional_tax,0)  AS professional_tax,
          COALESCE(ess.lwf,0)              AS lwf,
-         COALESCE(ess.tds, ess.tds_monthly, 0) AS tds,
          COALESCE(ess.total_deductions,0)  AS total_deductions,
          COALESCE(ess.net_salary,0)        AS net_salary,
          COALESCE(ess.ctc_monthly,0)       AS ctc_monthly,
