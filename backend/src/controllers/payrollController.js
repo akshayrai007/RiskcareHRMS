@@ -598,7 +598,7 @@ exports.getAllSalaryStructures = async (req, res) => {
     let params = [];
     let pidx   = 1;
     if (employee_id) {
-      where += ` AND ess.employee_id = $${pidx++}`;
+      where += ` AND e.id = $${pidx++}`;
       params.push(employee_id);
     } else if (search) {
       where += ` AND (LOWER(CONCAT(e.first_name,' ',e.last_name)) LIKE $${pidx} OR LOWER(e.employee_code) LIKE $${pidx})`;
@@ -606,20 +606,38 @@ exports.getAllSalaryStructures = async (req, res) => {
       pidx++;
     }
     const result = await db.query(
-      `SELECT ess.*,
-              CONCAT(e.first_name,' ',e.last_name) AS employee_name,
-              e.employee_code, d.name AS department_name,
-              des.title AS designation_title
-       FROM employee_salary_structure ess
-       JOIN employees e ON ess.employee_id = e.id
-       LEFT JOIN departments d ON e.department_id = d.id
+      `SELECT
+         e.id AS employee_id, e.employee_code,
+         CONCAT(e.first_name,' ',e.last_name) AS employee_name,
+         d.name AS department_name, des.title AS designation_title,
+         COALESCE(ess.basic,0)              AS basic,
+         COALESCE(ess.hra,0)               AS hra,
+         COALESCE(ess.conveyance,0)        AS conveyance,
+         COALESCE(ess.special_allowance,0) AS special_allowance,
+         COALESCE(ess.gratuity,0)          AS gratuity,
+         COALESCE(ess.gross_salary,0)      AS gross_salary,
+         COALESCE(ess.pf_employee,0)       AS pf_employee,
+         COALESCE(ess.pf_employer,0)       AS pf_employer,
+         COALESCE(ess.esi_employee,0)      AS esi_employee,
+         COALESCE(ess.esi_employer,0)      AS esi_employer,
+         COALESCE(ess.professional_tax,0)  AS professional_tax,
+         COALESCE(ess.lwf,0)              AS lwf,
+         COALESCE(ess.tds,ess.tds_monthly,0) AS tds,
+         COALESCE(ess.total_deductions,0)  AS total_deductions,
+         COALESCE(ess.net_salary,0)        AS net_salary,
+         COALESCE(ess.ctc_monthly,0)       AS ctc_monthly,
+         COALESCE(ess.ctc_annual,0)        AS ctc_annual
+       FROM employees e
+       LEFT JOIN employee_salary_structure ess ON ess.employee_id = e.id
+       LEFT JOIN departments d   ON e.department_id = d.id
        LEFT JOIN designations des ON e.designation_id = des.id
        ${where}
        ORDER BY d.name, e.first_name`,
       params
     );
-    res.json({ success: true, data: result.rows });
+    res.json({ success: true, count: result.rows.length, data: result.rows });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
