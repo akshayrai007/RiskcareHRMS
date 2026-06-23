@@ -47,7 +47,7 @@ exports.DOCUMENT_DEFS = DOCUMENT_DEFS;
 exports.initTables = async () => {
   try {
     await db.query(`
-      CREATE TABLE IF NOT EXISTS employee_documents (
+      CREATE TABLE IF NOT EXISTS employee_doc_checklist (
         id              SERIAL PRIMARY KEY,
         employee_id     INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
         doc_key         VARCHAR(50) NOT NULL,
@@ -90,7 +90,7 @@ exports.getDocuments = async (req, res) => {
 
     const result = await db.query(
       `SELECT id, doc_key, original_name, mime_type, file_size, uploaded_at
-       FROM employee_documents WHERE employee_id = $1`,
+       FROM employee_doc_checklist WHERE employee_id = $1`,
       [targetId]
     );
     const byKey = {};
@@ -131,7 +131,7 @@ exports.uploadDocument = async (req, res) => {
     const base64 = file.buffer.toString('base64');
 
     await db.query(`
-      INSERT INTO employee_documents
+      INSERT INTO employee_doc_checklist
         (employee_id, doc_key, original_name, file_data, mime_type, file_size, uploaded_by, uploaded_at)
       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
       ON CONFLICT (employee_id, doc_key)
@@ -154,7 +154,7 @@ exports.getFile = async (req, res) => {
     const docId = parseInt(req.params.id);
 
     const result = await db.query(
-      `SELECT * FROM employee_documents WHERE id = $1`, [docId]
+      `SELECT * FROM employee_doc_checklist WHERE id = $1`, [docId]
     );
     if (!result.rows.length) return res.status(404).json({ success: false, message: 'Document not found' });
 
@@ -179,14 +179,14 @@ exports.deleteDocument = async (req, res) => {
     const reqUser = req.user;
     const docId = parseInt(req.params.id);
 
-    const result = await db.query(`SELECT employee_id FROM employee_documents WHERE id = $1`, [docId]);
+    const result = await db.query(`SELECT employee_id FROM employee_doc_checklist WHERE id = $1`, [docId]);
     if (!result.rows.length) return res.status(404).json({ success: false, message: 'Document not found' });
 
     if (!canAccess(reqUser, result.rows[0].employee_id)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
-    await db.query(`DELETE FROM employee_documents WHERE id = $1`, [docId]);
+    await db.query(`DELETE FROM employee_doc_checklist WHERE id = $1`, [docId]);
     res.json({ success: true, message: 'Document removed' });
   } catch (err) {
     console.error('[deleteDocument]', err.message);
