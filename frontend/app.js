@@ -42,7 +42,7 @@ const Auth = {
   guard:      () => { if (!Auth.getToken()) { window.location.href = 'login.html'; return false; } return true; },
   guardDashboard: () => {
     if (!Auth.getToken()) { window.location.href = 'login.html'; return false; }
-    if (!['admin','super_admin','hr','accounts'].includes(Auth.getUser()?.role)) { window.location.href = 'attendance.html'; return false; }
+    if (!['admin','super_admin','hr','accounts','manager','tl'].includes(Auth.getUser()?.role)) { window.location.href = 'announcements.html'; return false; }
     return true;
   },
   logout: () => { Auth.clear(); window.location.href = 'login.html'; },
@@ -152,47 +152,42 @@ const NAV_GROUPS = [
     ]
   },
   {
-    label: 'Workspace',
+    label: 'My Work',
     items: [
-      { href:'attendance.html',     icon: ICONS.attendance,   label:'Attendance',       always:true },
-      { href:'leaves.html',         icon: ICONS.leaves,       label:'Leaves',           always:true },
-      { href:'announcements.html',  icon: ICONS.announcements,label:'Announcements',    roles:['employee'] },
-      { href:'performance.html',    icon: ICONS.performance,  label:'Performance',      always:true },
-      { href:'chat.html',           icon: ICONS.chat,         label:'Chat & Meetings',  always:true }
+      { href:'attendance.html',     icon: ICONS.attendance,    label:'Attendance',       always:true },
+      { href:'leaves.html',         icon: ICONS.leaves,        label:'Leaves',           always:true },
+      { href:'announcements.html',  icon: ICONS.announcements, label:'Announcements',    always:true },
+      { href:'performance.html',    icon: ICONS.performance,   label:'Performance',      always:true },
+      { href:'chat.html',           icon: ICONS.chat,          label:'Chat & Meetings',  always:true },
+      { href:'ai-voice.html',       icon: ICONS.aivoice,       label:'Voice Assistant',  always:true },
     ]
   },
   {
     label: 'Documents',
     items: [
-      { href:'form16.html',         icon: ICONS.form16,       label:'Form 16',          always:true },
-      { href:'it-declaration.html', icon: ICONS.itdecl,       label:'IT Declaration',   always:true },
-      { href:'payslip.html',        icon: ICONS.payslip,      label:'My Payslip',       always:true },
+      { href:'form16.html',         icon: ICONS.form16,        label:'Form 16',          always:true },
+      { href:'it-declaration.html', icon: ICONS.itdecl,        label:'IT Declaration',   always:true },
+      { href:'payslip.html',        icon: ICONS.payslip,       label:'My Payslip',       always:true },
     ]
   },
   {
-    label: 'Organisation',
+    label: 'Employee Management',
     items: [
-      { href:'employees.html',      icon: ICONS.employees,    label:'Employees',        roles:['admin','super_admin','hr','accounts','manager','tl'] },
-      { href:'separation.html',     icon: ICONS.separation,   label:'Separation',       always:true },
+      { href:'employees.html',      icon: ICONS.employees,     label:'Employees',        roles:['admin','super_admin','hr','accounts','manager','tl'] },
+      { href:'separation.html',     icon: ICONS.separation,    label:'Separation',       always:true },
+      { href:'geofence.html',       icon: ICONS.geofence,      label:'Geofence',         roles:['admin','super_admin','hr'] },
+      { href:'provision.html',      icon: ICONS.provision,     label:'Provision',        roles:['admin','super_admin','hr','manager','tl'] },
+      { href:'performance.html',    icon: ICONS.performance,   label:'Performance',      roles:['admin','super_admin','hr','manager','tl'], hideRoles:['employee','accounts'] },
     ]
   },
   {
-    label: 'Finance',
+    label: 'Payroll & Finance',
     items: [
-      { href:'payroll.html',        icon: ICONS.payroll,      label:'Payroll',          roles:['super_admin','hr','accounts'] },
-      { href:'advance.html',        icon: ICONS.advance,        label:'Advance Salary',   always:true },
-      { href:'reimbursement.html',  icon: ICONS.reimbursement,  label:'Reimbursement',    always:true },
-      { href:'provision.html',      icon: ICONS.provision,    label:'Provision',        roles:['admin','super_admin','hr','manager','tl'] },
-      { href:'projects.html',       icon: ICONS.projects,     label:'Projects',         roles:['admin','super_admin','accounts'] },
+      { href:'payroll.html',        icon: ICONS.payroll,       label:'Payroll',          roles:['super_admin','hr','accounts'] },
+      { href:'advance.html',        icon: ICONS.advance,       label:'Advance Salary',   always:true },
+      { href:'reimbursement.html',  icon: ICONS.reimbursement, label:'Reimbursement',    always:true },
+      { href:'projects.html',       icon: ICONS.projects,      label:'Projects',         roles:['admin','super_admin','accounts'] },
     ]
-  },
-  {
-    label: 'System',
-    items: [
-      { href:'geofence.html', icon: ICONS.geofence, label:'Geofence', roles:['admin','super_admin','hr'] },
-      { href:'ai-voice.html',       icon: ICONS.aivoice,      label:'Voice Assistant',  always:true },
-    ]
-  },
 ];
 
 // Flat NAV kept for any code that references it
