@@ -2173,7 +2173,7 @@ async function loadRegularizations() {
   const mySection = document.getElementById('reg-my-section');
   if (Role.is('hr','admin','super_admin')) { if (mySection) mySection.style.display = 'none'; }
   else { if (mySection) mySection.style.display = ''; }
-  if (myEl) {
+  if (myEl && !Role.is('hr','admin','super_admin')) {
     myEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0">Loading…</div>';
     try {
       const myData = await api('GET', '/attendance/regularizations?status=pending');
