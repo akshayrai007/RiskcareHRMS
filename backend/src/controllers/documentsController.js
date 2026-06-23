@@ -25,20 +25,25 @@ const HR_ROLES = ['hr', 'admin', 'super_admin'];
 // ── Fixed document checklist definition ────────────────────────────────────────
 // key must be stable — used as the unique identifier per employee per document
 const DOCUMENT_DEFS = [
-  { key: 'broker_qual_renewal',   label: 'Broker Qualification & Renewal certificate', mandatory: false },
+  { key: 'broker_qual_renewal',   label: 'Broker Qualification & Renewal Certificate', mandatory: false },
   { key: 'broker_training',       label: 'Broker Training',                            mandatory: false },
   { key: 'passport_photo',        label: 'Passport size photograph',                   mandatory: true  },
-  { key: 'appointment_ack',       label: 'Acknowledgement copy of Appointment Letter', mandatory: true  },
+  { key: 'appointment_ack',       label: 'Acknowledgement Copy of Appointment Letter', mandatory: true  },
   { key: 'aadhaar_card',          label: 'Aadhaar Card',                               mandatory: true  },
-  { key: 'bank_statement_salary', label: 'Bank statement with AC details or Cancelled cheque copy for salary processing', mandatory: true },
-  { key: 'qualification_cert',    label: 'Qualification Certificate',                  mandatory: true  },
-  { key: 'last3_payslips',        label: 'Last 3 months pay slips or Bank statement',  mandatory: true  },
-  { key: 'resume_cv',             label: 'Resume/Curriculum Vitae',                     mandatory: true  },
-  { key: 'offer_promo_letter',    label: 'Offer Letter/Appointment Letter & Promotion/Increment Letter', mandatory: true },
-  { key: 'other_certificates',    label: 'Other Certificates',                          mandatory: true  },
   { key: 'pan_card',              label: 'PAN Card',                                   mandatory: true  },
-  { key: 'id_residence_proof',    label: 'Proof of ID & Residence address',             mandatory: true  },
-  { key: 'relieving_letter',      label: 'Resignation Acceptance/Relieving Letter/Experience Letter', mandatory: true },
+  { key: 'id_residence_proof',    label: 'Proof of ID & Residence Address',            mandatory: true  },
+  { key: 'tenth_marksheet',       label: '10th Marksheet / Certificate',               mandatory: true  },
+  { key: 'twelfth_marksheet',     label: '12th Marksheet / Certificate',               mandatory: true  },
+  { key: 'graduation_marksheet',  label: 'Graduation Marksheet',                       mandatory: true  },
+  { key: 'post_graduation_cert',  label: 'Post Graduation Certificate',                mandatory: false },
+  { key: 'qualification_cert',    label: 'Qualification Certificate',                  mandatory: true  },
+  { key: 'last3_payslips',        label: 'Last 3 Months Pay Slips or Bank Statement',  mandatory: true  },
+  { key: 'bank_statement_salary', label: 'Bank Statement with AC Details or Cancelled Cheque', mandatory: true },
+  { key: 'offer_promo_letter',    label: 'Offer Letter / Appointment Letter & Promotion / Increment Letter', mandatory: true },
+  { key: 'relieving_letter',      label: 'Resignation Acceptance / Relieving Letter / Experience Letter', mandatory: true },
+  { key: 'uan_pf_document',       label: 'UAN / PF Document',                          mandatory: true  },
+  { key: 'passport_dl_voterid',   label: 'Passport / Driving Licence / Voter ID',      mandatory: true  },
+  { key: 'other_certificates',    label: 'Other Certificates',                         mandatory: false },
 ];
 
 exports.DOCUMENT_DEFS = DOCUMENT_DEFS;
