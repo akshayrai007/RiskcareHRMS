@@ -546,18 +546,16 @@ function renderTable() {
   const byKey = {};
   for (const d of checklistData) byKey[d.key] = d;
 
-  const groupedKeys = DOC_GROUPS.flatMap(g => g.keys);
+  // Render in the preferred order (groups define order), but NO header rows
+  const orderedKeys = DOC_GROUPS.flatMap(g => g.keys);
+  const seen = new Set();
   let rows = '';
-
-  for (const grp of DOC_GROUPS) {
-    const grpDocs = grp.keys.filter(k => byKey[k]);
-    if (!grpDocs.length) continue; // hide empty groups
-    rows += `<tr class="${grp.cls}"><td colspan="5">${grp.label}</td></tr>`;
-    for (const k of grp.keys) { if (byKey[k]) rows += buildRow(byKey[k]); }
+  for (const k of orderedKeys) {
+    if (byKey[k]) { rows += buildRow(byKey[k]); seen.add(k); }
   }
-  // Ungrouped fallback
+  // Any keys not in the order list (fallback)
   for (const d of checklistData) {
-    if (!groupedKeys.includes(d.key)) rows += buildRow(d);
+    if (!seen.has(d.key)) rows += buildRow(d);
   }
 
   document.getElementById('table-wrap').innerHTML =
