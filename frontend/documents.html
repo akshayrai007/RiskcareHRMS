@@ -277,39 +277,8 @@ window.addEventListener('load', async function() {
   if (isHR) {
     document.getElementById('hr-search-bar').style.display = 'flex';
     document.getElementById('doc-empty').style.display = '';
-
-    // Show loading state in search
-    document.getElementById('emp-search').placeholder = 'Loading employees…';
-
-    try {
-      const res = await api('GET', '/documents/employees');
-      if (res?.success && res.data?.length) {
-        _allEmps = res.data;
-      } else {
-        const r2 = await api('GET', '/employees?limit=999&is_active=true');
-        _allEmps = (r2?.data || []).map(e => ({
-          id: e.id,
-          employee_code: e.employee_code,
-          first_name: e.first_name,
-          last_name: e.last_name || '',
-          department_name: e.department_name || ''
-        }));
-      }
-    } catch(err) {
-      console.error('[docs] failed to load employees:', err);
-      // Retry once after 3s (Render cold start)
-      setTimeout(async () => {
-        try {
-          const r = await api('GET', '/employees?limit=999&is_active=true');
-          _allEmps = (r?.data||[]).map(e=>({id:e.id,employee_code:e.employee_code,first_name:e.first_name,last_name:e.last_name||'',department_name:e.department_name||''}));
-          document.getElementById('emp-search').placeholder = _allEmps.length ? `Search ${_allEmps.length} employees…` : 'Search by name or employee code…';
-        } catch{}
-      }, 3000);
-    }
-
-    document.getElementById('emp-search').placeholder =
-      _allEmps.length ? `Search ${_allEmps.length} employees…` : 'Search by name or employee code…';
-
+    // Load employees in background - don't block page render
+    loadEmployees();
   } else {
     currentEmpId = user.id;
     document.getElementById('doc-empty').style.display = 'none';
@@ -324,13 +293,39 @@ window.addEventListener('load', async function() {
 });
 
 // ── Employee Search ───────────────────────────────────────────────────────────
+let _empsLoading = false;
+
+async function loadEmployees() {
+  if (_empsLoading) return;
+  _empsLoading = true;
+  document.getElementById('emp-search').placeholder = 'Loading employees…';
+  try {
+    const res = await api('GET', '/documents/employees');
+    if (res?.success && res.data?.length) {
+      _allEmps = res.data;
+    } else {
+      const r2 = await api('GET', '/employees?limit=999&is_active=true');
+      _allEmps = (r2?.data || []).map(e => ({
+        id: e.id, employee_code: e.employee_code,
+        first_name: e.first_name, last_name: e.last_name||'', department_name: e.department_name||''
+      }));
+    }
+  } catch(e) { _allEmps = []; }
+  _empsLoading = false;
+  document.getElementById('emp-search').placeholder =
+    _allEmps.length ? `Search ${_allEmps.length} employees by name or code…` : 'Search by name or employee code…';
+  // If user already typed something, trigger search now
+  if (document.getElementById('emp-search').value.trim()) onEmpSearch();
+}
 function onEmpSearch() {
   const q = document.getElementById('emp-search').value.trim().toLowerCase();
   const res = document.getElementById('search-results');
   if (!q) { res.style.display = 'none'; return; }
   if (!_allEmps.length) {
-    res.innerHTML = '<div class="search-result-item" style="color:var(--muted)">Loading employees…</div>';
-    res.style.display = ''; return;
+    res.innerHTML = '<div class="search-result-item" style="color:var(--muted)">⏳ Loading employees, please wait…</div>';
+    res.style.display = '';
+    if (!_empsLoading) loadEmployees();
+    return;
   }
   const matches = _allEmps.filter(e => {
     const fullName = ((e.first_name||'')+' '+(e.last_name||'')).toLowerCase();
