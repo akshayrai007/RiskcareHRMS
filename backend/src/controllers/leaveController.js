@@ -433,14 +433,37 @@ exports.action = async (req, res) => {
 // ── Get Leave Requests ────────────────────────────────────────────────────────
 exports.getRequests = async (req, res) => {
   try {
-    const { status, employee_id, from_date, to_date } = req.query;
+    const { status, employee_id, from_date, to_date, scope } = req.query;
     const userId   = req.user.id;
     const userRole = req.user.role;
     const userCode = req.user.employee_code;
 
     let conds = [], params = [], idx = 1;
 
-    if (userRole === 'super_admin') {
+    // scope=mine → only own requests (My Leaves tab)
+    if (scope === 'mine') {
+      conds.push(`lr.employee_id=$${idx++}`);
+      params.push(userId);
+    }
+    // scope=approvals → only requests needing this user's approval
+    else if (scope === 'approvals') {
+      conds.push(`lr.status='pending'`);
+      conds.push(`lr.employee_id != $${idx++}`);
+      params.push(userId);
+      if (!['super_admin','hr','admin'].includes(userRole)) {
+        conds.push(
+          `(lr.current_approver_code=$${idx++}
+            OR EXISTS (
+              SELECT 1 FROM employees sub
+              WHERE sub.id = lr.employee_id
+                AND (sub.reporting_manager_id=$${idx++} OR sub.team_leader_id=$${idx++})
+            ))`
+        );
+        params.push(userCode, userId, userId);
+      }
+    }
+    // scope=all or no scope → role-based access
+    else if (userRole === 'super_admin') {
       // super_admin sees everything
     } else if (userRole === 'hr') {
       // HR sees all requests for non-pending views (history, reports).

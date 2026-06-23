@@ -588,7 +588,7 @@ function calcDays() {
 async function loadMyLeaves() {
   const status = document.getElementById('my-status-filter').value;
   const el = document.getElementById('my-leaves-list');
-  const data = await api('GET', '/leave/applications' + (status?'?status='+status:''));
+  const data = await api('GET', '/leave/applications?scope=mine' + (status?'&status='+status:''));
   if (!data) {
     el.innerHTML = '<div style="text-align:center;color:#e53935;padding:24px">⚠ Could not load leaves. Please refresh.</div>';
     return;
@@ -602,7 +602,7 @@ async function loadMyLeaves() {
 
 async function loadApprovals() {
   const status = document.getElementById('approvals-filter').value || 'pending';
-  const data = await api('GET', `/leave/applications?status=${status}`);
+  const data = await api('GET', `/leave/applications?scope=approvals&status=${status}`);
   const el = document.getElementById('approvals-list');
   if (!data?.success || !data.data?.length) {
     el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>No applications found.</p></div>';
@@ -624,7 +624,7 @@ async function loadApprovals() {
 
 async function loadAllLeaves() {
   const status = document.getElementById('all-status-filter').value;
-  const data = await api('GET', '/leave/applications' + (status?'?status='+status:''));
+  const data = await api('GET', '/leave/applications?scope=all' + (status?'&status='+status:''));
   if (!data?.success) return;
   allLeavesData = data.data;
   filterAll();
