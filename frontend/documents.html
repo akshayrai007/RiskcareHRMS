@@ -234,66 +234,90 @@ async function loadDocuments() {
 
 function renderTable() {
   const wrap = document.getElementById('table-wrap');
-  wrap.innerHTML = `<div class="doc-table-wrap" style="overflow-x:auto"><table class="doc-table">
+  // Color groups for Excel-style look
+  const colorGroups = [
+    { keys: ['Broker Qualification & Renewal Certificate','Broker Training Certificate'], bg: '#e8f5e9', hdr: '#1b5e20', label: '🏆 Broker / Compliance' },
+    { keys: ['Passport size photograph','Appointment Letter (Acknowledgement)'], bg: '#e3f2fd', hdr: '#0d47a1', label: '📋 Basic Documents' },
+    { keys: ['Aadhaar Card','PAN Card','Proof of ID & Residence Address'], bg: '#fff8e1', hdr: '#e65100', label: '🪪 Identity Documents' },
+    { keys: ['10th Marksheet / Certificate','12th Marksheet / Certificate','Graduation Marksheet','Post Graduation Certificate','Qualification Certificate'], bg: '#f3e5f5', hdr: '#4a148c', label: '🎓 Educational Documents' },
+    { keys: ['Last 3 Months Pay Slips or Bank Statement','Bank Statement with AC Details or Cancelled Cheque'], bg: '#e8eaf6', hdr: '#1a237e', label: '💳 Financial Documents' },
+    { keys: ['Previous Employment Certificate','Relieving Letter'], bg: '#fce4ec', hdr: '#880e4f', label: '🏢 Employment Documents' },
+  ];
+
+  // Build key → group map
+  const keyGroup = {};
+  colorGroups.forEach(g => g.keys.forEach(k => keyGroup[k] = g));
+
+  wrap.innerHTML = `<div class="doc-table-wrap" style="overflow-x:auto"><table class="doc-table" style="border-collapse:collapse;width:100%">
     <colgroup>
-      <col class="col-doc"><col class="col-sub"><col class="col-add"><col class="col-att"><col class="col-date">
+      <col style="width:26%"><col style="width:10%"><col style="width:22%"><col style="width:25%"><col style="width:17%">
     </colgroup>
-    <thead><tr>
-      <th style="text-align:left">Document</th>
-      <th>Submitted</th>
-      <th>Add Attachments</th>
-      <th>Attachments</th>
-      <th>Updated (Date &amp; Time)</th>
+    <thead><tr style="background:#1e293b">
+      <th style="text-align:left;color:#fff;padding:11px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Document</th>
+      <th style="color:#fff;padding:11px 14px;font-size:11px;font-weight:700;text-align:center">Submitted</th>
+      <th style="color:#fff;padding:11px 14px;font-size:11px;font-weight:700;text-align:center">Add Attachments</th>
+      <th style="color:#fff;padding:11px 14px;font-size:11px;font-weight:700;text-align:center">Attachments</th>
+      <th style="color:#fff;padding:11px 14px;font-size:11px;font-weight:700;text-align:center">Updated</th>
     </tr></thead>
-    <tbody>${checklistData.map(d => buildRow(d)).join('')}</tbody>
+    <tbody>${(() => {
+      let html = '';
+      let lastGroup = null;
+      checklistData.forEach(d => {
+        const grp = keyGroup[d.label] || { bg:'#ffffff', hdr:'#37474f', label: '📄 Other Documents' };
+        if (grp.label !== lastGroup) {
+          lastGroup = grp.label;
+          html += `<tr><td colspan="5" style="background:${grp.hdr};color:#fff;font-size:11px;font-weight:800;padding:7px 14px;text-transform:uppercase;letter-spacing:.5px">${grp.label}</td></tr>`;
+        }
+        html += buildRow(d, grp.bg);
+      });
+      return html;
+    })()}
+    </tbody>
   </table></div>`;
 }
 
-function buildRow(d) {
+function buildRow(d, bg='#ffffff') {
   const docs = d.documents || [];
   const pend = pendingFiles[d.key] || [];
   const hasFiles = docs.length > 0;
   const hasPending = pend.length > 0;
 
   const submittedHtml = (hasFiles || hasPending)
-    ? `<span class="doc-status-ok">✅ Yes</span>`
-    : `<span class="doc-status-empty">— No</span>`;
+    ? `<span class="doc-status-ok" style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700">✅ Yes</span>`
+    : `<span class="doc-status-empty" style="background:#f1f5f9;color:#94a3b8;padding:3px 10px;border-radius:12px;font-size:11px">— No</span>`;
 
   const pendBadge = hasPending
-    ? `<div class="pending-badge">📎 ${pend.length} file(s) ready to upload</div>` : '';
+    ? `<div style="font-size:11px;color:#d97706;font-weight:600;margin-top:4px">📎 ${pend.length} ready to upload</div>` : '';
   const fileInputHtml = `
-    <div class="doc-file-cell">
+    <div style="text-align:center">
       <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="font-size:11px;max-width:175px"
         onchange="onFilesChosen('${d.key}', this)">
       ${pendBadge}
     </div>`;
 
-  let attachmentHtml = `<span class="doc-status-empty">—</span>`;
+  let attachmentHtml = `<span style="color:#94a3b8">—</span>`;
   if (hasFiles) {
-    attachmentHtml = `<div class="attach-list">` + docs.map(doc => `
-        <div class="attach-chip" onclick="viewAttachment(${doc.id}, '${escAttr(doc.original_name)}', '${escAttr(doc.mime_type)}')">
-          <span class="attach-chip-name" title="${escAttr(doc.original_name)}">📎 ${escAttr(doc.original_name)}</span>
-          <span class="attach-chip-del" title="Remove" onclick="event.stopPropagation();removeFile(${doc.id})">×</span>
+    attachmentHtml = `<div>` + docs.map(doc => `
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;cursor:pointer" onclick="viewAttachment(${doc.id}, '${escAttr(doc.original_name)}', '${escAttr(doc.mime_type)}')">
+          <span style="color:var(--accent);font-size:12px;font-weight:600;text-decoration:underline" title="${escAttr(doc.original_name)}">📎 ${escAttr(doc.original_name)}</span>
+          <span title="Remove" onclick="event.stopPropagation();removeFile(${doc.id})" style="color:#dc2626;cursor:pointer;font-size:14px;font-weight:700;margin-left:4px">×</span>
         </div>`).join('') + `</div>`;
   }
 
-  // Date & time of the most recent upload (documents are pre-sorted newest-first by the API)
-  let dtHtml = `<span class="doc-status-empty">—</span>`;
+  let dtHtml = `<span style="color:#94a3b8">—</span>`;
   if (hasFiles) {
     const dt = docs[0].uploaded_at ? new Date(docs[0].uploaded_at) : null;
     if (dt && !isNaN(dt)) {
-      const datePart = fmt.date(docs[0].uploaded_at);
-      const timePart = dt.toLocaleTimeString(window.CFG.currencyLocale, { hour: '2-digit', minute: '2-digit' });
-      dtHtml = `<div class="datetime-cell"><span class="datetime-date">${datePart}</span><span class="datetime-time">${timePart}</span></div>`;
+      dtHtml = `<div style="font-size:12px;color:var(--muted)">${fmt.date(docs[0].uploaded_at)}<br><span style="font-size:11px">${dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div>`;
     }
   }
 
-  return `<tr>
-    <td style="text-align:left;font-weight:600;color:#283593">${d.label}</td>
-    <td>${submittedHtml}</td>
-    <td>${fileInputHtml}</td>
-    <td>${attachmentHtml}</td>
-    <td>${dtHtml}</td>
+  return `<tr style="background:${bg}">
+    <td style="text-align:left;font-weight:600;color:#1e293b;padding:10px 14px;border-bottom:1px solid #e2e8f0;border-right:1px solid #e2e8f0">${d.label}</td>
+    <td style="text-align:center;padding:10px 14px;border-bottom:1px solid #e2e8f0;border-right:1px solid #e2e8f0">${submittedHtml}</td>
+    <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;border-right:1px solid #e2e8f0">${fileInputHtml}</td>
+    <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;border-right:1px solid #e2e8f0">${attachmentHtml}</td>
+    <td style="text-align:center;padding:10px 14px;border-bottom:1px solid #e2e8f0">${dtHtml}</td>
   </tr>`;
 }
 

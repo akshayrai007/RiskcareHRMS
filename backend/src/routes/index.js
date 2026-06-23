@@ -986,6 +986,24 @@ const empDocsCtrl = require('../controllers/empDocsController');
 router.get   ('/emp-documents/types',                                         authenticate, empDocsCtrl.getDocumentTypes);
 router.get   ('/emp-documents/:employee_id',                                  authenticate, empDocsCtrl.getDocuments);
 router.post  ('/emp-documents/upload', empDocsCtrl.upload.single('file'),    authenticate, empDocsCtrl.uploadDocument);
+router.post  ('/emp-documents/upload-multi', (req, res, next) => {
+  empDocsCtrl.upload.array('files', 10)(req, res, err => { if (err) return res.status(400).json({ success:false, message: err.message }); next(); });
+}, authenticate, async (req, res) => {
+  try {
+    const empId = parseInt(req.body.employee_id || req.user.id);
+    const docKey = req.body.doc_key;
+    const files = req.files || [];
+    if (!files.length) return res.status(400).json({ success: false, message: 'No files' });
+    const db = require('../config/db');
+    for (const file of files) {
+      await db.query(
+        `INSERT INTO employee_documents (employee_id,document_type,file_name,file_path,uploaded_by) VALUES ($1,$2,$3,$4,$5)`,
+        [empId, docKey, file.originalname, '/uploads/emp-documents/'+file.filename, req.user.id]
+      );
+    }
+    res.json({ success: true, count: files.length });
+  } catch(err) { res.status(500).json({ success: false, message: err.message }); }
+});
 router.delete('/emp-documents/:id',                                           authenticate, empDocsCtrl.deleteDocument);
 
 // ── Previous Employment ───────────────────────────────────────────────────────
