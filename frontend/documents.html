@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
-.doc-table { width:100%;border-collapse:collapse;min-width:880px }
+.doc-table { width:100%;border-collapse:collapse;min-width:960px }
 .doc-table th { border:1px solid #9ca3af;background:#1e293b;color:#fff;font-size:11px;font-weight:700;padding:10px 12px;text-align:center;white-space:nowrap }
 .doc-table td { border:1px solid #e5e7eb;padding:9px 12px;font-size:12.5px;vertical-align:middle;text-align:center }
 .doc-table tr:nth-child(even) td { background:#f9fafb }
@@ -17,7 +17,16 @@
 .emp-picker-bar { display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap }
 .emp-picker-bar select { min-width:260px }
 .doc-file-cell { display:flex;flex-direction:column;align-items:center;gap:4px }
-.attach-preview{display:flex;align-items:center;gap:8px;justify-content:center;padding:4px 8px;background:#e8f5e9;border-radius:8px;font-size:11.5px;color:#2e7d32;cursor:pointer}
+.pending-badge { font-size:10.5px;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:2px 7px;margin-top:3px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.attach-list { display:flex;flex-direction:column;gap:4px;align-items:center }
+.attach-chip { display:inline-flex;align-items:center;gap:6px;background:#e8f5e9;border:1px solid #a7f3d0;border-radius:20px;padding:3px 10px 3px 8px;font-size:11px;color:#166534;cursor:pointer;transition:background .15s;max-width:170px }
+.attach-chip:hover { background:#d1fae5 }
+.attach-chip-name { overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px }
+.attach-chip-del { margin-left:2px;color:#9ca3af;cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;padding:0 2px }
+.attach-chip-del:hover { color:#dc2626 }
+.datetime-cell { display:flex;flex-direction:column;align-items:center;gap:2px }
+.datetime-date { font-size:12px;font-weight:600;color:#1e293b }
+.datetime-time { font-size:11px;color:#64748b }
 /* ── Attachment Viewer Modal (matches reimbursement.html) ── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
@@ -93,7 +102,7 @@ const HR_ROLES = ['hr', 'admin', 'super_admin'];
 let isHR = false;
 let currentEmployeeId = null;
 let checklistData = [];
-// pendingFiles[doc_key] = File object selected but not yet uploaded
+// pendingFiles[doc_key] = array of File objects selected but not yet uploaded
 let pendingFiles = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -143,48 +152,79 @@ function renderTable() {
   wrap.innerHTML = `<div style="overflow-x:auto"><table class="doc-table">
     <thead><tr>
       <th style="text-align:left">Document</th>
-      <th style="width:110px">Submitted</th>
-      <th style="width:160px">Choose File</th>
-      <th style="width:160px">Attachments</th>
-      <th style="width:150px">Updated (Date &amp; Time)</th>
+      <th style="width:100px">Submitted</th>
+      <th style="width:190px">Add Attachments</th>
+      <th style="width:200px">Attachments</th>
+      <th style="width:140px">Updated (Date &amp; Time)</th>
     </tr></thead>
-    <tbody>${checklistData.map(d => {
-      const hasFile = !!d.document;
-      const pending = !!pendingFiles[d.key];
-      const submittedHtml = (hasFile || pending)
-        ? `<span class="doc-status-ok">✅ Yes</span>`
-        : `<span class="doc-status-empty">— No</span>`;
-      const fileChosenLabel = pending ? pendingFiles[d.key].name : 'No file chosen';
-      const attachmentHtml = hasFile
-        ? `<div class="attach-preview" onclick="viewAttachment(${d.document.id}, '${escAttr(d.document.original_name)}', '${escAttr(d.document.mime_type)}')">📎 Preview</div>
-           <div style="margin-top:4px"><a href="#" onclick="removeFile('${d.key}',${d.document.id});return false;" style="font-size:11px;color:#dc2626">Remove</a></div>`
-        : `<span class="doc-status-empty">—</span>`;
-      return `<tr>
-        <td style="text-align:left;font-weight:600">${d.label}</td>
-        <td>${submittedHtml}</td>
-        <td>
-          <div class="doc-file-cell">
-            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="font-size:11px"
-              onchange="onFileChosen('${d.key}', this)">
-            <span style="font-size:10.5px;color:var(--muted)">${pending ? '📎 ' + fileChosenLabel : ''}</span>
-          </div>
-        </td>
-        <td>${attachmentHtml}</td>
-        <td style="font-size:11px;color:var(--muted)">${hasFile ? fmt.date(d.document.uploaded_at) : '—'}</td>
-      </tr>`;
-    }).join('')}</tbody>
+    <tbody>${checklistData.map(d => buildRow(d)).join('')}</tbody>
   </table></div>`;
 }
 
-function escAttr(s) {
-  return String(s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+function buildRow(d) {
+  const docs = d.documents || [];
+  const pend = pendingFiles[d.key] || [];
+  const hasFiles = docs.length > 0;
+  const hasPending = pend.length > 0;
+
+  const submittedHtml = (hasFiles || hasPending)
+    ? `<span class="doc-status-ok">✅ Yes</span>`
+    : `<span class="doc-status-empty">— No</span>`;
+
+  const pendBadge = hasPending
+    ? `<div class="pending-badge">📎 ${pend.length} file(s) ready to upload</div>` : '';
+  const fileInputHtml = `
+    <div class="doc-file-cell">
+      <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="font-size:11px;max-width:175px"
+        onchange="onFilesChosen('${d.key}', this)">
+      ${pendBadge}
+    </div>`;
+
+  let attachmentHtml = `<span class="doc-status-empty">—</span>`;
+  if (hasFiles) {
+    attachmentHtml = `<div class="attach-list">` + docs.map(doc => `
+        <div class="attach-chip" onclick="viewAttachment(${doc.id}, '${escAttr(doc.original_name)}', '${escAttr(doc.mime_type)}')">
+          <span class="attach-chip-name" title="${escAttr(doc.original_name)}">📎 ${escAttr(doc.original_name)}</span>
+          <span class="attach-chip-del" title="Remove" onclick="event.stopPropagation();removeFile(${doc.id})">×</span>
+        </div>`).join('') + `</div>`;
+  }
+
+  // Date & time of the most recent upload (documents are pre-sorted newest-first by the API)
+  let dtHtml = `<span class="doc-status-empty">—</span>`;
+  if (hasFiles) {
+    const dt = docs[0].uploaded_at ? new Date(docs[0].uploaded_at) : null;
+    if (dt && !isNaN(dt)) {
+      const datePart = fmt.date(docs[0].uploaded_at);
+      const timePart = dt.toLocaleTimeString(window.CFG.currencyLocale, { hour: '2-digit', minute: '2-digit' });
+      dtHtml = `<div class="datetime-cell"><span class="datetime-date">${datePart}</span><span class="datetime-time">${timePart}</span></div>`;
+    }
+  }
+
+  return `<tr>
+    <td style="text-align:left;font-weight:600">${d.label}</td>
+    <td>${submittedHtml}</td>
+    <td>${fileInputHtml}</td>
+    <td>${attachmentHtml}</td>
+    <td>${dtHtml}</td>
+  </tr>`;
 }
 
-function onFileChosen(docKey, input) {
-  const file = input.files[0];
-  if (!file) { delete pendingFiles[docKey]; return; }
-  if (file.size > 5 * 1024 * 1024) { toast('File must be under 5MB', 'error'); input.value = ''; return; }
-  pendingFiles[docKey] = file;
+function escAttr(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function onFilesChosen(docKey, input) {
+  const newFiles = Array.from(input.files);
+  if (!newFiles.length) return;
+
+  const oversized = newFiles.filter(f => f.size > 5 * 1024 * 1024);
+  if (oversized.length) {
+    toast(`${oversized.map(f => f.name).join(', ')} exceed 5MB limit`, 'error');
+    input.value = '';
+    return;
+  }
+
+  pendingFiles[docKey] = [...(pendingFiles[docKey] || []), ...newFiles];
   renderTable();
 }
 
@@ -230,46 +270,47 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
 });
 
-async function removeFile(docKey, docId) {
-  if (!confirm('Remove this document?')) return;
+async function removeFile(docId) {
+  if (!confirm('Remove this attachment?')) return;
   const res = await api('DELETE', '/documents/' + docId);
-  if (res?.success) { toast('Document removed'); loadDocuments(); }
+  if (res?.success) { toast('Attachment removed'); loadDocuments(); }
   else toast(res?.message || 'Failed to remove', 'error');
 }
 
 async function saveAll() {
-  const keys = Object.keys(pendingFiles);
+  const keys = Object.keys(pendingFiles).filter(k => pendingFiles[k]?.length);
   if (!keys.length) { toast('No new files selected', 'warning'); return; }
 
   const btn = document.getElementById('save-btn');
   btn.disabled = true; btn.textContent = '⏳ Saving...';
 
   let okCount = 0, failCount = 0;
+  const token = Auth.getToken();
+
   for (const docKey of keys) {
-    const file = pendingFiles[docKey];
+    const files = pendingFiles[docKey];
     const formData = new FormData();
-    formData.append('file', file);
+    files.forEach(f => formData.append('files', f));
     formData.append('employee_id', currentEmployeeId);
     formData.append('doc_key', docKey);
 
     try {
-      const token = Auth.getToken();
-      const res = await fetch(API_BASE + '/documents/upload', {
+      const res = await fetch(API_BASE + '/documents/upload-multi', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token },
         body: formData
       });
       const data = await res.json();
-      if (data.success) okCount++; else failCount++;
+      if (data.success) okCount += files.length; else failCount += files.length;
     } catch (e) {
-      failCount++;
+      failCount += files.length;
     }
   }
 
   btn.disabled = false; btn.textContent = '💾 Save';
 
-  if (okCount) toast(`${okCount} document(s) saved successfully`);
-  if (failCount) toast(`${failCount} document(s) failed to upload`, 'error');
+  if (okCount) toast(`${okCount} file(s) saved successfully`);
+  if (failCount) toast(`${failCount} file(s) failed to upload`, 'error');
 
   pendingFiles = {};
   loadDocuments();
