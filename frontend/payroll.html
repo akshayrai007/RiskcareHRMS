@@ -179,9 +179,23 @@
         <div class="card-header" style="flex-wrap:wrap;gap:10px">
           <div class="card-title"><span class="card-title-icon">🏦</span>Salary Structures</div>
           <div class="flex gap-2" style="flex-wrap:wrap;align-items:center">
-            <input id="struct-search" class="form-control" style="width:240px"
-              placeholder="Search by name or employee code…"
+            <input id="struct-search" class="form-control" style="width:200px"
+              placeholder="Search by name or code…"
               oninput="loadSalaryStructures()">
+            <select id="struct-view" class="form-control" style="width:120px" onchange="loadSalaryStructures()">
+              <option value="structure">📋 Structure</option>
+              <option value="monthly">📅 Monthly</option>
+              <option value="ytd">📊 YTD</option>
+            </select>
+            <select id="struct-month" class="form-control" style="width:110px;display:none" onchange="loadSalaryStructures()">
+              <option value="1">January</option><option value="2">February</option>
+              <option value="3">March</option><option value="4">April</option>
+              <option value="5">May</option><option value="6">June</option>
+              <option value="7">July</option><option value="8">August</option>
+              <option value="9">September</option><option value="10">October</option>
+              <option value="11">November</option><option value="12">December</option>
+            </select>
+            <select id="struct-year" class="form-control" style="width:90px;display:none" onchange="loadSalaryStructures()"></select>
             <button class="btn btn-outline btn-sm" onclick="downloadSalaryStructureExcel()">⬇ Download Excel</button>
           </div>
         </div>
@@ -622,6 +636,13 @@ let _salaryStructData = null;
 async function loadSalaryStructures() {
   const el     = document.getElementById('struct-table-wrap');
   const search = document.getElementById('struct-search')?.value?.trim() || '';
+  const view   = document.getElementById('struct-view')?.value || 'structure';
+
+  // Show/hide month/year selectors
+  const showMonthYear = view === 'monthly';
+  const showYear      = view === 'ytd';
+  document.getElementById('struct-month').style.display = showMonthYear ? '' : 'none';
+  document.getElementById('struct-year').style.display  = (showMonthYear || showYear) ? '' : 'none';
 
   if (!search) {
     _salaryStructData = null;
@@ -629,6 +650,10 @@ async function loadSalaryStructures() {
     el.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><p style="color:var(--muted)">Enter an employee name or code to view salary structure.</p></div>';
     return;
   }
+
+  // Route to correct loader
+  if (view === 'monthly') { await loadMonthlySalary(el, search); return; }
+  if (view === 'ytd')     { await loadYTDSalary(el, search);     return; }
 
   el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
   const data = await api('GET', `/payroll/salary-structures?search=${encodeURIComponent(search)}`);
@@ -746,6 +771,173 @@ function downloadSalaryStructureExcel() {
   toast('✅ Salary Structure downloaded');
 }
 
+
+
+// ── Init year dropdown ────────────────────────────────────────────────────────
+(function() {
+  const sel = document.getElementById('struct-year');
+  if (!sel) return;
+  const yr = new Date().getFullYear();
+  for (let y = yr; y >= yr - 3; y--)
+    sel.innerHTML += `<option value="${y}" ${y===yr?'selected':''}>${y}</option>`;
+  // Set current month in month dropdown
+  const msel = document.getElementById('struct-month');
+  if (msel) msel.value = String(new Date().getMonth() + 1);
+})();
+
+// ── Monthly Payroll View ──────────────────────────────────────────────────────
+async function loadMonthlySalary(el, search) {
+  const month = document.getElementById('struct-month')?.value || (new Date().getMonth() + 1);
+  const year  = document.getElementById('struct-year')?.value  || new Date().getFullYear();
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+
+  const data = await api('GET', `/payroll/list?month=${month}&year=${year}&search=${encodeURIComponent(search)}`);
+  if (!data?.success || !data.data?.length) {
+    document.getElementById('struct-summary').innerHTML = '';
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📅</div><p>No payroll data found for this month/year.</p></div>`;
+    return;
+  }
+  const rows = data.data;
+  const MONTHS = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  // Summary
+  const totalGross = rows.reduce((s,r)=>s+parseFloat(r.gross_salary||0),0);
+  const totalNet   = rows.reduce((s,r)=>s+parseFloat(r.net_salary||0),0);
+  const totalDed   = rows.reduce((s,r)=>s+parseFloat(r.total_deductions||0),0);
+  document.getElementById('struct-summary').innerHTML = [
+    {icon:'👥', val:rows.length,           lbl:'Employees'},
+    {icon:'💵', val:fmt.money(totalGross), lbl:`Gross (${MONTHS[month]})`},
+    {icon:'💚', val:fmt.money(totalNet),   lbl:'Total Net Pay'},
+    {icon:'🏦', val:fmt.money(totalDed),   lbl:'Total Deductions'},
+  ].map(s=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px">
+    <div style="font-size:22px">${s.icon}</div>
+    <div><div style="font-size:18px;font-weight:800;color:var(--text)">${s.val}</div>
+    <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase">${s.lbl}</div></div>
+  </div>`).join('');
+
+  const XLH = `border:1px solid #9ca3af;background:#1e293b;color:#fff;font-size:11px;font-weight:700;padding:8px 10px;white-space:nowrap;text-align:center`;
+  const XLD = `border:1px solid #e5e7eb;padding:7px 10px;font-size:12px;text-align:center;vertical-align:middle`;
+
+  el.innerHTML = `<div style="overflow-x:auto;margin-top:4px">
+  <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:8px">📅 ${MONTHS[month]} ${year} — Monthly Payroll</div>
+  <table style="border-collapse:collapse;width:100%;min-width:900px">
+    <thead><tr>
+      <th style="${XLH}">Emp Code</th><th style="${XLH}">Name</th><th style="${XLH}">Dept</th>
+      <th style="${XLH};background:#1b3a2a">Paid Days</th><th style="${XLH};background:#1b3a2a">LOP</th>
+      <th style="${XLH};background:#166534">Basic</th><th style="${XLH};background:#166534">HRA</th>
+      <th style="${XLH};background:#166534">Gross</th>
+      <th style="${XLH};background:#7f1d1d">PF</th><th style="${XLH};background:#7f1d1d">ESI</th>
+      <th style="${XLH};background:#7f1d1d">PT</th><th style="${XLH};background:#7f1d1d">TDS</th>
+      <th style="${XLH};background:#7f1d1d">Total Ded.</th>
+      <th style="${XLH};background:#1e3a5f;font-size:13px">NET PAY</th>
+      <th style="${XLH}">Status</th>
+    </tr></thead>
+    <tbody>${rows.map((r,i)=>`<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
+      <td style="${XLD};font-weight:700;color:var(--accent)">${r.employee_code}</td>
+      <td style="${XLD};text-align:left;font-weight:600">${r.employee_name}</td>
+      <td style="${XLD};text-align:left;color:var(--muted)">${r.department_name||'—'}</td>
+      <td style="${XLD}">${r.paid_days||r.present_days||'—'}</td>
+      <td style="${XLD};color:#dc2626">${r.lop_days||0}</td>
+      <td style="${XLD}">${fmt.money(r.basic)}</td>
+      <td style="${XLD}">${fmt.money(r.hra)}</td>
+      <td style="${XLD};font-weight:700;color:#166534">${fmt.money(r.gross_salary)}</td>
+      <td style="${XLD};color:#dc2626">${fmt.money(r.pf_employee)}</td>
+      <td style="${XLD};color:#dc2626">${fmt.money(r.esi_employee)}</td>
+      <td style="${XLD};color:#dc2626">${fmt.money(r.professional_tax)}</td>
+      <td style="${XLD};color:#dc2626">${fmt.money(r.tds||0)}</td>
+      <td style="${XLD};color:#dc2626">- ${fmt.money(r.total_deductions)}</td>
+      <td style="${XLD};font-weight:800;color:#16a34a;font-size:14px">${fmt.money(r.net_salary)}</td>
+      <td style="${XLD}"><span style="padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;
+        background:${r.status==='paid'?'#dcfce7':r.status==='processed'?'#e0e7ff':'#fef9c3'};
+        color:${r.status==='paid'?'#166534':r.status==='processed'?'#3730a3':'#854d0e'}">
+        ${(r.status||'pending').toUpperCase()}</span></td>
+    </tr>`).join('')}</tbody>
+  </table>
+  <div style="font-size:11px;color:var(--muted);margin-top:8px">${rows.length} employee(s)</div>
+  </div>`;
+}
+
+// ── YTD (Year-to-Date) View ───────────────────────────────────────────────────
+async function loadYTDSalary(el, search) {
+  const year = document.getElementById('struct-year')?.value || new Date().getFullYear();
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+
+  const data = await api('GET', `/payroll/list?year=${year}&search=${encodeURIComponent(search)}`);
+  if (!data?.success || !data.data?.length) {
+    document.getElementById('struct-summary').innerHTML = '';
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div><p>No YTD data found.</p></div>`;
+    return;
+  }
+
+  // Group by employee and sum across months
+  const empMap = {};
+  for (const r of data.data) {
+    if (!empMap[r.employee_id]) {
+      empMap[r.employee_id] = {
+        employee_code: r.employee_code, employee_name: r.employee_name,
+        department_name: r.department_name, designation_title: r.designation_title,
+        months: 0, gross: 0, net: 0, deductions: 0, pf: 0, esi: 0, pt: 0, tds: 0, lop: 0
+      };
+    }
+    const e = empMap[r.employee_id];
+    e.months++;
+    e.gross      += parseFloat(r.gross_salary||0);
+    e.net        += parseFloat(r.net_salary||0);
+    e.deductions += parseFloat(r.total_deductions||0);
+    e.pf         += parseFloat(r.pf_employee||0);
+    e.esi        += parseFloat(r.esi_employee||0);
+    e.pt         += parseFloat(r.professional_tax||0);
+    e.tds        += parseFloat(r.tds||0);
+    e.lop        += parseFloat(r.lop_days||0);
+  }
+  const rows = Object.values(empMap);
+
+  // Summary
+  document.getElementById('struct-summary').innerHTML = [
+    {icon:'👥', val:rows.length, lbl:'Employees'},
+    {icon:'💵', val:fmt.money(rows.reduce((s,r)=>s+r.gross,0)), lbl:`Gross YTD ${year}`},
+    {icon:'💚', val:fmt.money(rows.reduce((s,r)=>s+r.net,0)),   lbl:'Net Pay YTD'},
+    {icon:'🏦', val:fmt.money(rows.reduce((s,r)=>s+r.pf,0)),    lbl:'PF YTD'},
+  ].map(s=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px">
+    <div style="font-size:22px">${s.icon}</div>
+    <div><div style="font-size:18px;font-weight:800;color:var(--text)">${s.val}</div>
+    <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase">${s.lbl}</div></div>
+  </div>`).join('');
+
+  const XLH = `border:1px solid #9ca3af;background:#1e293b;color:#fff;font-size:11px;font-weight:700;padding:8px 10px;white-space:nowrap;text-align:center`;
+  const XLD = `border:1px solid #e5e7eb;padding:7px 10px;font-size:12px;text-align:center;vertical-align:middle`;
+
+  el.innerHTML = `<div style="overflow-x:auto;margin-top:4px">
+  <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:8px">📊 Year-to-Date Summary — ${year}</div>
+  <table style="border-collapse:collapse;width:100%;min-width:900px">
+    <thead><tr>
+      <th style="${XLH}">Emp Code</th><th style="${XLH}">Name</th><th style="${XLH}">Dept</th>
+      <th style="${XLH}">Months Paid</th>
+      <th style="${XLH};background:#166534">Gross YTD</th>
+      <th style="${XLH};background:#7f1d1d">PF YTD</th><th style="${XLH};background:#7f1d1d">ESI YTD</th>
+      <th style="${XLH};background:#7f1d1d">PT YTD</th><th style="${XLH};background:#7f1d1d">TDS YTD</th>
+      <th style="${XLH};background:#7f1d1d">Total Ded. YTD</th>
+      <th style="${XLH};background:#1e3a5f;font-size:13px">NET PAY YTD</th>
+      <th style="${XLH}">Avg/Month</th>
+    </tr></thead>
+    <tbody>${rows.map((r,i)=>`<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
+      <td style="${XLD};font-weight:700;color:var(--accent)">${r.employee_code}</td>
+      <td style="${XLD};text-align:left;font-weight:600">${r.employee_name}</td>
+      <td style="${XLD};text-align:left;color:var(--muted)">${r.department_name||'—'}</td>
+      <td style="${XLD}">${r.months}</td>
+      <td style="${XLD};font-weight:700;color:#166534">${fmt.money(r.gross)}</td>
+      <td style="${XLD};color:#dc2626">${fmt.money(r.pf)}</td>
+      <td style="${XLD};color:#dc2626">${fmt.money(r.esi)}</td>
+      <td style="${XLD};color:#dc2626">${fmt.money(r.pt)}</td>
+      <td style="${XLD};color:#dc2626">${fmt.money(r.tds)}</td>
+      <td style="${XLD};color:#dc2626">- ${fmt.money(r.deductions)}</td>
+      <td style="${XLD};font-weight:800;color:#16a34a;font-size:14px">${fmt.money(r.net)}</td>
+      <td style="${XLD};color:var(--muted)">${fmt.money(r.months>0?r.net/r.months:0)}</td>
+    </tr>`).join('')}</tbody>
+  </table>
+  <div style="font-size:11px;color:var(--muted);margin-top:8px">${rows.length} employee(s) · ${year}</div>
+  </div>`;
+}
 
 // ── Salary Structure Edit (HR only) ──────────────────────────────────────────
 async function openSalaryEdit(empId) {
