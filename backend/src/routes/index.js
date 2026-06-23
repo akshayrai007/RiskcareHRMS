@@ -444,30 +444,30 @@ router.post('/gk/thoughts/import',
 
 // ── Geofence ──────────────────────────────────────────────────────────────────
 router.get   ('/geofence/locations',                          authenticate,                           geoCtrl.getLocations);
-router.post  ('/geofence/locations',                          authenticate, authorize('admin','super_admin'), geoCtrl.createLocation);
-router.put   ('/geofence/locations/:id',                      authenticate, authorize('admin','super_admin'), geoCtrl.updateLocation);
-router.delete('/geofence/locations/:id',                      authenticate, authorize('admin','super_admin'), geoCtrl.deleteLocation);
-router.get   ('/geofence/locations/:id/employees',            authenticate, authorize('admin','super_admin'), geoCtrl.getLocationEmployees);
-router.get   ('/geofence/locations/:id/unassigned',           authenticate, authorize('admin','super_admin'), geoCtrl.getUnassignedEmployees);
-router.get   ('/geofence/employees',                          authenticate, authorize('admin','super_admin'), geoCtrl.getEmployeesForLocation);
+router.post  ('/geofence/locations',                          authenticate, authorize('admin','super_admin','hr'), geoCtrl.createLocation);
+router.put   ('/geofence/locations/:id',                      authenticate, authorize('admin','super_admin','hr'), geoCtrl.updateLocation);
+router.delete('/geofence/locations/:id',                      authenticate, authorize('admin','super_admin','hr'), geoCtrl.deleteLocation);
+router.get   ('/geofence/locations/:id/employees',            authenticate, authorize('admin','super_admin','hr'), geoCtrl.getLocationEmployees);
+router.get   ('/geofence/locations/:id/unassigned',           authenticate, authorize('admin','super_admin','hr'), geoCtrl.getUnassignedEmployees);
+router.get   ('/geofence/employees',                          authenticate, authorize('admin','super_admin','hr'), geoCtrl.getEmployeesForLocation);
 router.post  ('/geofence/validate',                           authenticate,                           geoCtrl.validatePunch);
 router.get   ('/geofence/my-locations',                       authenticate,                           geoCtrl.getMyLocations);
 router.get   ('/geofence/logs',                               authenticate,                           geoCtrl.getLogs);
 router.get   ('/geofence/employee/:employee_id',              authenticate,                           geoCtrl.getEmployeeGeofence);
-router.post  ('/geofence/assign',                             authenticate, authorize('admin','super_admin'), geoCtrl.assignBuffer);
-router.post  ('/geofence/bulk-assign',                        authenticate, authorize('admin','super_admin'), geoCtrl.bulkAssignBuffer);
-router.get   ('/geofence/unassigned-employees',                 authenticate, authorize('admin','super_admin'), geoCtrl.getUnassignedToAnyLocation);
-router.post  ('/geofence/fix-office-universal',               authenticate, authorize('admin','super_admin'), geoCtrl.fixOfficeUniversal);
-router.patch ('/geofence/:employee_id/:location_id/toggle',   authenticate, authorize('admin','super_admin'), geoCtrl.toggleUniversal);
+router.post  ('/geofence/assign',                             authenticate, authorize('admin','super_admin','hr'), geoCtrl.assignBuffer);
+router.post  ('/geofence/bulk-assign',                        authenticate, authorize('admin','super_admin','hr'), geoCtrl.bulkAssignBuffer);
+router.get   ('/geofence/unassigned-employees',                 authenticate, authorize('admin','super_admin','hr'), geoCtrl.getUnassignedToAnyLocation);
+router.post  ('/geofence/fix-office-universal',               authenticate, authorize('admin','super_admin','hr'), geoCtrl.fixOfficeUniversal);
+router.patch ('/geofence/:employee_id/:location_id/toggle',   authenticate, authorize('admin','super_admin','hr'), geoCtrl.toggleUniversal);
 router.delete('/geofence/:employee_id/:location_id',          authenticate, authorize('admin','super_admin'), geoCtrl.removeBuffer);
 
 // ── Buffer Rules ──────────────────────────────────────────────────────────────
 router.post  ('/geofence/validate-buffer',                    authenticate,                           geoCtrl.validateBuffer);
 router.get   ('/geofence/boundary',                           authenticate,                           geoCtrl.getBoundary);
-router.get   ('/geofence/buffer-rules',                       authenticate, authorize('admin','super_admin'), geoCtrl.getAllBufferRules);
-router.get   ('/geofence/buffer-rules/:employee_id',          authenticate, authorize('admin','super_admin'), geoCtrl.getBufferRule);
-router.post  ('/geofence/buffer-rules',                       authenticate, authorize('admin','super_admin'), geoCtrl.upsertBufferRule);
-router.put   ('/geofence/buffer-rules/:employee_id',          authenticate, authorize('admin','super_admin'), geoCtrl.upsertBufferRule);
+router.get   ('/geofence/buffer-rules',                       authenticate, authorize('admin','super_admin','hr'), geoCtrl.getAllBufferRules);
+router.get   ('/geofence/buffer-rules/:employee_id',          authenticate, authorize('admin','super_admin','hr'), geoCtrl.getBufferRule);
+router.post  ('/geofence/buffer-rules',                       authenticate, authorize('admin','super_admin','hr'), geoCtrl.upsertBufferRule);
+router.put   ('/geofence/buffer-rules/:employee_id',          authenticate, authorize('admin','super_admin','hr'), geoCtrl.upsertBufferRule);
 router.delete('/geofence/buffer-rules/:employee_id',          authenticate, authorize('admin','super_admin'), geoCtrl.deleteBufferRule);
 
 // ── Separation ────────────────────────────────────────────────────────────────
@@ -971,7 +971,7 @@ router.get   ('/performance/summary/:employee_id',      authenticate,           
 router.get   ('/performance/all',                       authenticate, authorize('hr','admin','super_admin'), perfCtrl.getAllReviews);
 router.post  ('/performance/assign-reviewer',           authenticate, authorize('hr','admin','super_admin'), perfCtrl.assignReviewer);
 
-router.get   ('/geofence/unassigned-employees', authenticate, authorize('admin','super_admin'), geoCtrl.getUnassignedEmployeesGlobal);
-router.post  ('/geofence/fix-office-universal',  authenticate, authorize('admin','super_admin'), geoCtrl.fixOfficeUniversal);
+router.get   ('/geofence/unassigned-employees', authenticate, authorize('admin','super_admin','hr'), geoCtrl.getUnassignedEmployeesGlobal);
+router.post  ('/geofence/fix-office-universal',  authenticate, authorize('admin','super_admin','hr'), geoCtrl.fixOfficeUniversal);
 
 module.exports = router;
