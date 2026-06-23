@@ -21,7 +21,12 @@
   if(ed) ed.textContent = C.appEdition || '';
 })();
 </script>
-<script>document.querySelector("head").insertAdjacentHTML("beforeend",'<script src="https://maps.googleapis.com/maps/api/js?key='+window.CFG.googleMapsApiKey+'&libraries=geometry"><\/script>')</script>
+<script>
+window._mapsReady = false; window._mapsCallbacks = [];
+window.initGoogleMaps = function() { window._mapsReady = true; window._mapsCallbacks.forEach(fn=>fn()); window._mapsCallbacks=[]; };
+function onMapsReady(fn) { if(window._mapsReady) fn(); else window._mapsCallbacks.push(fn); }
+document.querySelector("head").insertAdjacentHTML("beforeend",'<script src="https://maps.googleapis.com/maps/api/js?key='+window.CFG.googleMapsApiKey+'&libraries=geometry&callback=initGoogleMaps" async defer><\/script>');
+</script>
 <!-- Font loaded dynamically by config.js -->
 <link rel="stylesheet" href="style.css">
 
@@ -1348,6 +1353,9 @@ let _map = null, _mapMarker = null, _mapCircles = [], _mapInfoWindow = null,
     _punchType = 'in', _pLat = null, _pLng = null;
 
 function openMapPunch(type) {
+  onMapsReady(() => _openMapPunch(type));
+}
+function _openMapPunch(type) {
   _punchType = type; _pLat = null; _pLng = null;
   document.getElementById('map-punch-backdrop').classList.add('open');
   document.getElementById('map-modal-title').textContent = type === 'in' ? '📍 Punch In — Verify Location' : '📍 Punch Out — Verify Location';
