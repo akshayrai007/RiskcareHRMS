@@ -353,7 +353,7 @@ exports.update = async (req, res) => {
       'basic_salary','hra','special_allowance','gratuity','conveyance','travel_allowance','ctc',
       'pan_number','aadhar_number','uan_number','pf_number',
       'bank_name','bank_account','bank_ifsc','bank_branch',
-      'address_line1','address_line2','permanent_address','city','state','pincode',
+      'address_line1','permanent_address','city','state','pincode',
       'probation_end_date','exit_date','notes',
       'is_active','is_wfh_permanent','level','saturday_policy',
       'separation_date','separation_type','separation_reason','employee_type',
