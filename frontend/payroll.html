@@ -663,7 +663,7 @@ async function loadSalaryStructures() {
 
   // Full Excel-style table
   const XLH = `border:1px solid #9ca3af;background:#f0f4ff;font-weight:700;font-size:11px;padding:8px 10px;white-space:nowrap;text-align:center`;
-  const XLD = `border:1px solid #e5e7eb;padding:7px 10px;font-size:12px`;
+  const XLD = `border:1px solid #e5e7eb;padding:7px 10px;font-size:12px;text-align:center;vertical-align:middle`;
 
   el.innerHTML = `
     <div style="overflow-x:auto;margin-top:4px">
@@ -700,9 +700,9 @@ async function loadSalaryStructures() {
       <tbody>
         ${rows.map((r,i) => `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
           <td style="${XLD};font-weight:700;color:var(--accent)">${r.employee_code}</td>
-          <td style="${XLD};font-weight:600">${r.employee_name}</td>
-          <td style="${XLD};color:var(--muted)">${r.department_name||'—'}</td>
-          <td style="${XLD};color:var(--muted)">${r.designation_title||'—'}</td>
+          <td style="${XLD};font-weight:600;text-align:left">${r.employee_name}</td>
+          <td style="${XLD};color:var(--muted);text-align:left">${r.department_name||'—'}</td>
+          <td style="${XLD};color:var(--muted);text-align:left">${r.designation_title||'—'}</td>
           <td style="${XLD};text-align:right">${fmt.money(r.basic)}</td>
           <td style="${XLD};text-align:right">${fmt.money(r.hra)}</td>
           <td style="${XLD};text-align:right">${fmt.money(r.conveyance)}</td>

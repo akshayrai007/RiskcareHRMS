@@ -2495,8 +2495,8 @@ async function loadAbsentReport() {
   const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const monthLabel = MONTHS[parseInt(month)-1] + ' ' + year;
   const totalAbsent = data.data.reduce((s,r) => s + r.absent_count, 0);
-  const XLH = `border:1px solid #9ca3af;background:#f0f4ff;font-weight:700;font-size:11px;padding:8px 10px;white-space:nowrap`;
-  const XLD = `border:1px solid #e5e7eb;padding:7px 10px;font-size:12px;vertical-align:top`;
+  const XLH = `border:1px solid #9ca3af;background:#f0f4ff;font-weight:700;font-size:11px;padding:8px 10px;white-space:nowrap;text-align:center`;
+  const XLD = `border:1px solid #e5e7eb;padding:7px 10px;font-size:12px;text-align:center;vertical-align:middle`;
 
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
@@ -2528,7 +2528,7 @@ async function loadAbsentReport() {
       <tbody>
         ${data.data.map((r, i) => `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
           <td style="${XLD};font-weight:700;color:var(--accent)">${r.employee_code}</td>
-          <td style="${XLD};font-weight:600">${r.name}</td>
+          <td style="${XLD};font-weight:600;text-align:left">${r.name}</td>
           <td style="${XLD};color:var(--muted)">${r.department||'—'}</td>
           <td style="${XLD};color:var(--muted)">${r.designation||'—'}</td>
           <td style="${XLD};text-align:center;font-weight:800;font-size:16px;color:${r.absent_count>5?'#ef4444':r.absent_count>2?'#f59e0b':'var(--text)'}">${r.absent_count}</td>

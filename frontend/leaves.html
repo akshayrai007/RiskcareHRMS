@@ -881,8 +881,8 @@ async function loadLeaveSummary() {
       <tbody>
         ${data.data.map((r, i) => `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
           <td style="${XLD};font-weight:700;color:var(--accent)">${r.employee_code}</td>
-          <td style="${XLD};font-weight:600">${r.employee_name}</td>
-          <td style="${XLD};color:var(--muted)">${r.department||'—'}</td>
+          <td style="${XLD};font-weight:600;text-align:left">${r.employee_name}</td>
+          <td style="${XLD};color:var(--muted);text-align:left">${r.department||'—'}</td>
           <td style="${XLD};color:var(--muted)">${r.designation||'—'}</td>
           <td style="${XLD};text-align:center">${fmt.num(r.el_allocated)}</td>
           <td style="${XLD};text-align:center;color:#c62828;font-weight:600">${fmt.num(r.el_used)}</td>
@@ -926,8 +926,8 @@ async function loadLeaveTransactions() {
     rejected:  'background:#fee2e2;color:#991b1b',
     cancelled: 'background:#f3f4f6;color:#6b7280',
   };
-  const XLH = `border:1px solid #9ca3af;background:#f0f4ff;font-weight:700;font-size:11px;padding:8px 10px;white-space:nowrap`;
-  const XLD = `border:1px solid #e5e7eb;padding:7px 10px;font-size:12px`;
+  const XLH = `border:1px solid #9ca3af;background:#f0f4ff;font-weight:700;font-size:11px;padding:8px 10px;white-space:nowrap;text-align:center`;
+  const XLD = `border:1px solid #e5e7eb;padding:7px 10px;font-size:12px;text-align:center;vertical-align:middle`;
   el.innerHTML = `
     <div style="overflow-x:auto;margin-top:4px">
     <table style="border-collapse:collapse;width:100%;min-width:800px">
@@ -951,8 +951,8 @@ async function loadLeaveTransactions() {
       <tbody>
         ${data.data.map((r, i) => `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
           <td style="${XLD};font-weight:700;color:var(--accent)">${r.employee_code}</td>
-          <td style="${XLD};font-weight:600">${r.employee_name}</td>
-          <td style="${XLD};color:var(--muted)">${r.department||'—'}</td>
+          <td style="${XLD};font-weight:600;text-align:left">${r.employee_name}</td>
+          <td style="${XLD};color:var(--muted);text-align:left">${r.department||'—'}</td>
           <td style="${XLD}"><span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;background:#e0e7ff;color:#3730a3">${r.leave_type_name||r.leave_type_code} (${r.leave_type_code})</span></td>
           <td style="${XLD}">${fmt.date(r.from_date)}</td>
           <td style="${XLD}">${fmt.date(r.to_date)}</td>
