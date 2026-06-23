@@ -1,84 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Approvals — RiskCare HRMS</title>
-  <link rel="stylesheet" href="style.css">
-  <style>
-    .approval-filters { display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px }
-    .filter-chip { padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid var(--border);background:var(--surface2);color:var(--muted);transition:.15s }
-    .filter-chip.active { background:var(--accent);color:#fff;border-color:var(--accent) }
-    .filter-chip .chip-count { background:rgba(255,255,255,.25);border-radius:10px;padding:1px 6px;margin-left:4px;font-size:10px }
-    .filter-chip:not(.active) .chip-count { background:var(--border);color:var(--muted) }
-
-    .approval-table { width:100%;border-collapse:collapse;min-width:900px }
-    .approval-table th { border:1px solid #9ca3af;background:#1e293b;color:#fff;font-size:11px;font-weight:700;padding:10px 12px;text-align:center;white-space:nowrap }
-    .approval-table td { border:1px solid #e5e7eb;padding:9px 12px;font-size:12px;vertical-align:middle }
-    .approval-table tr:nth-child(even) td { background:#f9fafb }
-    .approval-table tr:hover td { background:#f0f4ff }
-
-    .type-badge { display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700 }
-    .type-leave         { background:#e0e7ff;color:#3730a3 }
-    .type-regularization{ background:#fef9c3;color:#854d0e }
-    .type-od            { background:#dcfce7;color:#166534 }
-    .type-wfh           { background:#dbeafe;color:#1e40af }
-    .type-advance       { background:#fce7f3;color:#9d174d }
-    .type-reimbursement { background:#ffedd5;color:#9a3412 }
-
-    .bulk-bar { position:sticky;bottom:0;background:#1e293b;color:#fff;padding:14px 24px;border-radius:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px;box-shadow:0 -4px 20px rgba(0,0,0,.15) }
-    .bulk-count { font-size:14px;font-weight:700;flex:1 }
-    .remarks-input { flex:2;min-width:200px;padding:8px 14px;border-radius:8px;border:none;font-size:13px;background:rgba(255,255,255,.1);color:#fff }
-    .remarks-input::placeholder { color:rgba(255,255,255,.5) }
-
-    .empty-inbox { text-align:center;padding:60px 20px;color:var(--muted) }
-    .empty-inbox .icon { font-size:56px;margin-bottom:16px }
-    .empty-inbox h3 { font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px }
-  </style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Approvals</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+.filter-chips { display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:18px }
+.fchip { padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid var(--border);background:var(--surface2);color:var(--muted);transition:.15s }
+.fchip.active { background:var(--accent);color:#fff;border-color:var(--accent) }
+.fchip .cnt { background:rgba(0,0,0,.12);border-radius:10px;padding:1px 6px;margin-left:4px;font-size:10px }
+.fchip.active .cnt { background:rgba(255,255,255,.25) }
+.appr-table { width:100%;border-collapse:collapse;min-width:860px }
+.appr-table th { border:1px solid #9ca3af;background:#1e293b;color:#fff;font-size:11px;font-weight:700;padding:10px 12px;text-align:center;white-space:nowrap }
+.appr-table td { border:1px solid #e5e7eb;padding:9px 12px;font-size:12px;vertical-align:middle;text-align:center }
+.appr-table tr:nth-child(even) td { background:#f9fafb }
+.appr-table tr:hover td { background:#f0f4ff }
+.type-badge { display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700 }
+.t-leave { background:#e0e7ff;color:#3730a3 }
+.t-regularization { background:#fef9c3;color:#854d0e }
+.t-od { background:#dcfce7;color:#166534 }
+.t-wfh { background:#dbeafe;color:#1e40af }
+.t-advance { background:#fce7f3;color:#9d174d }
+.t-reimbursement { background:#ffedd5;color:#9a3412 }
+.bulk-bar { position:sticky;bottom:12px;background:#1e293b;color:#fff;padding:14px 20px;border-radius:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px;box-shadow:0 -4px 20px rgba(0,0,0,.2) }
+</style>
 </head>
 <body>
-<script src="config.js"></script>
-<script src="app.js"></script>
-
-<div class="layout">
-  <nav class="sidebar" id="sidebar"></nav>
-  <div class="main">
-    <div class="topbar">
-      <div class="page-title">✅ Approvals Inbox</div>
-      <div style="display:flex;gap:10px;align-items:center">
-        <button class="btn btn-outline btn-sm" onclick="loadApprovals()">🔄 Refresh</button>
-        <div id="topbar-right"></div>
-      </div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
     </div>
+    <div><div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div></div></div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
 
-    <div class="content">
-      <div class="card">
-        <!-- Filters -->
-        <div class="approval-filters" id="filter-chips">
-          <span style="font-size:12px;font-weight:700;color:var(--muted)">FILTER:</span>
-          <button class="filter-chip active" data-type="all" onclick="setFilter('all',this)">All <span class="chip-count" id="cnt-all">0</span></button>
-          <button class="filter-chip" data-type="leave" onclick="setFilter('leave',this)">📋 Leave <span class="chip-count" id="cnt-leave">0</span></button>
-          <button class="filter-chip" data-type="regularization" onclick="setFilter('regularization',this)">🔄 Regularization <span class="chip-count" id="cnt-regularization">0</span></button>
-          <button class="filter-chip" data-type="od" onclick="setFilter('od',this)">🚗 OD <span class="chip-count" id="cnt-od">0</span></button>
-          <button class="filter-chip" data-type="wfh" onclick="setFilter('wfh',this)">🏠 WFH <span class="chip-count" id="cnt-wfh">0</span></button>
-          <button class="filter-chip" data-type="advance" onclick="setFilter('advance',this)">💰 Advance <span class="chip-count" id="cnt-advance">0</span></button>
-          <button class="filter-chip" data-type="reimbursement" onclick="setFilter('reimbursement',this)">🧾 Reimbursement <span class="chip-count" id="cnt-reimbursement">0</span></button>
-          <div style="margin-left:auto;display:flex;gap:8px">
-            <button class="btn btn-outline btn-sm" onclick="selectAll(true)">☑ Select All</button>
-            <button class="btn btn-outline btn-sm" onclick="selectAll(false)">☐ Deselect All</button>
-          </div>
-        </div>
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+      <div class="topbar-title">✅ Approvals Inbox</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-outline btn-sm" onclick="loadApprovals()">🔄 Refresh</button>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
 
-        <!-- Table -->
-        <div style="overflow-x:auto" id="table-wrap">
-          <div class="loader"><div class="spinner"></div></div>
+  <div class="content fade-in">
+    <div class="card">
+      <!-- Filter chips -->
+      <div class="filter-chips" id="filter-chips">
+        <span style="font-size:12px;font-weight:700;color:var(--muted)">FILTER:</span>
+        <button class="fchip active" data-type="all"           onclick="setFilter('all',this)">All <span class="cnt" id="cnt-all">0</span></button>
+        <button class="fchip"       data-type="leave"          onclick="setFilter('leave',this)">📋 Leave <span class="cnt" id="cnt-leave">0</span></button>
+        <button class="fchip"       data-type="regularization" onclick="setFilter('regularization',this)">🔄 Regularization <span class="cnt" id="cnt-regularization">0</span></button>
+        <button class="fchip"       data-type="od"             onclick="setFilter('od',this)">🚗 OD <span class="cnt" id="cnt-od">0</span></button>
+        <button class="fchip"       data-type="wfh"            onclick="setFilter('wfh',this)">🏠 WFH <span class="cnt" id="cnt-wfh">0</span></button>
+        <button class="fchip"       data-type="advance"        onclick="setFilter('advance',this)">💰 Advance <span class="cnt" id="cnt-advance">0</span></button>
+        <button class="fchip"       data-type="reimbursement"  onclick="setFilter('reimbursement',this)">🧾 Reimbursement <span class="cnt" id="cnt-reimbursement">0</span></button>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="selectAll(true)">☑ Select All</button>
+          <button class="btn btn-outline btn-sm" onclick="selectAll(false)">☐ Deselect All</button>
         </div>
       </div>
 
-      <!-- Bulk Action Bar -->
+      <!-- Table -->
+      <div style="overflow-x:auto" id="table-wrap">
+        <div class="loader"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Bulk bar -->
       <div class="bulk-bar" id="bulk-bar" style="display:none">
-        <div class="bulk-count"><span id="selected-count">0</span> selected</div>
-        <input class="remarks-input" id="bulk-remarks" placeholder="Remarks (optional)…">
+        <div style="font-size:13px;font-weight:700;flex:1">⚡ <span id="sel-count">0</span> selected</div>
+        <input id="bulk-remarks" class="form-control" placeholder="Remarks (optional)…"
+          style="flex:2;min-width:160px;background:rgba(255,255,255,.1);border:none;color:#fff;padding:7px 12px;border-radius:7px">
         <button class="btn btn-success" onclick="bulkAction('approve')">✅ Approve All Selected</button>
         <button class="btn btn-danger"  onclick="bulkAction('reject')">✗ Reject All Selected</button>
       </div>
@@ -86,40 +94,42 @@
   </div>
 </div>
 
+<script src="app.js"></script>
 <script>
+Auth.guard();
 let allData = [], filteredData = [], activeFilter = 'all';
 
-const TYPE_CONFIG = {
-  leave:          { label:'Leave',          icon:'📋', cls:'type-leave' },
-  regularization: { label:'Regularization', icon:'🔄', cls:'type-regularization' },
-  od:             { label:'OD',             icon:'🚗', cls:'type-od' },
-  wfh:            { label:'WFH',            icon:'🏠', cls:'type-wfh' },
-  advance:        { label:'Advance',        icon:'💰', cls:'type-advance' },
-  reimbursement:  { label:'Reimbursement',  icon:'🧾', cls:'type-reimbursement' },
+const TYPE_CFG = {
+  leave:          { icon:'📋', label:'Leave',          cls:'t-leave' },
+  regularization: { icon:'🔄', label:'Regularization', cls:'t-regularization' },
+  od:             { icon:'🚗', label:'OD',             cls:'t-od' },
+  wfh:            { icon:'🏠', label:'WFH',            cls:'t-wfh' },
+  advance:        { icon:'💰', label:'Advance',        cls:'t-advance' },
+  reimbursement:  { icon:'🧾', label:'Reimbursement',  cls:'t-reimbursement' },
 };
 
 async function loadApprovals() {
   document.getElementById('table-wrap').innerHTML = '<div class="loader"><div class="spinner"></div></div>';
   const data = await api('GET', '/approvals/pending');
   if (!data?.success) {
-    document.getElementById('table-wrap').innerHTML = '<div class="empty-inbox"><div class="icon">⚠️</div><h3>Failed to load</h3><p>' + (data?.message||'Server error') + '</p></div>';
+    document.getElementById('table-wrap').innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${data?.message||'Failed to load'}</p></div>`;
     return;
   }
   allData = data.data || [];
-
-  // Update counts
-  const counts = data.counts || {};
-  document.getElementById('cnt-all').textContent = counts.total || allData.length;
-  ['leave','regularization','od','wfh','advance','reimbursement'].forEach(t => {
-    document.getElementById('cnt-'+t).textContent = counts[t] || 0;
-  });
-
-  setFilter(activeFilter, document.querySelector(`.filter-chip[data-type="${activeFilter}"]`));
+  const c = data.counts || {};
+  document.getElementById('cnt-all').textContent           = c.total || allData.length;
+  document.getElementById('cnt-leave').textContent         = c.leave || 0;
+  document.getElementById('cnt-regularization').textContent= c.regularization || 0;
+  document.getElementById('cnt-od').textContent            = c.od || 0;
+  document.getElementById('cnt-wfh').textContent           = c.wfh || 0;
+  document.getElementById('cnt-advance').textContent       = c.advance || 0;
+  document.getElementById('cnt-reimbursement').textContent = c.reimbursement || 0;
+  setFilter(activeFilter, document.querySelector(`.fchip[data-type="${activeFilter}"]`));
 }
 
 function setFilter(type, btn) {
   activeFilter = type;
-  document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.fchip').forEach(b => b.classList.remove('active'));
   btn?.classList.add('active');
   filteredData = type === 'all' ? allData : allData.filter(r => r.request_type === type);
   renderTable();
@@ -128,78 +138,62 @@ function setFilter(type, btn) {
 function renderTable() {
   const wrap = document.getElementById('table-wrap');
   if (!filteredData.length) {
-    wrap.innerHTML = `<div class="empty-inbox">
-      <div class="icon">🎉</div>
-      <h3>All clear!</h3>
-      <p>No pending ${activeFilter === 'all' ? '' : activeFilter + ' '}approvals.</p>
+    wrap.innerHTML = `<div class="empty-state" style="padding:60px">
+      <div class="empty-icon">🎉</div>
+      <h3 style="font-size:18px;font-weight:700;margin:12px 0 6px">All clear!</h3>
+      <p style="color:var(--muted)">No pending ${activeFilter==='all'?'':activeFilter+' '}approvals.</p>
     </div>`;
-    updateBulkBar();
-    return;
+    updateBulkBar(); return;
   }
 
-  wrap.innerHTML = `<table class="approval-table">
-    <thead>
-      <tr>
-        <th style="width:40px"><input type="checkbox" id="chk-all" onchange="selectAll(this.checked)" style="width:16px;height:16px;cursor:pointer"></th>
-        <th>Type</th>
-        <th>Emp Code</th>
-        <th>Employee</th>
-        <th>Department</th>
-        <th>Details</th>
-        <th>From</th>
-        <th>To / Amount</th>
-        <th>Reason</th>
-        <th>Applied</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${filteredData.map((r,i) => {
-        const tc = TYPE_CONFIG[r.request_type] || { label: r.request_type, icon:'📄', cls:'' };
-        const isMonetary = ['advance','reimbursement'].includes(r.request_type);
-        const toVal = isMonetary
-          ? `<span style="font-weight:700;color:#16a34a">₹${fmt.num(r.days)}</span>`
-          : fmt.date(r.to_date);
-        const fromVal = isMonetary ? '—' : fmt.date(r.from_date);
-        const details = r.leave_type
-          ? `<span style="font-size:11px;background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:10px;font-weight:700">${r.leave_code} · ${r.leave_type}</span>`
-          : r.request_type === 'regularization'
-          ? `<span style="font-size:11px;color:var(--muted)">${fmt.date(r.from_date)}</span>`
-          : '—';
-        return `<tr>
-          <td style="text-align:center">
-            <input type="checkbox" class="row-chk" data-id="${r.id}" data-type="${r.request_type}"
-              style="width:16px;height:16px;cursor:pointer" onchange="updateBulkBar()">
-          </td>
-          <td><span class="type-badge ${tc.cls}">${tc.icon} ${tc.label}</span></td>
-          <td style="font-weight:700;color:var(--accent);text-align:center">${r.employee_code}</td>
-          <td style="font-weight:600">${r.employee_name}</td>
-          <td style="color:var(--muted)">${r.department||'—'}</td>
-          <td style="text-align:center">${details}</td>
-          <td style="text-align:center;white-space:nowrap">${fromVal}</td>
-          <td style="text-align:center;white-space:nowrap">${toVal}</td>
-          <td style="max-width:200px;word-break:break-word;color:var(--muted)">${r.reason||'—'}</td>
-          <td style="text-align:center;white-space:nowrap;color:var(--muted);font-size:11px">${fmt.ago(r.applied_at)}</td>
-        </tr>`;
-      }).join('')}
-    </tbody>
-  </table>`;
+  wrap.innerHTML = `<table class="appr-table">
+    <thead><tr>
+      <th style="width:40px"><input type="checkbox" id="chk-all" onchange="selectAll(this.checked)" style="width:16px;height:16px;cursor:pointer"></th>
+      <th>Type</th><th>Emp Code</th><th>Employee</th><th>Department</th>
+      <th>Details</th><th>Date / From</th><th>To / Amount</th>
+      <th style="min-width:180px;text-align:left">Reason</th><th>Applied</th>
+    </tr></thead>
+    <tbody>${filteredData.map(r => {
+      const tc = TYPE_CFG[r.request_type] || { icon:'📄', label:r.request_type, cls:'' };
+      const isMoney = ['advance','reimbursement'].includes(r.request_type);
+      const col2 = isMoney
+        ? `<span style="font-weight:700;color:#16a34a">₹${parseFloat(r.days||0).toLocaleString('en-IN')}</span>`
+        : fmt.date(r.to_date);
+      const col1 = isMoney ? '—' : fmt.date(r.from_date);
+      const detail = r.leave_type
+        ? `<span style="font-size:11px;background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:10px;font-weight:700">${r.leave_code||''} · ${r.leave_type}</span>`
+        : '—';
+      return `<tr>
+        <td><input type="checkbox" class="row-chk" data-id="${r.id}" data-type="${r.request_type}"
+          style="width:16px;height:16px;cursor:pointer" onchange="updateBulkBar()"></td>
+        <td><span class="type-badge ${tc.cls}">${tc.icon} ${tc.label}</span></td>
+        <td style="font-weight:700;color:var(--accent)">${r.employee_code}</td>
+        <td style="font-weight:600;text-align:left">${r.employee_name}</td>
+        <td style="color:var(--muted);text-align:left">${r.department||'—'}</td>
+        <td>${detail}</td>
+        <td style="white-space:nowrap">${col1}</td>
+        <td style="white-space:nowrap">${col2}</td>
+        <td style="text-align:left;color:var(--muted);max-width:200px;word-break:break-word">${r.reason||'—'}</td>
+        <td style="white-space:nowrap;color:var(--muted);font-size:11px">${fmt.ago(r.applied_at)}</td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
   updateBulkBar();
 }
 
 function selectAll(checked) {
   document.querySelectorAll('.row-chk').forEach(c => c.checked = checked);
-  const chkAll = document.getElementById('chk-all');
-  if (chkAll) chkAll.checked = checked;
+  const ca = document.getElementById('chk-all');
+  if (ca) ca.checked = checked;
   updateBulkBar();
 }
 
 function updateBulkBar() {
   const count = document.querySelectorAll('.row-chk:checked').length;
-  document.getElementById('selected-count').textContent = count;
+  document.getElementById('sel-count').textContent = count;
   document.getElementById('bulk-bar').style.display = count > 0 ? 'flex' : 'none';
   const all = document.querySelectorAll('.row-chk');
-  const chkAll = document.getElementById('chk-all');
-  if (chkAll) chkAll.checked = all.length > 0 && count === all.length;
+  const ca  = document.getElementById('chk-all');
+  if (ca) ca.checked = all.length > 0 && count === all.length;
 }
 
 async function bulkAction(action) {
@@ -207,20 +201,13 @@ async function bulkAction(action) {
   if (!checked.length) return;
   const remarks = document.getElementById('bulk-remarks').value.trim();
   const items   = checked.map(c => ({ id: parseInt(c.dataset.id), type: c.dataset.type }));
-
-  const btn = action === 'approve'
-    ? document.querySelector('.btn-success')
-    : document.querySelector('.btn-danger');
-  const orig = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = action === 'approve' ? '⏳ Approving…' : '⏳ Rejecting…';
-
+  const btnEl   = action === 'approve' ? document.querySelector('.btn-success') : document.querySelector('.btn-danger');
+  const orig    = btnEl.textContent;
+  btnEl.disabled = true; btnEl.textContent = '⏳ Processing…';
   const data = await api('POST', '/approvals/bulk-action', { action, remarks, items });
-  btn.disabled = false;
-  btn.textContent = orig;
-
+  btnEl.disabled = false; btnEl.textContent = orig;
   if (data?.success) {
-    toast(`✅ ${data.message}`, 'success');
+    toast(data.message, 'success');
     document.getElementById('bulk-remarks').value = '';
     await loadApprovals();
   } else {

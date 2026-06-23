@@ -8,110 +8,109 @@ exports.getPendingApprovals = async (req, res) => {
     const isMgr  = ['manager','tl','hr','admin','super_admin'].includes(role);
     if (!isMgr) return res.status(403).json({ success: false, message: 'Access denied' });
 
-    const scope = isHR ? '' : `AND e.reporting_manager_id = ${userId}`;
     const all = [];
+    // For manager: filter by reporting_manager_id; for HR: see all
+    const managerFilter = isHR ? [] : [userId];
+
+    const runQ = async (sql, params) => {
+      try {
+        const r = await db.query(sql, params);
+        return r.rows;
+      } catch(e) {
+        console.error('[approvals query error]', e.message);
+        return [];
+      }
+    };
 
     // 1. Leave
-    try {
-      const r = await db.query(`
-        SELECT lr.id, 'leave' AS request_type,
-               CONCAT(e.first_name,' ',e.last_name) AS employee_name, e.employee_code,
-               d.name AS department, lt.name AS leave_type, lt.code AS leave_code,
-               lr.from_date, lr.to_date, lr.days_requested AS days,
-               lr.reason, lr.status, lr.created_at AS applied_at
-        FROM leave_requests lr
-        JOIN employees e ON e.id = lr.employee_id
-        JOIN leave_types lt ON lt.id = lr.leave_type_id
-        LEFT JOIN departments d ON d.id = e.department_id
-        WHERE lr.status = 'pending' ${scope}
-        ORDER BY lr.created_at DESC LIMIT 200`);
-      all.push(...r.rows);
-    } catch(e) { console.error('leave query:', e.message); }
+    all.push(...await runQ(
+      `SELECT lr.id, 'leave' AS request_type,
+              CONCAT(e.first_name,' ',e.last_name) AS employee_name, e.employee_code,
+              d.name AS department, lt.name AS leave_type, lt.code AS leave_code,
+              lr.from_date, lr.to_date, lr.days_requested AS days,
+              lr.reason, lr.status, lr.created_at AS applied_at
+       FROM leave_requests lr
+       JOIN employees e ON e.id = lr.employee_id
+       JOIN leave_types lt ON lt.id = lr.leave_type_id
+       LEFT JOIN departments d ON d.id = e.department_id
+       WHERE lr.status = 'pending'
+         ${isHR ? '' : 'AND e.reporting_manager_id = $1'}
+       ORDER BY lr.created_at DESC LIMIT 200`, managerFilter));
 
     // 2. Regularization
-    try {
-      const r = await db.query(`
-        SELECT a.id, 'regularization' AS request_type,
-               CONCAT(e.first_name,' ',e.last_name) AS employee_name, e.employee_code,
-               d.name AS department,
-               a.date AS from_date, a.date AS to_date, 1 AS days,
-               a.regularization_reason AS reason, a.regularization_status AS status,
-               a.updated_at AS applied_at
-        FROM attendance a
-        JOIN employees e ON e.id = a.employee_id
-        LEFT JOIN departments d ON d.id = e.department_id
-        WHERE a.regularization_status = 'pending' ${scope}
-        ORDER BY a.updated_at DESC LIMIT 200`);
-      all.push(...r.rows);
-    } catch(e) { console.error('reg query:', e.message); }
+    all.push(...await runQ(
+      `SELECT a.id, 'regularization' AS request_type,
+              CONCAT(e.first_name,' ',e.last_name) AS employee_name, e.employee_code,
+              d.name AS department,
+              a.date AS from_date, a.date AS to_date, 1 AS days,
+              a.regularization_reason AS reason, a.regularization_status AS status,
+              a.updated_at AS applied_at
+       FROM attendance a
+       JOIN employees e ON e.id = a.employee_id
+       LEFT JOIN departments d ON d.id = e.department_id
+       WHERE a.regularization_status = 'pending'
+         ${isHR ? '' : 'AND e.reporting_manager_id = $1'}
+       ORDER BY a.updated_at DESC LIMIT 200`, managerFilter));
 
     // 3. OD
-    try {
-      const r = await db.query(`
-        SELECT o.id, 'od' AS request_type,
-               CONCAT(e.first_name,' ',e.last_name) AS employee_name, e.employee_code,
-               d.name AS department,
-               o.date AS from_date, o.date AS to_date, 1 AS days,
-               o.reason, o.status, o.applied_at
-        FROM od_requests o
-        JOIN employees e ON e.id = o.employee_id
-        LEFT JOIN departments d ON d.id = e.department_id
-        WHERE o.status = 'pending' ${scope}
-        ORDER BY o.applied_at DESC LIMIT 200`);
-      all.push(...r.rows);
-    } catch(e) { console.error('od query:', e.message); }
+    all.push(...await runQ(
+      `SELECT o.id, 'od' AS request_type,
+              CONCAT(e.first_name,' ',e.last_name) AS employee_name, e.employee_code,
+              d.name AS department,
+              o.date AS from_date, o.date AS to_date, 1 AS days,
+              o.reason, o.status, o.applied_at
+       FROM od_requests o
+       JOIN employees e ON e.id = o.employee_id
+       LEFT JOIN departments d ON d.id = e.department_id
+       WHERE o.status = 'pending'
+         ${isHR ? '' : 'AND e.reporting_manager_id = $1'}
+       ORDER BY o.applied_at DESC LIMIT 200`, managerFilter));
 
     // 4. WFH
-    try {
-      const r = await db.query(`
-        SELECT w.id, 'wfh' AS request_type,
-               CONCAT(e.first_name,' ',e.last_name) AS employee_name, e.employee_code,
-               d.name AS department,
-               w.from_date, COALESCE(w.to_date, w.from_date) AS to_date, 1 AS days,
-               w.reason, w.status, w.created_at AS applied_at
-        FROM wfh_requests w
-        JOIN employees e ON e.id = w.employee_id
-        LEFT JOIN departments d ON d.id = e.department_id
-        WHERE w.status = 'pending' ${scope}
-        ORDER BY w.created_at DESC LIMIT 200`);
-      all.push(...r.rows);
-    } catch(e) { console.error('wfh query:', e.message); }
+    all.push(...await runQ(
+      `SELECT w.id, 'wfh' AS request_type,
+              CONCAT(e.first_name,' ',e.last_name) AS employee_name, e.employee_code,
+              d.name AS department,
+              w.from_date, COALESCE(w.to_date, w.from_date) AS to_date, 1 AS days,
+              w.reason, w.status, w.created_at AS applied_at
+       FROM wfh_requests w
+       JOIN employees e ON e.id = w.employee_id
+       LEFT JOIN departments d ON d.id = e.department_id
+       WHERE w.status = 'pending'
+         ${isHR ? '' : 'AND e.reporting_manager_id = $1'}
+       ORDER BY w.created_at DESC LIMIT 200`, managerFilter));
 
     // 5. Advance
-    try {
-      const r = await db.query(`
-        SELECT a.id, 'advance' AS request_type,
-               CONCAT(e.first_name,' ',e.last_name) AS employee_name, e.employee_code,
-               d.name AS department,
-               a.created_at AS from_date, a.created_at AS to_date,
-               a.amount AS days,
-               CONCAT('₹', a.amount, ' | ', a.emi_count, ' EMIs') AS reason,
-               a.status, a.created_at AS applied_at
-        FROM advance_salary a
-        JOIN employees e ON e.id = a.employee_id
-        LEFT JOIN departments d ON d.id = e.department_id
-        WHERE a.status = 'pending' ${scope}
-        ORDER BY a.created_at DESC LIMIT 200`);
-      all.push(...r.rows);
-    } catch(e) { console.error('advance query:', e.message); }
+    all.push(...await runQ(
+      `SELECT a.id, 'advance' AS request_type,
+              CONCAT(e.first_name,' ',e.last_name) AS employee_name, e.employee_code,
+              d.name AS department,
+              a.created_at AS from_date, a.created_at AS to_date,
+              a.amount AS days,
+              CONCAT('Advance ₹', a.amount::text) AS reason,
+              a.status, a.created_at AS applied_at
+       FROM advance_salary a
+       JOIN employees e ON e.id = a.employee_id
+       LEFT JOIN departments d ON d.id = e.department_id
+       WHERE a.status = 'pending'
+         ${isHR ? '' : 'AND e.reporting_manager_id = $1'}
+       ORDER BY a.created_at DESC LIMIT 200`, managerFilter));
 
     // 6. Reimbursement
-    try {
-      const r = await db.query(`
-        SELECT r.id, 'reimbursement' AS request_type,
-               CONCAT(e.first_name,' ',e.last_name) AS employee_name, e.employee_code,
-               d.name AS department,
-               r.expense_date AS from_date, r.expense_date AS to_date,
-               r.amount AS days,
-               CONCAT(r.category, ': ', r.description) AS reason,
-               r.status, r.created_at AS applied_at
-        FROM reimbursements r
-        JOIN employees e ON e.id = r.employee_id
-        LEFT JOIN departments d ON d.id = e.department_id
-        WHERE r.status = 'pending' ${scope}
-        ORDER BY r.created_at DESC LIMIT 200`);
-      all.push(...r.rows);
-    } catch(e) { console.error('reimb query:', e.message); }
+    all.push(...await runQ(
+      `SELECT r.id, 'reimbursement' AS request_type,
+              CONCAT(e.first_name,' ',e.last_name) AS employee_name, e.employee_code,
+              d.name AS department,
+              r.expense_date AS from_date, r.expense_date AS to_date,
+              r.amount AS days,
+              COALESCE(r.description,'Reimbursement') AS reason,
+              r.status, r.created_at AS applied_at
+       FROM reimbursements r
+       JOIN employees e ON e.id = r.employee_id
+       LEFT JOIN departments d ON d.id = e.department_id
+       WHERE r.status = 'pending'
+         ${isHR ? '' : 'AND e.reporting_manager_id = $1'}
+       ORDER BY r.created_at DESC LIMIT 200`, managerFilter));
 
     all.sort((a, b) => new Date(b.applied_at) - new Date(a.applied_at));
 
