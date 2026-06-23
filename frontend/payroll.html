@@ -674,6 +674,7 @@ async function loadSalaryStructures() {
           <th colspan="5" style="${XLH};background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20">💵 EARNINGS (₹/mo)</th>
           <th colspan="7" style="${XLH};background:#fce4ec;border:1px solid #f48fb1;color:#880e4f">📋 DEDUCTIONS (₹/mo)</th>
           <th colspan="3" style="${XLH};background:#e3f2fd;border:1px solid #90caf9;color:#0d47a1">💼 SUMMARY</th>
+          <th style="${XLH};background:#fff3e0;border:1px solid #ffcc80" rowspan="2">Action</th>
         </tr>
         <tr>
           <th style="${XLH}">Emp Code</th>
@@ -695,6 +696,7 @@ async function loadSalaryStructures() {
           <th style="${XLH};background:#e3f2fd">Net Salary</th>
           <th style="${XLH};background:#e3f2fd">CTC/mo</th>
           <th style="${XLH};background:#e3f2fd">CTC/yr</th>
+          <th style="${XLH};background:#fff3e0">Action</th>
         </tr>
       </thead>
       <tbody>
@@ -718,6 +720,9 @@ async function loadSalaryStructures() {
           <td style="${XLD};text-align:right;font-weight:800;color:#16a34a;font-size:13px">${fmt.money(r.net_salary)}</td>
           <td style="${XLD};text-align:right;color:#1d4ed8">${fmt.money(r.ctc_monthly)}</td>
           <td style="${XLD};text-align:right;color:#1d4ed8">${fmt.money(r.ctc_annual)}</td>
+          <td style="${XLD}">
+            ${Role.is('hr','super_admin','admin','accounts') ? `<button class="btn btn-outline btn-sm" style="font-size:11px;padding:4px 10px" onclick="openSalaryEdit(${r.employee_id})">✏️ Edit</button>` : '—'}
+          </td>
         </tr>`).join('')}
       </tbody>
     </table>
@@ -741,8 +746,153 @@ function downloadSalaryStructureExcel() {
   toast('✅ Salary Structure downloaded');
 }
 
+
+// ── Salary Structure Edit (HR only) ──────────────────────────────────────────
+async function openSalaryEdit(empId) {
+  if (!Role.is('hr','super_admin','admin','accounts')) { toast('HR access only', 'error'); return; }
+  // Find from cached data first
+  const r = (_salaryStructData||[]).find(x => x.employee_id === empId);
+  if (!r) return;
+  document.getElementById('se-emp-id').value   = empId;
+  document.getElementById('se-emp-name').textContent = `${r.employee_name} (${r.employee_code})`;
+  // Earnings
+  document.getElementById('se-basic').value      = r.basic || 0;
+  document.getElementById('se-hra').value        = r.hra || 0;
+  document.getElementById('se-conveyance').value = r.conveyance || 0;
+  document.getElementById('se-special').value    = r.special_allowance || 0;
+  document.getElementById('se-gratuity').value   = r.gratuity || 0;
+  document.getElementById('se-other').value      = r.other_allowance || 0;
+  // Deductions
+  document.getElementById('se-pf-emp').value   = r.pf_employee || 0;
+  document.getElementById('se-pf-emr').value   = r.pf_employer || 0;
+  document.getElementById('se-pf-admin').value = r.pf_admin || 150;
+  document.getElementById('se-esi-emp').value  = r.esi_employee || 0;
+  document.getElementById('se-esi-emr').value  = r.esi_employer || 0;
+  document.getElementById('se-pt').value       = r.professional_tax || r.pt_amount || 0;
+  document.getElementById('se-lwf').value      = r.lwf || 0;
+  document.getElementById('se-tds').value      = r.tds || r.tds_monthly || 0;
+  document.getElementById('se-emi').value      = r.loan_emi_recovery || 0;
+  // Show modal
+  const m = document.getElementById('salary-edit-modal');
+  m.style.display = 'flex';
+  // Add live preview listeners
+  ['se-basic','se-hra','se-conveyance','se-special','se-gratuity','se-other',
+   'se-pf-emp','se-esi-emp','se-pt','se-lwf','se-tds','se-emi'].forEach(id => {
+    document.getElementById(id).oninput = updateSePreview;
+  });
+  updateSePreview();
+}
+
+function updateSePreview() {
+  const v = id => parseFloat(document.getElementById(id)?.value) || 0;
+  const gross = v('se-basic')+v('se-hra')+v('se-conveyance')+v('se-special')+v('se-gratuity')+v('se-other');
+  const ded   = v('se-pf-emp')+v('se-esi-emp')+v('se-pt')+v('se-lwf')+v('se-tds')+v('se-emi');
+  const net   = gross - ded;
+  document.getElementById('sep-gross').textContent = fmt.money(gross);
+  document.getElementById('sep-ded').textContent   = fmt.money(ded);
+  document.getElementById('sep-net').textContent   = fmt.money(net);
+  document.getElementById('se-preview').style.display = gross > 0 ? '' : 'none';
+}
+
+function closeSalaryEdit() {
+  document.getElementById('salary-edit-modal').style.display = 'none';
+}
+
+async function saveSalaryStructure() {
+  const empId = parseInt(document.getElementById('se-emp-id').value);
+  if (!empId) return;
+  const v = id => parseFloat(document.getElementById(id)?.value) || 0;
+  const btn = document.getElementById('se-save-btn');
+  btn.disabled = true; btn.textContent = '⏳ Saving…';
+
+  const body = {
+    employee_id:      empId,
+    basic:            v('se-basic'),
+    hra:              v('se-hra'),
+    conveyance:       v('se-conveyance'),
+    special_allowance:v('se-special'),
+    gratuity:         v('se-gratuity'),
+    other_allowance:  v('se-other'),
+    pf_employee:      v('se-pf-emp'),
+    pf_employer:      v('se-pf-emr'),
+    pf_admin:         v('se-pf-admin'),
+    esi_employee:     v('se-esi-emp'),
+    esi_employer:     v('se-esi-emr'),
+    pt_amount:        v('se-pt'),
+    lwf_amount:       v('se-lwf'),
+    tds_monthly:      v('se-tds'),
+    loan_emi_recovery:v('se-emi'),
+    pf_applicable:    v('se-pf-emp') > 0,
+    esi_applicable:   v('se-esi-emp') > 0,
+    pt_applicable:    v('se-pt') > 0,
+    lwf_applicable:   v('se-lwf') > 0,
+    tds_applicable:   v('se-tds') > 0,
+  };
+
+  const data = await api('POST', '/payroll/salary-structure', body);
+  btn.disabled = false; btn.textContent = '💾 Save Changes';
+
+  if (data?.success) {
+    toast('✅ Salary structure updated successfully', 'success');
+    closeSalaryEdit();
+    loadSalaryStructures(); // Refresh table
+  } else {
+    toast(data?.message || 'Failed to save', 'error');
+  }
+}
+
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 </script>
+
+<!-- Salary Structure Edit Modal -->
+<div class="modal-backdrop" id="salary-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border-radius:16px;padding:28px;width:min(700px,95vw);max-height:90vh;overflow-y:auto;position:relative">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--text)">✏️ Edit Salary Structure</div>
+        <div id="se-emp-name" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+      </div>
+      <button onclick="closeSalaryEdit()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+    <input type="hidden" id="se-emp-id">
+
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">💵 Earnings (₹/month)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+      <div><label class="form-label">Basic Salary *</label><input id="se-basic" type="number" class="form-control" placeholder="0"></div>
+      <div><label class="form-label">HRA</label><input id="se-hra" type="number" class="form-control" placeholder="0"></div>
+      <div><label class="form-label">Conveyance</label><input id="se-conveyance" type="number" class="form-control" placeholder="0"></div>
+      <div><label class="form-label">Special Allowance</label><input id="se-special" type="number" class="form-control" placeholder="0"></div>
+      <div><label class="form-label">Gratuity</label><input id="se-gratuity" type="number" class="form-control" placeholder="0"></div>
+      <div><label class="form-label">Other Allowance</label><input id="se-other" type="number" class="form-control" placeholder="0"></div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📋 Deductions (₹/month) — HR Defined</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+      <div><label class="form-label">PF Employee</label><input id="se-pf-emp" type="number" class="form-control" placeholder="0"></div>
+      <div><label class="form-label">PF Employer</label><input id="se-pf-emr" type="number" class="form-control" placeholder="0"></div>
+      <div><label class="form-label">PF Admin</label><input id="se-pf-admin" type="number" class="form-control" placeholder="150"></div>
+      <div><label class="form-label">ESI Employee</label><input id="se-esi-emp" type="number" class="form-control" placeholder="0"></div>
+      <div><label class="form-label">ESI Employer</label><input id="se-esi-emr" type="number" class="form-control" placeholder="0"></div>
+      <div><label class="form-label">Professional Tax (PT)</label><input id="se-pt" type="number" class="form-control" placeholder="0"></div>
+      <div><label class="form-label">LWF</label><input id="se-lwf" type="number" class="form-control" placeholder="0"></div>
+      <div><label class="form-label">TDS (monthly)</label><input id="se-tds" type="number" class="form-control" placeholder="0"></div>
+      <div><label class="form-label">EMI / Loan Recovery</label><input id="se-emi" type="number" class="form-control" placeholder="0"></div>
+    </div>
+
+    <div id="se-preview" style="background:linear-gradient(135deg,#1e293b,#334155);border-radius:12px;padding:16px;margin-bottom:20px;display:none">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;color:#fff;text-align:center">
+        <div><div style="font-size:10px;opacity:.7;text-transform:uppercase">Gross</div><div id="sep-gross" style="font-size:16px;font-weight:700">₹0</div></div>
+        <div><div style="font-size:10px;opacity:.7;text-transform:uppercase">Deductions</div><div id="sep-ded" style="font-size:16px;font-weight:700;color:#fca5a5">₹0</div></div>
+        <div style="background:rgba(255,255,255,.15);border-radius:8px;padding:8px"><div style="font-size:10px;opacity:.7;text-transform:uppercase">Net Take-Home</div><div id="sep-net" style="font-size:18px;font-weight:800">₹0</div></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeSalaryEdit()">Cancel</button>
+      <button class="btn btn-primary" id="se-save-btn" onclick="saveSalaryStructure()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
