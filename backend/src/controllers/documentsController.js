@@ -19,6 +19,9 @@ const upload = multer({
 });
 exports.uploadMiddleware = upload.single('file');
 
+// Multiple files in one request, up to 10, field name "files"
+exports.uploadMultiMiddleware = upload.array('files', 10);
+
 // Roles allowed to view/edit ANY employee's documents
 const HR_ROLES = ['hr', 'admin', 'super_admin'];
 
@@ -51,6 +54,7 @@ exports.DOCUMENT_DEFS = DOCUMENT_DEFS;
 // ── DB Init — run once on startup ──────────────────────────────────────────────
 exports.initTables = async () => {
   try {
+    // NOTE: no UNIQUE(employee_id, doc_key) here — multiple files per doc_key are allowed.
     await db.query(`
       CREATE TABLE IF NOT EXISTS employee_doc_checklist (
         id              SERIAL PRIMARY KEY,
@@ -61,11 +65,36 @@ exports.initTables = async () => {
         mime_type       VARCHAR(100),
         file_size       INTEGER,
         uploaded_by     INTEGER REFERENCES employees(id),
-        uploaded_at     TIMESTAMP DEFAULT NOW(),
-        UNIQUE(employee_id, doc_key)
+        uploaded_at     TIMESTAMP DEFAULT NOW()
       );
     `);
-    console.log('✅ Employee Documents table ready');
+
+    // Deployments created before this change have the old UNIQUE(employee_id, doc_key)
+    // constraint, which blocks multiple files per doc type. Drop it if present.
+    // The name below is Postgres' default auto-generated name for this constraint;
+    // we look it up dynamically as a fallback in case it was ever renamed.
+    await db.query(`
+      DO $$
+      DECLARE c_name text;
+      BEGIN
+        SELECT conname INTO c_name
+        FROM pg_constraint
+        WHERE conrelid = 'employee_doc_checklist'::regclass
+          AND contype = 'u';
+        IF c_name IS NOT NULL THEN
+          EXECUTE format('ALTER TABLE employee_doc_checklist DROP CONSTRAINT %I', c_name);
+        END IF;
+      END $$;
+    `);
+
+    // Non-unique index for fast per-employee/per-doc-type lookups (replaces the old
+    // implicit unique index now that multiple rows per key are allowed).
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_emp_doc_checklist_emp_key
+        ON employee_doc_checklist(employee_id, doc_key);
+    `);
+
+    console.log('✅ Employee Documents table ready (multi-file support)');
   } catch (err) {
     console.error('❌ Employee Documents table init error:', err.message);
   }
@@ -95,16 +124,23 @@ exports.getDocuments = async (req, res) => {
 
     const result = await db.query(
       `SELECT id, doc_key, original_name, mime_type, file_size, uploaded_at
-       FROM employee_doc_checklist WHERE employee_id = $1`,
+       FROM employee_doc_checklist
+       WHERE employee_id = $1
+       ORDER BY doc_key, uploaded_at DESC`,
       [targetId]
     );
+
+    // Group by doc_key — each key can now have multiple uploaded files
     const byKey = {};
-    result.rows.forEach(r => { byKey[r.doc_key] = r; });
+    result.rows.forEach(r => {
+      if (!byKey[r.doc_key]) byKey[r.doc_key] = [];
+      byKey[r.doc_key].push(r);
+    });
 
     const data = DOCUMENT_DEFS.map(def => ({
       ...def,
-      uploaded: !!byKey[def.key],
-      document: byKey[def.key] || null
+      uploaded: !!(byKey[def.key] && byKey[def.key].length),
+      documents: byKey[def.key] || []   // array — may contain 0, 1, or many files
     }));
 
     res.json({ success: true, data, employee_id: targetId });
@@ -114,8 +150,9 @@ exports.getDocuments = async (req, res) => {
   }
 };
 
-// ── POST /documents/upload — upload/replace a document for an employee ────────
+// ── POST /documents/upload — upload a document for an employee ────────────────
 // body: employee_id, doc_key ; file: multipart field "file"
+// Each call adds a NEW row — multiple files per doc_key are allowed.
 exports.uploadDocument = async (req, res) => {
   try {
     const reqUser = req.user;
@@ -138,16 +175,49 @@ exports.uploadDocument = async (req, res) => {
     await db.query(`
       INSERT INTO employee_doc_checklist
         (employee_id, doc_key, original_name, file_data, mime_type, file_size, uploaded_by, uploaded_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
-      ON CONFLICT (employee_id, doc_key)
-      DO UPDATE SET original_name=$3, file_data=$4, mime_type=$5, file_size=$6,
-                    uploaded_by=$7, uploaded_at=NOW()`,
+      VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())`,
       [targetId, doc_key, file.originalname, base64, file.mimetype, file.size, reqUser.id]
     );
 
     res.json({ success: true, message: 'Document uploaded successfully' });
   } catch (err) {
     console.error('[uploadDocument]', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ── POST /documents/upload-multi — upload MULTIPLE files for one doc_key ──────
+// body: employee_id, doc_key ; files: multipart field "files" (up to 10)
+exports.uploadMultiDocument = async (req, res) => {
+  try {
+    const reqUser = req.user;
+    const { employee_id, doc_key } = req.body;
+    const files = req.files;
+
+    if (!files || !files.length) return res.status(400).json({ success: false, message: 'No files uploaded' });
+    if (!doc_key)                 return res.status(400).json({ success: false, message: 'doc_key required' });
+
+    const targetId = employee_id ? parseInt(employee_id) : reqUser.id;
+    if (!canAccess(reqUser, targetId)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const validKey = DOCUMENT_DEFS.some(d => d.key === doc_key);
+    if (!validKey) return res.status(400).json({ success: false, message: 'Invalid doc_key' });
+
+    for (const file of files) {
+      const base64 = file.buffer.toString('base64');
+      await db.query(`
+        INSERT INTO employee_doc_checklist
+          (employee_id, doc_key, original_name, file_data, mime_type, file_size, uploaded_by, uploaded_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())`,
+        [targetId, doc_key, file.originalname, base64, file.mimetype, file.size, reqUser.id]
+      );
+    }
+
+    res.json({ success: true, message: `${files.length} file(s) uploaded successfully` });
+  } catch (err) {
+    console.error('[uploadMultiDocument]', err.message);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
