@@ -967,4 +967,8 @@ router.post  ('/performance/assign-reviewer',           authenticate, authorize(
 router.get   ('/geofence/unassigned-employees', authenticate, authorize('admin','super_admin','hr'), geoCtrl.getUnassignedEmployeesGlobal);
 router.post  ('/geofence/fix-office-universal',  authenticate, authorize('admin','super_admin','hr'), geoCtrl.fixOfficeUniversal);
 
+// ── Unified Approvals Inbox ──────────────────────────────────────────────────
+router.get ('/approvals/pending',     authenticate, approvalsCtrl.getPendingApprovals);
+router.post('/approvals/bulk-action', authenticate, approvalsCtrl.bulkAction);
+
 module.exports = router;
