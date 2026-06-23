@@ -250,7 +250,8 @@
 <script src="app.js"></script>
 <script>
 Auth.guard();
-buildSidebar('documents.html'); = ['hr','admin','super_admin'];
+buildSidebar('documents.html');
+const HR_ROLES = ['hr','admin','super_admin'];
 let currentEmpId = null;
 let pendingFiles = {};
 let _allEmps = [], _prevEmpData = [], _qualData = [];
