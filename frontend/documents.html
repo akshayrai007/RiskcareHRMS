@@ -7,26 +7,39 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
-.doc-table { width:100%;border-collapse:collapse;min-width:960px }
-.doc-table th { border:1px solid #9ca3af;background:#1e293b;color:#fff;font-size:11px;font-weight:700;padding:10px 12px;text-align:center;white-space:nowrap }
-.doc-table td { border:1px solid #e5e7eb;padding:9px 12px;font-size:12.5px;vertical-align:middle;text-align:center }
-.doc-table tr:nth-child(even) td { background:#f9fafb }
-.doc-table tr:hover td { background:#f0f4ff }
-.doc-status-ok    { display:inline-flex;align-items:center;gap:4px;color:#166534;font-weight:700;font-size:11.5px }
-.doc-status-empty { display:inline-flex;align-items:center;gap:4px;color:#9ca3af;font-weight:600;font-size:11.5px }
+.doc-table-wrap { border-radius:14px;overflow:hidden;box-shadow:0 4px 18px rgba(31,41,82,.08);border:1px solid #e7eaf3 }
+.doc-table { width:100%;border-collapse:separate;border-spacing:0;min-width:960px;table-layout:fixed }
+.doc-table col.col-doc   { width:26%   }
+.doc-table col.col-sub   { width:11%   }
+.doc-table col.col-add   { width:20%   }
+.doc-table col.col-att   { width:24%   }
+.doc-table col.col-date  { width:19%   }
+.doc-table th {
+  background:linear-gradient(135deg,#4f46e5 0%,#6366f1 45%,#06b6d4 100%);
+  color:#fff;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  padding:13px 14px;text-align:center;white-space:nowrap;border:none;
+}
+.doc-table th:first-child { text-align:left;border-radius:0 }
+.doc-table td { border:none;border-bottom:1px solid #eef0f6;padding:12px 14px;font-size:12.5px;vertical-align:middle;text-align:center;background:#fff;transition:background .15s }
+.doc-table tr:last-child td { border-bottom:none }
+.doc-table tr:nth-child(even) td { background:#f8f9fd }
+.doc-table tr:hover td { background:#eef2ff }
+.doc-table td:first-child { word-break:break-word }
+.doc-status-ok    { display:inline-flex;align-items:center;gap:5px;color:#fff;font-weight:700;font-size:11px;background:linear-gradient(135deg,#22c55e,#16a34a);padding:4px 11px;border-radius:20px;box-shadow:0 2px 6px rgba(34,197,94,.3) }
+.doc-status-empty { display:inline-flex;align-items:center;gap:4px;color:#94a3b8;font-weight:600;font-size:11.5px;background:#f1f3f9;padding:4px 11px;border-radius:20px }
 .emp-picker-bar { display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap }
 .emp-picker-bar select { min-width:260px }
 .doc-file-cell { display:flex;flex-direction:column;align-items:center;gap:4px }
-.pending-badge { font-size:10.5px;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:2px 7px;margin-top:3px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
-.attach-list { display:flex;flex-direction:column;gap:4px;align-items:center }
-.attach-chip { display:inline-flex;align-items:center;gap:6px;background:#e8f5e9;border:1px solid #a7f3d0;border-radius:20px;padding:3px 10px 3px 8px;font-size:11px;color:#166534;cursor:pointer;transition:background .15s;max-width:170px }
-.attach-chip:hover { background:#d1fae5 }
-.attach-chip-name { overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px }
-.attach-chip-del { margin-left:2px;color:#9ca3af;cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;padding:0 2px }
+.pending-badge { font-size:10.5px;color:#3730a3;background:linear-gradient(135deg,#eef2ff,#e0e7ff);border:1px solid #c7d2fe;border-radius:8px;padding:3px 8px;margin-top:3px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600 }
+.attach-list { display:flex;flex-direction:column;gap:5px;align-items:center }
+.attach-chip { display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1px solid #6ee7b7;border-radius:20px;padding:4px 10px 4px 9px;font-size:11px;color:#065f46;cursor:pointer;transition:transform .15s,box-shadow .15s;max-width:175px;font-weight:600 }
+.attach-chip:hover { transform:translateY(-1px);box-shadow:0 3px 8px rgba(16,185,129,.25);background:linear-gradient(135deg,#d1fae5,#a7f3d0) }
+.attach-chip-name { overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:115px }
+.attach-chip-del { margin-left:2px;color:#94a3b8;cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;padding:0 2px;border-radius:50%;transition:color .15s }
 .attach-chip-del:hover { color:#dc2626 }
 .datetime-cell { display:flex;flex-direction:column;align-items:center;gap:2px }
-.datetime-date { font-size:12px;font-weight:600;color:#1e293b }
-.datetime-time { font-size:11px;color:#64748b }
+.datetime-date { font-size:12px;font-weight:700;color:#312e81 }
+.datetime-time { font-size:11px;color:#818cf8;font-weight:600 }
 /* ── Attachment Viewer Modal (matches reimbursement.html) ── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
@@ -149,13 +162,16 @@ async function loadDocuments() {
 
 function renderTable() {
   const wrap = document.getElementById('table-wrap');
-  wrap.innerHTML = `<div style="overflow-x:auto"><table class="doc-table">
+  wrap.innerHTML = `<div class="doc-table-wrap" style="overflow-x:auto"><table class="doc-table">
+    <colgroup>
+      <col class="col-doc"><col class="col-sub"><col class="col-add"><col class="col-att"><col class="col-date">
+    </colgroup>
     <thead><tr>
-      <th style="text-align:left">Document</th>
-      <th style="width:100px">Submitted</th>
-      <th style="width:190px">Add Attachments</th>
-      <th style="width:200px">Attachments</th>
-      <th style="width:140px">Updated (Date &amp; Time)</th>
+      <th style="text-align:left">📄 Document</th>
+      <th>Submitted</th>
+      <th>Add Attachments</th>
+      <th>Attachments</th>
+      <th>Updated (Date &amp; Time)</th>
     </tr></thead>
     <tbody>${checklistData.map(d => buildRow(d)).join('')}</tbody>
   </table></div>`;
@@ -201,7 +217,7 @@ function buildRow(d) {
   }
 
   return `<tr>
-    <td style="text-align:left;font-weight:600">${d.label}</td>
+    <td style="text-align:left;font-weight:600;color:#1e1b4b"><span style="color:#6366f1;margin-right:6px">▸</span>${d.label}</td>
     <td>${submittedHtml}</td>
     <td>${fileInputHtml}</td>
     <td>${attachmentHtml}</td>
