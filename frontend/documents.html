@@ -7,209 +7,73 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
-/* ── Full-width layout overrides ── */
 .content .card { overflow:visible; padding:0; }
 .content { padding:16px; }
-
-/* ── Page wrapper fills full width ── */
 .doc-page { width:100%; }
 
-/* ── Top bar (search + tabs) ── */
-.doc-topbar {
-  padding:20px 28px 0;
-  border-bottom:1px solid #e0e3ec;
-  background:#fff;
-  border-radius:12px 12px 0 0;
-}
+/* ── Top bar ── */
+.doc-topbar { padding:16px 24px 0;background:#fff;border-radius:12px 12px 0 0;border-bottom:2px solid #e8eaf6; }
 
-/* ── HR Search Bar ── */
-.hr-search-row {
-  display:flex;align-items:center;flex-wrap:wrap;gap:12px;
-  padding-bottom:16px;
-}
-.hr-search-label {
-  font-size:11px;font-weight:800;color:#9fa8da;letter-spacing:.07em;text-transform:uppercase;
-  white-space:nowrap;
-}
-.hr-search-bar { position:relative;flex:0 0 auto; }
-.hr-search-input {
-  width:300px;padding:10px 16px 10px 38px;border-radius:9px;
-  border:1.5px solid #c5cae9;font-size:13px;font-family:inherit;
-  outline:none;transition:border-color .15s;background:#f5f6fb;
-}
+/* ── HR Search ── */
+.hr-search-row { display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding-bottom:14px; }
+.hr-search-label { font-size:11px;font-weight:800;color:#9fa8da;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap; }
+.hr-search-bar { position:relative; }
+.hr-search-input { width:280px;padding:9px 14px 9px 36px;border-radius:8px;border:1.5px solid #c5cae9;font-size:13px;font-family:inherit;outline:none;transition:border-color .15s;background:#f5f6fb; }
 .hr-search-input:focus { border-color:#3949ab;background:#fff; }
-.hr-search-icon {
-  position:absolute;left:12px;top:50%;transform:translateY(-50%);
-  font-size:14px;pointer-events:none;color:#9fa8da;
-}
-.hr-search-dropdown {
-  position:absolute;top:calc(100% + 4px);left:0;min-width:320px;
-  background:#fff;border:1.5px solid #9fa8da;border-radius:10px;
-  box-shadow:0 8px 32px rgba(57,73,171,.14);z-index:9999;
-  max-height:260px;overflow-y:auto;display:none;
-}
+.hr-search-icon { position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none;color:#9fa8da; }
+.hr-search-dropdown { position:absolute;top:calc(100% + 4px);left:0;min-width:300px;background:#fff;border:1.5px solid #9fa8da;border-radius:10px;box-shadow:0 8px 32px rgba(57,73,171,.14);z-index:9999;max-height:260px;overflow-y:auto;display:none; }
 .hr-search-dropdown.open { display:block }
-.hr-search-option {
-  padding:11px 16px;cursor:pointer;font-size:13px;
-  border-bottom:1px solid #f0f2f8;display:flex;align-items:center;gap:10px;
-}
+.hr-search-option { padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f2f8; }
 .hr-search-option:last-child { border-bottom:none }
 .hr-search-option:hover { background:#e8eaf6 }
-.hr-selected-badge {
-  display:inline-flex;align-items:center;gap:8px;
-  background:linear-gradient(135deg,#3949ab,#5c6bc0);color:#fff;
-  border-radius:20px;padding:6px 14px;font-size:12.5px;font-weight:600;
-  box-shadow:0 2px 8px rgba(57,73,171,.25);
-}
-.hr-selected-badge .badge-clear {
-  cursor:pointer;opacity:.7;font-size:16px;line-height:1;
-  transition:opacity .15s;margin-left:2px;
-}
+.hr-selected-badge { display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#3949ab,#5c6bc0);color:#fff;border-radius:20px;padding:6px 14px;font-size:12.5px;font-weight:600;box-shadow:0 2px 8px rgba(57,73,171,.25); }
+.hr-selected-badge .badge-clear { cursor:pointer;opacity:.75;font-size:16px;line-height:1;margin-left:2px; }
 .hr-selected-badge .badge-clear:hover { opacity:1 }
 
-/* ── Tabs ── */
-.doc-tabs {
-  display:flex;gap:0;border-bottom:none;margin-top:4px;
-}
-.doc-tab-btn {
-  padding:12px 24px;border:none;background:transparent;
-  font-size:13px;font-weight:600;color:#78909c;cursor:pointer;
-  transition:all .15s;border-bottom:3px solid transparent;
-  position:relative;bottom:-1px;letter-spacing:.01em;
-}
+/* ── Tabs — equal width, full stretch ── */
+.doc-tabs { display:flex;width:100%;margin-top:6px; }
+.doc-tab-btn { flex:1;padding:14px 10px;border:none;background:transparent;font-size:13.5px;font-weight:600;color:#78909c;cursor:pointer;transition:all .15s;border-bottom:3px solid transparent;text-align:center;letter-spacing:.01em; }
 .doc-tab-btn:hover { color:#3949ab;background:#f5f6fb; }
-.doc-tab-btn.active {
-  color:#3949ab;border-bottom:3px solid #3949ab;background:#fff;font-weight:700;
-}
+.doc-tab-btn.active { color:#3949ab;border-bottom:3px solid #3949ab;font-weight:700; }
 
 /* ── Tab body ── */
-.doc-tab-body { padding:24px 28px; }
+.doc-tab-body { padding:24px; }
 
-/* ── Documents Table ── */
-.doc-table-wrap { border-radius:10px;overflow:hidden;border:1px solid #9fa8da;box-shadow:0 1px 6px rgba(57,73,171,.07) }
-.doc-table { width:100%;border-collapse:collapse;min-width:800px; }
-.doc-table th {
-  background:linear-gradient(135deg,#3949ab,#5c6bc0);color:#fff;
-  font-size:12px;font-weight:700;letter-spacing:.04em;
-  padding:13px 16px;text-align:center;white-space:nowrap;
-  border-right:1px solid rgba(255,255,255,.15);
-}
-.doc-table th:first-child { text-align:left;width:28% }
-.doc-table th:nth-child(2) { width:10% }
-.doc-table th:nth-child(3) { width:22% }
-.doc-table th:nth-child(4) { width:25% }
-.doc-table th:last-child   { width:15%;border-right:none }
-.doc-table td {
-  border:1px solid #eef0f8;padding:12px 16px;font-size:13px;
-  vertical-align:middle;text-align:center;background:#fff;
-}
-.doc-table tr:nth-child(even) td { background:#fafbff }
-.doc-table tr:hover td { background:#eef0fb;transition:background .1s }
-.doc-table td:first-child { text-align:left;font-weight:600;color:#283593 }
+/* ── Excel-style form table ── */
+.xl-form { width:100%;border-collapse:collapse;margin-bottom:20px;border:1px solid #d1d5db; }
+.xl-form td { border:1px solid #d1d5db;padding:0;vertical-align:middle; }
+.xl-label { background:#f0f4ff;font-size:11.5px;font-weight:700;color:#3949ab;padding:10px 14px;white-space:nowrap;width:180px;letter-spacing:.03em;text-transform:uppercase;border-right:2px solid #c5cae9; }
+.xl-val { background:#fff;padding:0; }
+.xl-val input,.xl-val select,.xl-val textarea { width:100%;border:none;outline:none;padding:10px 14px;font-size:13.5px;font-family:inherit;background:transparent;box-sizing:border-box; }
+.xl-val input:focus,.xl-val select:focus,.xl-val textarea:focus { background:#fffde7; }
+.xl-val textarea { resize:vertical;min-height:72px; }
+.xl-section-row td { background:linear-gradient(90deg,#3949ab,#5c6bc0) !important;color:#fff !important;font-size:11.5px;font-weight:800;padding:8px 16px !important;letter-spacing:.06em;text-transform:uppercase;border-color:#3949ab !important; }
+.xl-form tr:hover .xl-val { background:#f0f4ff; }
+.xl-form tr:hover .xl-val input,.xl-form tr:hover .xl-val select,.xl-form tr:hover .xl-val textarea { background:#f0f4ff; }
 
-.doc-status-ok {
-  display:inline-flex;align-items:center;gap:5px;color:#1b5e20;font-weight:700;
-  font-size:12px;background:#e8f5e9;border:1px solid #a5d6a7;padding:4px 12px;border-radius:20px;
-}
-.doc-status-empty {
-  display:inline-flex;align-items:center;gap:4px;color:#90a4ae;font-weight:600;
-  font-size:12px;background:#f5f5f5;border:1px solid #e0e0e0;padding:4px 12px;border-radius:20px;
-}
-.doc-file-cell { display:flex;flex-direction:column;align-items:center;gap:4px }
-.pending-badge {
-  font-size:11px;color:#283593;background:#e8eaf6;border:1px solid #9fa8da;
-  border-radius:6px;padding:3px 8px;margin-top:3px;font-weight:600;
-}
-.attach-list { display:flex;flex-direction:column;gap:5px;align-items:center }
-.attach-chip {
-  display:inline-flex;align-items:center;gap:6px;background:#e8f5e9;
-  border:1px solid #a5d6a7;border-radius:6px;padding:4px 10px;
-  font-size:11.5px;color:#1b5e20;cursor:pointer;max-width:190px;font-weight:600;
-}
+.xl-checks { display:flex;gap:12px;flex-wrap:wrap;padding:14px 0 6px; }
+.xl-check-pill { display:inline-flex;align-items:center;gap:8px;background:#e8eaf6;border:1.5px solid #c5cae9;border-radius:20px;padding:7px 16px;font-size:13px;font-weight:600;color:#3949ab;cursor:pointer; }
+.xl-check-pill input[type=checkbox] { width:15px;height:15px;accent-color:#3949ab }
+.xl-check-pill:hover { background:#c5cae9 }
+.xl-btn-row { display:flex;justify-content:flex-end;gap:12px;padding-top:14px;border-top:2px solid #e8eaf6;margin-top:4px; }
+
+/* ── Saved Records Table ── */
+.rec-table-wrap { overflow-x:auto;margin-top:8px;border:1px solid #d1d5db;border-radius:8px }
+.rec-table { width:100%;border-collapse:collapse;min-width:700px; }
+.rec-table th { background:#1e3a5f;color:#fff;font-size:11.5px;font-weight:700;padding:10px 14px;text-align:left;letter-spacing:.04em;border:1px solid #2d5282; }
+.rec-table td { border:1px solid #e5e7eb;padding:10px 14px;font-size:13px;vertical-align:middle;background:#fff; }
+.rec-table tr:nth-child(even) td { background:#f8faff }
+.rec-table tr:hover td { background:#eef0fb }
+.rec-tag { display:inline-block;font-size:11px;background:#e8eaf6;color:#3949ab;border-radius:4px;padding:2px 7px;font-weight:600;margin:1px 2px;border:1px solid #c5cae9; }
+
+/* ── Documents table cells ── */
+.attach-chip { display:inline-flex;align-items:center;gap:5px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:5px;padding:3px 8px;font-size:11.5px;color:#1b5e20;cursor:pointer;max-width:180px;font-weight:600; }
 .attach-chip:hover { background:#c8e6c9 }
-.attach-chip-name { overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px }
-.attach-chip-del { color:#90a4ae;cursor:pointer;font-size:14px;line-height:1;padding:0 1px }
+.attach-chip-name { overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px }
+.attach-chip-del { color:#90a4ae;cursor:pointer;font-size:14px;line-height:1; }
 .attach-chip-del:hover { color:#c62828 }
-.datetime-cell { display:flex;flex-direction:column;align-items:center;gap:2px }
-.datetime-date { font-size:12px;font-weight:700;color:#283593 }
-.datetime-time { font-size:11px;color:#5c6bc0 }
 
-/* ── Inline Form — single column, full width ── */
-.inline-form-box {
-  background:#f8f9ff;
-  border:1.5px solid #c5cae9;border-radius:12px;
-  padding:24px 28px;margin-bottom:24px;
-  box-shadow:0 2px 8px rgba(57,73,171,.05);
-  width:100%;box-sizing:border-box;
-}
-.inline-form-box h4 {
-  font-size:15px;font-weight:800;color:#283593;margin:0 0 20px;
-  display:flex;align-items:center;gap:8px;
-  padding-bottom:12px;border-bottom:1.5px solid #c5cae9;
-}
-.inline-form-box .form-group { margin-bottom:14px; }
-.inline-form-box .form-label {
-  font-size:11px;font-weight:700;color:#546e7a;
-  letter-spacing:.05em;margin-bottom:5px;display:block;text-transform:uppercase;
-}
-.inline-form-box .form-control {
-  font-size:13.5px;padding:10px 14px;border-radius:8px;
-  border:1.5px solid #dde0f0;background:#fff;width:100%;box-sizing:border-box;
-  transition:border-color .15s,box-shadow .15s;font-family:inherit;
-}
-.inline-form-box .form-control:focus {
-  border-color:#3949ab;outline:none;
-  box-shadow:0 0 0 3px rgba(57,73,171,.08);
-}
-.inline-form-box textarea.form-control { resize:vertical;min-height:80px }
-
-.form-section-label {
-  font-size:11px;font-weight:800;color:#3949ab;letter-spacing:.07em;
-  text-transform:uppercase;margin:20px 0 12px;
-  display:flex;align-items:center;gap:8px;
-}
-.form-section-label::after {
-  content:'';flex:1;height:1px;background:linear-gradient(90deg,#c5cae9,transparent);
-}
-.form-btn-row {
-  display:flex;gap:12px;margin-top:20px;
-  justify-content:flex-end;padding-top:16px;
-  border-top:1.5px solid #e0e3ec;
-}
-.form-check-row {
-  display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:600;
-  color:#3949ab;cursor:pointer;
-  background:#e8eaf6;border:1.5px solid #c5cae9;border-radius:8px;
-  padding:8px 16px;
-}
-.form-check-row input[type=checkbox] { width:15px;height:15px;accent-color:#3949ab }
-.form-checks-row { display:flex;gap:12px;margin-top:14px;flex-wrap:wrap }
-
-/* ── Saved Records Cards ── */
-.rec-section-label {
-  font-size:11px;font-weight:800;color:#9fa8da;letter-spacing:.07em;
-  text-transform:uppercase;margin-bottom:12px;
-}
-.rec-cards { display:flex;flex-direction:column;gap:10px }
-.rec-card {
-  border:1.5px solid #e8eaf6;border-radius:12px;padding:18px 22px;
-  background:#fff;display:flex;justify-content:space-between;
-  align-items:flex-start;gap:12px;
-  box-shadow:0 1px 4px rgba(57,73,171,.05);
-  transition:border-color .15s,box-shadow .15s;
-}
-.rec-card:hover { border-color:#9fa8da;box-shadow:0 3px 12px rgba(57,73,171,.1) }
-.rec-card-body { flex:1;min-width:0 }
-.rec-card-title { font-size:14.5px;font-weight:700;color:#283593;margin-bottom:5px }
-.rec-card-sub { font-size:12.5px;color:#546e7a;margin-bottom:8px }
-.rec-card-tags { display:flex;flex-wrap:wrap;gap:6px }
-.rec-tag {
-  font-size:11.5px;background:#eef0fb;color:#3949ab;
-  border-radius:20px;padding:3px 10px;font-weight:600;border:1px solid #c5cae9;
-}
-.rec-card-actions { display:flex;gap:8px;flex-shrink:0;margin-top:2px }
-
-/* ── Attachment Viewer Modal ── */
+/* ── Modal ── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
 .modal-box{background:#fff;border-radius:16px;width:min(640px,95vw);max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.2)}
@@ -296,98 +160,37 @@
 
       <!-- ═══════ TAB 2: Previous Employment ═══════ -->
       <div id="tab-employment" class="doc-tab-body" style="display:none">
-        <div class="inline-form-box" id="emp-form-box">
-          <h4 id="emp-form-title">➕ Add Employment</h4>
+        <div id="emp-form-box" style="margin-bottom:20px">
+          <div style="font-size:15px;font-weight:800;color:#283593;padding:0 0 12px;border-bottom:2px solid #e8eaf6;margin-bottom:16px;display:flex;align-items:center;gap:8px">
+            <span id="emp-form-title">➕ Add Employment</span>
+          </div>
           <input type="hidden" id="ef-id">
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 24px">
-            <div class="form-group">
-              <label class="form-label">Company Name *</label>
-              <input type="text" id="ef-company" class="form-control" placeholder="Company Ltd.">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Designation</label>
-              <input type="text" id="ef-designation" class="form-control" placeholder="Software Engineer">
-            </div>
-            <div class="form-group">
-              <label class="form-label">From Date</label>
-              <input type="date" id="ef-from" class="form-control">
-            </div>
-            <div class="form-group">
-              <label class="form-label">To Date</label>
-              <input type="date" id="ef-to" class="form-control">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Job Type</label>
-              <select id="ef-jobtype" class="form-control">
-                <option value="Full Time">Full Time</option>
-                <option value="Part Time">Part Time</option>
-                <option value="Contract">Contract</option>
-                <option value="Internship">Internship</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">PF Number</label>
-              <input type="text" id="ef-pf" class="form-control" placeholder="PF / UAN number">
-            </div>
-            <div class="form-group">
-              <label class="form-label">City</label>
-              <input type="text" id="ef-city" class="form-control" placeholder="Mumbai">
-            </div>
-            <div class="form-group">
-              <label class="form-label">State</label>
-              <input type="text" id="ef-state" class="form-control" placeholder="Maharashtra">
-            </div>
+          <table class="xl-form">
+            <tr><td class="xl-label">Company Name *</td><td class="xl-val"><input type="text" id="ef-company" placeholder="Company Ltd."></td>
+                <td class="xl-label">Designation</td><td class="xl-val"><input type="text" id="ef-designation" placeholder="Software Engineer"></td></tr>
+            <tr><td class="xl-label">From Date</td><td class="xl-val"><input type="date" id="ef-from"></td>
+                <td class="xl-label">To Date</td><td class="xl-val"><input type="date" id="ef-to"></td></tr>
+            <tr><td class="xl-label">Job Type</td><td class="xl-val"><select id="ef-jobtype"><option>Full Time</option><option>Part Time</option><option>Contract</option><option>Internship</option></select></td>
+                <td class="xl-label">PF Number</td><td class="xl-val"><input type="text" id="ef-pf" placeholder="PF / UAN number"></td></tr>
+            <tr><td class="xl-label">City</td><td class="xl-val"><input type="text" id="ef-city" placeholder="Mumbai"></td>
+                <td class="xl-label">State</td><td class="xl-val"><input type="text" id="ef-state" placeholder="Maharashtra"></td></tr>
+            <tr class="xl-section-row"><td colspan="4">Previous Manager</td></tr>
+            <tr><td class="xl-label">Manager Name</td><td class="xl-val"><input type="text" id="ef-mgr-name" placeholder="Full Name"></td>
+                <td class="xl-label">Manager Phone</td><td class="xl-val"><input type="tel" id="ef-mgr-phone" placeholder="+91 …"></td></tr>
+            <tr><td class="xl-label">Manager Email</td><td colspan="3" class="xl-val"><input type="email" id="ef-mgr-email" placeholder="manager@company.com"></td></tr>
+            <tr class="xl-section-row"><td colspan="4">Previous HR</td></tr>
+            <tr><td class="xl-label">HR Name</td><td class="xl-val"><input type="text" id="ef-hr-name" placeholder="Full Name"></td>
+                <td class="xl-label">HR Phone</td><td class="xl-val"><input type="tel" id="ef-hr-phone" placeholder="+91 …"></td></tr>
+            <tr><td class="xl-label">HR Email</td><td colspan="3" class="xl-val"><input type="email" id="ef-hr-email" placeholder="hr@company.com"></td></tr>
+            <tr class="xl-section-row"><td colspan="4">Additional Details</td></tr>
+            <tr><td class="xl-label">Company Address</td><td colspan="3" class="xl-val"><textarea id="ef-address" placeholder="Full address…"></textarea></td></tr>
+            <tr><td class="xl-label">Reason for Leaving</td><td colspan="3" class="xl-val"><textarea id="ef-reason" placeholder="Reason for leaving…"></textarea></td></tr>
+          </table>
+          <div class="xl-checks">
+            <label class="xl-check-pill"><input type="checkbox" id="ef-overseas"> 🌐 Overseas</label>
+            <label class="xl-check-pill"><input type="checkbox" id="ef-relevant"> ✅ Is Relevant</label>
           </div>
-
-          <div class="form-section-label">Previous Manager</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px 24px">
-            <div class="form-group">
-              <label class="form-label">Name</label>
-              <input type="text" id="ef-mgr-name" class="form-control" placeholder="Full Name">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Phone</label>
-              <input type="tel" id="ef-mgr-phone" class="form-control" placeholder="+91 …">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Email</label>
-              <input type="email" id="ef-mgr-email" class="form-control" placeholder="manager@company.com">
-            </div>
-          </div>
-
-          <div class="form-section-label">Previous HR</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px 24px">
-            <div class="form-group">
-              <label class="form-label">Name</label>
-              <input type="text" id="ef-hr-name" class="form-control" placeholder="Full Name">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Phone</label>
-              <input type="tel" id="ef-hr-phone" class="form-control" placeholder="+91 …">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Email</label>
-              <input type="email" id="ef-hr-email" class="form-control" placeholder="hr@company.com">
-            </div>
-          </div>
-
-          <div class="form-section-label">Additional Details</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 24px">
-            <div class="form-group">
-              <label class="form-label">Company Address</label>
-              <textarea id="ef-address" class="form-control" rows="3" placeholder="Full address…"></textarea>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Reason for Leaving</label>
-              <textarea id="ef-reason" class="form-control" rows="3" placeholder="Reason for leaving…"></textarea>
-            </div>
-          </div>
-          <div class="form-checks-row">
-            <label class="form-check-row"><input type="checkbox" id="ef-overseas"> 🌐 Overseas</label>
-            <label class="form-check-row"><input type="checkbox" id="ef-relevant"> ✅ Is Relevant</label>
-          </div>
-          <div class="form-btn-row">
+          <div class="xl-btn-row">
             <button class="btn btn-outline btn-sm" onclick="resetEmpForm()">✕ Clear</button>
             <button class="btn btn-primary btn-sm" onclick="saveEmployment()">💾 Save Employment</button>
           </div>
@@ -397,83 +200,29 @@
 
       <!-- ═══════ TAB 3: Qualifications ═══════ -->
       <div id="tab-quals" class="doc-tab-body" style="display:none">
-        <div class="inline-form-box" id="qual-form-box">
-          <h4 id="qual-form-title">➕ Add Qualification</h4>
+        <div id="qual-form-box" style="margin-bottom:20px">
+          <div style="font-size:15px;font-weight:800;color:#283593;padding:0 0 12px;border-bottom:2px solid #e8eaf6;margin-bottom:16px;display:flex;align-items:center;gap:8px">
+            <span id="qual-form-title">➕ Add Qualification</span>
+          </div>
           <input type="hidden" id="qf-id">
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 24px">
-            <div class="form-group">
-              <label class="form-label">Qualification *</label>
-              <select id="qf-qual" class="form-control">
-                <option value="">— Select —</option>
-                <option>10th</option><option>12th</option><option>Diploma</option>
-                <option>Bachelor's</option><option>Master's</option><option>PhD</option>
-                <option>Certification</option><option>Other</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Degree</label>
-              <input type="text" id="qf-degree" class="form-control" placeholder="B.Tech / MBA …">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Specialization</label>
-              <input type="text" id="qf-spec" class="form-control" placeholder="Computer Science …">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Institute Name *</label>
-              <input type="text" id="qf-institute" class="form-control" placeholder="University / College …">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Board / University</label>
-              <input type="text" id="qf-board" class="form-control" placeholder="CBSE / Mumbai University …">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Mode of Education</label>
-              <select id="qf-mode" class="form-control">
-                <option value="">— Select —</option>
-                <option>Regular</option><option>Distance</option>
-                <option>Online</option><option>Part Time</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">State / Location</label>
-              <input type="text" id="qf-state" class="form-control" placeholder="Maharashtra">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Grade / %</label>
-              <input type="text" id="qf-grade" class="form-control" placeholder="8.5 CGPA / 85%">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Passing Month</label>
-              <select id="qf-month" class="form-control">
-                <option value="">— Month —</option>
-                <option value="1">January</option><option value="2">February</option>
-                <option value="3">March</option><option value="4">April</option>
-                <option value="5">May</option><option value="6">June</option>
-                <option value="7">July</option><option value="8">August</option>
-                <option value="9">September</option><option value="10">October</option>
-                <option value="11">November</option><option value="12">December</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Passing Year</label>
-              <select id="qf-year" class="form-control">
-                <option value="">— Year —</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Academic Achievements</label>
-              <textarea id="qf-achievements" class="form-control" rows="3" placeholder="Gold Medal, Rank 1 …"></textarea>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Remarks</label>
-              <textarea id="qf-remarks" class="form-control" rows="3" placeholder="Any additional notes …"></textarea>
-            </div>
+          <table class="xl-form">
+            <tr><td class="xl-label">Qualification *</td><td class="xl-val"><select id="qf-qual"><option value="">— Select —</option><option>10th</option><option>12th</option><option>Diploma</option><option>Bachelor's</option><option>Master's</option><option>PhD</option><option>Certification</option><option>Other</option></select></td>
+                <td class="xl-label">Degree</td><td class="xl-val"><input type="text" id="qf-degree" placeholder="B.Tech / MBA …"></td></tr>
+            <tr><td class="xl-label">Specialization</td><td class="xl-val"><input type="text" id="qf-spec" placeholder="Computer Science …"></td>
+                <td class="xl-label">Institute Name *</td><td class="xl-val"><input type="text" id="qf-institute" placeholder="University / College …"></td></tr>
+            <tr><td class="xl-label">Board / University</td><td class="xl-val"><input type="text" id="qf-board" placeholder="CBSE / Mumbai University …"></td>
+                <td class="xl-label">Mode of Education</td><td class="xl-val"><select id="qf-mode"><option value="">— Select —</option><option>Regular</option><option>Distance</option><option>Online</option><option>Part Time</option></select></td></tr>
+            <tr><td class="xl-label">State / Location</td><td class="xl-val"><input type="text" id="qf-state" placeholder="Maharashtra"></td>
+                <td class="xl-label">Grade / %</td><td class="xl-val"><input type="text" id="qf-grade" placeholder="8.5 CGPA / 85%"></td></tr>
+            <tr><td class="xl-label">Passing Month</td><td class="xl-val"><select id="qf-month"><option value="">— Month —</option><option value="1">January</option><option value="2">February</option><option value="3">March</option><option value="4">April</option><option value="5">May</option><option value="6">June</option><option value="7">July</option><option value="8">August</option><option value="9">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select></td>
+                <td class="xl-label">Passing Year</td><td class="xl-val"><select id="qf-year"><option value="">— Year —</option></select></td></tr>
+            <tr><td class="xl-label">Achievements</td><td colspan="3" class="xl-val"><textarea id="qf-achievements" placeholder="Gold Medal, Rank 1 …"></textarea></td></tr>
+            <tr><td class="xl-label">Remarks</td><td colspan="3" class="xl-val"><textarea id="qf-remarks" placeholder="Any additional notes …"></textarea></td></tr>
+          </table>
+          <div class="xl-checks">
+            <label class="xl-check-pill"><input type="checkbox" id="qf-highest"> ⭐ Highest Qualification</label>
           </div>
-          <div class="form-checks-row">
-            <label class="form-check-row"><input type="checkbox" id="qf-highest"> ⭐ Highest Qualification</label>
-          </div>
-          <div class="form-btn-row">
+          <div class="xl-btn-row">
             <button class="btn btn-outline btn-sm" onclick="resetQualForm()">✕ Clear</button>
             <button class="btn btn-primary btn-sm" onclick="saveQualification()">💾 Save Qualification</button>
           </div>
@@ -481,7 +230,7 @@
         <div id="qual-records"></div>
       </div>
 
-    </div><!-- .doc-page -->
+        </div><!-- .doc-page -->
     </div><!-- .card -->
   </div>
 </div>
@@ -833,33 +582,34 @@ async function loadEmploymentRecords() {
   if (!res?.success || !res.data?.length) {
     el.innerHTML = ''; return;
   }
-  el.innerHTML = `<div class="rec-section-label">SAVED RECORDS</div>
-    <div class="rec-cards">${res.data.map(r => buildEmpCard(r)).join('')}</div>`;
+  el.innerHTML = `<div style="font-size:11px;font-weight:800;color:#9fa8da;letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">SAVED RECORDS</div>
+    <div class="rec-table-wrap"><table class="rec-table">
+      <thead><tr>
+        <th>Company</th><th>Designation</th><th>Period</th><th>Job Type</th>
+        <th>City / State</th><th>PF No.</th>${isHR?'<th style="width:90px">Actions</th>':''}
+      </tr></thead>
+      <tbody>${res.data.map(r => buildEmpCard(r)).join('')}</tbody>
+    </table></div>`;
 }
 
 function buildEmpCard(r) {
   const from = r.from_date ? fmt.date(r.from_date) : '—';
   const to   = r.to_date   ? fmt.date(r.to_date)   : 'Present';
-  const tags = [
-    r.job_type      && `<span class="rec-tag">${r.job_type}</span>`,
-    r.city          && `<span class="rec-tag">📍 ${r.city}${r.state?', '+r.state:''}</span>`,
-    r.is_overseas   && `<span class="rec-tag" style="background:#e0f2fe;color:#0277bd">🌐 Overseas</span>`,
-    r.is_relevant   && `<span class="rec-tag" style="background:#f3e5f5;color:#6a1b9a">✅ Relevant</span>`,
-    r.pf_number     && `<span class="rec-tag" style="background:#e8f5e9;color:#2e7d32">🏦 PF: ${r.pf_number}</span>`,
-  ].filter(Boolean).join('');
-  const hrBtns = isHR ? `
-    <button class="btn btn-outline btn-sm" onclick="loadEmpIntoForm(${r.id})" title="Edit">✏️</button>
-    <button class="btn btn-sm" style="background:#fce4ec;color:#c62828;border:1px solid #f48fb1" onclick="deleteEmployment(${r.id})" title="Delete">🗑️</button>
-  ` : '';
-  return `<div class="rec-card" id="emp-card-${r.id}">
-    <div class="rec-card-body">
-      <div class="rec-card-title">🏢 ${r.company_name}${r.designation ? ' — '+r.designation : ''}</div>
-      <div class="rec-card-sub">📅 ${from} → ${to}</div>
-      ${tags ? `<div class="rec-card-tags">${tags}</div>` : ''}
-      ${r.reason_for_leaving ? `<div style="font-size:11.5px;color:#78909c;margin-top:6px">Reason: ${r.reason_for_leaving}</div>` : ''}
-    </div>
-    <div class="rec-card-actions">${hrBtns}</div>
-  </div>`;
+  const loc  = [r.city, r.state].filter(Boolean).join(', ') || '—';
+  const flags= [r.is_overseas&&'🌐 Overseas', r.is_relevant&&'✅ Relevant'].filter(Boolean).join(' ');
+  const hrBtns = isHR ? `<td style="white-space:nowrap">
+    <button class="btn btn-outline btn-sm" onclick="loadEmpIntoForm(${r.id})">✏️</button>
+    <button class="btn btn-sm" style="background:#fce4ec;color:#c62828;border:1px solid #f48fb1" onclick="deleteEmployment(${r.id})">🗑️</button>
+  </td>` : '';
+  return `<tr>
+    <td style="font-weight:700;color:#283593">${r.company_name}${flags?`<br><small style="font-weight:400;color:#78909c">${flags}</small>`:''}</td>
+    <td>${r.designation||'—'}</td>
+    <td style="white-space:nowrap">${from}<br><span style="color:#9ca3af;font-size:11px">→ ${to}</span></td>
+    <td><span class="rec-tag">${r.job_type||'—'}</span></td>
+    <td>${loc}</td>
+    <td style="color:#546e7a">${r.pf_number||'—'}</td>
+    ${hrBtns}
+  </tr>`;
 }
 
 function resetEmpForm() {
@@ -951,34 +701,34 @@ async function loadQualificationRecords() {
   if (!res?.success || !res.data?.length) {
     el.innerHTML = ''; return;
   }
-  el.innerHTML = `<div class="rec-section-label">SAVED RECORDS</div>
-    <div class="rec-cards">${res.data.map(r => buildQualCard(r)).join('')}</div>`;
+  el.innerHTML = `<div style="font-size:11px;font-weight:800;color:#9fa8da;letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">SAVED RECORDS</div>
+    <div class="rec-table-wrap"><table class="rec-table">
+      <thead><tr>
+        <th>Qualification</th><th>Degree / Spec</th><th>Institute</th>
+        <th>Board / Univ</th><th>Passed</th><th>Grade</th><th>Mode</th>${isHR?'<th style="width:90px">Actions</th>':''}
+      </tr></thead>
+      <tbody>${res.data.map(r => buildQualCard(r)).join('')}</tbody>
+    </table></div>`;
 }
 
 const MONTHS = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function buildQualCard(r) {
-  const passed = [r.passing_month ? MONTHS[r.passing_month] : '', r.passing_year].filter(Boolean).join(' ');
-  const tags = [
-    r.qualification   && `<span class="rec-tag">${r.qualification}</span>`,
-    r.mode_of_education && `<span class="rec-tag">${r.mode_of_education}</span>`,
-    r.grade_percentage  && `<span class="rec-tag">📊 ${r.grade_percentage}</span>`,
-    passed              && `<span class="rec-tag">📅 ${passed}</span>`,
-    r.is_highest        && `<span class="rec-tag" style="background:#fff8e1;color:#e65100">⭐ Highest</span>`,
-  ].filter(Boolean).join('');
-  const hrBtns = isHR ? `
-    <button class="btn btn-outline btn-sm" onclick="loadQualIntoForm(${r.id})" title="Edit">✏️</button>
-    <button class="btn btn-sm" style="background:#fce4ec;color:#c62828;border:1px solid #f48fb1" onclick="deleteQualification(${r.id})" title="Delete">🗑️</button>
-  ` : '';
-  return `<div class="rec-card" id="qual-card-${r.id}">
-    <div class="rec-card-body">
-      <div class="rec-card-title">🎓 ${r.degree || r.qualification}${r.specialization ? ' — '+r.specialization : ''}</div>
-      <div class="rec-card-sub">🏫 ${r.institute_name}${r.board_university ? ' · '+r.board_university : ''}</div>
-      ${tags ? `<div class="rec-card-tags">${tags}</div>` : ''}
-      ${r.academic_achievements ? `<div style="font-size:11.5px;color:#78909c;margin-top:6px">🏆 ${r.academic_achievements}</div>` : ''}
-    </div>
-    <div class="rec-card-actions">${hrBtns}</div>
-  </div>`;
+  const passed = [r.passing_month ? MONTHS[r.passing_month] : '', r.passing_year].filter(Boolean).join(' ') || '—';
+  const hrBtns = isHR ? `<td style="white-space:nowrap">
+    <button class="btn btn-outline btn-sm" onclick="loadQualIntoForm(${r.id})">✏️</button>
+    <button class="btn btn-sm" style="background:#fce4ec;color:#c62828;border:1px solid #f48fb1" onclick="deleteQualification(${r.id})">🗑️</button>
+  </td>` : '';
+  return `<tr>
+    <td><span class="rec-tag">${r.qualification||'—'}</span>${r.is_highest?'<br><span class="rec-tag" style="background:#fff8e1;color:#e65100;border-color:#ffe082">⭐ Highest</span>':''}</td>
+    <td style="font-weight:600;color:#283593">${r.degree||r.qualification||'—'}${r.specialization?`<br><span style="font-weight:400;color:#546e7a;font-size:12px">${r.specialization}</span>`:''}</td>
+    <td>${r.institute_name||'—'}</td>
+    <td style="color:#546e7a">${r.board_university||'—'}</td>
+    <td style="white-space:nowrap">${passed}</td>
+    <td>${r.grade_percentage||'—'}</td>
+    <td><span class="rec-tag">${r.mode_of_education||'—'}</span></td>
+    ${hrBtns}
+  </tr>`;
 }
 
 function resetQualForm() {
