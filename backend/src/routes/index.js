@@ -19,7 +19,6 @@ const sepCtrl        = require('../controllers/separationController');
 const empImportCtrl  = require('../controllers/employeeImportController');
 const attImportCtrl   = require('../controllers/attendanceImportController');
 const excelExportCtrl  = require('../controllers/excelExportController');
-const approvalsCtrl    = require('../controllers/approvalsController');
 const annCtrl        = require('../controllers/announcementController');
 const gkCtrl         = require('../controllers/gkController');
 const provCtrl       = require('../controllers/provisionController');
@@ -966,9 +965,5 @@ router.post  ('/performance/assign-reviewer',           authenticate, authorize(
 
 router.get   ('/geofence/unassigned-employees', authenticate, authorize('admin','super_admin','hr'), geoCtrl.getUnassignedEmployeesGlobal);
 router.post  ('/geofence/fix-office-universal',  authenticate, authorize('admin','super_admin','hr'), geoCtrl.fixOfficeUniversal);
-
-// ── Unified Approvals Inbox ──────────────────────────────────────────────────
-router.get ('/approvals/pending',     authenticate, approvalsCtrl.getPendingApprovals);
-router.post('/approvals/bulk-action', authenticate, approvalsCtrl.bulkAction);
 
 module.exports = router;
