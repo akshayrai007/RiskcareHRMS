@@ -2168,9 +2168,10 @@ function renderTeam(list) {
 async function loadRegularizations() {
   const isApprover = Role.isManagerUp() || Role.is('tl','hr','admin','super_admin');
 
-  // ── MY PENDING REQUESTS — always pending only, hidden when empty ──────────
+  // ── MY PENDING REQUESTS — hide for HR/admin since they see Approval Queue ────
   const myEl      = document.getElementById('reg-my-list');
   const mySection = document.getElementById('reg-my-section');
+  if (Role.is('hr','admin','super_admin')) { if (mySection) mySection.style.display = 'none'; }
   if (myEl) {
     myEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0">Loading…</div>';
     try {
