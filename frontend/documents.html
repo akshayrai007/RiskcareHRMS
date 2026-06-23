@@ -40,22 +40,26 @@
 .doc-tab-body { padding:24px; }
 
 /* ── Excel-style form table ── */
-.xl-form { width:100%;border-collapse:collapse;margin-bottom:20px;border:1px solid #c5cae9;border-radius:8px;overflow:hidden; }
-.xl-form td { border:1px solid #c5cae9;padding:0;vertical-align:middle; }
-.xl-label { background:#eef0fb;font-size:11.5px;font-weight:700;color:#3949ab;padding:12px 16px;white-space:nowrap;width:200px;min-width:200px;letter-spacing:.03em;text-transform:uppercase;border-right:2px solid #c5cae9; }
-.xl-val { background:#fff;padding:0;min-height:44px; }
-.xl-val input,.xl-val select { width:100%;border:none;outline:none;padding:12px 16px;font-size:13.5px;font-family:inherit;background:transparent;box-sizing:border-box;height:44px; }
-.xl-val textarea { width:100%;border:none;outline:none;padding:12px 16px;font-size:13.5px;font-family:inherit;background:transparent;box-sizing:border-box;resize:vertical;min-height:80px;display:block; }
-.xl-val input:focus,.xl-val select:focus,.xl-val textarea:focus { background:#fffde7;outline:none; }
-.xl-section-row td { background:#e8eaf6 !important;color:#3949ab !important;font-size:11.5px;font-weight:800;padding:8px 16px !important;letter-spacing:.06em;text-transform:uppercase;border-color:#c5cae9 !important; }
-.xl-form tr:hover .xl-val { background:#f5f6ff; }
-.xl-form tr:hover .xl-val input,.xl-form tr:hover .xl-val select,.xl-form tr:hover .xl-val textarea { background:#f5f6ff; }
-
-.xl-checks { display:flex;gap:12px;flex-wrap:wrap;padding:14px 0 6px; }
-.xl-check-pill { display:inline-flex;align-items:center;gap:8px;background:#e8eaf6;border:1.5px solid #c5cae9;border-radius:20px;padding:7px 16px;font-size:13px;font-weight:600;color:#3949ab;cursor:pointer; }
-.xl-check-pill input[type=checkbox] { width:15px;height:15px;accent-color:#3949ab }
-.xl-check-pill:hover { background:#c5cae9 }
-.xl-btn-row { display:flex;justify-content:flex-end;gap:12px;padding-top:14px;border-top:2px solid #e8eaf6;margin-top:4px; }
+/* ── Form box ── */
+.form-box {
+  border:1.5px solid #1a1a2e;border-radius:10px;
+  padding:24px 28px;margin-bottom:24px;background:#fff;
+}
+.form-box-title { font-size:15px;font-weight:800;color:#283593;margin:0 0 20px;padding-bottom:12px;border-bottom:2px solid #e8eaf6; }
+.fg { display:grid;grid-template-columns:1fr 1fr;gap:16px 24px; }
+.fg3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px 24px; }
+@media(max-width:768px){ .fg,.fg3 { grid-template-columns:1fr } }
+.fl { font-size:11px;font-weight:700;color:#546e7a;letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px;display:block; }
+.fc { font-size:13.5px;padding:10px 14px;border-radius:7px;border:1.5px solid #d0d5e8;background:#f8f9ff;width:100%;box-sizing:border-box;font-family:inherit;transition:border-color .15s,background .15s; }
+.fc:focus { border-color:#3949ab;background:#fff;outline:none;box-shadow:0 0 0 3px rgba(57,73,171,.08); }
+textarea.fc { resize:vertical;min-height:80px; }
+.fsec { font-size:11px;font-weight:800;color:#3949ab;letter-spacing:.06em;text-transform:uppercase;margin:20px 0 12px;display:flex;align-items:center;gap:8px; }
+.fsec::after { content:'';flex:1;height:1px;background:linear-gradient(90deg,#c5cae9,transparent); }
+.fchks { display:flex;gap:12px;flex-wrap:wrap;margin-top:14px; }
+.fchk { display:inline-flex;align-items:center;gap:8px;background:#f0f2ff;border:1.5px solid #c5cae9;border-radius:20px;padding:7px 16px;font-size:13px;font-weight:600;color:#3949ab;cursor:pointer; }
+.fchk input[type=checkbox] { width:15px;height:15px;accent-color:#3949ab }
+.fchk:hover { background:#e8eaf6 }
+.fbtn { display:flex;justify-content:flex-end;gap:12px;padding-top:16px;border-top:2px solid #e8eaf6;margin-top:20px; }
 
 /* ── Saved Records Table ── */
 .rec-table-wrap { overflow-x:auto;margin-top:8px;border:1px solid #d1d5db;border-radius:8px }
@@ -160,37 +164,41 @@
 
       <!-- ═══════ TAB 2: Previous Employment ═══════ -->
       <div id="tab-employment" class="doc-tab-body" style="display:none">
-        <div id="emp-form-box" style="margin-bottom:20px">
-          <div style="font-size:15px;font-weight:800;color:#283593;padding:0 0 12px;border-bottom:2px solid #e8eaf6;margin-bottom:16px;display:flex;align-items:center;gap:8px">
-            <span id="emp-form-title">➕ Add Employment</span>
-          </div>
+        <div id="emp-form-box" class="form-box">
+          <div class="form-box-title" id="emp-form-title">➕ Add Employment</div>
           <input type="hidden" id="ef-id">
-          <table class="xl-form">
-            <tr><td class="xl-label">Company Name *</td><td class="xl-val"><input type="text" id="ef-company" placeholder="Company Ltd."></td>
-                <td class="xl-label">Designation</td><td class="xl-val"><input type="text" id="ef-designation" placeholder="Software Engineer"></td></tr>
-            <tr><td class="xl-label">From Date</td><td class="xl-val"><input type="date" id="ef-from"></td>
-                <td class="xl-label">To Date</td><td class="xl-val"><input type="date" id="ef-to"></td></tr>
-            <tr><td class="xl-label">Job Type</td><td class="xl-val"><select id="ef-jobtype"><option>Full Time</option><option>Part Time</option><option>Contract</option><option>Internship</option></select></td>
-                <td class="xl-label">PF Number</td><td class="xl-val"><input type="text" id="ef-pf" placeholder="PF / UAN number"></td></tr>
-            <tr><td class="xl-label">City</td><td class="xl-val"><input type="text" id="ef-city" placeholder="Mumbai"></td>
-                <td class="xl-label">State</td><td class="xl-val"><input type="text" id="ef-state" placeholder="Maharashtra"></td></tr>
-            <tr class="xl-section-row"><td colspan="4">Previous Manager</td></tr>
-            <tr><td class="xl-label">Manager Name</td><td class="xl-val"><input type="text" id="ef-mgr-name" placeholder="Full Name"></td>
-                <td class="xl-label">Manager Phone</td><td class="xl-val"><input type="tel" id="ef-mgr-phone" placeholder="+91 …"></td></tr>
-            <tr><td class="xl-label">Manager Email</td><td colspan="3" class="xl-val"><input type="email" id="ef-mgr-email" placeholder="manager@company.com"></td></tr>
-            <tr class="xl-section-row"><td colspan="4">Previous HR</td></tr>
-            <tr><td class="xl-label">HR Name</td><td class="xl-val"><input type="text" id="ef-hr-name" placeholder="Full Name"></td>
-                <td class="xl-label">HR Phone</td><td class="xl-val"><input type="tel" id="ef-hr-phone" placeholder="+91 …"></td></tr>
-            <tr><td class="xl-label">HR Email</td><td colspan="3" class="xl-val"><input type="email" id="ef-hr-email" placeholder="hr@company.com"></td></tr>
-            <tr class="xl-section-row"><td colspan="4">Additional Details</td></tr>
-            <tr><td class="xl-label">Company Address</td><td colspan="3" class="xl-val"><textarea id="ef-address" placeholder="Full address…"></textarea></td></tr>
-            <tr><td class="xl-label">Reason for Leaving</td><td colspan="3" class="xl-val"><textarea id="ef-reason" placeholder="Reason for leaving…"></textarea></td></tr>
-          </table>
-          <div class="xl-checks">
-            <label class="xl-check-pill"><input type="checkbox" id="ef-overseas"> 🌐 Overseas</label>
-            <label class="xl-check-pill"><input type="checkbox" id="ef-relevant"> ✅ Is Relevant</label>
+          <div class="fg">
+            <div class="form-group"><label class="fl">Company Name *</label><input type="text" id="ef-company" class="fc" placeholder="Company Ltd."></div>
+            <div class="form-group"><label class="fl">Designation</label><input type="text" id="ef-designation" class="fc" placeholder="Software Engineer"></div>
+            <div class="form-group"><label class="fl">From Date</label><input type="date" id="ef-from" class="fc"></div>
+            <div class="form-group"><label class="fl">To Date</label><input type="date" id="ef-to" class="fc"></div>
+            <div class="form-group"><label class="fl">Job Type</label><select id="ef-jobtype" class="fc"><option>Full Time</option><option>Part Time</option><option>Contract</option><option>Internship</option></select></div>
+            <div class="form-group"><label class="fl">PF Number</label><input type="text" id="ef-pf" class="fc" placeholder="PF / UAN number"></div>
+            <div class="form-group"><label class="fl">City</label><input type="text" id="ef-city" class="fc" placeholder="Mumbai"></div>
+            <div class="form-group"><label class="fl">State</label><input type="text" id="ef-state" class="fc" placeholder="Maharashtra"></div>
           </div>
-          <div class="xl-btn-row">
+          <div class="fsec">Previous Manager</div>
+          <div class="fg3">
+            <div class="form-group"><label class="fl">Name</label><input type="text" id="ef-mgr-name" class="fc" placeholder="Full Name"></div>
+            <div class="form-group"><label class="fl">Phone</label><input type="tel" id="ef-mgr-phone" class="fc" placeholder="+91 …"></div>
+            <div class="form-group"><label class="fl">Email</label><input type="email" id="ef-mgr-email" class="fc" placeholder="manager@company.com"></div>
+          </div>
+          <div class="fsec">Previous HR</div>
+          <div class="fg3">
+            <div class="form-group"><label class="fl">Name</label><input type="text" id="ef-hr-name" class="fc" placeholder="Full Name"></div>
+            <div class="form-group"><label class="fl">Phone</label><input type="tel" id="ef-hr-phone" class="fc" placeholder="+91 …"></div>
+            <div class="form-group"><label class="fl">Email</label><input type="email" id="ef-hr-email" class="fc" placeholder="hr@company.com"></div>
+          </div>
+          <div class="fsec">Additional Details</div>
+          <div class="fg">
+            <div class="form-group"><label class="fl">Company Address</label><textarea id="ef-address" class="fc" placeholder="Full address…"></textarea></div>
+            <div class="form-group"><label class="fl">Reason for Leaving</label><textarea id="ef-reason" class="fc" placeholder="Reason for leaving…"></textarea></div>
+          </div>
+          <div class="fchks">
+            <label class="fchk"><input type="checkbox" id="ef-overseas"> 🌐 Overseas</label>
+            <label class="fchk"><input type="checkbox" id="ef-relevant"> ✅ Is Relevant</label>
+          </div>
+          <div class="fbtn">
             <button class="btn btn-outline btn-sm" onclick="resetEmpForm()">✕ Clear</button>
             <button class="btn btn-primary btn-sm" onclick="saveEmployment()">💾 Save Employment</button>
           </div>
@@ -200,29 +208,27 @@
 
       <!-- ═══════ TAB 3: Qualifications ═══════ -->
       <div id="tab-quals" class="doc-tab-body" style="display:none">
-        <div id="qual-form-box" style="margin-bottom:20px">
-          <div style="font-size:15px;font-weight:800;color:#283593;padding:0 0 12px;border-bottom:2px solid #e8eaf6;margin-bottom:16px;display:flex;align-items:center;gap:8px">
-            <span id="qual-form-title">➕ Add Qualification</span>
-          </div>
+        <div id="qual-form-box" class="form-box">
+          <div class="form-box-title" id="qual-form-title">➕ Add Qualification</div>
           <input type="hidden" id="qf-id">
-          <table class="xl-form">
-            <tr><td class="xl-label">Qualification *</td><td class="xl-val"><select id="qf-qual"><option value="">— Select —</option><option>10th</option><option>12th</option><option>Diploma</option><option>Bachelor's</option><option>Master's</option><option>PhD</option><option>Certification</option><option>Other</option></select></td>
-                <td class="xl-label">Degree</td><td class="xl-val"><input type="text" id="qf-degree" placeholder="B.Tech / MBA …"></td></tr>
-            <tr><td class="xl-label">Specialization</td><td class="xl-val"><input type="text" id="qf-spec" placeholder="Computer Science …"></td>
-                <td class="xl-label">Institute Name *</td><td class="xl-val"><input type="text" id="qf-institute" placeholder="University / College …"></td></tr>
-            <tr><td class="xl-label">Board / University</td><td class="xl-val"><input type="text" id="qf-board" placeholder="CBSE / Mumbai University …"></td>
-                <td class="xl-label">Mode of Education</td><td class="xl-val"><select id="qf-mode"><option value="">— Select —</option><option>Regular</option><option>Distance</option><option>Online</option><option>Part Time</option></select></td></tr>
-            <tr><td class="xl-label">State / Location</td><td class="xl-val"><input type="text" id="qf-state" placeholder="Maharashtra"></td>
-                <td class="xl-label">Grade / %</td><td class="xl-val"><input type="text" id="qf-grade" placeholder="8.5 CGPA / 85%"></td></tr>
-            <tr><td class="xl-label">Passing Month</td><td class="xl-val"><select id="qf-month"><option value="">— Month —</option><option value="1">January</option><option value="2">February</option><option value="3">March</option><option value="4">April</option><option value="5">May</option><option value="6">June</option><option value="7">July</option><option value="8">August</option><option value="9">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select></td>
-                <td class="xl-label">Passing Year</td><td class="xl-val"><select id="qf-year"><option value="">— Year —</option></select></td></tr>
-            <tr><td class="xl-label">Achievements</td><td colspan="3" class="xl-val"><textarea id="qf-achievements" placeholder="Gold Medal, Rank 1 …"></textarea></td></tr>
-            <tr><td class="xl-label">Remarks</td><td colspan="3" class="xl-val"><textarea id="qf-remarks" placeholder="Any additional notes …"></textarea></td></tr>
-          </table>
-          <div class="xl-checks">
-            <label class="xl-check-pill"><input type="checkbox" id="qf-highest"> ⭐ Highest Qualification</label>
+          <div class="fg">
+            <div class="form-group"><label class="fl">Qualification *</label><select id="qf-qual" class="fc"><option value="">— Select —</option><option>10th</option><option>12th</option><option>Diploma</option><option>Bachelor's</option><option>Master's</option><option>PhD</option><option>Certification</option><option>Other</option></select></div>
+            <div class="form-group"><label class="fl">Degree</label><input type="text" id="qf-degree" class="fc" placeholder="B.Tech / MBA …"></div>
+            <div class="form-group"><label class="fl">Specialization</label><input type="text" id="qf-spec" class="fc" placeholder="Computer Science …"></div>
+            <div class="form-group"><label class="fl">Institute Name *</label><input type="text" id="qf-institute" class="fc" placeholder="University / College …"></div>
+            <div class="form-group"><label class="fl">Board / University</label><input type="text" id="qf-board" class="fc" placeholder="CBSE / Mumbai University …"></div>
+            <div class="form-group"><label class="fl">Mode of Education</label><select id="qf-mode" class="fc"><option value="">— Select —</option><option>Regular</option><option>Distance</option><option>Online</option><option>Part Time</option></select></div>
+            <div class="form-group"><label class="fl">State / Location</label><input type="text" id="qf-state" class="fc" placeholder="Maharashtra"></div>
+            <div class="form-group"><label class="fl">Grade / %</label><input type="text" id="qf-grade" class="fc" placeholder="8.5 CGPA / 85%"></div>
+            <div class="form-group"><label class="fl">Passing Month</label><select id="qf-month" class="fc"><option value="">— Month —</option><option value="1">January</option><option value="2">February</option><option value="3">March</option><option value="4">April</option><option value="5">May</option><option value="6">June</option><option value="7">July</option><option value="8">August</option><option value="9">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select></div>
+            <div class="form-group"><label class="fl">Passing Year</label><select id="qf-year" class="fc"><option value="">— Year —</option></select></div>
+            <div class="form-group"><label class="fl">Academic Achievements</label><textarea id="qf-achievements" class="fc" placeholder="Gold Medal, Rank 1 …"></textarea></div>
+            <div class="form-group"><label class="fl">Remarks</label><textarea id="qf-remarks" class="fc" placeholder="Any additional notes …"></textarea></div>
           </div>
-          <div class="xl-btn-row">
+          <div class="fchks">
+            <label class="fchk"><input type="checkbox" id="qf-highest"> ⭐ Highest Qualification</label>
+          </div>
+          <div class="fbtn">
             <button class="btn btn-outline btn-sm" onclick="resetQualForm()">✕ Clear</button>
             <button class="btn btn-primary btn-sm" onclick="saveQualification()">💾 Save Qualification</button>
           </div>
