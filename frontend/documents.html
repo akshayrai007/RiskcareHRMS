@@ -673,18 +673,8 @@ function renderTable() {
   const seen = new Set();
 
   for (const grp of DOC_GROUPS) {
-    const grpDocs = grp.keys.filter(k => byKey[k]);
-    if (!grpDocs.length) continue;
-
-    // Group header spanning all columns
-    rows += `<tr>
-      <td colspan="5" style="${XL};background:${grp.bg};color:#fff;font-weight:800;font-size:12px;
-        padding:9px 14px;text-align:center;letter-spacing:.05em">${grp.label}</td>
-    </tr>`;
-
-    // Data rows — alternating within group
-    grpDocs.forEach((k, i) => {
-      rows += buildRow(byKey[k], i);
+    grp.keys.filter(k => byKey[k]).forEach((k, i) => {
+      rows += buildRow(byKey[k], seen.size);
       seen.add(k);
     });
   }
