@@ -469,6 +469,7 @@ function advanceCard(adv, showActions = false) {
 
   return `
     <div class="req-card">
+      ${canAct ? '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><input type="checkbox" class="adv-chk" data-id="' + adv.id + '" style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent)" onchange="advUpdateBulkBar()"><span style="font-size:12px;color:var(--muted);font-weight:600">Select for bulk action</span></div>' : ''}
       <div class="req-top">
         <div style="flex:1">
           ${showActions ? `<div class="req-name">${adv.employee_name} <span class="text-muted fs-sm">(${adv.employee_code})</span></div>` : ''}
@@ -484,8 +485,7 @@ function advanceCard(adv, showActions = false) {
             Level ${adv.current_level || 1}/${((Array.isArray(adv.approval_chain) ? adv.approval_chain : (() => { try { return JSON.parse(adv.approval_chain); } catch(_) { return []; } })()).length || 4)}
           </div>
           ${canAct ? `
-            <input type="checkbox" class="adv-chk" data-id="${adv.id}" style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent);vertical-align:middle;margin-right:8px" onchange="advUpdateBulkBar()">
-            <button class="btn btn-success btn-sm" data-adv-id="${adv.id}" onclick="openApproveById(this)">
+<button class="btn btn-success btn-sm" data-adv-id="${adv.id}" onclick="openApproveById(this)">
               Review (L${currentLevel})
             </button>` : ''}
           ${isPaymentStage ? `
@@ -546,6 +546,7 @@ function myAdvanceCard(adv) {
 
   return `
     <div class="req-card">
+      ${canAct ? '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><input type="checkbox" class="adv-chk" data-id="' + adv.id + '" style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent)" onchange="advUpdateBulkBar()"><span style="font-size:12px;color:var(--muted);font-weight:600">Select for bulk action</span></div>' : ''}
       <div class="req-top">
         <div style="flex:1">
           ${(() => {
