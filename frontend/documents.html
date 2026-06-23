@@ -290,26 +290,20 @@ let _empsLoading = false;
 async function loadEmployees() {
   if (_empsLoading) return;
   _empsLoading = true;
-  document.getElementById('emp-search').placeholder = 'Loading employees…';
   try {
-    // Use /employees directly - always works
-    const r = await api('GET', '/employees?limit=999&is_active=true');
-    const list = r?.data || r?.employees || [];
-    _allEmps = list.map(e => ({
+    const r = await api('GET', '/employees');
+    _allEmps = (r?.data || []).map(e => ({
       id: e.id,
       employee_code: e.employee_code || '',
       first_name: e.first_name || '',
       last_name: e.last_name || '',
       department_name: e.department_name || ''
     }));
-  } catch(e) {
-    console.error('[docs] loadEmployees error:', e);
-    _allEmps = [];
-  }
+  } catch(e) { _allEmps = []; }
   _empsLoading = false;
-  document.getElementById('emp-search').placeholder =
-    _allEmps.length ? `Search ${_allEmps.length} employees…` : 'Search by name or code…';
-  if (document.getElementById('emp-search').value.trim()) onEmpSearch();
+  const inp = document.getElementById('emp-search');
+  if (inp) inp.placeholder = _allEmps.length ? `Search ${_allEmps.length} employees…` : 'Search by name or code…';
+  if (inp && inp.value.trim()) onEmpSearch();
 }
 function onEmpSearch() {
   const q = document.getElementById('emp-search').value.trim().toLowerCase();
