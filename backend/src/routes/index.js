@@ -981,4 +981,20 @@ router.post  ('/performance/assign-reviewer',           authenticate, authorize(
 router.get   ('/geofence/unassigned-employees', authenticate, authorize('admin','super_admin','hr'), geoCtrl.getUnassignedEmployeesGlobal);
 router.post  ('/geofence/fix-office-universal',  authenticate, authorize('admin','super_admin','hr'), geoCtrl.fixOfficeUniversal);
 
+// ── Employee Documents ────────────────────────────────────────────────────────
+router.get   ('/documents/types',                                  authenticate, docsCtrl.getDocumentTypes);
+router.get   ('/documents/:employee_id',                           authenticate, docsCtrl.getDocuments);
+router.post  ('/documents/upload', docsCtrl.upload.single('file'), authenticate, docsCtrl.uploadDocument);
+router.delete('/documents/:id',                                    authenticate, docsCtrl.deleteDocument);
+
+// ── Previous Employment ───────────────────────────────────────────────────────
+router.get   ('/prev-employment/:employee_id', authenticate, docsCtrl.getPrevEmployment);
+router.post  ('/prev-employment',              authenticate, docsCtrl.upsertPrevEmployment);
+router.delete('/prev-employment/:id',          authenticate, docsCtrl.deletePrevEmployment);
+
+// ── Qualifications ────────────────────────────────────────────────────────────
+router.get   ('/qualifications/:employee_id',  authenticate, docsCtrl.getQualifications);
+router.post  ('/qualifications',               authenticate, docsCtrl.upsertQualification);
+router.delete('/qualifications/:id',           authenticate, docsCtrl.deleteQualification);
+
 module.exports = router;

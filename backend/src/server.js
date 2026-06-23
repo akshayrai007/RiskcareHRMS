@@ -134,6 +134,7 @@ io.on('connection', (socket) => {
 const chatUploadDir = require('path').join(__dirname, '..', 'uploads', 'chat');
 if (!require('fs').existsSync(chatUploadDir)) require('fs').mkdirSync(chatUploadDir, { recursive: true });
 app.use('/chat/files', require('express').static(chatUploadDir));  // legacy disk files only
+app.use('/uploads/documents', require('express').static(require('path').join(__dirname, '..', 'uploads', 'documents')));
 
 app.use('/api', routes);  // /api/chat/files/:id served by chatFileController (DB + disk)
 
