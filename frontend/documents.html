@@ -250,8 +250,7 @@
 <script src="app.js"></script>
 <script>
 Auth.guard();
-
-const HR_ROLES = ['hr','admin','super_admin'];
+buildSidebar('documents.html'); = ['hr','admin','super_admin'];
 let currentEmpId = null;
 let pendingFiles = {};
 let _allEmps = [], _prevEmpData = [], _qualData = [];
@@ -269,7 +268,7 @@ const DOC_GROUPS = [
 ];
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-(async function init() {
+window.addEventListener('load', async function() {
   const user = Auth.getUser();
   if (!user) return;
   isHR = HR_ROLES.includes(user.role);
@@ -280,7 +279,6 @@ const DOC_GROUPS = [
     const res = await api('GET', '/documents/employees');
     _allEmps = res?.data || [];
     if (!_allEmps.length) {
-      // fallback: try employees endpoint
       const r2 = await api('GET', '/employees?limit=500');
       _allEmps = r2?.data || [];
     }
@@ -295,7 +293,7 @@ const DOC_GROUPS = [
     if (!e.target.closest('#hr-search-bar'))
       document.getElementById('search-results').style.display = 'none';
   });
-})();
+});
 
 // ── Employee Search ───────────────────────────────────────────────────────────
 function onEmpSearch() {
