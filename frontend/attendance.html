@@ -407,8 +407,8 @@
             </select>
           </div>
         </div>
-        <!-- MY PENDING REQUESTS — always pending only, visible to all roles -->
-        <div id="reg-my-section">
+        <!-- MY PENDING REQUESTS — hidden for HR/admin (they use Approval Queue) -->
+        <div id="reg-my-section" style="display:none">
           <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">⏳ My Pending Requests</div>
           <div id="reg-my-list"><div class="empty-state"><div class="empty-icon">⏳</div><p>Loading…</p></div></div>
         </div>
@@ -2172,6 +2172,7 @@ async function loadRegularizations() {
   const myEl      = document.getElementById('reg-my-list');
   const mySection = document.getElementById('reg-my-section');
   if (Role.is('hr','admin','super_admin')) { if (mySection) mySection.style.display = 'none'; }
+  else { if (mySection) mySection.style.display = ''; }
   if (myEl) {
     myEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0">Loading…</div>';
     try {
