@@ -176,18 +176,18 @@
     <!-- SALARY STRUCTURE TAB (HR / Super Admin) -->
     <div id="tab-salary-structure" style="display:none">
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="flex-wrap:wrap;gap:10px">
           <div class="card-title"><span class="card-title-icon">🏦</span>Salary Structures</div>
-          <div class="flex gap-2" style="flex-wrap:wrap">
+          <div class="flex gap-2" style="flex-wrap:wrap;align-items:center">
             <input id="struct-search" class="form-control" style="width:240px"
               placeholder="Search by name or employee code…"
               oninput="loadSalaryStructures()">
-            <button class="btn btn-outline btn-sm" onclick="loadSalaryStructures()">🔍 Search</button>
+            <button class="btn btn-outline btn-sm" onclick="downloadSalaryStructureExcel()">⬇ Download Excel</button>
           </div>
         </div>
         <div id="struct-summary" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px"></div>
         <div id="struct-table-wrap">
-          <div class="loader"><div class="spinner"></div></div>
+          <div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><p style="color:var(--muted)">Enter an employee name or code to view salary structure.</p></div>
         </div>
       </div>
     </div>
@@ -614,65 +614,131 @@ function switchTab(name) {
   event?.target?.classList?.add('active');
   if (name==='process') loadPayrollStats();
   if (name==='payroll-list') loadPayrollList();
-  if (name==='salary-structure') loadSalaryStructures();
+  if (name==='salary-structure') { const s = document.getElementById('struct-search')?.value?.trim(); if(s) loadSalaryStructures(); }
 }
+
+let _salaryStructData = null;
 
 async function loadSalaryStructures() {
   const el     = document.getElementById('struct-table-wrap');
   const search = document.getElementById('struct-search')?.value?.trim() || '';
-  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
 
-  const qs   = search ? `?search=${encodeURIComponent(search)}` : '';
-  const data = await api('GET', '/payroll/salary-structures' + qs);
-
-  if (!data?.success || !data.data?.length) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏦</div><p>${search?'No salary structure found for "'+search+'"':'No salary structures configured yet.'}</p></div>`;
+  if (!search) {
+    _salaryStructData = null;
     document.getElementById('struct-summary').innerHTML = '';
+    el.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><p style="color:var(--muted)">Enter an employee name or code to view salary structure.</p></div>';
     return;
   }
 
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const data = await api('GET', `/payroll/salary-structures?search=${encodeURIComponent(search)}`);
+
+  if (!data?.success || !data.data?.length) {
+    _salaryStructData = null;
+    document.getElementById('struct-summary').innerHTML = '';
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏦</div><p>No salary structure found for "<b>${search}</b>".</p></div>`;
+    return;
+  }
+
+  _salaryStructData = data.data;
   const rows = data.data;
+
   // Summary stats
   const avgGross = rows.reduce((s,r)=>s+parseFloat(r.gross_salary||0),0)/rows.length;
-  const avgNet   = rows.reduce((s,r)=>s+parseFloat(r.net_salary||0),0)/rows.length;
-  const totalCTC = rows.reduce((s,r)=>s+parseFloat(r.ctc_annual||0),0);
+  const totalNet = rows.reduce((s,r)=>s+parseFloat(r.net_salary||0),0);
+  const totalCTC = rows.reduce((s,r)=>s+parseFloat(r.ctc_monthly||0),0);
+
   document.getElementById('struct-summary').innerHTML = [
-    {icon:'👥', val:rows.length,            lbl:'Employees',     cls:'blue'},
-    {icon:'💰', val:fmt.money(avgGross),    lbl:'Avg Gross/mo',  cls:'green'},
-    {icon:'🏦', val:fmt.money(totalCTC/12), lbl:'Total CTC/mo',  cls:'purple'},
+    {icon:'👥', val:rows.length,           lbl:'Employees'},
+    {icon:'💰', val:fmt.money(avgGross),   lbl:'Avg Gross/mo'},
+    {icon:'🏦', val:fmt.money(totalCTC),   lbl:'Total CTC/mo'},
   ].map(s=>`
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:12px">
-      <div style="font-size:24px">${s.icon}</div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:22px">${s.icon}</div>
       <div>
-        <div style="font-size:20px;font-weight:800;color:var(--text)">${s.val}</div>
-        <div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.4px;text-transform:uppercase">${s.lbl}</div>
+        <div style="font-size:18px;font-weight:800;color:var(--text)">${s.val}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase">${s.lbl}</div>
       </div>
     </div>`).join('');
 
-  el.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr>
-      <th>Code</th><th>Name</th><th>Department</th><th>Designation</th>
-      <th>Basic</th><th>HRA</th><th>Conveyance</th><th>Gross</th>
-      <th>PF(Emp)</th><th>ESI(Emp)</th><th>Deductions</th><th>Net Salary</th><th>CTC/mo</th>
-    </tr></thead>
-    <tbody>${rows.map(r => `<tr>
-      <td style="font-weight:700;color:var(--accent)">${r.employee_code}</td>
-      <td>
-        <div style="font-weight:600">${r.employee_name}</div>
-      </td>
-      <td style="font-size:12px;color:var(--muted)">${r.department_name||'—'}</td>
-      <td style="font-size:12px;color:var(--muted)">${r.designation_title||'—'}</td>
-      <td>${fmt.money(r.basic)}</td>
-      <td>${fmt.money(r.hra)}</td>
-      <td>${fmt.money(r.conveyance)}</td>
-      <td style="font-weight:700">${fmt.money(r.gross_salary)}</td>
-      <td style="color:var(--red)">${fmt.money(r.pf_employee)}</td>
-      <td style="color:var(--red)">${fmt.money(r.esi_employee)}</td>
-      <td style="color:var(--red)">- ${fmt.money(r.total_deductions)}</td>
-      <td style="font-weight:800;color:var(--green)">${fmt.money(r.net_salary)}</td>
-      <td style="font-size:12px;color:var(--muted)">${fmt.money(r.ctc_monthly)}</td>
-    </tr>`).join('')}
-    </tbody></table></div>`;
+  // Full Excel-style table
+  const XLH = `border:1px solid #9ca3af;background:#f0f4ff;font-weight:700;font-size:11px;padding:8px 10px;white-space:nowrap;text-align:center`;
+  const XLD = `border:1px solid #e5e7eb;padding:7px 10px;font-size:12px`;
+
+  el.innerHTML = `
+    <div style="overflow-x:auto;margin-top:4px">
+    <table id="salary-struct-table" style="border-collapse:collapse;width:100%;min-width:1100px">
+      <thead>
+        <tr>
+          <th colspan="4" style="${XLH};background:#e8eaf6;border:1px solid #9fa8da"></th>
+          <th colspan="5" style="${XLH};background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20">💵 EARNINGS (₹/mo)</th>
+          <th colspan="7" style="${XLH};background:#fce4ec;border:1px solid #f48fb1;color:#880e4f">📋 DEDUCTIONS (₹/mo)</th>
+          <th colspan="3" style="${XLH};background:#e3f2fd;border:1px solid #90caf9;color:#0d47a1">💼 SUMMARY</th>
+        </tr>
+        <tr>
+          <th style="${XLH}">Emp Code</th>
+          <th style="${XLH}">Name</th>
+          <th style="${XLH}">Department</th>
+          <th style="${XLH}">Designation</th>
+          <th style="${XLH};background:#e8f5e9">Basic</th>
+          <th style="${XLH};background:#e8f5e9">HRA</th>
+          <th style="${XLH};background:#e8f5e9">Conveyance</th>
+          <th style="${XLH};background:#e8f5e9">Special Allow.</th>
+          <th style="${XLH};background:#e8f5e9">Gross</th>
+          <th style="${XLH};background:#fce4ec">PF (Emp)</th>
+          <th style="${XLH};background:#fce4ec">PF (Empr)</th>
+          <th style="${XLH};background:#fce4ec">ESI (Emp)</th>
+          <th style="${XLH};background:#fce4ec">ESI (Empr)</th>
+          <th style="${XLH};background:#fce4ec">PT</th>
+          <th style="${XLH};background:#fce4ec">LWF</th>
+          <th style="${XLH};background:#fce4ec">TDS</th>
+          <th style="${XLH};background:#e3f2fd">Net Salary</th>
+          <th style="${XLH};background:#e3f2fd">CTC/mo</th>
+          <th style="${XLH};background:#e3f2fd">CTC/yr</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map((r,i) => `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
+          <td style="${XLD};font-weight:700;color:var(--accent)">${r.employee_code}</td>
+          <td style="${XLD};font-weight:600">${r.employee_name}</td>
+          <td style="${XLD};color:var(--muted)">${r.department_name||'—'}</td>
+          <td style="${XLD};color:var(--muted)">${r.designation_title||'—'}</td>
+          <td style="${XLD};text-align:right">${fmt.money(r.basic)}</td>
+          <td style="${XLD};text-align:right">${fmt.money(r.hra)}</td>
+          <td style="${XLD};text-align:right">${fmt.money(r.conveyance)}</td>
+          <td style="${XLD};text-align:right">${fmt.money(r.special_allowance)}</td>
+          <td style="${XLD};text-align:right;font-weight:700;color:#166534">${fmt.money(r.gross_salary)}</td>
+          <td style="${XLD};text-align:right;color:#dc2626">${fmt.money(r.pf_employee)}</td>
+          <td style="${XLD};text-align:right;color:#9f1239">${fmt.money(r.pf_employer)}</td>
+          <td style="${XLD};text-align:right;color:#dc2626">${fmt.money(r.esi_employee)}</td>
+          <td style="${XLD};text-align:right;color:#9f1239">${fmt.money(r.esi_employer)}</td>
+          <td style="${XLD};text-align:right;color:#dc2626">${fmt.money(r.professional_tax||r.pt_amount||0)}</td>
+          <td style="${XLD};text-align:right;color:#dc2626">${fmt.money(r.lwf)}</td>
+          <td style="${XLD};text-align:right;color:#dc2626">${fmt.money(r.tds||r.tds_monthly||0)}</td>
+          <td style="${XLD};text-align:right;font-weight:800;color:#16a34a;font-size:13px">${fmt.money(r.net_salary)}</td>
+          <td style="${XLD};text-align:right;color:#1d4ed8">${fmt.money(r.ctc_monthly)}</td>
+          <td style="${XLD};text-align:right;color:#1d4ed8">${fmt.money(r.ctc_annual)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">${rows.length} employee(s) found</div>
+    </div>`;
+}
+
+function downloadSalaryStructureExcel() {
+  const tbl = document.getElementById('salary-struct-table');
+  if (!tbl || !_salaryStructData) { toast('Search for an employee first', 'error'); return; }
+  const rows = [...tbl.querySelectorAll('tr')];
+  const csv  = rows.map(r =>
+    [...r.querySelectorAll('th,td')].map(c => `"${c.innerText.replace(/"/g,'""').trim()}"`).join(',')
+  ).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(blob), download: 'Salary_Structures.csv'
+  });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  toast('✅ Salary Structure downloaded');
 }
 
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
