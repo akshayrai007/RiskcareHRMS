@@ -28,6 +28,7 @@ const HR_ROLES = ['hr', 'admin', 'super_admin'];
 // ── Fixed document checklist definition ────────────────────────────────────────
 // key must be stable — used as the unique identifier per employee per document
 const DOCUMENT_DEFS = [
+  { key: 'resume',                label: 'Resume / CV',                                mandatory: true  },
   { key: 'broker_qual_renewal',   label: 'Broker Qualification & Renewal Certificate', mandatory: false },
   { key: 'broker_training',       label: 'Broker Training',                            mandatory: false },
   { key: 'passport_photo',        label: 'Passport size photograph',                   mandatory: true  },
@@ -39,7 +40,6 @@ const DOCUMENT_DEFS = [
   { key: 'twelfth_marksheet',     label: '12th Marksheet / Certificate',               mandatory: true  },
   { key: 'graduation_marksheet',  label: 'Graduation Marksheet',                       mandatory: true  },
   { key: 'post_graduation_cert',  label: 'Post Graduation Certificate',                mandatory: false },
-  { key: 'qualification_cert',    label: 'Qualification Certificate',                  mandatory: true  },
   { key: 'last3_payslips',        label: 'Last 3 Months Pay Slips or Bank Statement',  mandatory: true  },
   { key: 'bank_statement_salary', label: 'Bank Statement with AC Details or Cancelled Cheque', mandatory: true },
   { key: 'offer_promo_letter',    label: 'Offer Letter / Appointment Letter & Promotion / Increment Letter', mandatory: true },
@@ -283,5 +283,126 @@ exports.getEmployeesForPicker = async (req, res) => {
   } catch (err) {
     console.error('[getEmployeesForPicker]', err.message);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ── GET /documents/download-zip/:employee_id — zip of all docs + excel sheets ─
+exports.downloadZip = async (req, res) => {
+  try {
+    const reqUser = req.user;
+    const empId   = parseInt(req.params.employee_id);
+    if (!canAccess(reqUser, empId)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    // Get employee info
+    const empRes = await db.query(
+      `SELECT employee_code, first_name, last_name FROM employees WHERE id=$1`, [empId]
+    );
+    const emp = empRes.rows[0];
+    if (!emp) return res.status(404).json({ success: false, message: 'Employee not found' });
+    const empName = `${emp.first_name}_${emp.last_name}`.replace(/[^a-zA-Z0-9_]/g,'_');
+
+    // Get all uploaded documents
+    const docsRes = await db.query(
+      `SELECT doc_key, original_name, file_data, mime_type FROM employee_doc_checklist WHERE employee_id=$1`,
+      [empId]
+    );
+
+    // Get prev employment and qualifications
+    const empDocsDb = require('../config/db');
+    let prevEmpRows = [], qualRows = [];
+    try {
+      const pe = await empDocsDb.query(
+        `SELECT * FROM employee_previous_employment WHERE employee_id=$1 ORDER BY from_date DESC NULLS LAST`, [empId]
+      );
+      prevEmpRows = pe.rows;
+    } catch(_) {}
+    try {
+      const qu = await empDocsDb.query(
+        `SELECT * FROM employee_qualifications WHERE employee_id=$1 ORDER BY passing_year DESC NULLS LAST`, [empId]
+      );
+      qualRows = qu.rows;
+    } catch(_) {}
+
+    const archiver = require('archiver');
+    const archive  = archiver('zip', { zlib:{ level:6 } });
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${empName}_documents.zip"`);
+    archive.pipe(res);
+
+    // Add uploaded files into Documents/ folder
+    const keyCount = {};
+    for (const doc of docsRes.rows) {
+      if (!doc.file_data) continue;
+      const buf = Buffer.from(doc.file_data, 'base64');
+      const defLabel = (DOCUMENT_DEFS.find(d => d.key === doc.doc_key)?.label || doc.doc_key)
+        .replace(/[/\\:*?"<>|]/g,'_');
+      keyCount[doc.doc_key] = (keyCount[doc.doc_key] || 0) + 1;
+      const count  = keyCount[doc.doc_key];
+      const ext    = doc.original_name.includes('.') ? doc.original_name.split('.').pop() : 'bin';
+      const fname  = count > 1 ? `${defLabel}_${count}.${ext}` : `${defLabel}.${ext}`;
+      archive.append(buf, { name: `Documents/${fname}` });
+    }
+
+    // Build Previous Employment Excel
+    if (prevEmpRows.length) {
+      const XLSX = require('xlsx');
+      const peData = prevEmpRows.map(r => ({
+        'Company Name':      r.company_name || '',
+        'Designation':       r.designation  || '',
+        'From Date':         r.from_date    ? new Date(r.from_date).toLocaleDateString('en-IN') : '',
+        'To Date':           r.to_date      ? new Date(r.to_date).toLocaleDateString('en-IN')   : '',
+        'Job Type':          r.job_type     || '',
+        'City':              r.city         || '',
+        'State':             r.state        || '',
+        'PF Number':         r.pf_number    || '',
+        'Prev Manager':      r.prev_manager_name  || '',
+        'Manager Phone':     r.prev_manager_phone || '',
+        'Manager Email':     r.prev_manager_email || '',
+        'Prev HR Name':      r.prev_hr_name  || '',
+        'HR Phone':          r.prev_hr_phone || '',
+        'HR Email':          r.prev_hr_email || '',
+        'Company Address':   r.company_address    || '',
+        'Reason for Leaving':r.reason_for_leaving || '',
+        'Overseas':          r.is_overseas ? 'Yes' : 'No',
+        'Relevant':          r.is_relevant  ? 'Yes' : 'No',
+      }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(peData), 'Previous Employment');
+      const xlsBuf = XLSX.write(wb, { type:'buffer', bookType:'xlsx' });
+      archive.append(xlsBuf, { name: 'Previous_Employment.xlsx' });
+    }
+
+    // Build Qualifications Excel
+    if (qualRows.length) {
+      const XLSX = require('xlsx');
+      const months = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+      const quData = qualRows.map(r => ({
+        'Qualification':          r.qualification          || '',
+        'Degree':                 r.degree                 || '',
+        'Specialization':         r.specialization         || '',
+        'Institute Name':         r.institute_name         || '',
+        'Board / University':     r.board_university       || '',
+        'Mode of Education':      r.mode_of_education      || '',
+        'State / Location':       r.state_location         || '',
+        'Grade / %':              r.grade_percentage       || '',
+        'Passing Month':          r.passing_month ? months[r.passing_month] : '',
+        'Passing Year':           r.passing_year           || '',
+        'Academic Achievements':  r.academic_achievements  || '',
+        'Remarks':                r.remarks                || '',
+        'Highest Qualification':  r.is_highest ? 'Yes' : 'No',
+      }));
+      const wb2 = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb2, XLSX.utils.json_to_sheet(quData), 'Qualifications');
+      const xlsBuf2 = XLSX.write(wb2, { type:'buffer', bookType:'xlsx' });
+      archive.append(xlsBuf2, { name: 'Qualifications.xlsx' });
+    }
+
+    archive.finalize();
+  } catch (err) {
+    console.error('[downloadZip]', err.message);
+    if (!res.headersSent) res.status(500).json({ success: false, message: 'Server error' });
   }
 };

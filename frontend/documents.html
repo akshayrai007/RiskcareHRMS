@@ -172,6 +172,9 @@
               <span class="badge-clear" onclick="clearEmployeeSelection()" title="Clear">×</span>
             </span>
           </div>
+          <div id="zip-btn-wrap" style="display:none">
+            <button class="btn btn-outline btn-sm" onclick="downloadZip()" title="Download all documents + Excel sheets as ZIP">⬇️ Download ZIP</button>
+          </div>
         </div>
       </div>
 
@@ -420,17 +423,20 @@ window.addEventListener('load', async () => {
   buildSidebar('documents.html');
   const user = Auth.getUser();
   isHR = HR_ROLES.includes(user.role);
-  currentEmployeeId = user.id;
+  currentEmployeeId = isHR ? null : user.id;  // HR: no selection until they pick someone
 
   if (isHR) {
     document.getElementById('hr-search-section').style.display = 'block';
-    loadAllEmployees(); // fire-and-forget, don't block
+    loadAllEmployees();
   }
 
-  // Load all tabs in parallel
-  loadDocuments();
-  loadEmploymentRecords();
-  loadQualificationRecords();
+  if (currentEmployeeId) {
+    loadDocuments();
+    loadEmploymentRecords();
+    loadQualificationRecords();
+  } else {
+    showEmptyPicker();
+  }
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -456,6 +462,16 @@ function refreshCurrentTab() {
 async function loadAllEmployees() {
   const res = await api('GET', '/employees');
   if (res?.success) allEmployees = res.data || [];
+}
+
+function showEmptyPicker() {
+  const ph = `<div class="empty-state" style="padding:60px 24px">
+    <div class="empty-icon">🔍</div>
+    <p style="color:var(--muted);font-size:14px">Search and select an employee above to view their documents.</p>
+  </div>`;
+  document.getElementById('table-wrap').innerHTML = ph;
+  document.getElementById('emp-records').innerHTML   = ph;
+  document.getElementById('qual-records').innerHTML  = ph;
 }
 
 function onSearchInput() {
@@ -489,6 +505,7 @@ function selectEmployee(id, label) {
   document.getElementById('hr-search-dropdown').classList.remove('open');
   document.getElementById('hr-selected-label').textContent = label;
   document.getElementById('hr-selected-badge').style.display = '';
+  document.getElementById('zip-btn-wrap').style.display = '';
   pendingFiles = {};
   resetEmpForm();
   resetQualForm();
@@ -498,37 +515,32 @@ function selectEmployee(id, label) {
 }
 
 function clearEmployeeSelection() {
-  currentEmployeeId = Auth.getUser().id;
-  document.getElementById('hr-selected-badge').style.display = 'none';
-  document.getElementById('hr-selected-label').textContent   = '';
-  document.getElementById('hr-search-input').value           = '';
+  currentEmployeeId = null;
+  document.getElementById('hr-selected-badge').style.display  = 'none';
+  document.getElementById('hr-selected-label').textContent    = '';
+  document.getElementById('hr-search-input').value            = '';
+  document.getElementById('zip-btn-wrap').style.display       = 'none';
   pendingFiles = {};
   resetEmpForm();
   resetQualForm();
-  loadDocuments();
-  loadEmploymentRecords();
-  loadQualificationRecords();
+  showEmptyPicker();
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TAB 1 – DOCUMENTS  (group keys match documentsController.js exactly)
 // ══════════════════════════════════════════════════════════════════════════════
 const DOC_GROUPS = [
-  { label:'🏆 Broker / Compliance', cls:'doc-group-broker',
-    keys:['broker_qual_renewal','broker_training'] },
-  { label:'🪪 Identity Documents',  cls:'doc-group-identity',
-    keys:['aadhaar_card','pan_card','id_residence_proof','passport_dl_voterid'] },
-  { label:'🎓 Educational',          cls:'doc-group-edu',
-    keys:['tenth_marksheet','twelfth_marksheet','graduation_marksheet','post_graduation_cert','qualification_cert'] },
-  { label:'💳 Financial',            cls:'doc-group-finance',
-    keys:['last3_payslips','bank_statement_salary','uan_pf_document'] },
-  { label:'🏢 Employment',           cls:'doc-group-employ',
-    keys:['relieving_letter','offer_promo_letter','appointment_ack'] },
-  { label:'📄 Other',                cls:'doc-group-other',
-    keys:['passport_photo','other_certificates'] },
+  { keys:['resume'] },
+  { keys:['broker_qual_renewal','broker_training'] },
+  { keys:['aadhaar_card','pan_card','id_residence_proof','passport_dl_voterid'] },
+  { keys:['tenth_marksheet','twelfth_marksheet','graduation_marksheet','post_graduation_cert'] },
+  { keys:['last3_payslips','bank_statement_salary','uan_pf_document'] },
+  { keys:['relieving_letter','offer_promo_letter','appointment_ack'] },
+  { keys:['passport_photo','other_certificates'] },
 ];
 
 async function loadDocuments() {
+  if (!currentEmployeeId) { showEmptyPicker(); return; }
   document.getElementById('table-wrap').innerHTML = '<div class="loader"><div class="spinner"></div></div>';
   const qs  = currentEmployeeId ? `?employee_id=${currentEmployeeId}` : '';
   const res = await api('GET', '/documents' + qs);
@@ -700,7 +712,8 @@ async function saveAll() {
 // ══════════════════════════════════════════════════════════════════════════════
 async function loadEmploymentRecords() {
   const el    = document.getElementById('emp-records');
-  const empId = currentEmployeeId || Auth.getUser().id;
+  const empId = currentEmployeeId;
+  if (!empId) { el.innerHTML = ''; return; }
   const res   = await api('GET', `/prev-employment/${empId}`);
   if (!res?.success || !res.data?.length) {
     el.innerHTML = ''; return;
@@ -747,7 +760,7 @@ function resetEmpForm() {
 }
 
 async function loadEmpIntoForm(id) {
-  const empId = currentEmployeeId || Auth.getUser().id;
+  const empId = currentEmployeeId;
   const res   = await api('GET', `/prev-employment/${empId}`);
   const rec   = res?.data?.find(r => r.id === id);
   if (!rec) return;
@@ -777,7 +790,7 @@ async function loadEmpIntoForm(id) {
 async function saveEmployment() {
   const company = document.getElementById('ef-company').value.trim();
   if (!company) { toast('Company name is required', 'error'); return; }
-  const empId = currentEmployeeId || Auth.getUser().id;
+  const empId = currentEmployeeId;
   const payload = {
     id:                 document.getElementById('ef-id').value || undefined,
     employee_id:        empId,
@@ -817,7 +830,8 @@ async function deleteEmployment(id) {
 // ══════════════════════════════════════════════════════════════════════════════
 async function loadQualificationRecords() {
   const el    = document.getElementById('qual-records');
-  const empId = currentEmployeeId || Auth.getUser().id;
+  const empId = currentEmployeeId;
+  if (!empId) { el.innerHTML = ''; return; }
   const res   = await api('GET', `/qualifications/${empId}`);
   if (!res?.success || !res.data?.length) {
     el.innerHTML = ''; return;
@@ -865,7 +879,7 @@ function resetQualForm() {
 }
 
 async function loadQualIntoForm(id) {
-  const empId = currentEmployeeId || Auth.getUser().id;
+  const empId = currentEmployeeId;
   const res   = await api('GET', `/qualifications/${empId}`);
   const rec   = res?.data?.find(r => r.id === id);
   if (!rec) return;
@@ -892,7 +906,7 @@ async function saveQualification() {
   const institute = document.getElementById('qf-institute').value.trim();
   if (!qual)      { toast('Qualification is required', 'error'); return; }
   if (!institute) { toast('Institute name is required', 'error'); return; }
-  const empId = currentEmployeeId || Auth.getUser().id;
+  const empId = currentEmployeeId;
   const payload = {
     id:                    document.getElementById('qf-id').value || undefined,
     employee_id:           empId,
@@ -920,6 +934,29 @@ async function deleteQualification(id) {
   const res = await api('DELETE', `/qualifications/${id}`);
   if (res?.success) { toast('Deleted'); loadQualificationRecords(); }
   else toast(res?.message || 'Failed', 'error');
+}
+
+// ── ZIP Download ──────────────────────────────────────────────────────────────
+async function downloadZip() {
+  if (!currentEmployeeId) { toast('No employee selected', 'error'); return; }
+  const btn = document.querySelector('[onclick="downloadZip()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Preparing…'; }
+  try {
+    const res = await fetch(`${API_BASE}/documents/download-zip/${currentEmployeeId}`,
+      { headers: { Authorization: 'Bearer ' + Auth.getToken() } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `employee_${currentEmployeeId}_documents.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('ZIP downloaded ✅');
+  } catch(err) {
+    toast('Download failed: ' + err.message, 'error');
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '⬇️ Download ZIP'; }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

@@ -860,6 +860,7 @@ router.post  ('/it-declaration/proof/:id/review', authenticate, authorize('hr','
 // ── Employee Documents module ─────────────────────────────────────────────────
 router.get   ('/documents/checklist',     authenticate,                    docsCtrl.getChecklistDefs);
 router.get   ('/documents/employees',     authenticate, authorize('hr','admin','super_admin'), docsCtrl.getEmployeesForPicker);
+router.get   ('/documents/download-zip/:employee_id', authenticate,        docsCtrl.downloadZip);
 router.get   ('/documents',                authenticate,                    docsCtrl.getDocuments);
 router.post  ('/documents/upload',         authenticate, docsCtrl.uploadMiddleware, docsCtrl.uploadDocument);
 router.post  ('/documents/upload-multi',   authenticate, (req, res, next) => {
