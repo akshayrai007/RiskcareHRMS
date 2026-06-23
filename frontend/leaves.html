@@ -412,6 +412,11 @@ if (Role.is('hr','super_admin')) {
   });
 }
 
+if (Role.is('hr','super_admin','admin')) {
+  const flBtn = document.getElementById('force-leave-btn');
+  if (flBtn) flBtn.style.display = '';
+}
+
 if (location.hash === '#approvals') switchTab('approvals');
 
 // Pre-load holidays so calcDays can skip them
