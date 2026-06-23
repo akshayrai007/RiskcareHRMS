@@ -134,21 +134,34 @@
 .datetime-date { font-size:12px;font-weight:700;color:#283593 }
 .datetime-time { font-size:11px;color:#5c6bc0 }
 
-/* ── Inline Form — full width, polished ── */
+/* ── Inline Form — single column, full width ── */
 .inline-form-box {
   background:linear-gradient(180deg,#f8f9ff 0%,#f3f4fc 100%);
   border:1.5px solid #c5cae9;border-radius:14px;
   padding:28px 32px;margin-bottom:24px;
   box-shadow:0 2px 12px rgba(57,73,171,.06);
+  max-width:680px;
 }
 .inline-form-box h4 {
   font-size:16px;font-weight:800;color:#283593;margin:0 0 22px;
   display:flex;align-items:center;gap:8px;
   padding-bottom:14px;border-bottom:1.5px solid #c5cae9;
 }
-.form-grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:18px 24px }
-.form-grid-3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px 24px }
-@media(max-width:768px){ .form-grid-2,.form-grid-3 { grid-template-columns:1fr } }
+.inline-form-box .form-group { margin-bottom:16px; }
+.inline-form-box .form-label {
+  font-size:11.5px;font-weight:700;color:#546e7a;
+  letter-spacing:.02em;margin-bottom:6px;display:block;text-transform:uppercase;
+}
+.inline-form-box .form-control {
+  font-size:14px;padding:11px 14px;border-radius:8px;
+  border:1.5px solid #dde0f0;background:#fff;width:100%;box-sizing:border-box;
+  transition:border-color .15s,box-shadow .15s;font-family:inherit;
+}
+.inline-form-box .form-control:focus {
+  border-color:#3949ab;outline:none;
+  box-shadow:0 0 0 3px rgba(57,73,171,.08);
+}
+.inline-form-box textarea.form-control { resize:vertical;min-height:90px }
 
 .form-section-label {
   font-size:11px;font-weight:800;color:#3949ab;letter-spacing:.07em;
@@ -158,36 +171,19 @@
 .form-section-label::after {
   content:'';flex:1;height:1px;background:linear-gradient(90deg,#c5cae9,transparent);
 }
-
-.inline-form-box .form-label {
-  font-size:11.5px;font-weight:700;color:#546e7a;letter-spacing:.02em;margin-bottom:6px;display:block;
-}
-.inline-form-box .form-control {
-  font-size:13.5px;padding:10px 14px;border-radius:8px;
-  border:1.5px solid #dde0f0;background:#fff;width:100%;
-  transition:border-color .15s,box-shadow .15s;
-  font-family:inherit;
-}
-.inline-form-box .form-control:focus {
-  border-color:#3949ab;outline:none;
-  box-shadow:0 0 0 3px rgba(57,73,171,.08);
-}
-.inline-form-box textarea.form-control { resize:vertical;min-height:80px }
-
 .form-btn-row {
   display:flex;gap:12px;margin-top:24px;
   justify-content:flex-end;padding-top:18px;
   border-top:1.5px solid #e0e3ec;
 }
-
 .form-check-row {
-  display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;
+  display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:600;
   color:#3949ab;cursor:pointer;
   background:#e8eaf6;border:1.5px solid #c5cae9;border-radius:8px;
   padding:8px 16px;
 }
 .form-check-row input[type=checkbox] { width:15px;height:15px;accent-color:#3949ab }
-.form-checks-row { display:flex;gap:12px;margin-top:12px;flex-wrap:wrap }
+.form-checks-row { display:flex;gap:12px;margin-top:14px;flex-wrap:wrap }
 
 /* ── Saved Records Cards ── */
 .rec-section-label {
@@ -300,183 +296,171 @@
 
       <!-- ═══════ TAB 2: Previous Employment ═══════ -->
       <div id="tab-employment" class="doc-tab-body" style="display:none">
-
-        <!-- Always-visible form -->
         <div class="inline-form-box" id="emp-form-box">
           <h4 id="emp-form-title">➕ Add Employment</h4>
           <input type="hidden" id="ef-id">
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label class="form-label">Company Name *</label>
-              <input type="text" id="ef-company" class="form-control" placeholder="Company Ltd.">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Designation</label>
-              <input type="text" id="ef-designation" class="form-control" placeholder="Software Engineer">
-            </div>
-            <div class="form-group">
-              <label class="form-label">From Date</label>
-              <input type="date" id="ef-from" class="form-control">
-            </div>
-            <div class="form-group">
-              <label class="form-label">To Date</label>
-              <input type="date" id="ef-to" class="form-control">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Job Type</label>
-              <select id="ef-jobtype" class="form-control">
-                <option value="Full Time">Full Time</option>
-                <option value="Part Time">Part Time</option>
-                <option value="Contract">Contract</option>
-                <option value="Internship">Internship</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">PF Number</label>
-              <input type="text" id="ef-pf" class="form-control" placeholder="PF / UAN number">
-            </div>
-            <div class="form-group">
-              <label class="form-label">City</label>
-              <input type="text" id="ef-city" class="form-control" placeholder="Mumbai">
-            </div>
-            <div class="form-group">
-              <label class="form-label">State</label>
-              <input type="text" id="ef-state" class="form-control" placeholder="Maharashtra">
-            </div>
+
+          <div class="form-group">
+            <label class="form-label">Company Name *</label>
+            <input type="text" id="ef-company" class="form-control" placeholder="Company Ltd.">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Designation</label>
+            <input type="text" id="ef-designation" class="form-control" placeholder="Software Engineer">
+          </div>
+          <div class="form-group">
+            <label class="form-label">From Date</label>
+            <input type="date" id="ef-from" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">To Date</label>
+            <input type="date" id="ef-to" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Job Type</label>
+            <select id="ef-jobtype" class="form-control">
+              <option value="Full Time">Full Time</option>
+              <option value="Part Time">Part Time</option>
+              <option value="Contract">Contract</option>
+              <option value="Internship">Internship</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">PF Number</label>
+            <input type="text" id="ef-pf" class="form-control" placeholder="PF / UAN number">
+          </div>
+          <div class="form-group">
+            <label class="form-label">City</label>
+            <input type="text" id="ef-city" class="form-control" placeholder="Mumbai">
+          </div>
+          <div class="form-group">
+            <label class="form-label">State</label>
+            <input type="text" id="ef-state" class="form-control" placeholder="Maharashtra">
           </div>
 
           <div class="form-section-label">Previous Manager</div>
-          <div class="form-grid-3">
-            <div class="form-group">
-              <label class="form-label">Name</label>
-              <input type="text" id="ef-mgr-name" class="form-control" placeholder="Full Name">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Phone</label>
-              <input type="tel" id="ef-mgr-phone" class="form-control" placeholder="+91 …">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Email</label>
-              <input type="email" id="ef-mgr-email" class="form-control" placeholder="manager@company.com">
-            </div>
+          <div class="form-group">
+            <label class="form-label">Name</label>
+            <input type="text" id="ef-mgr-name" class="form-control" placeholder="Full Name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input type="tel" id="ef-mgr-phone" class="form-control" placeholder="+91 …">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" id="ef-mgr-email" class="form-control" placeholder="manager@company.com">
           </div>
 
           <div class="form-section-label">Previous HR</div>
-          <div class="form-grid-3">
-            <div class="form-group">
-              <label class="form-label">Name</label>
-              <input type="text" id="ef-hr-name" class="form-control" placeholder="Full Name">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Phone</label>
-              <input type="tel" id="ef-hr-phone" class="form-control" placeholder="+91 …">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Email</label>
-              <input type="email" id="ef-hr-email" class="form-control" placeholder="hr@company.com">
-            </div>
+          <div class="form-group">
+            <label class="form-label">Name</label>
+            <input type="text" id="ef-hr-name" class="form-control" placeholder="Full Name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input type="tel" id="ef-hr-phone" class="form-control" placeholder="+91 …">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" id="ef-hr-email" class="form-control" placeholder="hr@company.com">
           </div>
 
           <div class="form-section-label">Additional Details</div>
           <div class="form-group">
             <label class="form-label">Company Address</label>
-            <textarea id="ef-address" class="form-control" rows="2" placeholder="Full address…"></textarea>
+            <textarea id="ef-address" class="form-control" rows="3" placeholder="Full address…"></textarea>
           </div>
-          <div class="form-group" style="margin-top:14px">
+          <div class="form-group">
             <label class="form-label">Reason for Leaving</label>
-            <textarea id="ef-reason" class="form-control" rows="2" placeholder="Reason for leaving…"></textarea>
+            <textarea id="ef-reason" class="form-control" rows="3" placeholder="Reason for leaving…"></textarea>
           </div>
-            <div class="form-checks-row">
+          <div class="form-checks-row">
             <label class="form-check-row"><input type="checkbox" id="ef-overseas"> 🌐 Overseas</label>
             <label class="form-check-row"><input type="checkbox" id="ef-relevant"> ✅ Is Relevant</label>
-            </div>
+          </div>
           <div class="form-btn-row">
             <button class="btn btn-outline btn-sm" onclick="resetEmpForm()">✕ Clear</button>
             <button class="btn btn-primary btn-sm" onclick="saveEmployment()">💾 Save Employment</button>
           </div>
         </div>
-
-        <!-- Saved records list -->
         <div id="emp-records"></div>
       </div>
 
       <!-- ═══════ TAB 3: Qualifications ═══════ -->
       <div id="tab-quals" class="doc-tab-body" style="display:none">
-
-        <!-- Always-visible form -->
         <div class="inline-form-box" id="qual-form-box">
           <h4 id="qual-form-title">➕ Add Qualification</h4>
           <input type="hidden" id="qf-id">
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label class="form-label">Qualification *</label>
-              <select id="qf-qual" class="form-control">
-                <option value="">— Select —</option>
-                <option>10th</option><option>12th</option><option>Diploma</option>
-                <option>Bachelor's</option><option>Master's</option><option>PhD</option>
-                <option>Certification</option><option>Other</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Degree</label>
-              <input type="text" id="qf-degree" class="form-control" placeholder="B.Tech / MBA …">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Specialization</label>
-              <input type="text" id="qf-spec" class="form-control" placeholder="Computer Science …">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Institute Name *</label>
-              <input type="text" id="qf-institute" class="form-control" placeholder="University / College …">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Board / University</label>
-              <input type="text" id="qf-board" class="form-control" placeholder="CBSE / Mumbai University …">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Mode of Education</label>
-              <select id="qf-mode" class="form-control">
-                <option value="">— Select —</option>
-                <option>Regular</option><option>Distance</option>
-                <option>Online</option><option>Part Time</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">State / Location</label>
-              <input type="text" id="qf-state" class="form-control" placeholder="Maharashtra">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Grade / %</label>
-              <input type="text" id="qf-grade" class="form-control" placeholder="8.5 CGPA / 85%">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Passing Month</label>
-              <select id="qf-month" class="form-control">
-                <option value="">— Month —</option>
-                <option value="1">January</option><option value="2">February</option>
-                <option value="3">March</option><option value="4">April</option>
-                <option value="5">May</option><option value="6">June</option>
-                <option value="7">July</option><option value="8">August</option>
-                <option value="9">September</option><option value="10">October</option>
-                <option value="11">November</option><option value="12">December</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Passing Year</label>
-              <select id="qf-year" class="form-control">
-                <option value="">— Year —</option>
-              </select>
-            </div>
+
+          <div class="form-group">
+            <label class="form-label">Qualification *</label>
+            <select id="qf-qual" class="form-control">
+              <option value="">— Select —</option>
+              <option>10th</option><option>12th</option><option>Diploma</option>
+              <option>Bachelor's</option><option>Master's</option><option>PhD</option>
+              <option>Certification</option><option>Other</option>
+            </select>
           </div>
-          <div class="form-group" style="margin-top:4px">
+          <div class="form-group">
+            <label class="form-label">Degree</label>
+            <input type="text" id="qf-degree" class="form-control" placeholder="B.Tech / MBA …">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Specialization</label>
+            <input type="text" id="qf-spec" class="form-control" placeholder="Computer Science …">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Institute Name *</label>
+            <input type="text" id="qf-institute" class="form-control" placeholder="University / College …">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Board / University</label>
+            <input type="text" id="qf-board" class="form-control" placeholder="CBSE / Mumbai University …">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mode of Education</label>
+            <select id="qf-mode" class="form-control">
+              <option value="">— Select —</option>
+              <option>Regular</option><option>Distance</option>
+              <option>Online</option><option>Part Time</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">State / Location</label>
+            <input type="text" id="qf-state" class="form-control" placeholder="Maharashtra">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Grade / %</label>
+            <input type="text" id="qf-grade" class="form-control" placeholder="8.5 CGPA / 85%">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Passing Month</label>
+            <select id="qf-month" class="form-control">
+              <option value="">— Month —</option>
+              <option value="1">January</option><option value="2">February</option>
+              <option value="3">March</option><option value="4">April</option>
+              <option value="5">May</option><option value="6">June</option>
+              <option value="7">July</option><option value="8">August</option>
+              <option value="9">September</option><option value="10">October</option>
+              <option value="11">November</option><option value="12">December</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Passing Year</label>
+            <select id="qf-year" class="form-control">
+              <option value="">— Year —</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label class="form-label">Academic Achievements</label>
-            <textarea id="qf-achievements" class="form-control" rows="2" placeholder="Gold Medal, Rank 1 …"></textarea>
+            <textarea id="qf-achievements" class="form-control" rows="3" placeholder="Gold Medal, Rank 1 …"></textarea>
           </div>
-          <div class="form-group" style="margin-top:14px">
+          <div class="form-group">
             <label class="form-label">Remarks</label>
-            <textarea id="qf-remarks" class="form-control" rows="2" placeholder="Any additional notes …"></textarea>
+            <textarea id="qf-remarks" class="form-control" rows="3" placeholder="Any additional notes …"></textarea>
           </div>
-          <div class="form-checks-row" style="margin-top:12px">
+          <div class="form-checks-row">
             <label class="form-check-row"><input type="checkbox" id="qf-highest"> ⭐ Highest Qualification</label>
           </div>
           <div class="form-btn-row">
@@ -484,8 +468,6 @@
             <button class="btn btn-primary btn-sm" onclick="saveQualification()">💾 Save Qualification</button>
           </div>
         </div>
-
-        <!-- Saved records list -->
         <div id="qual-records"></div>
       </div>
 
