@@ -252,7 +252,6 @@
 Auth.guard();
 
 const HR_ROLES = ['hr','admin','super_admin'];
-let isHR = false;
 let currentEmpId = null;
 let pendingFiles = {};
 let _allEmps = [], _prevEmpData = [], _qualData = [];
@@ -270,31 +269,33 @@ const DOC_GROUPS = [
 ];
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
-  buildSidebar('documents.html');
+(async function init() {
   const user = Auth.getUser();
+  if (!user) return;
   isHR = HR_ROLES.includes(user.role);
 
   if (isHR) {
     document.getElementById('hr-search-bar').style.display = 'flex';
     document.getElementById('doc-empty').style.display = '';
-    // Load employees for search
     const res = await api('GET', '/documents/employees');
     _allEmps = res?.data || [];
+    if (!_allEmps.length) {
+      // fallback: try employees endpoint
+      const r2 = await api('GET', '/employees?limit=500');
+      _allEmps = r2?.data || [];
+    }
   } else {
-    // Employee sees own documents immediately
     currentEmpId = user.id;
     document.getElementById('doc-empty').style.display = 'none';
     document.getElementById('doc-main').style.display = '';
     loadAll();
   }
 
-  // Close search on outside click
   document.addEventListener('click', e => {
     if (!e.target.closest('#hr-search-bar'))
       document.getElementById('search-results').style.display = 'none';
   });
-});
+})();
 
 // ── Employee Search ───────────────────────────────────────────────────────────
 function onEmpSearch() {
