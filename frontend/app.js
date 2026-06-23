@@ -129,6 +129,7 @@ const ICONS = {
   announcements:`📢`,
   form16:       `📋`,
   itdecl:       `🧾`,
+  mydocs:       `📁`,
   payslip:      `💳`,
   employees:    `👥`,
   separation:   `🚪`,
@@ -164,6 +165,7 @@ const NAV_GROUPS = [
   {
     label: 'Documents',
     items: [
+      { href:'documents.html',      icon: ICONS.mydocs,       label:'My Documents',     always:true },
       { href:'form16.html',         icon: ICONS.form16,       label:'Form 16',          always:true },
       { href:'it-declaration.html', icon: ICONS.itdecl,       label:'IT Declaration',   always:true },
       { href:'payslip.html',        icon: ICONS.payslip,      label:'My Payslip',       always:true },

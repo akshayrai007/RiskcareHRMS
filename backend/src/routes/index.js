@@ -23,6 +23,7 @@ const annCtrl        = require('../controllers/announcementController');
 const gkCtrl         = require('../controllers/gkController');
 const provCtrl       = require('../controllers/provisionController');
 const itDeclCtrl     = require('../controllers/itDeclarationController');
+const docsCtrl       = require('../controllers/documentsController');
 
 const ADMIN      = ['admin','super_admin'];
 const HR_ADMIN   = ['hr','admin','super_admin','accounts'];
@@ -855,6 +856,14 @@ router.get   ('/it-declaration/proof/:id',    authenticate,                     
 router.get   ('/it-declaration/:id',           authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.getDeclarationById);
 router.post  ('/it-declaration/:id/review',   authenticate, authorize('hr','accounts'), itDeclCtrl.reviewDeclaration);
 router.post  ('/it-declaration/proof/:id/review', authenticate, authorize('hr','accounts'), itDeclCtrl.reviewProof);
+
+// ── Employee Documents module ─────────────────────────────────────────────────
+router.get   ('/documents/checklist',     authenticate,                    docsCtrl.getChecklistDefs);
+router.get   ('/documents/employees',     authenticate, authorize('hr','admin','super_admin'), docsCtrl.getEmployeesForPicker);
+router.get   ('/documents',                authenticate,                    docsCtrl.getDocuments);
+router.post  ('/documents/upload',         authenticate, docsCtrl.uploadMiddleware, docsCtrl.uploadDocument);
+router.get   ('/documents/file/:id',       authenticate,                    docsCtrl.getFile);
+router.delete('/documents/:id',            authenticate,                    docsCtrl.deleteDocument);
 
 // ── Project Budget Tracking ───────────────────────────────────────────────────
 const projCtrl = require('../controllers/projectController');

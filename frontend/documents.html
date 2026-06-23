@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Documents</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+.doc-table { width:100%;border-collapse:collapse;min-width:760px }
+.doc-table th { border:1px solid #9ca3af;background:#1e293b;color:#fff;font-size:11px;font-weight:700;padding:10px 12px;text-align:center;white-space:nowrap }
+.doc-table td { border:1px solid #e5e7eb;padding:9px 12px;font-size:12.5px;vertical-align:middle;text-align:center }
+.doc-table tr:nth-child(even) td { background:#f9fafb }
+.doc-table tr:hover td { background:#f0f4ff }
+.mand-yes { color:#b91c1c;font-weight:700 }
+.mand-no  { color:#6b7280 }
+.doc-status-ok    { display:inline-flex;align-items:center;gap:4px;color:#166534;font-weight:700;font-size:11.5px }
+.doc-status-empty { display:inline-flex;align-items:center;gap:4px;color:#9ca3af;font-weight:600;font-size:11.5px }
+.emp-picker-bar { display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap }
+.emp-picker-bar select { min-width:260px }
+.doc-file-cell { display:flex;flex-direction:column;align-items:center;gap:4px }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div><div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div></div></div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+      <div class="topbar-title">📄 Documents</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-outline btn-sm" onclick="loadDocuments()">🔄 Refresh</button>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+    <div class="card">
+      <!-- HR-only employee picker -->
+      <div class="emp-picker-bar" id="emp-picker-bar" style="display:none">
+        <span style="font-size:12px;font-weight:700;color:var(--muted)">VIEWING DOCUMENTS FOR:</span>
+        <select id="emp-picker" class="form-control" onchange="onEmployeeChange()"></select>
+      </div>
+
+      <div id="table-wrap"><div class="loader"><div class="spinner"></div></div></div>
+
+      <div style="margin-top:18px;display:flex;justify-content:flex-end;gap:10px">
+        <button class="btn btn-primary" id="save-btn" onclick="saveAll()">💾 Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+Auth.guard();
+
+const HR_ROLES = ['hr', 'admin', 'super_admin'];
+let isHR = false;
+let currentEmployeeId = null;
+let checklistData = [];
+// pendingFiles[doc_key] = File object selected but not yet uploaded
+let pendingFiles = {};
+
+document.addEventListener('DOMContentLoaded', async () => {
+  buildSidebar('documents.html');
+  const user = Auth.getUser();
+  isHR = HR_ROLES.includes(user.role);
+  currentEmployeeId = user.id;
+
+  if (isHR) {
+    document.getElementById('emp-picker-bar').style.display = 'flex';
+    await loadEmployeePicker();
+  }
+  await loadDocuments();
+});
+
+async function loadEmployeePicker() {
+  const res = await api('GET', '/documents/employees');
+  const sel = document.getElementById('emp-picker');
+  if (!res?.success) { sel.innerHTML = '<option>Failed to load employees</option>'; return; }
+  const user = Auth.getUser();
+  sel.innerHTML = res.data.map(e =>
+    `<option value="${e.id}" ${e.id === user.id ? 'selected' : ''}>${e.employee_code} — ${e.first_name} ${e.last_name}${e.id === user.id ? ' (Me)' : ''}</option>`
+  ).join('');
+}
+
+function onEmployeeChange() {
+  currentEmployeeId = parseInt(document.getElementById('emp-picker').value);
+  pendingFiles = {};
+  loadDocuments();
+}
+
+async function loadDocuments() {
+  document.getElementById('table-wrap').innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const qs = currentEmployeeId ? `?employee_id=${currentEmployeeId}` : '';
+  const res = await api('GET', '/documents' + qs);
+  if (!res?.success) {
+    document.getElementById('table-wrap').innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${res?.message || 'Failed to load documents'}</p></div>`;
+    return;
+  }
+  checklistData = res.data;
+  pendingFiles = {};
+  renderTable();
+}
+
+function renderTable() {
+  const wrap = document.getElementById('table-wrap');
+  wrap.innerHTML = `<div style="overflow-x:auto"><table class="doc-table">
+    <thead><tr>
+      <th style="text-align:left">Document</th>
+      <th style="width:100px">Mandatory</th>
+      <th style="width:140px">Status</th>
+      <th style="width:220px">Choose File</th>
+      <th style="width:130px">Updated</th>
+    </tr></thead>
+    <tbody>${checklistData.map(d => {
+      const hasFile = !!d.document;
+      const pending = !!pendingFiles[d.key];
+      const statusHtml = pending
+        ? `<span class="doc-status-empty">📎 ${pendingFiles[d.key].name}</span>`
+        : hasFile
+          ? `<span class="doc-status-ok">✅ Uploaded</span>`
+          : `<span class="doc-status-empty">— Not uploaded</span>`;
+      const viewLink = hasFile && !pending
+        ? `<div style="margin-top:4px"><a href="#" onclick="viewFile(${d.document.id});return false;" style="font-size:11px">View</a> · <a href="#" onclick="removeFile('${d.key}',${d.document.id});return false;" style="font-size:11px;color:#dc2626">Remove</a></div>`
+        : '';
+      return `<tr>
+        <td style="text-align:left;font-weight:600">${d.label}</td>
+        <td class="${d.mandatory ? 'mand-yes' : 'mand-no'}">${d.mandatory ? 'Yes' : 'No'}</td>
+        <td>${statusHtml}${viewLink}</td>
+        <td>
+          <div class="doc-file-cell">
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="font-size:11px"
+              onchange="onFileChosen('${d.key}', this)">
+          </div>
+        </td>
+        <td style="font-size:11px;color:var(--muted)">${hasFile ? fmt.date(d.document.uploaded_at) : '—'}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+function onFileChosen(docKey, input) {
+  const file = input.files[0];
+  if (!file) { delete pendingFiles[docKey]; return; }
+  if (file.size > 5 * 1024 * 1024) { toast('File must be under 5MB', 'error'); input.value = ''; return; }
+  pendingFiles[docKey] = file;
+  renderTable();
+}
+
+async function viewFile(docId) {
+  const token = Auth.getToken();
+  window.open(API_BASE + '/documents/file/' + docId + '?token=' + token, '_blank');
+}
+
+async function removeFile(docKey, docId) {
+  if (!confirm('Remove this document?')) return;
+  const res = await api('DELETE', '/documents/' + docId);
+  if (res?.success) { toast('Document removed'); loadDocuments(); }
+  else toast(res?.message || 'Failed to remove', 'error');
+}
+
+async function saveAll() {
+  const keys = Object.keys(pendingFiles);
+  if (!keys.length) { toast('No new files selected', 'warning'); return; }
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true; btn.textContent = '⏳ Saving...';
+
+  let okCount = 0, failCount = 0;
+  for (const docKey of keys) {
+    const file = pendingFiles[docKey];
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('employee_id', currentEmployeeId);
+    formData.append('doc_key', docKey);
+
+    try {
+      const token = Auth.getToken();
+      const res = await fetch(API_BASE + '/documents/upload', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token },
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) okCount++; else failCount++;
+    } catch (e) {
+      failCount++;
+    }
+  }
+
+  btn.disabled = false; btn.textContent = '💾 Save';
+
+  if (okCount) toast(`${okCount} document(s) saved successfully`);
+  if (failCount) toast(`${failCount} document(s) failed to upload`, 'error');
+
+  pendingFiles = {};
+  loadDocuments();
+}
+</script>
+</body>
+</html>

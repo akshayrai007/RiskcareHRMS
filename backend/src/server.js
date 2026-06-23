@@ -762,6 +762,8 @@ async function start() {
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS separation_reason TEXT DEFAULT NULL`);
         await offerCtrl.initTables();
         await itDeclCtrl.initTables();
+        const docsCtrl = require('./controllers/documentsController');
+        await docsCtrl.initTables();
         const projCtrl = require('./controllers/projectController');
         await projCtrl.migrate();
         // ── Add deactivation_remark column if it doesn't exist ─────────────
