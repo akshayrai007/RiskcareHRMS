@@ -37,6 +37,8 @@
     </div>
     <div class="topbar-right">
       <button class="btn btn-primary btn-sm" onclick="openModal('apply-modal')">+ Apply Leave</button>
+      <span id="force-leave-btn" style="display:none"><button class="btn btn-outline btn-sm" onclick="openForceLeaveModal()">👤 Apply on Behalf</button></span>
+
       <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
       <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
     </div>
@@ -154,8 +156,8 @@
         <div class="card-header" style="flex-wrap:wrap;gap:10px">
           <div class="card-title"><span class="card-title-icon">📊</span>Leave Summary — EL / SL / CL</div>
           <div class="flex gap-2" style="flex-wrap:wrap;align-items:center">
-            <input id="summary-search" class="form-control" style="width:220px" placeholder="Search by name or ID…" oninput="loadLeaveSummary()">
-            <select id="summary-year" class="form-control" style="width:100px" onchange="if(document.getElementById('summary-search').value.trim()) loadLeaveSummary()">
+            <input id="summary-search" class="form-control" style="width:220px" placeholder="Search or leave blank for all…" oninput="loadLeaveSummary()">
+            <select id="summary-year" class="form-control" style="width:100px" onchange="loadLeaveSummary()">
             </select>
             <button class="btn btn-outline btn-sm" onclick="downloadLeaveSummaryExcel()">⬇ Download Excel</button>
           </div>
@@ -170,8 +172,17 @@
         <div class="card-header" style="flex-wrap:wrap;gap:10px">
           <div class="card-title"><span class="card-title-icon">🔄</span>Leave Transactions</div>
           <div class="flex gap-2" style="flex-wrap:wrap;align-items:center">
-            <input id="txn-search" class="form-control" style="width:180px" placeholder="Search by name or ID…" oninput="loadLeaveTransactions()">
-            <select id="txn-type" class="form-control" style="width:130px" onchange="if(document.getElementById('txn-search').value.trim()) loadLeaveTransactions()">
+            <input id="txn-search" class="form-control" style="width:180px" placeholder="Search or leave blank for all…" oninput="loadLeaveTransactions()">
+            <select id="txn-month" class="form-control" style="width:110px" onchange="loadLeaveTransactions()">
+              <option value="">All Months</option>
+              <option value="1">January</option><option value="2">February</option>
+              <option value="3">March</option><option value="4">April</option>
+              <option value="5">May</option><option value="6">June</option>
+              <option value="7">July</option><option value="8">August</option>
+              <option value="9">September</option><option value="10">October</option>
+              <option value="11">November</option><option value="12">December</option>
+            </select>
+            <select id="txn-type" class="form-control" style="width:130px" onchange="loadLeaveTransactions()">
               <option value="">All Types</option>
               <option value="EL">EL (Earned)</option>
               <option value="SL">SL (Sick)</option>
@@ -179,14 +190,14 @@
               <option value="OD">OD</option>
               <option value="LWP">LWP</option>
             </select>
-            <select id="txn-status" class="form-control" style="width:130px" onchange="if(document.getElementById('txn-search').value.trim()) loadLeaveTransactions()">
+            <select id="txn-status" class="form-control" style="width:130px" onchange="loadLeaveTransactions()">
               <option value="">All Status</option>
               <option value="approved">Approved</option>
               <option value="pending">Pending</option>
               <option value="rejected">Rejected</option>
               <option value="cancelled">Cancelled</option>
             </select>
-            <select id="txn-year" class="form-control" style="width:100px" onchange="if(document.getElementById('txn-search').value.trim()) loadLeaveTransactions()">
+            <select id="txn-year" class="form-control" style="width:100px" onchange="loadLeaveTransactions()">
             </select>
             <button class="btn btn-outline btn-sm" onclick="downloadLeaveTransactionsExcel()">⬇ Download Excel</button>
           </div>
@@ -195,6 +206,50 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+
+<!-- HR FORCE APPLY LEAVE MODAL -->
+<div class="modal-backdrop" id="force-leave-modal">
+  <div class="modal" style="width:560px">
+    <div class="modal-header" style="background:linear-gradient(135deg,#1e293b,#334155)">
+      <div class="modal-title" style="color:#fff">👤 Apply Leave on Behalf</div>
+      <button class="modal-close" onclick="closeModal('force-leave-modal')" style="color:#fff">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#6d4c00">
+        ⚡ HR submitting this leave on behalf of the selected employee. It will be auto-approved.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Employee *</label>
+        <select id="fl-employee" class="form-control"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Leave Type *</label>
+        <select id="fl-type" class="form-control">
+          <option value="">Select…</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">From Date *</label>
+          <input id="fl-from" type="date" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">To Date *</label>
+          <input id="fl-to" type="date" class="form-control">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason *</label>
+        <textarea id="fl-reason" class="form-control" rows="2" placeholder="Reason for leave…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('force-leave-modal')">Cancel</button>
+      <button class="btn btn-primary" id="fl-submit-btn" onclick="submitForceLeave()">✅ Submit Leave</button>
+    </div>
   </div>
 </div>
 
@@ -834,8 +889,8 @@ function switchTab(name) {
   event?.target?.classList.add('active');
   if (name==='approvals' && document.getElementById('approvals-list').innerHTML.includes('spinner')) loadApprovals();
   if (name==='all-leaves') loadAllLeaves();
-  if (name==='leave-summary') { if(document.getElementById('summary-search')?.value?.trim()) loadLeaveSummary(); else { const el=document.getElementById('leave-summary-content'); if(el) el.innerHTML='<div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><p style="color:var(--muted)">Enter an employee name or ID to view their leave summary.</p></div>'; } }
-  if (name==='leave-transactions') { if(document.getElementById('txn-search')?.value?.trim()) loadLeaveTransactions(); else { const el=document.getElementById('leave-txn-content'); if(el) el.innerHTML='<div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><p style="color:var(--muted)">Enter an employee name or ID to view their leave transactions.</p></div>'; } }
+  if (name==='leave-summary') loadLeaveSummary();
+  if (name==='leave-transactions') loadLeaveTransactions();
 }
 
 
@@ -850,13 +905,9 @@ async function loadLeaveSummary() {
   const yr   = document.getElementById('summary-year')?.value || new Date().getFullYear();
   const srch = document.getElementById('summary-search')?.value || '';
   el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
-  if (!srch) {
-    el.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><p style="color:var(--muted)">Enter an employee name or ID to view their leave summary.</p></div>';
-    return;
-  }
-  const data = await api('GET', `/leave/summary?year=${yr}&search=${encodeURIComponent(srch)}`);
+  const data = await api('GET', `/leave/summary?year=${yr}${srch?'&search='+encodeURIComponent(srch):''}`);
   if (!data?.success || !data.data?.length) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div><p>No leave summary found for "<b>${srch}</b>".</p></div>`;
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div><p>${srch?'No results for "'+srch+'"':'No leave data found.'}</p></div>`;
     return;
   }
   const XL = `border:1px solid #d1d5db`;
@@ -927,7 +978,7 @@ async function loadLeaveTransactions() {
     return;
   }
   if (!data?.success || !data.data?.length) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🔄</div><p>No transactions found for "<b>${srch}</b>".</p></div>`;
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🔄</div><p>No transactions found${srch?' for "'+srch+'"':''}.</p></div>`;
     return;
   }
   const statusColors = {
@@ -1064,6 +1115,61 @@ async function bulkLeaveAction(action) {
   toast(`${ok} ${action}d${fail?', '+fail+' failed':''}`, ok>0?'success':'error');
   document.getElementById('leave-bulk-remarks').value = ''; loadApprovals();
 }
+
+// ── HR Force Apply Leave on Behalf ───────────────────────────────────────────
+async function openForceLeaveModal() {
+  // Load employees
+  const empSel = document.getElementById('fl-employee');
+  const typSel = document.getElementById('fl-type');
+  empSel.innerHTML = '<option value="">Loading…</option>';
+  typSel.innerHTML = '<option value="">Loading…</option>';
+
+  const [emps, types] = await Promise.all([
+    api('GET', '/employees?limit=500&is_active=true'),
+    api('GET', '/leave/types')
+  ]);
+  empSel.innerHTML = '<option value="">Select employee…</option>' +
+    (emps?.data||[]).map(e => `<option value="${e.id}">${e.first_name} ${e.last_name} (${e.employee_code})</option>`).join('');
+  typSel.innerHTML = '<option value="">Select leave type…</option>' +
+    (types?.data||[]).map(t => `<option value="${t.id}">${t.name} (${t.code})</option>`).join('');
+
+  // Default dates to today
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('fl-from').value = today;
+  document.getElementById('fl-to').value   = today;
+  document.getElementById('fl-reason').value = '';
+  openModal('force-leave-modal');
+}
+
+async function submitForceLeave() {
+  const employee_id   = document.getElementById('fl-employee').value;
+  const leave_type_id = document.getElementById('fl-type').value;
+  const from_date     = document.getElementById('fl-from').value;
+  const to_date       = document.getElementById('fl-to').value;
+  const reason        = document.getElementById('fl-reason').value.trim();
+
+  if (!employee_id || !leave_type_id || !from_date || !to_date || !reason) {
+    toast('All fields are required', 'error'); return;
+  }
+  const btn = document.getElementById('fl-submit-btn');
+  btn.disabled = true; btn.textContent = '⏳ Submitting…';
+
+  const data = await api('POST', '/leave/apply', {
+    employee_id: parseInt(employee_id),
+    leave_type_id, from_date, to_date, reason,
+    is_half_day: false,
+    force_apply: true  // HR flag → auto-approved
+  });
+  btn.disabled = false; btn.textContent = '✅ Submit Leave';
+  if (data?.success) {
+    toast('Leave applied on behalf ✅', 'success');
+    closeModal('force-leave-modal');
+    loadAllLeaves?.();
+  } else {
+    toast(data?.message || 'Failed', 'error');
+  }
+}
+
 </script>
 </body>
 </html>
