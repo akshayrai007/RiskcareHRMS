@@ -7,27 +7,69 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
+/* ── Page-level card override so autocomplete dropdown isn't clipped ── */
+.content .card { overflow: visible; }
+
+/* ── Tabs ── */
+.doc-tabs { display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px }
+.doc-tab-btn {
+  padding:9px 20px;border-radius:8px;border:1.5px solid #c5cae9;background:#fff;
+  font-size:13px;font-weight:600;color:#3949ab;cursor:pointer;transition:all .15s;
+}
+.doc-tab-btn.active { background:#3949ab;color:#fff;border-color:#3949ab;box-shadow:0 2px 8px rgba(57,73,171,.18); }
+.doc-tab-btn:not(.active):hover { background:#e8eaf6; }
+
+/* ── HR Search Bar ── */
+.hr-search-bar { position:relative;margin-bottom:18px }
+.hr-search-input { width:100%;max-width:400px;padding:9px 14px;border-radius:8px;border:1.5px solid #c5cae9;font-size:13px;font-family:inherit;outline:none;transition:border-color .15s }
+.hr-search-input:focus { border-color:#3949ab }
+.hr-search-dropdown {
+  position:absolute;top:calc(100% + 4px);left:0;width:100%;max-width:400px;
+  background:#fff;border:1.5px solid #9fa8da;border-radius:8px;
+  box-shadow:0 6px 24px rgba(0,0,0,.13);z-index:9999;
+  max-height:240px;overflow-y:auto;display:none
+}
+.hr-search-dropdown.open { display:block }
+.hr-search-option {
+  padding:10px 14px;cursor:pointer;font-size:12.5px;border-bottom:1px solid #f0f2f8
+}
+.hr-search-option:last-child { border-bottom:none }
+.hr-search-option:hover { background:#e8eaf6 }
+.hr-selected-badge {
+  display:inline-flex;align-items:center;gap:8px;background:#e8eaf6;
+  border:1px solid #9fa8da;border-radius:20px;padding:5px 12px;font-size:12px;
+  font-weight:600;color:#283593;margin-left:10px
+}
+.hr-selected-badge .badge-clear { cursor:pointer;color:#90a4ae;font-size:15px;line-height:1 }
+.hr-selected-badge .badge-clear:hover { color:#c62828 }
+
+/* ── Documents Table ── */
 .doc-table-wrap { border-radius:10px;overflow:hidden;border:1px solid #9fa8da }
 .doc-table { width:100%;border-collapse:collapse;min-width:960px;table-layout:fixed }
-.doc-table col.col-doc   { width:26%   }
-.doc-table col.col-sub   { width:11%   }
-.doc-table col.col-add   { width:20%   }
-.doc-table col.col-att   { width:24%   }
-.doc-table col.col-date  { width:19%   }
+.doc-table col.col-doc   { width:26% }
+.doc-table col.col-sub   { width:11% }
+.doc-table col.col-add   { width:20% }
+.doc-table col.col-att   { width:24% }
+.doc-table col.col-date  { width:19% }
 .doc-table th {
-  background:#3949ab;
-  color:#fff;font-size:11.5px;font-weight:700;letter-spacing:.03em;
-  padding:11px 14px;text-align:center;white-space:nowrap;border:1px solid #5c6bc0;
+  background:#3949ab;color:#fff;font-size:11.5px;font-weight:700;
+  letter-spacing:.03em;padding:11px 14px;text-align:center;white-space:nowrap;border:1px solid #5c6bc0
 }
 .doc-table th:first-child { text-align:left }
 .doc-table td { border:1px solid #e0e3ec;padding:11px 14px;font-size:12.5px;vertical-align:middle;text-align:center;background:#fff }
-.doc-table tr:nth-child(even) td { background:#f5f6fb }
 .doc-table tr:hover td { background:#e8eaf6 }
 .doc-table td:first-child { word-break:break-word }
+
+/* ── Group Header Rows ── */
+.doc-group-broker   td { background:#1b5e20 !important;color:#fff;font-size:12px;font-weight:800;padding:8px 14px;letter-spacing:.03em }
+.doc-group-identity td { background:#e65100 !important;color:#fff;font-size:12px;font-weight:800;padding:8px 14px;letter-spacing:.03em }
+.doc-group-edu      td { background:#4a148c !important;color:#fff;font-size:12px;font-weight:800;padding:8px 14px;letter-spacing:.03em }
+.doc-group-finance  td { background:#0d47a1 !important;color:#fff;font-size:12px;font-weight:800;padding:8px 14px;letter-spacing:.03em }
+.doc-group-employ   td { background:#b71c1c !important;color:#fff;font-size:12px;font-weight:800;padding:8px 14px;letter-spacing:.03em }
+.doc-group-other    td { background:#37474f !important;color:#fff;font-size:12px;font-weight:800;padding:8px 14px;letter-spacing:.03em }
+
 .doc-status-ok    { display:inline-flex;align-items:center;gap:5px;color:#1b5e20;font-weight:700;font-size:11.5px;background:#e8f5e9;border:1px solid #a5d6a7;padding:3px 10px;border-radius:6px }
 .doc-status-empty { display:inline-flex;align-items:center;gap:4px;color:#78909c;font-weight:600;font-size:11.5px;background:#eceff1;border:1px solid #cfd8dc;padding:3px 10px;border-radius:6px }
-.emp-picker-bar { display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap }
-.emp-picker-bar select { min-width:260px }
 .doc-file-cell { display:flex;flex-direction:column;align-items:center;gap:4px }
 .pending-badge { font-size:10.5px;color:#283593;background:#e8eaf6;border:1px solid #9fa8da;border-radius:6px;padding:3px 8px;margin-top:3px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600 }
 .attach-list { display:flex;flex-direction:column;gap:5px;align-items:center }
@@ -39,7 +81,40 @@
 .datetime-cell { display:flex;flex-direction:column;align-items:center;gap:2px }
 .datetime-date { font-size:12px;font-weight:700;color:#283593 }
 .datetime-time { font-size:11px;color:#5c6bc0;font-weight:600 }
-/* ── Attachment Viewer Modal (matches reimbursement.html) ── */
+
+/* ── Employment & Qualification Cards ── */
+.rec-cards { display:flex;flex-direction:column;gap:12px;margin-bottom:16px }
+.rec-card {
+  border:1.5px solid #e0e3ec;border-radius:10px;padding:16px 18px;background:#fff;
+  display:flex;justify-content:space-between;align-items:flex-start;gap:12px
+}
+.rec-card:hover { border-color:#9fa8da;box-shadow:0 2px 8px rgba(57,73,171,.08) }
+.rec-card-body { flex:1;min-width:0 }
+.rec-card-title { font-size:14px;font-weight:700;color:#283593;margin-bottom:4px }
+.rec-card-sub { font-size:12px;color:#546e7a;margin-bottom:6px }
+.rec-card-tags { display:flex;flex-wrap:wrap;gap:6px }
+.rec-tag { font-size:11px;background:#e8eaf6;color:#3949ab;border-radius:6px;padding:2px 8px;font-weight:600 }
+.rec-card-actions { display:flex;gap:7px;flex-shrink:0 }
+
+/* ── Inline Slide-down Form ── */
+.inline-form-wrap {
+  max-height:0;overflow:hidden;transition:max-height .35s ease;
+  border:0 solid #9fa8da;border-radius:10px;background:#f5f6fb;margin-bottom:12px
+}
+.inline-form-wrap.open {
+  max-height:2400px;border-width:1.5px;padding:20px 22px;margin-bottom:16px
+}
+.form-grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:14px 18px }
+.form-grid-3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px 18px }
+@media(max-width:700px){ .form-grid-2,.form-grid-3 { grid-template-columns:1fr } }
+.form-section-label { font-size:11px;font-weight:800;color:#3949ab;letter-spacing:.06em;text-transform:uppercase;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid #c5cae9 }
+.inline-form-wrap .form-label { font-size:12px;font-weight:600;color:#455a64 }
+.inline-form-wrap .form-control { font-size:13px }
+.form-btn-row { display:flex;gap:10px;margin-top:18px;justify-content:flex-end }
+.form-check-row { display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#37474f;margin-top:4px }
+.form-check-row input[type=checkbox] { width:16px;height:16px;accent-color:#3949ab }
+
+/* ── Attachment Viewer Modal ── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
 .modal-box{background:#fff;border-radius:16px;width:min(640px,95vw);max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.2)}
@@ -74,7 +149,7 @@
       <div class="topbar-title">📄 Documents</div>
     </div>
     <div class="topbar-right">
-      <button class="btn btn-outline btn-sm" onclick="loadDocuments()">🔄 Refresh</button>
+      <button class="btn btn-outline btn-sm" onclick="refreshCurrentTab()">🔄 Refresh</button>
       <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
       <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
     </div>
@@ -82,18 +157,238 @@
 
   <div class="content fade-in">
     <div class="card">
-      <!-- HR-only employee picker -->
-      <div class="emp-picker-bar" id="emp-picker-bar" style="display:none">
-        <span style="font-size:12px;font-weight:700;color:var(--muted)">VIEWING DOCUMENTS FOR:</span>
-        <select id="emp-picker" class="form-control" onchange="onEmployeeChange()"></select>
+
+      <!-- ── HR Search ── -->
+      <div id="hr-search-section" style="display:none;margin-bottom:18px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">VIEWING DOCUMENTS FOR:</div>
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px">
+          <div class="hr-search-bar" style="flex:0 0 auto">
+            <input id="hr-search-input" class="hr-search-input" placeholder="🔍 Type name or employee code…" autocomplete="off"
+              oninput="onSearchInput()" onfocus="showDropdown()" onblur="hideDropdownDelayed()">
+            <div id="hr-search-dropdown" class="hr-search-dropdown"></div>
+          </div>
+          <div id="hr-selected-badge" style="display:none">
+            <span class="hr-selected-badge">
+              <span id="hr-selected-label"></span>
+              <span class="badge-clear" onclick="clearEmployeeSelection()" title="Clear">×</span>
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div id="table-wrap"><div class="loader"><div class="spinner"></div></div></div>
-
-      <div style="margin-top:18px;display:flex;justify-content:flex-end;gap:10px">
-        <button class="btn btn-primary" id="save-btn" onclick="saveAll()">💾 Save</button>
+      <!-- ── Tabs ── -->
+      <div class="doc-tabs">
+        <button class="doc-tab-btn active" id="tab-btn-documents"   onclick="switchDocTab('documents')">📄 Documents</button>
+        <button class="doc-tab-btn"        id="tab-btn-employment"  onclick="switchDocTab('employment')">🏢 Previous Employment</button>
+        <button class="doc-tab-btn"        id="tab-btn-quals"       onclick="switchDocTab('quals')">🎓 Qualifications</button>
       </div>
-    </div>
+
+      <!-- ═══════ TAB 1: Documents ═══════ -->
+      <div id="tab-documents">
+        <div id="table-wrap"><div class="loader"><div class="spinner"></div></div></div>
+        <div style="margin-top:18px;display:flex;justify-content:flex-end;gap:10px">
+          <button class="btn btn-primary" id="save-btn" onclick="saveAll()">💾 Save</button>
+        </div>
+      </div>
+
+      <!-- ═══════ TAB 2: Previous Employment ═══════ -->
+      <div id="tab-employment" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <div style="font-size:14px;font-weight:700;color:#283593">🏢 Previous Employment Records</div>
+          <button class="btn btn-primary btn-sm" id="add-emp-btn" onclick="openEmpForm(null)">+ Add Employment</button>
+        </div>
+
+        <!-- Inline slide-down form -->
+        <div class="inline-form-wrap" id="emp-form-wrap">
+          <div style="font-size:15px;font-weight:700;color:#283593;margin-bottom:14px" id="emp-form-title">➕ Add Employment</div>
+          <input type="hidden" id="ef-id">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Company Name *</label>
+              <input type="text" id="ef-company" class="form-control" placeholder="Company Ltd.">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Designation</label>
+              <input type="text" id="ef-designation" class="form-control" placeholder="Software Engineer">
+            </div>
+            <div class="form-group">
+              <label class="form-label">From Date</label>
+              <input type="date" id="ef-from" class="form-control">
+            </div>
+            <div class="form-group">
+              <label class="form-label">To Date</label>
+              <input type="date" id="ef-to" class="form-control">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Job Type</label>
+              <select id="ef-jobtype" class="form-control">
+                <option value="Full Time">Full Time</option>
+                <option value="Part Time">Part Time</option>
+                <option value="Contract">Contract</option>
+                <option value="Internship">Internship</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">PF Number</label>
+              <input type="text" id="ef-pf" class="form-control" placeholder="PF / UAN number">
+            </div>
+            <div class="form-group">
+              <label class="form-label">City</label>
+              <input type="text" id="ef-city" class="form-control" placeholder="Mumbai">
+            </div>
+            <div class="form-group">
+              <label class="form-label">State</label>
+              <input type="text" id="ef-state" class="form-control" placeholder="Maharashtra">
+            </div>
+          </div>
+
+          <div class="form-section-label">Previous Manager</div>
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label class="form-label">Name</label>
+              <input type="text" id="ef-mgr-name" class="form-control" placeholder="Full Name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="tel" id="ef-mgr-phone" class="form-control" placeholder="+91 …">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" id="ef-mgr-email" class="form-control" placeholder="manager@company.com">
+            </div>
+          </div>
+
+          <div class="form-section-label">Previous HR</div>
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label class="form-label">Name</label>
+              <input type="text" id="ef-hr-name" class="form-control" placeholder="Full Name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="tel" id="ef-hr-phone" class="form-control" placeholder="+91 …">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" id="ef-hr-email" class="form-control" placeholder="hr@company.com">
+            </div>
+          </div>
+
+          <div class="form-section-label">Additional Details</div>
+          <div class="form-group">
+            <label class="form-label">Company Address</label>
+            <textarea id="ef-address" class="form-control" rows="2" placeholder="Full address…"></textarea>
+          </div>
+          <div class="form-group" style="margin-top:12px">
+            <label class="form-label">Reason for Leaving</label>
+            <textarea id="ef-reason" class="form-control" rows="2" placeholder="Reason for leaving…"></textarea>
+          </div>
+          <div style="display:flex;gap:24px;margin-top:10px">
+            <label class="form-check-row"><input type="checkbox" id="ef-overseas"> Overseas</label>
+            <label class="form-check-row"><input type="checkbox" id="ef-relevant"> Is Relevant</label>
+          </div>
+          <div class="form-btn-row">
+            <button class="btn btn-outline btn-sm" onclick="closeEmpForm()">✕ Cancel</button>
+            <button class="btn btn-primary btn-sm" onclick="saveEmployment()">💾 Save Employment</button>
+          </div>
+        </div>
+
+        <div id="emp-records"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+
+      <!-- ═══════ TAB 3: Qualifications ═══════ -->
+      <div id="tab-quals" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <div style="font-size:14px;font-weight:700;color:#283593">🎓 Qualification Records</div>
+          <button class="btn btn-primary btn-sm" id="add-qual-btn" onclick="openQualForm(null)">+ Add Qualification</button>
+        </div>
+
+        <!-- Inline slide-down form -->
+        <div class="inline-form-wrap" id="qual-form-wrap">
+          <div style="font-size:15px;font-weight:700;color:#283593;margin-bottom:14px" id="qual-form-title">➕ Add Qualification</div>
+          <input type="hidden" id="qf-id">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Qualification *</label>
+              <select id="qf-qual" class="form-control">
+                <option value="">— Select —</option>
+                <option>10th</option><option>12th</option><option>Diploma</option>
+                <option>Bachelor's</option><option>Master's</option><option>PhD</option>
+                <option>Certification</option><option>Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Degree</label>
+              <input type="text" id="qf-degree" class="form-control" placeholder="B.Tech / MBA …">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Specialization</label>
+              <input type="text" id="qf-spec" class="form-control" placeholder="Computer Science …">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Institute Name *</label>
+              <input type="text" id="qf-institute" class="form-control" placeholder="University / College …">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Board / University</label>
+              <input type="text" id="qf-board" class="form-control" placeholder="CBSE / Mumbai University …">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mode of Education</label>
+              <select id="qf-mode" class="form-control">
+                <option value="">— Select —</option>
+                <option>Regular</option><option>Distance</option>
+                <option>Online</option><option>Part Time</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">State / Location</label>
+              <input type="text" id="qf-state" class="form-control" placeholder="Maharashtra">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Grade / %</label>
+              <input type="text" id="qf-grade" class="form-control" placeholder="8.5 CGPA / 85%">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Passing Month</label>
+              <select id="qf-month" class="form-control">
+                <option value="">— Month —</option>
+                <option value="1">January</option><option value="2">February</option>
+                <option value="3">March</option><option value="4">April</option>
+                <option value="5">May</option><option value="6">June</option>
+                <option value="7">July</option><option value="8">August</option>
+                <option value="9">September</option><option value="10">October</option>
+                <option value="11">November</option><option value="12">December</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Passing Year</label>
+              <select id="qf-year" class="form-control">
+                <option value="">— Year —</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:4px">
+            <label class="form-label">Academic Achievements</label>
+            <textarea id="qf-achievements" class="form-control" rows="2" placeholder="Gold Medal, Rank 1 …"></textarea>
+          </div>
+          <div class="form-group" style="margin-top:12px">
+            <label class="form-label">Remarks</label>
+            <textarea id="qf-remarks" class="form-control" rows="2" placeholder="Any additional notes …"></textarea>
+          </div>
+          <div style="margin-top:10px">
+            <label class="form-check-row"><input type="checkbox" id="qf-highest"> Highest Qualification</label>
+          </div>
+          <div class="form-btn-row">
+            <button class="btn btn-outline btn-sm" onclick="closeQualForm()">✕ Cancel</button>
+            <button class="btn btn-primary btn-sm" onclick="saveQualification()">💾 Save Qualification</button>
+          </div>
+        </div>
+
+        <div id="qual-records"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+
+    </div><!-- .card -->
   </div>
 </div>
 
@@ -114,37 +409,144 @@ const HR_ROLES = ['hr', 'admin', 'super_admin'];
 let isHR = false;
 let currentEmployeeId = null;
 let checklistData = [];
-// pendingFiles[doc_key] = array of File objects selected but not yet uploaded
 let pendingFiles = {};
+let allEmployees = [];       // for HR autocomplete
+let currentTab = 'documents';
 
-document.addEventListener('DOMContentLoaded', async () => {
+// ── Populate year dropdown for qualifications ──────────────────────────────
+(function() {
+  const sel = document.getElementById('qf-year');
+  const yr = new Date().getFullYear();
+  for (let y = yr; y >= yr - 30; y--) {
+    const o = document.createElement('option');
+    o.value = y; o.textContent = y;
+    sel.appendChild(o);
+  }
+})();
+
+window.addEventListener('load', async () => {
   buildSidebar('documents.html');
   const user = Auth.getUser();
   isHR = HR_ROLES.includes(user.role);
   currentEmployeeId = user.id;
 
   if (isHR) {
-    document.getElementById('emp-picker-bar').style.display = 'flex';
-    await loadEmployeePicker();
+    document.getElementById('hr-search-section').style.display = 'block';
+    await loadAllEmployees();
   }
   await loadDocuments();
+  await loadEmploymentRecords();
+  await loadQualificationRecords();
 });
 
-async function loadEmployeePicker() {
-  const res = await api('GET', '/documents/employees');
-  const sel = document.getElementById('emp-picker');
-  if (!res?.success) { sel.innerHTML = '<option>Failed to load employees</option>'; return; }
-  const user = Auth.getUser();
-  sel.innerHTML = res.data.map(e =>
-    `<option value="${e.id}" ${e.id === user.id ? 'selected' : ''}>${e.employee_code} — ${e.first_name} ${e.last_name}${e.id === user.id ? ' (Me)' : ''}</option>`
-  ).join('');
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ══════════════════════════════════════════════════════════════════════════════
+function switchDocTab(name) {
+  currentTab = name;
+  ['documents','employment','quals'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = (t === name) ? '' : 'none';
+    document.getElementById('tab-btn-' + t).classList.toggle('active', t === name);
+  });
 }
 
-function onEmployeeChange() {
-  currentEmployeeId = parseInt(document.getElementById('emp-picker').value);
+function refreshCurrentTab() {
+  if (currentTab === 'documents')  loadDocuments();
+  if (currentTab === 'employment') loadEmploymentRecords();
+  if (currentTab === 'quals')      loadQualificationRecords();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HR EMPLOYEE SEARCH
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadAllEmployees() {
+  const res = await api('GET', '/employees');
+  if (res?.success) allEmployees = res.data || [];
+}
+
+function onSearchInput() {
+  const q = document.getElementById('hr-search-input').value.trim().toLowerCase();
+  const dd = document.getElementById('hr-search-dropdown');
+  if (!q) { dd.classList.remove('open'); return; }
+  const matches = allEmployees.filter(e =>
+    (e.first_name + ' ' + e.last_name).toLowerCase().includes(q) ||
+    (e.employee_code || '').toLowerCase().includes(q)
+  ).slice(0, 10);
+  if (!matches.length) { dd.innerHTML = '<div class="hr-search-option" style="color:#90a4ae">No results</div>'; dd.classList.add('open'); return; }
+  dd.innerHTML = matches.map(e =>
+    `<div class="hr-search-option" onmousedown="selectEmployee(${e.id}, '${escAttr(e.employee_code)} — ${escAttr(e.first_name)} ${escAttr(e.last_name)}')">${e.employee_code} — ${e.first_name} ${e.last_name}</div>`
+  ).join('');
+  dd.classList.add('open');
+}
+
+function showDropdown() {
+  if (document.getElementById('hr-search-input').value.trim()) onSearchInput();
+}
+
+function hideDropdownDelayed() {
+  setTimeout(() => document.getElementById('hr-search-dropdown').classList.remove('open'), 150);
+}
+
+function selectEmployee(id, label) {
+  currentEmployeeId = id;
+  document.getElementById('hr-search-input').value = '';
+  document.getElementById('hr-search-dropdown').classList.remove('open');
+  document.getElementById('hr-selected-label').textContent = label;
+  document.getElementById('hr-selected-badge').style.display = '';
   pendingFiles = {};
   loadDocuments();
+  loadEmploymentRecords();
+  loadQualificationRecords();
 }
+
+function clearEmployeeSelection() {
+  currentEmployeeId = Auth.getUser().id;
+  document.getElementById('hr-selected-badge').style.display = 'none';
+  document.getElementById('hr-selected-label').textContent = '';
+  document.getElementById('hr-search-input').value = '';
+  pendingFiles = {};
+  loadDocuments();
+  loadEmploymentRecords();
+  loadQualificationRecords();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB 1 – DOCUMENTS
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Group definitions — order matters, key must match the doc 'key' field
+const DOC_GROUPS = [
+  {
+    label: '🏆 Broker / Compliance',
+    cls: 'doc-group-broker',
+    keys: ['broker_qualification', 'broker_training']
+  },
+  {
+    label: '🪪 Identity Documents',
+    cls: 'doc-group-identity',
+    keys: ['aadhaar_card', 'pan_card', 'id_residence_proof']
+  },
+  {
+    label: '🎓 Educational',
+    cls: 'doc-group-edu',
+    keys: ['10th', '12th', 'graduation', 'pg', 'qualification_cert']
+  },
+  {
+    label: '💳 Financial',
+    cls: 'doc-group-finance',
+    keys: ['pay_slips', 'bank_statement']
+  },
+  {
+    label: '🏢 Employment',
+    cls: 'doc-group-employ',
+    keys: ['prev_employment_cert', 'relieving_letter', 'appointment_letter']
+  },
+  {
+    label: '📄 Other',
+    cls: 'doc-group-other',
+    keys: ['other']
+  }
+];
 
 async function loadDocuments() {
   document.getElementById('table-wrap').innerHTML = '<div class="loader"><div class="spinner"></div></div>';
@@ -160,6 +562,24 @@ async function loadDocuments() {
 }
 
 function renderTable() {
+  // Build a map from key → row data
+  const byKey = {};
+  for (const d of checklistData) byKey[d.key] = d;
+
+  let rows = '';
+  for (const grp of DOC_GROUPS) {
+    // Group header row
+    rows += `<tr class="${grp.cls}"><td colspan="5">${grp.label}</td></tr>`;
+    for (const key of grp.keys) {
+      if (byKey[key]) rows += buildRow(byKey[key]);
+    }
+  }
+  // Any keys not in groups (fallback)
+  const groupedKeys = DOC_GROUPS.flatMap(g => g.keys);
+  for (const d of checklistData) {
+    if (!groupedKeys.includes(d.key)) rows += buildRow(d);
+  }
+
   const wrap = document.getElementById('table-wrap');
   wrap.innerHTML = `<div class="doc-table-wrap" style="overflow-x:auto"><table class="doc-table">
     <colgroup>
@@ -172,7 +592,7 @@ function renderTable() {
       <th>Attachments</th>
       <th>Updated (Date &amp; Time)</th>
     </tr></thead>
-    <tbody>${checklistData.map(d => buildRow(d)).join('')}</tbody>
+    <tbody>${rows}</tbody>
   </table></div>`;
 }
 
@@ -204,7 +624,6 @@ function buildRow(d) {
         </div>`).join('') + `</div>`;
   }
 
-  // Date & time of the most recent upload (documents are pre-sorted newest-first by the API)
   let dtHtml = `<span class="doc-status-empty">—</span>`;
   if (hasFiles) {
     const dt = docs[0].uploaded_at ? new Date(docs[0].uploaded_at) : null;
@@ -224,41 +643,30 @@ function buildRow(d) {
   </tr>`;
 }
 
-function escAttr(s) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-}
-
 function onFilesChosen(docKey, input) {
   const newFiles = Array.from(input.files);
   if (!newFiles.length) return;
-
   const oversized = newFiles.filter(f => f.size > 5 * 1024 * 1024);
   if (oversized.length) {
     toast(`${oversized.map(f => f.name).join(', ')} exceed 5MB limit`, 'error');
-    input.value = '';
-    return;
+    input.value = ''; return;
   }
-
   pendingFiles[docKey] = [...(pendingFiles[docKey] || []), ...newFiles];
   renderTable();
 }
 
-// ── Attachment Viewer ──────────────────────────────────────────────────────────
 async function viewAttachment(docId, name, mime) {
   document.getElementById('viewerTitle').textContent = '📎 ' + (name || 'Attachment');
   document.getElementById('viewerBody').innerHTML = '<div style="text-align:center;padding:30px;color:#888">Loading…</div>';
   document.getElementById('viewerModal').classList.add('open');
-
-  const url   = `${API_BASE}/documents/file/${docId}`;
+  const url = `${API_BASE}/documents/file/${docId}`;
   const token = Auth.getToken();
-
   try {
     const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const blob = await res.blob();
     const blobUrl = URL.createObjectURL(blob);
     const actualMime = blob.type || mime || '';
-
     if (actualMime.startsWith('image/')) {
       document.getElementById('viewerBody').innerHTML =
         `<img src="${blobUrl}" style="max-width:100%;max-height:72vh;border-radius:8px;display:block;margin:0 auto" alt="${name}"/>
@@ -274,13 +682,11 @@ async function viewAttachment(docId, name, mime) {
     }
   } catch (err) {
     document.getElementById('viewerBody').innerHTML =
-      `<p style="color:#c62828">Failed to load attachment. Please try again.<br><small>${err.message}</small></p>`;
+      `<p style="color:#c62828">Failed to load attachment.<br><small>${err.message}</small></p>`;
   }
 }
 
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
 });
@@ -295,20 +701,16 @@ async function removeFile(docId) {
 async function saveAll() {
   const keys = Object.keys(pendingFiles).filter(k => pendingFiles[k]?.length);
   if (!keys.length) { toast('No new files selected', 'warning'); return; }
-
   const btn = document.getElementById('save-btn');
   btn.disabled = true; btn.textContent = '⏳ Saving...';
-
   let okCount = 0, failCount = 0;
   const token = Auth.getToken();
-
   for (const docKey of keys) {
     const files = pendingFiles[docKey];
     const formData = new FormData();
     files.forEach(f => formData.append('files', f));
     formData.append('employee_id', currentEmployeeId);
     formData.append('doc_key', docKey);
-
     try {
       const res = await fetch(API_BASE + '/emp-documents/upload-multi', {
         method: 'POST',
@@ -317,18 +719,272 @@ async function saveAll() {
       });
       const data = await res.json();
       if (data.success) okCount += files.length; else failCount += files.length;
-    } catch (e) {
-      failCount += files.length;
+    } catch (e) { failCount += files.length; }
+  }
+  btn.disabled = false; btn.textContent = '💾 Save';
+  if (okCount) toast(`${okCount} file(s) saved successfully`);
+  if (failCount) toast(`${failCount} file(s) failed to upload`, 'error');
+  pendingFiles = {};
+  loadDocuments();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB 2 – PREVIOUS EMPLOYMENT
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadEmploymentRecords() {
+  const el = document.getElementById('emp-records');
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const empId = currentEmployeeId || Auth.getUser().id;
+  const res = await api('GET', `/prev-employment/${empId}`);
+  if (!res?.success || !res.data?.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:32px"><div class="empty-icon">🏢</div><p style="color:var(--muted)">No previous employment records yet.</p></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="rec-cards">${res.data.map(r => buildEmpCard(r)).join('')}</div>`;
+}
+
+function buildEmpCard(r) {
+  const from = r.from_date ? fmt.date(r.from_date) : '—';
+  const to   = r.to_date   ? fmt.date(r.to_date)   : 'Present';
+  const tags = [
+    r.job_type && `<span class="rec-tag">${r.job_type}</span>`,
+    r.city     && `<span class="rec-tag">📍 ${r.city}${r.state ? ', ' + r.state : ''}</span>`,
+    r.is_overseas && `<span class="rec-tag" style="background:#e0f2fe;color:#0277bd">🌐 Overseas</span>`,
+    r.is_relevant && `<span class="rec-tag" style="background:#f3e5f5;color:#6a1b9a">✅ Relevant</span>`,
+    r.pf_number   && `<span class="rec-tag" style="background:#e8f5e9;color:#2e7d32">🏦 PF: ${r.pf_number}</span>`,
+  ].filter(Boolean).join('');
+  const hrBtns = isHR ? `
+    <button class="btn btn-outline btn-sm" onclick="openEmpForm(${r.id})" title="Edit">✏️</button>
+    <button class="btn btn-sm" style="background:#fce4ec;color:#c62828;border:1px solid #f48fb1" onclick="deleteEmployment(${r.id})" title="Delete">🗑️</button>
+  ` : '';
+  return `<div class="rec-card">
+    <div class="rec-card-body">
+      <div class="rec-card-title">🏢 ${r.company_name}${r.designation ? ` — ${r.designation}` : ''}</div>
+      <div class="rec-card-sub">📅 ${from} → ${to}</div>
+      ${tags ? `<div class="rec-card-tags">${tags}</div>` : ''}
+      ${r.reason_for_leaving ? `<div style="font-size:11.5px;color:#78909c;margin-top:6px">Reason: ${r.reason_for_leaving}</div>` : ''}
+    </div>
+    <div class="rec-card-actions">${hrBtns}</div>
+  </div>`;
+}
+
+let _empRecords = [];
+
+async function openEmpForm(id) {
+  const wrap = document.getElementById('emp-form-wrap');
+  document.getElementById('emp-form-title').textContent = id ? '✏️ Edit Employment' : '➕ Add Employment';
+  // Reset
+  ['ef-id','ef-company','ef-designation','ef-from','ef-to','ef-pf',
+   'ef-city','ef-state','ef-mgr-name','ef-mgr-phone','ef-mgr-email',
+   'ef-hr-name','ef-hr-phone','ef-hr-email','ef-address','ef-reason'].forEach(fid => {
+    const el = document.getElementById(fid);
+    if (el) el.value = '';
+  });
+  document.getElementById('ef-jobtype').value = 'Full Time';
+  document.getElementById('ef-overseas').checked = false;
+  document.getElementById('ef-relevant').checked = false;
+
+  if (id) {
+    // load existing
+    const empId = currentEmployeeId || Auth.getUser().id;
+    const res = await api('GET', `/prev-employment/${empId}`);
+    const rec = res?.data?.find(r => r.id === id);
+    if (rec) {
+      document.getElementById('ef-id').value = rec.id;
+      document.getElementById('ef-company').value     = rec.company_name || '';
+      document.getElementById('ef-designation').value = rec.designation  || '';
+      document.getElementById('ef-from').value        = rec.from_date ? rec.from_date.slice(0,10) : '';
+      document.getElementById('ef-to').value          = rec.to_date   ? rec.to_date.slice(0,10)   : '';
+      document.getElementById('ef-jobtype').value     = rec.job_type  || 'Full Time';
+      document.getElementById('ef-pf').value          = rec.pf_number || '';
+      document.getElementById('ef-city').value        = rec.city      || '';
+      document.getElementById('ef-state').value       = rec.state     || '';
+      document.getElementById('ef-mgr-name').value    = rec.prev_manager_name  || '';
+      document.getElementById('ef-mgr-phone').value   = rec.prev_manager_phone || '';
+      document.getElementById('ef-mgr-email').value   = rec.prev_manager_email || '';
+      document.getElementById('ef-hr-name').value     = rec.prev_hr_name  || '';
+      document.getElementById('ef-hr-phone').value    = rec.prev_hr_phone || '';
+      document.getElementById('ef-hr-email').value    = rec.prev_hr_email || '';
+      document.getElementById('ef-address').value     = rec.company_address    || '';
+      document.getElementById('ef-reason').value      = rec.reason_for_leaving || '';
+      document.getElementById('ef-overseas').checked  = !!rec.is_overseas;
+      document.getElementById('ef-relevant').checked  = !!rec.is_relevant;
     }
   }
 
-  btn.disabled = false; btn.textContent = '💾 Save';
+  wrap.classList.add('open');
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
-  if (okCount) toast(`${okCount} file(s) saved successfully`);
-  if (failCount) toast(`${failCount} file(s) failed to upload`, 'error');
+function closeEmpForm() {
+  document.getElementById('emp-form-wrap').classList.remove('open');
+}
 
-  pendingFiles = {};
-  loadDocuments();
+async function saveEmployment() {
+  const company = document.getElementById('ef-company').value.trim();
+  if (!company) { toast('Company name is required', 'error'); return; }
+  const empId = currentEmployeeId || Auth.getUser().id;
+  const payload = {
+    id:                   document.getElementById('ef-id').value || undefined,
+    employee_id:          empId,
+    company_name:         company,
+    designation:          document.getElementById('ef-designation').value.trim(),
+    from_date:            document.getElementById('ef-from').value || null,
+    to_date:              document.getElementById('ef-to').value   || null,
+    job_type:             document.getElementById('ef-jobtype').value,
+    pf_number:            document.getElementById('ef-pf').value.trim(),
+    city:                 document.getElementById('ef-city').value.trim(),
+    state:                document.getElementById('ef-state').value.trim(),
+    prev_manager_name:    document.getElementById('ef-mgr-name').value.trim(),
+    prev_manager_phone:   document.getElementById('ef-mgr-phone').value.trim(),
+    prev_manager_email:   document.getElementById('ef-mgr-email').value.trim(),
+    prev_hr_name:         document.getElementById('ef-hr-name').value.trim(),
+    prev_hr_phone:        document.getElementById('ef-hr-phone').value.trim(),
+    prev_hr_email:        document.getElementById('ef-hr-email').value.trim(),
+    company_address:      document.getElementById('ef-address').value.trim(),
+    reason_for_leaving:   document.getElementById('ef-reason').value.trim(),
+    is_overseas:          document.getElementById('ef-overseas').checked,
+    is_relevant:          document.getElementById('ef-relevant').checked,
+  };
+  const res = await api('POST', '/prev-employment', payload);
+  if (res?.success) {
+    toast('Employment saved ✅');
+    closeEmpForm();
+    loadEmploymentRecords();
+  } else toast(res?.message || 'Failed to save', 'error');
+}
+
+async function deleteEmployment(id) {
+  if (!confirm('Delete this employment record?')) return;
+  const res = await api('DELETE', `/prev-employment/${id}`);
+  if (res?.success) { toast('Record deleted'); loadEmploymentRecords(); }
+  else toast(res?.message || 'Failed to delete', 'error');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB 3 – QUALIFICATIONS
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadQualificationRecords() {
+  const el = document.getElementById('qual-records');
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const empId = currentEmployeeId || Auth.getUser().id;
+  const res = await api('GET', `/qualifications/${empId}`);
+  if (!res?.success || !res.data?.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:32px"><div class="empty-icon">🎓</div><p style="color:var(--muted)">No qualification records yet.</p></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="rec-cards">${res.data.map(r => buildQualCard(r)).join('')}</div>`;
+}
+
+const MONTHS = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function buildQualCard(r) {
+  const passed = [r.passing_month ? MONTHS[r.passing_month] : '', r.passing_year].filter(Boolean).join(' ');
+  const tags = [
+    r.qualification && `<span class="rec-tag">${r.qualification}</span>`,
+    r.mode_of_education && `<span class="rec-tag">${r.mode_of_education}</span>`,
+    r.grade_percentage  && `<span class="rec-tag">📊 ${r.grade_percentage}</span>`,
+    passed              && `<span class="rec-tag">📅 ${passed}</span>`,
+    r.is_highest        && `<span class="rec-tag" style="background:#fff8e1;color:#e65100">⭐ Highest</span>`,
+  ].filter(Boolean).join('');
+  const hrBtns = isHR ? `
+    <button class="btn btn-outline btn-sm" onclick="openQualForm(${r.id})" title="Edit">✏️</button>
+    <button class="btn btn-sm" style="background:#fce4ec;color:#c62828;border:1px solid #f48fb1" onclick="deleteQualification(${r.id})" title="Delete">🗑️</button>
+  ` : '';
+  return `<div class="rec-card">
+    <div class="rec-card-body">
+      <div class="rec-card-title">🎓 ${r.degree || r.qualification}${r.specialization ? ` — ${r.specialization}` : ''}</div>
+      <div class="rec-card-sub">🏫 ${r.institute_name}${r.board_university ? ` · ${r.board_university}` : ''}</div>
+      ${tags ? `<div class="rec-card-tags">${tags}</div>` : ''}
+      ${r.academic_achievements ? `<div style="font-size:11.5px;color:#78909c;margin-top:6px">🏆 ${r.academic_achievements}</div>` : ''}
+    </div>
+    <div class="rec-card-actions">${hrBtns}</div>
+  </div>`;
+}
+
+async function openQualForm(id) {
+  const wrap = document.getElementById('qual-form-wrap');
+  document.getElementById('qual-form-title').textContent = id ? '✏️ Edit Qualification' : '➕ Add Qualification';
+  ['qf-id','qf-degree','qf-spec','qf-institute','qf-board','qf-state','qf-grade','qf-achievements','qf-remarks'].forEach(fid => {
+    const el = document.getElementById(fid); if (el) el.value = '';
+  });
+  document.getElementById('qf-qual').value  = '';
+  document.getElementById('qf-mode').value  = '';
+  document.getElementById('qf-month').value = '';
+  document.getElementById('qf-year').value  = '';
+  document.getElementById('qf-highest').checked = false;
+
+  if (id) {
+    const empId = currentEmployeeId || Auth.getUser().id;
+    const res = await api('GET', `/qualifications/${empId}`);
+    const rec = res?.data?.find(r => r.id === id);
+    if (rec) {
+      document.getElementById('qf-id').value           = rec.id;
+      document.getElementById('qf-qual').value         = rec.qualification       || '';
+      document.getElementById('qf-degree').value       = rec.degree              || '';
+      document.getElementById('qf-spec').value         = rec.specialization      || '';
+      document.getElementById('qf-institute').value    = rec.institute_name      || '';
+      document.getElementById('qf-board').value        = rec.board_university    || '';
+      document.getElementById('qf-mode').value         = rec.mode_of_education   || '';
+      document.getElementById('qf-state').value        = rec.state_location      || '';
+      document.getElementById('qf-grade').value        = rec.grade_percentage    || '';
+      document.getElementById('qf-month').value        = rec.passing_month       || '';
+      document.getElementById('qf-year').value         = rec.passing_year        || '';
+      document.getElementById('qf-achievements').value = rec.academic_achievements || '';
+      document.getElementById('qf-remarks').value      = rec.remarks             || '';
+      document.getElementById('qf-highest').checked    = !!rec.is_highest;
+    }
+  }
+
+  wrap.classList.add('open');
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeQualForm() {
+  document.getElementById('qual-form-wrap').classList.remove('open');
+}
+
+async function saveQualification() {
+  const qual      = document.getElementById('qf-qual').value;
+  const institute = document.getElementById('qf-institute').value.trim();
+  if (!qual)      { toast('Qualification is required', 'error'); return; }
+  if (!institute) { toast('Institute name is required', 'error'); return; }
+  const empId = currentEmployeeId || Auth.getUser().id;
+  const payload = {
+    id:                   document.getElementById('qf-id').value || undefined,
+    employee_id:          empId,
+    qualification:        qual,
+    degree:               document.getElementById('qf-degree').value.trim(),
+    specialization:       document.getElementById('qf-spec').value.trim(),
+    institute_name:       institute,
+    board_university:     document.getElementById('qf-board').value.trim(),
+    mode_of_education:    document.getElementById('qf-mode').value,
+    state_location:       document.getElementById('qf-state').value.trim(),
+    grade_percentage:     document.getElementById('qf-grade').value.trim(),
+    passing_month:        document.getElementById('qf-month').value || null,
+    passing_year:         document.getElementById('qf-year').value  || null,
+    academic_achievements: document.getElementById('qf-achievements').value.trim(),
+    remarks:              document.getElementById('qf-remarks').value.trim(),
+    is_highest:           document.getElementById('qf-highest').checked,
+  };
+  const res = await api('POST', '/qualifications', payload);
+  if (res?.success) {
+    toast('Qualification saved ✅');
+    closeQualForm();
+    loadQualificationRecords();
+  } else toast(res?.message || 'Failed to save', 'error');
+}
+
+async function deleteQualification(id) {
+  if (!confirm('Delete this qualification record?')) return;
+  const res = await api('DELETE', `/qualifications/${id}`);
+  if (res?.success) { toast('Record deleted'); loadQualificationRecords(); }
+  else toast(res?.message || 'Failed to delete', 'error');
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function escAttr(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/'/g,"\\'").replace(/"/g,'&quot;');
 }
 </script>
 </body>

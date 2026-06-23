@@ -987,6 +987,13 @@ router.get   ('/emp-documents/types',                                         au
 router.get   ('/emp-documents/:employee_id',                                  authenticate, empDocsCtrl.getDocuments);
 router.post  ('/emp-documents/upload', empDocsCtrl.upload.single('file'),    authenticate, empDocsCtrl.uploadDocument);
 router.delete('/emp-documents/:id',                                           authenticate, empDocsCtrl.deleteDocument);
+// Multi-file upload for the documents checklist page
+router.post  ('/emp-documents/upload-multi', authenticate, (req, res, next) => {
+  docsCtrl.uploadMultiMiddleware(req, res, (err) => {
+    if (err) return res.status(400).json({ success: false, message: err.message || 'File upload error' });
+    next();
+  });
+}, docsCtrl.uploadMultiDocument);
 
 // ── Previous Employment ───────────────────────────────────────────────────────
 router.get   ('/prev-employment/:employee_id', authenticate, empDocsCtrl.getPrevEmployment);
