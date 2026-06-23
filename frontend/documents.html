@@ -277,12 +277,22 @@ window.addEventListener('load', async function() {
   if (isHR) {
     document.getElementById('hr-search-bar').style.display = 'flex';
     document.getElementById('doc-empty').style.display = '';
+    // Try primary endpoint
     const res = await api('GET', '/documents/employees');
-    _allEmps = res?.data || [];
-    if (!_allEmps.length) {
-      const r2 = await api('GET', '/employees?limit=500');
-      _allEmps = r2?.data || [];
+    if (res?.success && res.data?.length) {
+      _allEmps = res.data;
+    } else {
+      // Fallback to employees endpoint
+      const r2 = await api('GET', '/employees?limit=999&is_active=true');
+      _allEmps = (r2?.data || []).map(e => ({
+        id: e.id,
+        employee_code: e.employee_code,
+        first_name: e.first_name,
+        last_name: e.last_name || '',
+        department_name: e.department_name || ''
+      }));
     }
+    console.log('[docs] employees loaded:', _allEmps.length);
   } else {
     currentEmpId = user.id;
     document.getElementById('doc-empty').style.display = 'none';
@@ -301,16 +311,28 @@ function onEmpSearch() {
   const q = document.getElementById('emp-search').value.trim().toLowerCase();
   const res = document.getElementById('search-results');
   if (!q) { res.style.display = 'none'; return; }
-  const matches = _allEmps.filter(e =>
-    (e.first_name+' '+e.last_name).toLowerCase().includes(q) ||
-    e.employee_code.toLowerCase().includes(q)
-  ).slice(0, 8);
-  if (!matches.length) { res.style.display = 'none'; return; }
-  res.innerHTML = matches.map(e => `
-    <div class="search-result-item" onclick="selectEmp(${e.id},'${e.employee_code}','${e.first_name} ${e.last_name}')">
-      <span style="font-weight:700;color:var(--accent)">${e.employee_code}</span> — ${e.first_name} ${e.last_name}
-      ${e.department_name?`<span style="color:var(--muted);font-size:11px"> · ${e.department_name}</span>`:''}
-    </div>`).join('');
+  if (!_allEmps.length) {
+    res.innerHTML = '<div class="search-result-item" style="color:var(--muted)">Loading employees…</div>';
+    res.style.display = ''; return;
+  }
+  const matches = _allEmps.filter(e => {
+    const fullName = ((e.first_name||'')+' '+(e.last_name||'')).toLowerCase();
+    const code = (e.employee_code||'').toLowerCase();
+    return fullName.includes(q) || code.includes(q);
+  }).slice(0, 10);
+  if (!matches.length) {
+    res.innerHTML = '<div class="search-result-item" style="color:var(--muted)">No employees found</div>';
+    res.style.display = ''; return;
+  }
+  res.innerHTML = matches.map(e => {
+    const name = ((e.first_name||'')+' '+(e.last_name||'')).trim();
+    const code = e.employee_code||'';
+    const dept = e.department_name||'';
+    return '<div class="search-result-item" onclick="selectEmp('+e.id+','+JSON.stringify(code)+','+JSON.stringify(name)+')">'
+      + '<span style="font-weight:700;color:var(--accent)">'+code+'</span> — '+name
+      + (dept ? '<span style="color:var(--muted);font-size:11px"> · '+dept+'</span>' : '')
+      + '</div>';
+  }).join('');
   res.style.display = '';
 }
 
