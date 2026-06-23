@@ -360,13 +360,25 @@ exports.update = async (req, res) => {
       'deactivation_remark'
     ];
 
+    const INTEGER_FIELDS = new Set([
+      'department_id','designation_id','reporting_manager_id','team_leader_id'
+    ]);
     const sets = [], params = []; let idx = 1;
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
         sets.push(`${key}=$${idx++}`);
-        // last_name and first_name must never be null — use empty string
-        const nullableKeys = ['last_name','first_name'];
-        params.push(req.body[key] === '' && !nullableKeys.includes(key) ? null : (req.body[key] ?? ''));
+        const val = req.body[key];
+        // Integer/ID fields: empty string or 0 → null
+        if (INTEGER_FIELDS.has(key)) {
+          const parsed = parseInt(val);
+          params.push(!val || isNaN(parsed) ? null : parsed);
+        // Name fields: never null
+        } else if (['first_name','last_name'].includes(key)) {
+          params.push(val ?? '');
+        // All other fields: empty string → null
+        } else {
+          params.push(val === '' ? null : val);
+        }
       }
     }
 
