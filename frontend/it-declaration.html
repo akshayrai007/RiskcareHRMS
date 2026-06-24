@@ -19,6 +19,13 @@
 .emp-field .val{font-size:13px;font-weight:700;color:#1e3a5f}
 /* ── Controls ── */
 .itd-ctrl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 22px;background:#f8f9ff;border-bottom:1px solid #e0e3ec}
+.itd-window-bar{display:flex;gap:24px;flex-wrap:wrap;padding:10px 22px;background:#eef1fd;border-bottom:1px solid #e0e3ec}
+.iwb-item{display:flex;align-items:center;gap:9px}
+.iwb-icon{font-size:16px}
+.iwb-lbl{font-size:10.5px;font-weight:700;color:#5c6bc0;text-transform:uppercase;letter-spacing:.04em}
+.iwb-val{font-size:13px;font-weight:600;color:#283593}
+.iwb-val.closed{color:#b91c1c}
+.iwb-val.open{color:#166534}
 .itd-ctrl label{font-size:11px;font-weight:700;color:#546e7a;text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
 .itd-ctrl select,.itd-ctrl input{padding:7px 11px;border-radius:7px;border:1.5px solid #c5cae9;font-size:13px;font-family:inherit;background:#fff;outline:none}
 .itd-ctrl select:focus{border-color:#3949ab}
@@ -223,6 +230,24 @@
           <select id="sel-hr-emp" style="min-width:200px" onchange="onHREmpChange()">
             <option value="">— All / Select Employee —</option>
           </select>
+        </div>
+      </div>
+
+      <!-- Window Dates Banner -->
+      <div class="itd-window-bar" id="itd-window-bar">
+        <div class="iwb-item">
+          <span class="iwb-icon">📝</span>
+          <div>
+            <div class="iwb-lbl">Declaration Window</div>
+            <div class="iwb-val" id="iwb-decl">Loading…</div>
+          </div>
+        </div>
+        <div class="iwb-item">
+          <span class="iwb-icon">📎</span>
+          <div>
+            <div class="iwb-lbl">Proof Upload Window</div>
+            <div class="iwb-val" id="iwb-proof">Loading…</div>
+          </div>
         </div>
       </div>
 
@@ -692,6 +717,37 @@ const PROOF_DEFS = {
   NEW_HP:   [{k:'int_cert_hp', l:'Interest Certificate'},{k:'rental_agr', l:'Rental Agreement'},{k:'prop_tax', l:'Property Tax Receipt'}],
 };
 
+// ── Window dates banner ────────────────────────────────────────────────────────
+function fmtD(d) {
+  return d.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+}
+async function loadWindowBanner() {
+  const declEl  = document.getElementById('iwb-decl');
+  const proofEl = document.getElementById('iwb-proof');
+  declEl.textContent = 'Loading…'; declEl.className = 'iwb-val';
+  proofEl.textContent = 'Loading…'; proofEl.className = 'iwb-val';
+  try {
+    const res = await api('GET', `/it-declaration/config?fy=${currentFY}`);
+    if (!res?.success) { declEl.textContent = '—'; proofEl.textContent = '—'; return; }
+    const cfg = {};
+    res.data.forEach(r => { cfg[r.config_key] = r.config_value; });
+    const now = new Date();
+
+    const renderWindow = (el, startKey, endKey) => {
+      const startRaw = cfg[startKey], endRaw = cfg[endKey];
+      if (!startRaw || !endRaw) { el.textContent = 'Not configured'; return; }
+      const start = new Date(startRaw), end = new Date(endRaw);
+      const isOpen = now >= start && now <= end;
+      el.textContent = `${fmtD(start)} → ${fmtD(end)}${isOpen ? '' : '  (Closed)'}`;
+      el.className = 'iwb-val ' + (isOpen ? 'open' : 'closed');
+    };
+    renderWindow(declEl,  'declaration_start', 'declaration_end');
+    renderWindow(proofEl, 'proof_start',        'proof_end');
+  } catch (e) {
+    declEl.textContent = '—'; proofEl.textContent = '—';
+  }
+}
+
 // ── INIT ─────────────────────────────────────────────────────────────────────
 window.addEventListener('load', async () => {
   buildSidebar('it-declaration.html');
@@ -707,12 +763,14 @@ window.addEventListener('load', async () => {
   }
   if (isAdmin) document.getElementById('itab-cfg').style.display = '';
   await loadDecl();
+  loadWindowBanner();
 });
 
 function onFYChange() {
   currentFY = document.getElementById('sel-fy').value;
   document.getElementById('cfg-fy-label').textContent = currentFY;
   loadDecl();
+  loadWindowBanner();
   if (isHR) { loadHRStats(); loadHR(); }
 }
 async function loadHREmps() {
