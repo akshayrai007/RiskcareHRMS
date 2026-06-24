@@ -1131,7 +1131,7 @@ function renderProofGrids() {
       const viewBtn= found ? `<button class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px" title="View / Preview document" onclick="viewProof(${found.id},'${def.l}')">👁</button>` : '';
       const delBtn = found && !isLocked ? `<button class="btn btn-sm" style="font-size:11px;padding:3px 7px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5" title="Delete this proof" onclick="delProof(${found.id},'${sec}','${def.k}')">🗑</button>` : '';
       const upBtn  = !isLocked ? `<label class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px;cursor:pointer;margin:0" title="${found ? 'Replace / Re-upload document' : 'Upload document'}">
-        📤 <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="uploadProof('${sec}','${def.l}','${def.k}',this)"></label>` : '';
+        📤 <input type="file" accept=".pdf,.jpg,.jpeg,.png" multiple style="display:none" onchange="uploadProof('${sec}','${def.l}','${def.k}',this)"></label>` : '';
       return `<div class="proof-item">
         <div class="pi-info"><div class="pi-name">${def.l}</div>${fname}</div>
         <div class="pi-actions"><span class="proof-st ${stCls}">${stLbl}</span>${viewBtn}${delBtn}${upBtn}</div>
@@ -1214,37 +1214,46 @@ function confirmSubmit() {
 
 // ── Proof upload / delete / view ──────────────────────────────────────────────
 async function uploadProof(sec, secLabel, docType, input) {
-  const file = input.files[0];
-  if (!file) return;
-  if (file.size > 10*1024*1024) { toast('Max 10MB', 'error'); input.value=''; return; }
+  const files = Array.from(input.files);
+  if (!files.length) return;
 
-  // Auto-save a draft first if declaration doesn't exist yet
+  const oversized = files.filter(f => f.size > 10*1024*1024);
+  if (oversized.length) {
+    toast(`${oversized.map(f=>f.name).join(', ')} exceed 10MB limit`, 'error');
+    input.value = ''; return;
+  }
+
+  // Auto-save draft first if no declaration exists yet
   if (!declId) {
-    toast('Auto-saving draft…', 'info');
+    toast('Auto-saving draft…');
     const saveRes = await api('POST', '/it-declaration', getBody('save'));
-    if (!saveRes?.success) { toast('Could not save declaration: ' + (saveRes?.message||'error'), 'error'); input.value=''; return; }
+    if (!saveRes?.success) { toast('Could not save: ' + (saveRes?.message||'error'), 'error'); input.value=''; return; }
     declId = saveRes.data?.id;
     currentDecl = saveRes.data;
     updateSt(saveRes.data.status);
   }
-
   if (!declId) { toast('Could not create declaration', 'error'); input.value=''; return; }
 
-  const fd = new FormData();
-  fd.append('proof_file', file);
-  fd.append('declaration_id', declId);
-  fd.append('section', sec);
-  fd.append('section_label', secLabel);
-  fd.append('doc_type', docType);
-  const r = await fetch(API_BASE + '/it-declaration/proof', {
-    method: 'POST', headers: { Authorization: 'Bearer ' + Auth.getToken() }, body: fd
-  });
-  const d = await r.json();
-  if (d.success) {
-    toast('Proof uploaded ✅');
-    await loadDecl();
-  } else toast(d.message || 'Upload failed', 'error');
+  let ok = 0, fail = 0;
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append('proof_file', file);
+    fd.append('declaration_id', declId);
+    fd.append('section', sec);
+    fd.append('section_label', secLabel);
+    fd.append('doc_type', docType);
+    try {
+      const r = await fetch(API_BASE + '/it-declaration/proof', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + Auth.getToken() }, body: fd
+      });
+      const d = await r.json();
+      if (d.success) ok++; else { fail++; toast(d.message || 'Upload failed', 'error'); }
+    } catch { fail++; }
+  }
+
   input.value = '';
+  if (ok > 0) toast(`${ok} file${ok>1?'s':''} uploaded ✅`);
+  if (ok > 0) { await loadDecl(); renderProofGrids(); }
 }
 
 async function delProof(proofId, sec, docType) {
@@ -1316,7 +1325,7 @@ function renderProofTab() {
                 const fname = found?.file_name ? `<div class="pi-file">📎 ${found.file_name}</div>` : '';
                 const vBtn  = found ? `<button class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px" title="View / Preview document" onclick="viewProof(${found.id},'${def.l}')">👁</button>` : '';
                 const upBtn = !isLocked ? `<label class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px;cursor:pointer;margin:0" title="${found ? 'Replace / Re-upload' : 'Upload document'}">📤
-                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="uploadProof('${sec}','${def.l}','${def.k}',this)"></label>` : '';
+                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" multiple style="display:none" onchange="uploadProof('${sec}','${def.l}','${def.k}',this)"></label>` : '';
                 return `<div class="proof-item">
                   <div class="pi-info"><div class="pi-name">${def.l}</div>${fname}${found?.hr_comment?`<div style="font-size:11px;color:#ef4444">HR: ${found.hr_comment}</div>`:''}</div>
                   <div class="pi-actions"><span class="proof-st ${stCls}">${stLbl}</span>${vBtn}${upBtn}</div>
