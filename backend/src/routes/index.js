@@ -1011,4 +1011,13 @@ router.get   ('/qualifications/:employee_id',  authenticate, empDocsCtrl.getQual
 router.post  ('/qualifications',               authenticate, empDocsCtrl.upsertQualification);
 router.delete('/qualifications/:id',           authenticate, empDocsCtrl.deleteQualification);
 
+// ── Send Documents (HR → Employee ad-hoc document delivery) ──────────────────
+const sendDocsCtrl = require('../controllers/sendDocumentsController');
+router.post ('/send-documents/send',          authenticate, authorize(...HR_ADMIN), sendDocsCtrl.uploadMiddleware, sendDocsCtrl.send);
+router.get  ('/send-documents/received',      authenticate,                         sendDocsCtrl.getReceived);
+router.get  ('/send-documents/sent',          authenticate, authorize(...HR_ADMIN), sendDocsCtrl.getSent);
+router.get  ('/send-documents/file/:id',      authenticate,                         sendDocsCtrl.getFile);
+router.get  ('/send-documents/zip/:batch_id', authenticate,                         sendDocsCtrl.getZip);
+router.delete('/send-documents/:id',          authenticate,                         sendDocsCtrl.deleteDoc);
+
 module.exports = router;
