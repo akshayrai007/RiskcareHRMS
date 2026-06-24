@@ -129,7 +129,7 @@ exports.initTables = async () => {
       );`);
 
     // Seed default config for FY 2025-26 if not exists
-    const fys = ['2026-27','2025-26','2024-25','2023-24'];
+    const fys = ['2030-31','2029-30','2028-29','2027-28','2026-27','2025-26','2024-25','2023-24'];
     for (const fy of fys) {
       const fyStart = fy.split('-')[0];           // e.g. "2025"
       const fyEnd   = '20' + fy.split('-')[1];    // e.g. "2026"
