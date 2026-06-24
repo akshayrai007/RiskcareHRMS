@@ -1124,18 +1124,39 @@ function renderProofGrids() {
     if (!el) return;
     const uploaded = uploadedProofs[sec] || [];
     el.innerHTML = defs.map(def => {
-      const found  = uploaded.find(u => u.doc_type === def.k);
-      const stCls  = found ? `ps-${found.status}` : 'ps-none';
-      const stLbl  = found ? (found.status==='approved'?'✅ Verified':found.status==='rejected'?'❌ Rejected':'⏳ Pending') : '— Not Uploaded';
-      const fname  = found?.file_name ? `<div class="pi-file">📎 ${found.file_name}</div>` : '';
-      const viewBtn= found ? `<button class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px" title="View / Preview document" onclick="viewProof(${found.id},'${def.l}')">👁</button>` : '';
-      const delBtn = found && !isLocked ? `<button class="btn btn-sm" style="font-size:11px;padding:3px 7px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5" title="Delete this proof" onclick="delProof(${found.id},'${sec}','${def.k}')">🗑</button>` : '';
-      const upBtn  = !isLocked ? `<label class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px;cursor:pointer;margin:0" title="${found ? 'Replace / Re-upload document' : 'Upload document'}">
+      // ALL files for this doc_type (not just the first)
+      const allFiles = uploaded.filter(u => u.doc_type === def.k);
+      const hasAny   = allFiles.length > 0;
+
+      const upBtn = !isLocked ? `<label class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px;cursor:pointer;margin:0" title="${hasAny ? 'Add more files' : 'Upload document'}">
         📤 <input type="file" accept=".pdf,.jpg,.jpeg,.png" multiple style="display:none" onchange="uploadProof('${sec}','${def.l}','${def.k}',this)"></label>` : '';
-      return `<div class="proof-item">
-        <div class="pi-info"><div class="pi-name">${def.l}</div>${fname}</div>
-        <div class="pi-actions"><span class="proof-st ${stCls}">${stLbl}</span>${viewBtn}${delBtn}${upBtn}</div>
+
+      // Build one row per uploaded file + one upload button row at the end
+      const fileRows = allFiles.map(f => {
+        const stCls = `ps-${f.status}`;
+        const stLbl = f.status==='approved' ? '✅ Verified' : f.status==='rejected' ? '❌ Rejected' : '⏳ Pending';
+        const viewBtn = `<button class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px" title="View document" onclick="viewProof(${f.id},'${def.l}')">👁</button>`;
+        const delBtn  = !isLocked ? `<button class="btn btn-sm" style="font-size:11px;padding:3px 7px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5" title="Delete this file" onclick="delProof(${f.id},'${sec}','${def.k}')">🗑</button>` : '';
+        return `<div class="proof-item" style="margin-bottom:4px">
+          <div class="pi-info">
+            <div class="pi-name" style="font-size:11.5px">📎 ${f.file_name || 'File'}</div>
+          </div>
+          <div class="pi-actions"><span class="proof-st ${stCls}">${stLbl}</span>${viewBtn}${delBtn}</div>
+        </div>`;
+      }).join('');
+
+      // Section header row with label + upload button
+      const headerRow = `<div class="proof-item" style="${hasAny ? 'background:#f0f4ff;border-color:#c5cae9;margin-bottom:2px' : ''}">
+        <div class="pi-info"><div class="pi-name">${def.l}</div>
+          ${!hasAny ? '<div class="pi-file" style="color:#94a3b8">— Not Uploaded</div>' : `<div class="pi-file" style="color:#166534">${allFiles.length} file${allFiles.length>1?'s':''} uploaded</div>`}
+        </div>
+        <div class="pi-actions">
+          ${hasAny ? '' : `<span class="proof-st ps-none">— Not Uploaded</span>`}
+          ${upBtn}
+        </div>
       </div>`;
+
+      return `<div style="margin-bottom:8px">${headerRow}${fileRows}</div>`;
     }).join('');
   });
 }
