@@ -18,7 +18,8 @@
 .emp-field .lbl{font-size:10px;font-weight:700;color:#9fa8da;text-transform:uppercase;letter-spacing:.05em}
 .emp-field .val{font-size:13px;font-weight:700;color:#1e3a5f}
 /* ── Controls ── */
-.itd-ctrl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 22px;background:#f8f9ff;border-bottom:1px solid #e0e3ec}
+.itd-ctrl{display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;padding:12px 22px;background:#f8f9ff;border-bottom:1px solid #e0e3ec}
+.itd-ctrl-field{display:flex;flex-direction:column;gap:5px;min-height:54px}
 .itd-window-bar{display:flex;gap:24px;flex-wrap:wrap;padding:10px 22px;background:#eef1fd;border-bottom:1px solid #e0e3ec}
 .iwb-item{display:flex;align-items:center;gap:9px}
 .iwb-icon{font-size:16px}
@@ -27,11 +28,12 @@
 .iwb-val.closed{color:#b91c1c}
 .iwb-val.open{color:#166534}
 .itd-ctrl label{font-size:11px;font-weight:700;color:#546e7a;text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
-.itd-ctrl select,.itd-ctrl input{padding:7px 11px;border-radius:7px;border:1.5px solid #c5cae9;font-size:13px;font-family:inherit;background:#fff;outline:none}
+.itd-ctrl select,.itd-ctrl input{padding:7px 11px;border-radius:7px;border:1.5px solid #c5cae9;font-size:13px;font-family:inherit;background:#fff;outline:none;height:36px;box-sizing:border-box;min-width:160px}
 .itd-ctrl select:focus{border-color:#3949ab}
+#hr-sel-wrap select{min-width:220px}
 /* ── Regime toggle ── */
-.reg-tog{display:flex;border-radius:8px;overflow:hidden;border:1.5px solid #c5cae9}
-.reg-btn{padding:7px 20px;border:none;background:#fff;font-size:12.5px;font-weight:600;color:#546e7a;cursor:pointer;transition:all .15s}
+.reg-tog{display:flex;border-radius:8px;overflow:hidden;border:1.5px solid #c5cae9;height:36px;box-sizing:border-box}
+.reg-btn{padding:0 20px;border:none;background:#fff;font-size:12.5px;font-weight:600;color:#546e7a;cursor:pointer;transition:all .15s;height:100%;display:flex;align-items:center}
 .reg-btn.active{background:#3949ab;color:#fff}
 .reg-btn:first-child{border-right:1.5px solid #c5cae9}
 /* ── Status badge ── */
@@ -212,22 +214,18 @@
 
       <!-- Controls -->
       <div class="itd-ctrl">
-        <div><label>Financial Year</label>
-          <select id="sel-fy" onchange="onFYChange()">
-            <option value="2025-26">FY 2025-26</option>
-            <option value="2024-25">FY 2024-25</option>
-            <option value="2023-24">FY 2023-24</option>
-          </select>
+        <div class="itd-ctrl-field"><label>Financial Year</label>
+          <select id="sel-fy" onchange="onFYChange()"></select>
         </div>
-        <div><label>Tax Regime</label>
+        <div class="itd-ctrl-field"><label>Tax Regime</label>
           <div class="reg-tog">
             <button class="reg-btn active" id="rb-old" onclick="setRegime('old')">🏛️ Old Regime</button>
             <button class="reg-btn" id="rb-new" onclick="setRegime('new')">✨ New Regime</button>
           </div>
         </div>
-        <div id="hr-sel-wrap" style="display:none">
+        <div class="itd-ctrl-field" id="hr-sel-wrap" style="display:none">
           <label>Employee</label>
-          <select id="sel-hr-emp" style="min-width:200px" onchange="onHREmpChange()">
+          <select id="sel-hr-emp" onchange="onHREmpChange()">
             <option value="">— All / Select Employee —</option>
           </select>
         </div>
@@ -691,7 +689,7 @@ const HR_ROLES = ['hr','accounts','admin','super_admin'];
 const ADMIN_ROLES = ['admin','super_admin'];
 let isHR = false, isAdmin = false;
 let currentDecl = null, declId = null, currentEmpId = null;
-let currentRegime = 'old', currentFY = '2025-26';
+let currentRegime = 'old', currentFY = null; // currentFY is set at init from today's date
 let isLocked = false;
 let reviewDeclId = null;
 let houseProps = [];
@@ -716,6 +714,30 @@ const PROOF_DEFS = {
   PREV_EMP: [{k:'form16', l:'Form 16'},{k:'last_slip', l:'Last Salary Slip'},{k:'tax_computation', l:'Tax Computation Sheet'}],
   NEW_HP:   [{k:'int_cert_hp', l:'Interest Certificate'},{k:'rental_agr', l:'Rental Agreement'},{k:'prop_tax', l:'Property Tax Receipt'}],
 };
+
+// ── Financial year helpers ──────────────────────────────────────────────────────
+// Indian FY runs Apr 1 → Mar 31. e.g. for any date in Apr 2026–Mar 2027, FY = "2026-27".
+function currentIndianFY() {
+  const now = new Date();
+  const y = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1; // month 3 = April (0-indexed)
+  return `${y}-${String((y + 1) % 100).padStart(2, '0')}`;
+}
+function populateFYOptions() {
+  const sel = document.getElementById('sel-fy');
+  const liveFY = currentIndianFY();
+  const liveStartYear = parseInt(liveFY.split('-')[0]);
+  sel.innerHTML = '';
+  // 3 years back (history) through 2 years forward (early planning), inclusive of current FY
+  for (let y = liveStartYear + 2; y >= liveStartYear - 3; y--) {
+    const fyVal = `${y}-${String((y + 1) % 100).padStart(2, '0')}`;
+    const opt = document.createElement('option');
+    opt.value = fyVal;
+    opt.textContent = `FY ${fyVal}`;
+    if (fyVal === liveFY) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  return liveFY;
+}
 
 // ── Window dates banner ────────────────────────────────────────────────────────
 function fmtD(d) {
@@ -755,6 +777,7 @@ window.addEventListener('load', async () => {
   isHR    = HR_ROLES.includes(user.role);
   isAdmin = ADMIN_ROLES.includes(user.role);
   currentEmpId = user.id;
+  currentFY = populateFYOptions();
   if (isHR) {
     document.getElementById('itab-hr').style.display = '';
     document.getElementById('hr-sel-wrap').style.display = '';
