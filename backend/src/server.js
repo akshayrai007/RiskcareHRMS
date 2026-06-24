@@ -765,6 +765,8 @@ async function start() {
         await itDeclCtrl.initTables();
         const docsCtrl = require('./controllers/documentsController');
         await docsCtrl.initTables();
+        const sendDocsCtrl = require('./controllers/sendDocumentsController');
+        await sendDocsCtrl.initTables();
         const projCtrl = require('./controllers/projectController');
         await projCtrl.migrate();
         // ── Add deactivation_remark column if it doesn't exist ─────────────
