@@ -172,8 +172,10 @@ exports.initTables = async () => {
         -- Other Income
         other_savings_int     NUMERIC(14,2) DEFAULT 0,
         other_fd_int          NUMERIC(14,2) DEFAULT 0,
+        other_capital_gains   NUMERIC(14,2) DEFAULT 0,
         other_dividend        NUMERIC(14,2) DEFAULT 0,
         other_misc            NUMERIC(14,2) DEFAULT 0,
+        employer_nps          NUMERIC(14,2) DEFAULT 0,
 
         -- Computed totals
         total_80c             NUMERIC(14,2) DEFAULT 0,
@@ -233,6 +235,10 @@ exports.initTables = async () => {
         created_at   TIMESTAMPTZ DEFAULT NOW()
       );`);
 
+
+    // Add columns if upgrading from older version
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS other_capital_gains NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS employer_nps NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
     console.log('✅ IT Declaration v3 tables ready');
   } catch (err) {
     console.error('❌ IT Declaration init error:', err.message);
@@ -564,7 +570,8 @@ exports.saveDeclaration = async (req, res) => {
         prev_employer, prev_employer_tan, prev_period, prev_gross_salary,
         prev_taxable_income, prev_tds, prev_pf,
         house_properties,
-        other_savings_int, other_fd_int, other_dividend, other_misc,
+        other_savings_int, other_fd_int, other_capital_gains, other_dividend, other_misc,
+        employer_nps,
         total_80c, total_deductions, estimated_tax, monthly_tds,
         status, submitted_at, updated_at
       ) VALUES (
@@ -573,7 +580,8 @@ exports.saveDeclaration = async (req, res) => {
         $21,$22,$23,$24,$25,$26,$27,$28,$29,$30,
         $31,$32,$33,$34,$35,$36,$37,$38,$39,$40,
         $41,$42,$43,$44,$45,$46,$47,$48,$49,$50,
-        $51,$52,$53,$54,$55,$56,$57,$58,$59,$60,NOW()
+        $51,$52,$53,$54,$55,$56,$57,$58,$59,$60,
+        $61,$62,NOW()
       )
       ON CONFLICT(employee_id, financial_year) DO UPDATE SET
         regime=$3, rent_paid_monthly=$4, annual_rent=$5, landlord_name=$6, landlord_pan=$7, hra_city_type=$8,
@@ -589,13 +597,14 @@ exports.saveDeclaration = async (req, res) => {
         prev_employer=$44, prev_employer_tan=$45, prev_period=$46, prev_gross_salary=$47,
         prev_taxable_income=$48, prev_tds=$49, prev_pf=$50,
         house_properties=$51::jsonb,
-        other_savings_int=$52, other_fd_int=$53, other_dividend=$54, other_misc=$55,
-        total_80c=$56, total_deductions=$57, estimated_tax=$58, monthly_tds=$59,
+        other_savings_int=$52, other_fd_int=$53, other_capital_gains=$54, other_dividend=$55, other_misc=$56,
+        employer_nps=$57,
+        total_80c=$58, total_deductions=$59, estimated_tax=$60, monthly_tds=$61,
         status = CASE WHEN it_declarations.locked = TRUE THEN it_declarations.status
                       WHEN it_declarations.status IN ('approved','verified') THEN it_declarations.status
-                      ELSE $60 END,
-        submitted_at = CASE WHEN $61::timestamptz IS NOT NULL AND it_declarations.submitted_at IS NULL
-                            THEN $61 ELSE it_declarations.submitted_at END,
+                      ELSE $62 END,
+        submitted_at = CASE WHEN $63::timestamptz IS NOT NULL AND it_declarations.submitted_at IS NULL
+                            THEN $63 ELSE it_declarations.submitted_at END,
         updated_at = NOW()
       RETURNING *`,
       [empId, fy, b.regime||'old',
@@ -618,7 +627,8 @@ exports.saveDeclaration = async (req, res) => {
        parseFloat(b.prev_tds||0), parseFloat(b.prev_pf||0),
        houseProps,
        parseFloat(b.other_savings_int||0), parseFloat(b.other_fd_int||0),
-       parseFloat(b.other_dividend||0), parseFloat(b.other_misc||0),
+       parseFloat(b.other_capital_gains||0), parseFloat(b.other_dividend||0), parseFloat(b.other_misc||0),
+       parseFloat(b.employer_nps||0),
        c80c, totalDed, estTax, monthlyTds,
        status, submittedAt]
     );
@@ -872,7 +882,7 @@ exports.taxPreview = async (req, res) => {
     const deductions = calcDeductions(d, cfg, sal);
     const prevSal  = parseFloat(d.prev_gross_salary||0);
     const otherInc = parseFloat(d.other_savings_int||0) + parseFloat(d.other_fd_int||0) +
-                     parseFloat(d.other_dividend||0) + parseFloat(d.other_misc||0);
+                     parseFloat(d.other_dividend||0) + parseFloat(d.other_misc||0) + parseFloat(d.other_capital_gains||0);
     const prevTds  = parseFloat(d.prev_tds||0);
 
     // ── OLD REGIME ──
@@ -887,7 +897,8 @@ exports.taxPreview = async (req, res) => {
     // ── NEW REGIME ──
     const stdNew      = cfgN(cfg, 'std_deduction_new', 75000);
     const grossNew    = annGross + prevSal + otherInc;
-    const taxableNew  = Math.max(0, grossNew - stdNew);
+    const employerNps = parseFloat(d.employer_nps||0);
+    const taxableNew  = Math.max(0, grossNew - stdNew - employerNps);
     const taxNew      = computeTax(taxableNew, 'new', cfg);
     const netTaxNew   = Math.max(0, taxNew - prevTds);
 
@@ -932,6 +943,7 @@ exports.taxPreview = async (req, res) => {
       },
       new_regime: {
         std_deduction:   stdNew,
+        employer_nps:    Math.round(employerNps),
         taxable_income:  Math.round(taxableNew),
         tax_before_cess: Math.round(taxNew / 1.04),
         cess:            Math.round(taxNew - taxNew / 1.04),

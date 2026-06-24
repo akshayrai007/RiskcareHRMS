@@ -465,40 +465,99 @@
         </div>
       </div><!-- /old-secs -->
 
-      <!-- NEW REGIME: Previous Employment (shown in both) -->
-      <!-- Previous Employment (both regimes) -->
-      <div class="it-sec" id="prev-emp-sec">
-        <div class="it-sec-hdr" onclick="tgl(this)">
-          <span class="sh-title">🏢 Previous Employment Income</span>
-          <span class="sh-right"><span class="sh-chev">▼</span></span>
-        </div>
-        <div class="it-sec-body">
-          <div class="fg2">
-            <div class="if"><label>Previous Employer Name</label><input type="text" id="prev_employer" placeholder="Company Ltd."></div>
-            <div class="if"><label>Employer TAN</label><input type="text" id="prev_employer_tan" placeholder="MUMB12345A" maxlength="10" style="text-transform:uppercase"></div>
-            <div class="if"><label>Employment Period</label><input type="text" id="prev_period" placeholder="Apr 2024 – Jun 2024"></div>
-            <div class="if"><label>Previous Gross Salary (₹)</label><input type="number" id="prev_gross_salary" placeholder="0" min="0" oninput="live()"></div>
-            <div class="if"><label>Previous Taxable Income (₹)</label><input type="number" id="prev_taxable_income" placeholder="0" min="0"></div>
-            <div class="if"><label>TDS Deducted by Prev. Employer (₹)</label><input type="number" id="prev_tds" placeholder="0" min="0"></div>
-            <div class="if"><label>PF Contribution (₹)</label><input type="number" id="prev_pf" placeholder="0" min="0"></div>
-          </div>
-          <div class="sub-lbl">Proof Documents</div>
-          <div class="proof-grid" id="pg-PREV_EMP"></div>
-        </div>
-      </div>
+      <!-- ══ NEW REGIME SECTIONS (hidden when Old Regime) ══ -->
+      <div id="new-secs" style="display:none">
 
-      <!-- Other Income (both regimes) -->
-      <div class="it-sec">
+        <!-- 1. Previous Employment Income -->
+        <div class="it-sec">
+          <div class="it-sec-hdr" onclick="tgl(this)">
+            <span class="sh-title">🏢 Previous Employment Income</span>
+            <span class="sh-right"><span class="sh-amt" id="s-prev-emp"></span><span class="sh-chev">▼</span></span>
+          </div>
+          <div class="it-sec-body">
+            <div class="fg2">
+              <div class="if"><label>Previous Employer Name</label><input type="text" id="prev_employer" placeholder="Company Ltd."></div>
+              <div class="if"><label>Employer TAN</label><input type="text" id="prev_employer_tan" placeholder="MUMB12345A" maxlength="10" style="text-transform:uppercase"></div>
+              <div class="if"><label>Employment Period</label><input type="text" id="prev_period" placeholder="Apr 2024 – Jun 2024"></div>
+              <div class="if"><label>Previous Gross Salary (₹)</label><input type="number" id="prev_gross_salary" placeholder="0" min="0" oninput="live()"></div>
+              <div class="if"><label>Previous Taxable Income (₹)</label><input type="number" id="prev_taxable_income" placeholder="0" min="0"></div>
+              <div class="if"><label>TDS Deducted by Prev. Employer (₹)</label><input type="number" id="prev_tds" placeholder="0" min="0"></div>
+              <div class="if"><label>PF Contribution (₹)</label><input type="number" id="prev_pf" placeholder="0" min="0"></div>
+            </div>
+            <div class="sub-lbl">Proof Documents</div>
+            <div class="proof-grid" id="pg-PREV_EMP"></div>
+          </div>
+        </div>
+
+        <!-- 2. Income From House Property -->
+        <div class="it-sec">
+          <div class="it-sec-hdr" onclick="tgl(this)">
+            <span class="sh-title">🏡 Income From House Property</span>
+            <span class="sh-right"><span class="sh-amt" id="s-new-hp"></span><span class="sh-chev">▼</span></span>
+          </div>
+          <div class="it-sec-body">
+            <div id="new-hp-list"></div>
+            <button class="btn btn-outline btn-sm" onclick="addNewProperty()" style="margin-top:4px">+ Add Property</button>
+            <div class="sub-lbl">Proof Documents</div>
+            <div class="proof-grid" id="pg-NEW_HP"></div>
+          </div>
+        </div>
+
+        <!-- 3. Other Income -->
+        <div class="it-sec">
+          <div class="it-sec-hdr" onclick="tgl(this)">
+            <span class="sh-title">💹 Other Income</span>
+            <span class="sh-right"><span class="sh-amt" id="s-other"></span><span class="sh-chev">▼</span></span>
+          </div>
+          <div class="it-sec-body">
+            <div class="fg2">
+              <div class="if"><label>Savings Interest (₹)</label><input type="number" id="other_savings_int" placeholder="0" min="0" oninput="live()"></div>
+              <div class="if"><label>FD Interest (₹)</label><input type="number" id="other_fd_int" placeholder="0" min="0" oninput="live()"></div>
+              <div class="if"><label>Capital Gains (₹)</label><input type="number" id="other_capital_gains" placeholder="0" min="0" oninput="live()"></div>
+              <div class="if"><label>Dividend (₹)</label><input type="number" id="other_dividend" placeholder="0" min="0" oninput="live()"></div>
+              <div class="if"><label>Other (₹)</label><input type="number" id="other_misc" placeholder="0" min="0" oninput="live()"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Employer NPS 80CCD(2) — read only, auto-fetched -->
+        <div class="it-sec">
+          <div class="it-sec-hdr open" onclick="tgl(this)" style="cursor:default">
+            <span class="sh-title">🏦 Employer NPS Contribution — 80CCD(2)</span>
+            <span class="sh-right"><span class="sh-amt" id="s-enps"></span><span class="sh-chev">▼</span></span>
+          </div>
+          <div class="it-sec-body open">
+            <div style="background:#eef0fb;border:1.5px solid #c5cae9;border-radius:8px;padding:12px 14px;margin-bottom:10px;font-size:12.5px;color:#3949ab;font-weight:600">
+              ℹ️ Auto-fetched from your payroll structure. Read-only. No attachment required.
+            </div>
+            <div class="fg2">
+              <div class="if">
+                <label>Employer NPS Contribution (₹)</label>
+                <input type="number" id="employer_nps" placeholder="Auto-fetched" readonly style="background:#f0f2f8;color:#546e7a">
+              </div>
+              <div class="if">
+                <label>Section</label>
+                <input type="text" value="80CCD(2) — Employer Contribution" readonly style="background:#f0f2f8;color:#546e7a">
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /new-secs -->
+
+      <!-- ══ OLD REGIME: Other Income (only in old regime) ══ -->
+      <div id="old-other-sec" class="it-sec">
         <div class="it-sec-hdr" onclick="tgl(this)">
           <span class="sh-title">💹 Other Income</span>
-          <span class="sh-right"><span class="sh-amt" id="s-other"></span><span class="sh-chev">▼</span></span>
+          <span class="sh-right"><span class="sh-amt" id="s-other-old"></span><span class="sh-chev">▼</span></span>
         </div>
         <div class="it-sec-body">
           <div class="fg2">
-            <div class="if"><label>Savings Interest (₹)</label><input type="number" id="other_savings_int" placeholder="0" min="0" oninput="live()"></div>
-            <div class="if"><label>FD Interest (₹)</label><input type="number" id="other_fd_int" placeholder="0" min="0" oninput="live()"></div>
-            <div class="if"><label>Dividend (₹)</label><input type="number" id="other_dividend" placeholder="0" min="0" oninput="live()"></div>
-            <div class="if"><label>Other (₹)</label><input type="number" id="other_misc" placeholder="0" min="0" oninput="live()"></div>
+            <div class="if"><label>Savings Interest (₹)</label><input type="number" id="other_savings_int_old" placeholder="0" min="0" oninput="live()"></div>
+            <div class="if"><label>FD Interest (₹)</label><input type="number" id="other_fd_int_old" placeholder="0" min="0" oninput="live()"></div>
+            <div class="if"><label>Capital Gains (₹)</label><input type="number" id="other_capital_gains_old" placeholder="0" min="0" oninput="live()"></div>
+            <div class="if"><label>Dividend (₹)</label><input type="number" id="other_dividend_old" placeholder="0" min="0" oninput="live()"></div>
+            <div class="if"><label>Other (₹)</label><input type="number" id="other_misc_old" placeholder="0" min="0" oninput="live()"></div>
           </div>
         </div>
       </div>
@@ -629,7 +688,8 @@ const PROOF_DEFS = {
   '80U':    [{k:'disab_cert_u',    l:'Disability Certificate'}],
   '80DDB':  [{k:'med_cert',        l:'Specialist Certificate'},{k:'med_bills',       l:'Medical Bills'}],
   LTA:      [{k:'air_ticket',      l:'Air Ticket'},{k:'rail_ticket',      l:'Rail Ticket'},{k:'boarding_pass',  l:'Boarding Pass'},{k:'travel_bills',   l:'Travel Bills'}],
-  PREV_EMP: [{k:'form16',          l:'Form 16'},{k:'last_slip',         l:'Last Salary Slip'},{k:'tax_computation',l:'Tax Computation Sheet'}],
+  PREV_EMP: [{k:'form16', l:'Form 16'},{k:'last_slip', l:'Last Salary Slip'},{k:'tax_computation', l:'Tax Computation Sheet'}],
+  NEW_HP:   [{k:'int_cert_hp', l:'Interest Certificate'},{k:'rental_agr', l:'Rental Agreement'},{k:'prop_tax', l:'Property Tax Receipt'}],
 };
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
@@ -689,8 +749,12 @@ function setRegime(r) {
   currentRegime = r;
   document.getElementById('rb-old').classList.toggle('active', r === 'old');
   document.getElementById('rb-new').classList.toggle('active', r === 'new');
-  document.getElementById('old-secs').style.display = r === 'old' ? '' : 'none';
-  document.getElementById('ep-regime').textContent   = r === 'old' ? '🏛️ Old Regime' : '✨ New Regime';
+  document.getElementById('old-secs').style.display     = r === 'old' ? '' : 'none';
+  document.getElementById('new-secs').style.display     = r === 'new' ? '' : 'none';
+  document.getElementById('old-other-sec').style.display= r === 'old' ? '' : 'none';
+  document.getElementById('ep-regime').textContent      = r === 'old' ? '🏛️ Old Regime' : '✨ New Regime';
+  // Auto-fetch employer NPS when switching to new regime
+  if (r === 'new') autoFetchEmployerNPS();
   live();
 }
 
@@ -743,10 +807,41 @@ function live() {
   document.getElementById('s-80ddb').textContent= ddb > 0 ? money(Math.min(ddb,40000)) : '';
   const lta   = n('lta_amount');
   document.getElementById('s-lta').textContent  = lta > 0 ? money(lta) : '';
-  const other = n('other_savings_int') + n('other_fd_int') + n('other_dividend') + n('other_misc');
-  document.getElementById('s-other').textContent = other > 0 ? money(other) : '';
-  // Deduction cards
-  renderDedCards(elig80c, nps, d80d, Math.min(hl,200000), edu, don, ddAmt, uAmt, Math.min(ddb,40000), lta);
+  // Other income - handle both regime fields
+  const isNew = currentRegime === 'new';
+  const otherPfx = isNew ? '' : '_old';
+  const other = n('other_savings_int'+otherPfx) + n('other_fd_int'+otherPfx) + n('other_capital_gains'+otherPfx) + n('other_dividend'+otherPfx) + n('other_misc'+otherPfx);
+  const otherEl = document.getElementById('s-other') || document.getElementById('s-other-old');
+  if (isNew) {
+    const sel = document.getElementById('s-other'); if(sel) sel.textContent = other > 0 ? money(other) : '';
+    const prevEmp = n('prev_gross_salary');
+    const enps    = n('employer_nps');
+    const enpsEl  = document.getElementById('s-enps'); if(enpsEl) enpsEl.textContent = enps > 0 ? money(enps) : '';
+    const prevEl  = document.getElementById('s-prev-emp'); if(prevEl) prevEl.textContent = prevEmp > 0 ? money(prevEmp) : '';
+    renderNewRegimeDedCards(prevEmp, other, enps);
+  } else {
+    const selOld = document.getElementById('s-other-old'); if(selOld) selOld.textContent = other > 0 ? money(other) : '';
+    renderDedCards(elig80c, nps, d80d, Math.min(hl,200000), edu, don, ddAmt, uAmt, Math.min(ddb,40000), lta);
+  }
+}
+
+function renderNewRegimeDedCards(prevEmp, otherInc, enps) {
+  const stdDed = 75000;
+  const items = [
+    { lbl:'Previous Employment', val:prevEmp, sub:'₹ added to income' },
+    { lbl:'Other Income',        val:otherInc, sub:'Interest, Dividends, etc.' },
+    { lbl:'Employer NPS',        val:enps,    sub:'80CCD(2) auto-fetched' },
+    { lbl:'Standard Deduction',  val:stdDed,  sub:'New Regime ₹75,000', ded:true },
+    { lbl:'Total Adjustments',   val:prevEmp + otherInc - stdDed - enps, sub:'Net impact' },
+  ];
+  document.getElementById('ded-cards').innerHTML = items.map(it => {
+    const cls = it.val > 0 ? (it.ded ? 'used' : '') : '';
+    return `<div class="ded-card ${cls}">
+      <div class="dc-lbl">${it.lbl}</div>
+      <div class="dc-val" style="${it.ded?'color:#166534':''}">${it.val < 0 ? '−'+money(Math.abs(it.val)) : money(it.val)}</div>
+      <div class="dc-sub">${it.sub}</div>
+    </div>`;
+  }).join('');
 }
 
 function renderDedCards(c80c, nps, d80d, hl, edu, don, dd, u, ddb, lta) {
@@ -778,6 +873,57 @@ function addProperty(data = {}) {
   const idx = houseProps.length;
   houseProps.push(data);
   renderProperties();
+}
+
+// New regime house properties (separate list)
+let newHouseProps = [];
+function addNewProperty(data = {}) {
+  newHouseProps.push(data);
+  renderNewProperties();
+}
+function removeNewProperty(idx) {
+  newHouseProps.splice(idx, 1);
+  renderNewProperties();
+}
+function renderNewProperties() {
+  const el = document.getElementById('new-hp-list');
+  if (!el) return;
+  el.innerHTML = newHouseProps.map((p, i) => `
+    <div class="hp-card">
+      <button class="hp-card-del" onclick="removeNewProperty(${i})">×</button>
+      <div style="font-size:12px;font-weight:700;color:#3949ab;margin-bottom:8px">Property ${i+1}</div>
+      <div class="fg2">
+        <div class="if"><label>Property Type</label>
+          <select onchange="newHouseProps[${i}].type=this.value">
+            <option value="self_occupied" ${p.type==='self_occupied'?'selected':''}>Self Occupied</option>
+            <option value="let_out"       ${p.type==='let_out'?'selected':''}>Let Out</option>
+            <option value="deemed"        ${p.type==='deemed'?'selected':''}>Deemed Let Out</option>
+          </select>
+        </div>
+        <div class="if"><label>Rental Income (₹/yr)</label><input type="number" value="${p.rental_income||0}" oninput="newHouseProps[${i}].rental_income=this.value;live()"></div>
+        <div class="if"><label>Municipal Tax (₹)</label><input type="number" value="${p.municipal_tax||0}" oninput="newHouseProps[${i}].municipal_tax=this.value"></div>
+        <div class="if"><label>Interest Paid (₹)</label><input type="number" value="${p.interest_paid||0}" oninput="newHouseProps[${i}].interest_paid=this.value"></div>
+        <div class="if"><label>Co-owner Details</label><input type="text" value="${p.coowner||''}" oninput="newHouseProps[${i}].coowner=this.value" placeholder="Name & share %"></div>
+        <div class="if" style="grid-column:1/-1"><label>Property Address</label><input type="text" value="${p.address||''}" oninput="newHouseProps[${i}].address=this.value" placeholder="Full address"></div>
+      </div>
+    </div>`).join('');
+  // Update header amount
+  const totalRental = newHouseProps.reduce((a,p) => a + (parseFloat(p.rental_income)||0), 0);
+  const el2 = document.getElementById('s-new-hp');
+  if (el2) el2.textContent = totalRental > 0 ? money(totalRental) + '/yr' : '';
+}
+
+async function autoFetchEmployerNPS() {
+  // Try to get employer NPS from payroll salary structure (10% of basic is NPS rule)
+  const el = document.getElementById('employer_nps');
+  if (!el || el.value > 0) return; // already set
+  // We fetch the tax preview which calculates from payroll
+  const fy  = document.getElementById('sel-fy').value;
+  const res = await api('GET', `/it-declaration/tax-preview?fy=${fy}`);
+  if (res?.success && res.data) {
+    const enps = res.data.new_regime?.employer_nps || 0;
+    if (enps > 0) el.value = enps;
+  }
 }
 function removeProperty(idx) {
   houseProps.splice(idx, 1);
@@ -861,9 +1007,18 @@ function fillForm(d) {
     sv('sec80d_senior_parent', String(d.sec80d_senior_parent));
   if (d.hra_city_type) sv('hra_city_type', d.hra_city_type);
   if (d.sec80g_category) sv('sec80g_category', d.sec80g_category);
+  // Other income — sync to correct fields based on regime
+  if (d.other_savings_int != null) { sv('other_savings_int', d.other_savings_int); sv('other_savings_int_old', d.other_savings_int); }
+  if (d.other_fd_int != null)      { sv('other_fd_int', d.other_fd_int);           sv('other_fd_int_old', d.other_fd_int); }
+  if (d.other_capital_gains != null){ sv('other_capital_gains', d.other_capital_gains); sv('other_capital_gains_old', d.other_capital_gains); }
+  if (d.other_dividend != null)    { sv('other_dividend', d.other_dividend);       sv('other_dividend_old', d.other_dividend); }
+  if (d.other_misc != null)        { sv('other_misc', d.other_misc);               sv('other_misc_old', d.other_misc); }
+  if (d.employer_nps != null)      sv('employer_nps', d.employer_nps);
   // House properties
   houseProps = Array.isArray(d.house_properties) ? d.house_properties : [];
+  newHouseProps = Array.isArray(d.house_properties) ? d.house_properties : []; // shared store
   renderProperties();
+  renderNewProperties();
   setRegime(d.regime || 'old');
   live();
   // Upload proofs
@@ -965,9 +1120,14 @@ function getBody(action) {
     prev_period: document.getElementById('prev_period').value.trim(),
     prev_gross_salary: n('prev_gross_salary'), prev_taxable_income: n('prev_taxable_income'),
     prev_tds: n('prev_tds'), prev_pf: n('prev_pf'),
-    house_properties: houseProps,
-    other_savings_int: n('other_savings_int'), other_fd_int: n('other_fd_int'),
-    other_dividend: n('other_dividend'), other_misc: n('other_misc'),
+    // Pick correct income fields based on regime
+    other_savings_int:    currentRegime === 'new' ? n('other_savings_int')     : n('other_savings_int_old'),
+    other_fd_int:         currentRegime === 'new' ? n('other_fd_int')          : n('other_fd_int_old'),
+    other_capital_gains:  currentRegime === 'new' ? n('other_capital_gains')   : n('other_capital_gains_old'),
+    other_dividend:       currentRegime === 'new' ? n('other_dividend')        : n('other_dividend_old'),
+    other_misc:           currentRegime === 'new' ? n('other_misc')            : n('other_misc_old'),
+    employer_nps:         n('employer_nps'),
+    house_properties:     currentRegime === 'new' ? newHouseProps : houseProps,
   };
 }
 
@@ -1159,9 +1319,10 @@ async function loadTaxPreview() {
     <!-- New Regime breakdown -->
     <div class="tax-bk" style="background:#f0fdf4;border-color:#86efac">
       <h4 style="color:#166534">✨ New Regime — Full Breakdown</h4>
-      ${row('Gross Salary (Annual)', money(d.annual_gross))}
+      ${row('Annual Gross Salary', money(d.annual_gross))}
       ${d.prev_salary > 0 ? row('+ Previous Employment Income', money(d.prev_salary)) : ''}
       ${d.other_income > 0 ? row('+ Other Income', money(d.other_income)) : ''}
+      ${nw.employer_nps > 0 ? rowDed('Less: Employer NPS — 80CCD(2)', money(nw.employer_nps)) : ''}
       ${rowDed('Less: Standard Deduction (New Regime)', money(nw.std_deduction))}
       <div class="tr total"><span class="tl">Net Taxable Income</span><span class="tv">${money(nw.taxable_income)}</span></div>
       ${row('Income Tax', money(nw.tax_before_cess))}
