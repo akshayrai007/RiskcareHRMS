@@ -2,75 +2,144 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title id="page-title">IT Declaration</title>
-<script>document.addEventListener('DOMContentLoaded',function(){if(window.CFG?.clientName)document.getElementById('page-title').textContent=window.CFG.clientName+' - IT Declaration';});</script>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<title>IT Declaration</title>
 <script src="config.js"></script>
-<script>
-(function(){
-  var C = window.CFG;
-  var t = document.getElementById('page-title');
-  if(t) t.textContent = C.clientName + ' - ' + t.textContent;
-  var lt = document.getElementById('sidebar-logo-text');
-  if(lt) lt.innerHTML = C.logoHtml || C.clientName;
-  var cs = document.getElementById('sidebar-company-short');
-  if(cs) cs.textContent = C.companyShortName || '';
-})();
-</script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
-.it-tabs { display:flex; gap:6px; margin-bottom:20px; flex-wrap:wrap; }
-.it-tab  { padding:8px 18px; border-radius:20px; font-size:13px; font-weight:600; border:1.5px solid var(--border); background:var(--surface); cursor:pointer; transition:all .15s; color:var(--muted); }
-.it-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
-.it-section { margin-bottom:18px; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; }
-.it-section-hdr { background:var(--surface3); padding:10px 16px; font-weight:700; font-size:13px; color:var(--accent); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); }
-.it-section-body { padding:14px 16px; }
-.it-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-@media(max-width:600px){ .it-grid { grid-template-columns:1fr; } }
-.it-field { display:flex; flex-direction:column; gap:4px; }
-.it-field label { font-size:12px; font-weight:600; color:var(--muted); }
-.it-field input, .it-field select { padding:8px 10px; border:1.5px solid var(--border); border-radius:var(--radius-xs); font-size:13px; background:var(--surface); color:var(--text); outline:none; transition:border .15s; }
-.it-field input:focus, .it-field select:focus { border-color:var(--accent); }
-.it-field .hint { font-size:11px; color:var(--muted2); }
-.it-total-bar { background:var(--accent-l); border:1px solid var(--border2); border-radius:var(--radius-xs); padding:10px 16px; display:flex; justify-content:space-between; align-items:center; margin-top:8px; }
-.it-total-bar .label { font-size:13px; font-weight:600; color:var(--accent); }
-.it-total-bar .value { font-size:16px; font-weight:800; color:var(--accent); }
-.status-badge { display:inline-block; padding:3px 12px; border-radius:20px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
-.status-draft     { background:var(--yellow-l); color:var(--yellow-d); }
-.status-submitted { background:var(--blue-l);   color:#1d4ed8; }
-.status-approved  { background:var(--green-l);  color:var(--green-d); }
-.status-rejected  { background:var(--red-l);    color:var(--red-d); }
-.proof-item { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--surface3); gap:10px; }
-.proof-item:last-child { border-bottom:none; }
-.proof-status { font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; }
-.tax-compare { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:12px; }
-.tax-box { border:2px solid var(--border); border-radius:var(--radius-sm); padding:16px; text-align:center; }
-.tax-box.recommended { border-color:var(--accent); background:var(--accent-l); }
-.tax-box .regime-name { font-size:13px; font-weight:700; color:var(--muted); margin-bottom:10px; }
-.tax-box .tax-amt { font-size:24px; font-weight:800; color:var(--text); }
-.tax-box .monthly { font-size:12px; color:var(--muted); margin-top:4px; }
-.tax-box.recommended .regime-name { color:var(--accent); }
-.tax-box.recommended .tax-amt { color:var(--accent); }
-.rec-badge { background:var(--accent); color:#fff; font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700; margin-left:6px; }
+/* ─── Layout ─── */
+.content .card{overflow:visible;padding:0}
+.itd-page{width:100%}
 
-/* HR Table */
-.hr-table { width:100%; border-collapse:collapse; font-size:13px; }
-.hr-table th { background:var(--surface3); color:var(--accent); font-weight:700; padding:9px 12px; text-align:left; border-bottom:2px solid var(--border); }
-.hr-table td { padding:9px 12px; border-bottom:1px solid var(--surface3); }
-.hr-table tr:hover td { background:var(--surface2); }
+/* ─── Top bar ─── */
+.itd-topbar{padding:16px 24px 0;background:#fff;border-radius:12px 12px 0 0;border-bottom:2px solid #e8eaf6}
+.itd-topbar-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-bottom:12px}
+.itd-title{font-size:18px;font-weight:800;color:#1e3a5f;display:flex;align-items:center;gap:8px}
+.itd-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* ─── FY + regime bar ─── */
+.itd-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 24px;background:#f8f9ff;border-bottom:1px solid #e0e3ec}
+.itd-controls label{font-size:12px;font-weight:700;color:#546e7a;text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
+.itd-controls select,.itd-controls input{padding:7px 12px;border-radius:7px;border:1.5px solid #c5cae9;font-size:13px;font-family:inherit;background:#fff;color:#1e293b;outline:none}
+.itd-controls select:focus,.itd-controls input:focus{border-color:#3949ab}
+
+/* ─── Regime toggle ─── */
+.regime-toggle{display:flex;gap:0;border-radius:8px;overflow:hidden;border:1.5px solid #c5cae9}
+.regime-btn{padding:8px 22px;border:none;background:#fff;font-size:13px;font-weight:600;color:#546e7a;cursor:pointer;transition:all .15s}
+.regime-btn.active{background:#3949ab;color:#fff}
+.regime-btn:first-child{border-right:1.5px solid #c5cae9}
+
+/* ─── Status badge ─── */
+.itd-status{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.st-draft    {background:#fef9c3;color:#92400e;border:1px solid #fde68a}
+.st-submitted{background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd}
+.st-approved {background:#dcfce7;color:#166534;border:1px solid #86efac}
+.st-rejected {background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+
+/* ─── Tabs ─── */
+.itd-tabs{display:flex;width:100%}
+.itd-tab{flex:1;padding:13px 10px;border:none;background:transparent;font-size:13px;font-weight:600;color:#78909c;cursor:pointer;border-bottom:3px solid transparent;text-align:center;transition:all .15s}
+.itd-tab:hover{color:#3949ab;background:#f5f6fb}
+.itd-tab.active{color:#3949ab;border-bottom:3px solid #3949ab;font-weight:700}
+.itd-body{padding:24px}
+
+/* ─── Tax comparison cards ─── */
+.regime-compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+@media(max-width:600px){.regime-compare{grid-template-columns:1fr}}
+.regime-card{border:2px solid #e0e3ec;border-radius:12px;padding:20px;text-align:center;position:relative;transition:border-color .2s}
+.regime-card.selected{border-color:#3949ab;background:#f0f2ff}
+.regime-card.cheaper{border-color:#16a34a;background:#f0fdf4}
+.regime-card h3{font-size:15px;font-weight:800;color:#1e3a5f;margin:0 0 4px}
+.regime-card .tax-amt{font-size:28px;font-weight:800;color:#1e3a5f;margin:10px 0 4px}
+.regime-card .tds-line{font-size:12px;color:#546e7a}
+.regime-card .save-badge{display:inline-block;background:#16a34a;color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;margin-top:8px}
+.regime-card .rec-badge{display:inline-block;background:#3949ab;color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;margin-top:8px}
+.regime-select-btn{margin-top:12px;width:100%;padding:8px;border-radius:8px;border:1.5px solid #3949ab;background:#fff;color:#3949ab;font-size:12.5px;font-weight:700;cursor:pointer;transition:all .15s}
+.regime-select-btn:hover,.regime-select-btn.chosen{background:#3949ab;color:#fff}
+
+/* ─── Section accordion ─── */
+.it-section{border:1.5px solid #e0e3ec;border-radius:10px;margin-bottom:12px;overflow:hidden}
+.it-section-hdr{padding:13px 18px;background:#f5f6fb;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;border-bottom:1px solid #e0e3ec}
+.it-section-hdr:hover{background:#eef0fb}
+.it-section-hdr .sec-title{font-size:13.5px;font-weight:700;color:#283593;display:flex;align-items:center;gap:8px}
+.it-section-hdr .sec-right{display:flex;align-items:center;gap:10px}
+.it-section-hdr .sec-amt{font-size:13px;font-weight:800;color:#1b5e20}
+.it-section-hdr .sec-chevron{font-size:12px;color:#9fa8da;transition:transform .2s}
+.it-section-hdr.open .sec-chevron{transform:rotate(180deg)}
+.it-section-body{padding:18px 20px;display:none;background:#fff}
+.it-section-body.open{display:block}
+
+/* ─── Form grid ─── */
+.it-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px}
+.it-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px 20px}
+@media(max-width:700px){.it-grid,.it-grid-3{grid-template-columns:1fr}}
+.it-field{display:flex;flex-direction:column;gap:5px}
+.it-field label{font-size:11px;font-weight:700;color:#546e7a;text-transform:uppercase;letter-spacing:.04em}
+.it-field input,.it-field select,.it-field textarea{padding:10px 12px;border:1.5px solid #d0d5e8;border-radius:7px;font-size:13.5px;font-family:inherit;color:#1e293b;background:#f8f9ff;outline:none;transition:border-color .15s,background .15s}
+.it-field input:focus,.it-field select:focus,.it-field textarea:focus{border-color:#3949ab;background:#fff;box-shadow:0 0 0 3px rgba(57,73,171,.08)}
+.it-field input:read-only{background:#f0f2f8;color:#546e7a;cursor:default}
+.it-field .hint{font-size:11px;color:#94a3b8}
+.it-limit-bar{display:flex;justify-content:space-between;align-items:center;background:#eef0fb;border:1px solid #c5cae9;border-radius:6px;padding:8px 12px;margin-top:10px;font-size:12px}
+.it-limit-bar .lbl{color:#3949ab;font-weight:600}
+.it-limit-bar .val{font-weight:800;color:#283593}
+.it-limit-bar .remaining{font-weight:700;color:#1b5e20}
+.proof-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f0f2f8;gap:10px}
+.proof-row:last-child{border-bottom:none}
+.proof-name{font-size:12.5px;font-weight:600;color:#1e293b}
+.proof-st{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px}
+.proof-st.pending{background:#fef9c3;color:#92400e}
+.proof-st.approved{background:#dcfce7;color:#166534}
+.proof-st.rejected{background:#fee2e2;color:#991b1b}
+
+/* ─── Tax projection panel ─── */
+.tax-proj{background:#f0f4ff;border:1.5px solid #c5cae9;border-radius:12px;padding:20px;margin-bottom:20px}
+.tax-proj h4{font-size:13px;font-weight:800;color:#3949ab;text-transform:uppercase;letter-spacing:.05em;margin:0 0 14px}
+.proj-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #e0e3ec;font-size:13px}
+.proj-row:last-child{border-bottom:none;font-weight:800;font-size:14px;color:#283593}
+.proj-row .lbl{color:#546e7a}
+.proj-row .val{font-weight:700;color:#1e293b}
+.proj-row.total .val{color:#3949ab;font-size:15px}
+.proj-row.deduct .val{color:#1b5e20}
+.tds-highlight{background:linear-gradient(135deg,#1e3a5f,#3949ab);border-radius:10px;padding:16px 20px;color:#fff;display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+.tds-highlight .label{font-size:13px;font-weight:600;opacity:.85}
+.tds-highlight .amount{font-size:24px;font-weight:800}
+
+/* ─── HR table ─── */
+.hr-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.hr-tbl th{background:#1e3a5f;color:#fff;font-weight:700;padding:11px 14px;text-align:left;letter-spacing:.03em}
+.hr-tbl td{padding:11px 14px;border-bottom:1px solid #e8eaf6;vertical-align:middle}
+.hr-tbl tr:nth-child(even) td{background:#f8faff}
+.hr-tbl tr:hover td{background:#eef0fb}
+
+/* ─── Sub-section label ─── */
+.sub-sec-label{font-size:11px;font-weight:800;color:#3949ab;letter-spacing:.06em;text-transform:uppercase;margin:16px 0 10px;display:flex;align-items:center;gap:8px}
+.sub-sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,#c5cae9,transparent)}
+
+/* ─── Proof upload area ─── */
+.proof-upload-box{border:2px dashed #c5cae9;border-radius:8px;padding:14px;text-align:center;cursor:pointer;transition:border-color .15s;margin-top:10px}
+.proof-upload-box:hover{border-color:#3949ab;background:#f0f2ff}
+.proof-upload-box input[type=file]{display:none}
+.proof-upload-box .upload-lbl{font-size:12.5px;color:#3949ab;font-weight:600}
+
+/* ─── Modal ─── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:14px;width:min(560px,95vw);max-height:88vh;overflow-y:auto;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.modal-box h3{font-size:16px;font-weight:800;color:#1e3a5f;margin:0 0 16px}
+.modal-close{float:right;background:none;border:none;font-size:22px;cursor:pointer;color:#888;margin-top:-4px}
+
+/* ─── Locked state ─── */
+.locked-notice{background:#fef9c3;border:1.5px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:13px;color:#92400e;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
 </style>
 </head>
 <body>
-
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-mark" id="sidebar-logo-mark">
       <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
     </div>
-    <div>
-      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div>
-    </div>
+    <div><div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div></div></div>
   </div>
   <nav id="sidebar-nav"></nav>
   <div class="sidebar-footer">
@@ -85,721 +154,948 @@
 <div class="main">
   <div class="topbar">
     <div class="topbar-left">
-      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <button class="hamburger-btn" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
       <div class="topbar-title">🧾 IT Declaration & Tax</div>
     </div>
     <div class="topbar-right">
-      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
-      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html">🏠</a>
     </div>
   </div>
 
   <div class="content fade-in">
+    <div class="card">
+    <div class="itd-page">
 
-    <!-- Tabs -->
-    <div class="it-tabs">
-      <button class="it-tab active" onclick="switchTab('declaration')" id="tab-declaration">📋 My Declaration</button>
-      <button class="it-tab" onclick="switchTab('proof')"       id="tab-proof">📎 Upload Proof</button>
-      <button class="it-tab" onclick="switchTab('tax')"         id="tab-tax">🧮 Tax Calculator</button>
-      <button class="it-tab" id="tab-hr" onclick="switchTab('hr')" style="display:none">👩‍💼 HR Review</button>
-    </div>
+      <!-- Top bar -->
+      <div class="itd-topbar">
+        <div class="itd-topbar-row">
+          <div class="itd-title">🧾 Income Tax Declaration</div>
+          <div class="itd-meta">
+            <span id="decl-status-badge"></span>
+            <button id="btn-save" class="btn btn-outline btn-sm" onclick="saveDeclaration('save')">💾 Save Draft</button>
+            <button id="btn-submit" class="btn btn-primary btn-sm" onclick="confirmSubmit()">✅ Submit to HR</button>
+          </div>
+        </div>
 
-    <!-- ── TAB: Declaration ── -->
-    <div id="pane-declaration">
-
-      <!-- FY + regime selector -->
-      <div class="card" style="padding:14px 18px;margin-bottom:16px">
-        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
-          <div class="it-field">
+        <!-- Controls row -->
+        <div class="itd-controls">
+          <div>
             <label>Financial Year</label>
-            <select id="decl-fy" class="form-control" style="width:150px" onchange="loadDeclaration()">
+            <select id="sel-fy" onchange="onFYChange()">
+              <option value="2025-26">FY 2025-26</option>
               <option value="2024-25">FY 2024-25</option>
-              <option value="2025-26" selected>FY 2025-26</option>
-              <option value="2026-27">FY 2026-27</option>
+              <option value="2023-24">FY 2023-24</option>
             </select>
           </div>
-          <div class="it-field">
+          <div>
             <label>Tax Regime</label>
-            <select id="decl-regime" class="form-control" style="width:150px">
-              <option value="old">Old Regime</option>
-              <option value="new">New Regime</option>
+            <div class="regime-toggle">
+              <button class="regime-btn active" id="rbtn-old" onclick="setRegime('old')">🏛️ Old Regime</button>
+              <button class="regime-btn" id="rbtn-new" onclick="setRegime('new')">✨ New Regime</button>
+            </div>
+          </div>
+          <div id="hr-emp-search-wrap" style="display:none">
+            <label>Employee</label>
+            <select id="sel-hr-emp" onchange="onHREmployeeChange()" style="min-width:200px">
+              <option value="">— Select Employee —</option>
             </select>
           </div>
-          <div id="decl-status-wrap" style="padding-bottom:4px"></div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="itd-tabs">
+          <button class="itd-tab active" id="itab-declare" onclick="switchTab('declare')">📋 My Declaration</button>
+          <button class="itd-tab" id="itab-proof" onclick="switchTab('proof')">📎 Upload Proofs</button>
+          <button class="itd-tab" id="itab-tax" onclick="switchTab('tax')">🧮 Tax Preview</button>
+          <button class="itd-tab" id="itab-hr" onclick="switchTab('hr')" style="display:none">👩‍💼 HR Review</button>
         </div>
       </div>
 
-      <form id="decl-form">
+      <!-- ══ TAB: Declaration ══ -->
+      <div id="pane-declare" class="itd-body">
+        <div id="locked-notice" class="locked-notice" style="display:none">
+          🔒 This declaration is locked. You cannot make changes while it is <span id="locked-reason">submitted / approved</span>.
+        </div>
 
-        <!-- HRA -->
+        <!-- Regime comparison -->
+        <div class="regime-compare" id="regime-compare-wrap" style="display:none">
+          <div class="regime-card" id="rc-old">
+            <h3>🏛️ Old Regime</h3>
+            <div class="tax-amt" id="rc-old-tax">—</div>
+            <div class="tds-line" id="rc-old-tds">Estimated Annual Tax</div>
+            <div id="rc-old-badge"></div>
+            <button class="regime-select-btn" id="rcbtn-old" onclick="setRegime('old')">Select Old Regime</button>
+          </div>
+          <div class="regime-card" id="rc-new">
+            <h3>✨ New Regime</h3>
+            <div class="tax-amt" id="rc-new-tax">—</div>
+            <div class="tds-line" id="rc-new-tds">Estimated Annual Tax</div>
+            <div id="rc-new-badge"></div>
+            <button class="regime-select-btn" id="rcbtn-new" onclick="setRegime('new')">Select New Regime</button>
+          </div>
+        </div>
+
+        <!-- Old Regime sections -->
+        <div id="old-regime-sections">
+
+          <!-- HRA -->
+          <div class="it-section">
+            <div class="it-section-hdr" onclick="toggleSec(this)">
+              <span class="sec-title">🏠 HRA — House Rent Allowance</span>
+              <span class="sec-right">
+                <span class="sec-amt" id="sec-hra-total"></span>
+                <span class="sec-chevron">▼</span>
+              </span>
+            </div>
+            <div class="it-section-body">
+              <div class="it-grid">
+                <div class="it-field">
+                  <label>Monthly Rent Paid (₹)</label>
+                  <input type="number" id="rent_paid_monthly" placeholder="0" min="0" oninput="onFieldChange()">
+                </div>
+                <div class="it-field">
+                  <label>Annual Rent (₹) <span style="color:#9ca3af;font-size:10px">(auto)</span></label>
+                  <input type="number" id="annual_rent" placeholder="0" readonly>
+                </div>
+                <div class="it-field">
+                  <label>Landlord Name</label>
+                  <input type="text" id="landlord_name" placeholder="Full Name">
+                </div>
+                <div class="it-field">
+                  <label>Landlord PAN <span style="color:#ef4444;font-size:10px">*if rent &gt; ₹1L/yr</span></label>
+                  <input type="text" id="landlord_pan" placeholder="ABCDE1234F" maxlength="10" style="text-transform:uppercase">
+                </div>
+              </div>
+              <div class="it-field" style="margin-top:12px">
+                <label>City Type</label>
+                <select id="hra_city_type">
+                  <option value="metro">Metro (Mumbai, Delhi, Kolkata, Chennai) — 50%</option>
+                  <option value="nonmetro">Non-Metro — 40%</option>
+                </select>
+              </div>
+              <div class="hint" style="font-size:11.5px;color:#546e7a;margin-top:8px">HRA exemption = Min(Actual HRA, Rent − 10% of Basic, 50%/40% of Basic). Calculated automatically.</div>
+            </div>
+          </div>
+
+          <!-- 80C -->
+          <div class="it-section">
+            <div class="it-section-hdr" onclick="toggleSec(this)">
+              <span class="sec-title">💰 Section 80C — Investments &amp; Savings</span>
+              <span class="sec-right">
+                <span class="sec-amt" id="sec-80c-total"></span>
+                <span class="sec-chevron">▼</span>
+              </span>
+            </div>
+            <div class="it-section-body">
+              <div class="it-grid">
+                <div class="it-field"><label>EPF (₹)</label><input type="number" id="sec80c_pf"        placeholder="0" min="0" oninput="calc80C()"></div>
+                <div class="it-field"><label>PPF (₹)</label><input type="number" id="sec80c_ppf"       placeholder="0" min="0" oninput="calc80C()"></div>
+                <div class="it-field"><label>LIC Premium (₹)</label><input type="number" id="sec80c_lic"  placeholder="0" min="0" oninput="calc80C()"></div>
+                <div class="it-field"><label>ELSS / Mutual Funds (₹)</label><input type="number" id="sec80c_elss" placeholder="0" min="0" oninput="calc80C()"></div>
+                <div class="it-field"><label>NSC (₹)</label><input type="number" id="sec80c_nsc"       placeholder="0" min="0" oninput="calc80C()"></div>
+                <div class="it-field"><label>Home Loan Principal (₹)</label><input type="number" id="sec80c_home_loan" placeholder="0" min="0" oninput="calc80C()"></div>
+                <div class="it-field"><label>Children Tuition Fees (₹)</label><input type="number" id="sec80c_tuition" placeholder="0" min="0" oninput="calc80C()"></div>
+                <div class="it-field"><label>Tax Saving FD / Other (₹)</label><input type="number" id="sec80c_other" placeholder="0" min="0" oninput="calc80C()"></div>
+              </div>
+              <div class="it-limit-bar" style="margin-top:14px">
+                <span class="lbl">Total 80C Declared</span>
+                <span class="val" id="c80c-declared">₹0</span>
+                <span>|</span>
+                <span class="lbl">Eligible (Max ₹1,50,000)</span>
+                <span class="val" id="c80c-eligible">₹0</span>
+                <span>|</span>
+                <span class="lbl">Remaining</span>
+                <span class="remaining" id="c80c-remaining">₹1,50,000</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- NPS 80CCD(1B) -->
+          <div class="it-section">
+            <div class="it-section-hdr" onclick="toggleSec(this)">
+              <span class="sec-title">🏦 NPS — Section 80CCD(1B)</span>
+              <span class="sec-right">
+                <span class="sec-amt" id="sec-nps-total"></span>
+                <span class="sec-chevron">▼</span>
+              </span>
+            </div>
+            <div class="it-section-body">
+              <div class="it-grid">
+                <div class="it-field">
+                  <label>NPS Contribution (₹)</label>
+                  <input type="number" id="sec80ccd_nps" placeholder="0" min="0" oninput="onFieldChange()">
+                  <span class="hint">Additional ₹50,000 deduction over &amp; above 80C limit</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 80D Medical Insurance -->
+          <div class="it-section">
+            <div class="it-section-hdr" onclick="toggleSec(this)">
+              <span class="sec-title">🏥 Section 80D — Medical Insurance</span>
+              <span class="sec-right"><span class="sec-amt" id="sec-80d-total"></span><span class="sec-chevron">▼</span></span>
+            </div>
+            <div class="it-section-body">
+              <div class="it-grid">
+                <div class="it-field">
+                  <label>Self + Family Premium (₹) <span class="hint">Max ₹25,000</span></label>
+                  <input type="number" id="sec80d_self" placeholder="0" min="0" oninput="onFieldChange()">
+                </div>
+                <div class="it-field">
+                  <label>Parents Premium (₹) <span class="hint">Max ₹25,000 / ₹50,000 (senior)</span></label>
+                  <input type="number" id="sec80d_parents" placeholder="0" min="0" oninput="onFieldChange()">
+                </div>
+                <div class="it-field">
+                  <label>Parents are Senior Citizens?</label>
+                  <select id="sec80d_senior_parent">
+                    <option value="no">No — Max ₹25,000</option>
+                    <option value="yes">Yes — Max ₹50,000</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Home Loan Interest Sec 24 -->
+          <div class="it-section">
+            <div class="it-section-hdr" onclick="toggleSec(this)">
+              <span class="sec-title">🏡 Section 24(b) — Home Loan Interest</span>
+              <span class="sec-right"><span class="sec-amt" id="sec-24b-total"></span><span class="sec-chevron">▼</span></span>
+            </div>
+            <div class="it-section-body">
+              <div class="it-grid">
+                <div class="it-field">
+                  <label>Loan Provider / Bank</label>
+                  <input type="text" id="homeloan_provider" placeholder="SBI / HDFC …">
+                </div>
+                <div class="it-field">
+                  <label>Annual Interest Paid (₹) <span class="hint">Max ₹2,00,000 (SOP)</span></label>
+                  <input type="number" id="sec24b_home_loan" placeholder="0" min="0" oninput="onFieldChange()">
+                </div>
+                <div class="it-field" style="grid-column:1/-1">
+                  <label>Property Address</label>
+                  <input type="text" id="homeloan_address" placeholder="Full property address">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Education Loan 80E -->
+          <div class="it-section">
+            <div class="it-section-hdr" onclick="toggleSec(this)">
+              <span class="sec-title">🎓 Section 80E — Education Loan Interest</span>
+              <span class="sec-right"><span class="sec-amt" id="sec-80e-total"></span><span class="sec-chevron">▼</span></span>
+            </div>
+            <div class="it-section-body">
+              <div class="it-grid">
+                <div class="it-field">
+                  <label>Interest Paid on Education Loan (₹)</label>
+                  <input type="number" id="sec80e_edu_loan" placeholder="0" min="0" oninput="onFieldChange()">
+                  <span class="hint">Full deduction allowed — no upper limit</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Donations 80G -->
+          <div class="it-section">
+            <div class="it-section-hdr" onclick="toggleSec(this)">
+              <span class="sec-title">🤝 Section 80G — Donations</span>
+              <span class="sec-right"><span class="sec-amt" id="sec-80g-total"></span><span class="sec-chevron">▼</span></span>
+            </div>
+            <div class="it-section-body">
+              <div class="it-grid">
+                <div class="it-field">
+                  <label>Donation Amount (₹)</label>
+                  <input type="number" id="sec80g_donation" placeholder="0" min="0" oninput="onFieldChange()">
+                </div>
+                <div class="it-field">
+                  <label>Institution Name</label>
+                  <input type="text" id="sec80g_institution" placeholder="PM Relief Fund, etc.">
+                </div>
+                <div class="it-field">
+                  <label>Institution PAN</label>
+                  <input type="text" id="sec80g_pan" placeholder="ABCDE1234F" maxlength="10" style="text-transform:uppercase">
+                </div>
+                <div class="it-field">
+                  <label>Deduction Category</label>
+                  <select id="sec80g_category">
+                    <option value="100">100% Deduction (PM Relief, etc.)</option>
+                    <option value="50">50% Deduction</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /old-regime-sections -->
+
+        <!-- New Regime sections -->
+        <div id="new-regime-sections" style="display:none">
+
+          <!-- Previous Employment -->
+          <div class="it-section">
+            <div class="it-section-hdr" onclick="toggleSec(this)">
+              <span class="sec-title">🏢 Previous Employment Income</span>
+              <span class="sec-right"><span class="sec-chevron">▼</span></span>
+            </div>
+            <div class="it-section-body">
+              <div class="it-grid">
+                <div class="it-field">
+                  <label>Previous Employer Name</label>
+                  <input type="text" id="prev_employer" placeholder="Company Ltd.">
+                </div>
+                <div class="it-field">
+                  <label>Previous Salary Received (₹)</label>
+                  <input type="number" id="prev_salary" placeholder="0" min="0" oninput="onFieldChange()">
+                </div>
+                <div class="it-field">
+                  <label>TDS Deducted by Previous Employer (₹)</label>
+                  <input type="number" id="prev_tds" placeholder="0" min="0" oninput="onFieldChange()">
+                </div>
+                <div class="it-field">
+                  <label>Period (From - To)</label>
+                  <input type="text" id="prev_period" placeholder="Apr 2024 – Jun 2024">
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /new-regime-sections -->
+
+        <!-- Common: Other Income (both regimes) -->
         <div class="it-section">
-          <div class="it-section-hdr">
-            🏠 HRA Exemption
-            <span style="font-size:11px;font-weight:400;color:var(--muted)">Applicable only if you pay rent</span>
+          <div class="it-section-hdr" onclick="toggleSec(this)">
+            <span class="sec-title">💹 Other Income</span>
+            <span class="sec-right"><span class="sec-amt" id="sec-other-total"></span><span class="sec-chevron">▼</span></span>
           </div>
           <div class="it-section-body">
             <div class="it-grid">
               <div class="it-field">
-                <label>Monthly Rent Paid (₹)</label>
-                <input type="number" id="rent_paid_monthly" min="0" placeholder="e.g. 8000" oninput="updateTotals()">
+                <label>Savings Account Interest (₹)</label>
+                <input type="number" id="other_savings_int" placeholder="0" min="0" oninput="onFieldChange()">
               </div>
               <div class="it-field">
-                <label>Landlord Name</label>
-                <input type="text" id="landlord_name" placeholder="Full name">
+                <label>FD Interest (₹)</label>
+                <input type="number" id="other_fd_int" placeholder="0" min="0" oninput="onFieldChange()">
               </div>
               <div class="it-field">
-                <label>Landlord PAN <span style="color:var(--muted2)">(required if rent > ₹1L/yr)</span></label>
-                <input type="text" id="landlord_pan" placeholder="ABCDE1234F" maxlength="10" style="text-transform:uppercase">
+                <label>Dividend Income (₹)</label>
+                <input type="number" id="other_dividend" placeholder="0" min="0" oninput="onFieldChange()">
+              </div>
+              <div class="it-field">
+                <label>Other Income (₹)</label>
+                <input type="number" id="other_misc" placeholder="0" min="0" oninput="onFieldChange()">
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 80C -->
-        <div class="it-section">
-          <div class="it-section-hdr">
-            💰 Section 80C Investments
-            <span style="font-size:11px;font-weight:400;color:var(--muted)">Max deduction: ₹1,50,000</span>
-          </div>
-          <div class="it-section-body">
-            <div class="it-grid">
-              <div class="it-field">
-                <label>PF Contribution (₹)</label>
-                <input type="number" id="sec80c_pf" min="0" placeholder="0" oninput="updateTotals()">
-                <span class="hint">Employee's own PF contribution</span>
-              </div>
-              <div class="it-field">
-                <label>PPF (₹)</label>
-                <input type="number" id="sec80c_ppf" min="0" placeholder="0" oninput="updateTotals()">
-              </div>
-              <div class="it-field">
-                <label>LIC Premium (₹)</label>
-                <input type="number" id="sec80c_lic" min="0" placeholder="0" oninput="updateTotals()">
-              </div>
-              <div class="it-field">
-                <label>ELSS / Mutual Funds (₹)</label>
-                <input type="number" id="sec80c_elss" min="0" placeholder="0" oninput="updateTotals()">
-              </div>
-              <div class="it-field">
-                <label>NSC (₹)</label>
-                <input type="number" id="sec80c_nsc" min="0" placeholder="0" oninput="updateTotals()">
-              </div>
-              <div class="it-field">
-                <label>Home Loan Principal (₹)</label>
-                <input type="number" id="sec80c_home_loan" min="0" placeholder="0" oninput="updateTotals()">
-              </div>
-              <div class="it-field">
-                <label>Tuition Fees (₹)</label>
-                <input type="number" id="sec80c_tuition" min="0" placeholder="0" oninput="updateTotals()">
-              </div>
-              <div class="it-field">
-                <label>Other 80C (₹)</label>
-                <input type="number" id="sec80c_other" min="0" placeholder="0" oninput="updateTotals()">
-              </div>
-            </div>
-            <div class="it-total-bar">
-              <span class="label">Total 80C (capped at ₹1.5L)</span>
-              <span class="value" id="total_80c_display">₹0</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 80D -->
-        <div class="it-section">
-          <div class="it-section-hdr">
-            🏥 Section 80D — Medical Insurance
-          </div>
-          <div class="it-section-body">
-            <div class="it-grid">
-              <div class="it-field">
-                <label>Self / Family Premium (₹)</label>
-                <input type="number" id="sec80d_self" min="0" placeholder="0" oninput="updateTotals()">
-                <span class="hint">Max ₹25,000</span>
-              </div>
-              <div class="it-field">
-                <label>Parents Premium (₹)</label>
-                <input type="number" id="sec80d_parents" min="0" placeholder="0" oninput="updateTotals()">
-                <span class="hint">Max ₹50,000 (senior citizen parents)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 24b + 80E + 80G + 80CCD -->
-        <div class="it-section">
-          <div class="it-section-hdr">📑 Other Deductions</div>
-          <div class="it-section-body">
-            <div class="it-grid">
-              <div class="it-field">
-                <label>Sec 24(b) — Home Loan Interest (₹)</label>
-                <input type="number" id="sec24b_home_loan" min="0" placeholder="0" oninput="updateTotals()">
-                <span class="hint">Max ₹2,00,000</span>
-              </div>
-              <div class="it-field">
-                <label>Sec 80E — Education Loan Interest (₹)</label>
-                <input type="number" id="sec80e_edu_loan" min="0" placeholder="0" oninput="updateTotals()">
-                <span class="hint">No limit</span>
-              </div>
-              <div class="it-field">
-                <label>Sec 80G — Donations (₹)</label>
-                <input type="number" id="sec80g_donation" min="0" placeholder="0" oninput="updateTotals()">
-              </div>
-              <div class="it-field">
-                <label>Sec 80CCD(1B) — NPS (₹)</label>
-                <input type="number" id="sec80ccd_nps" min="0" placeholder="0" oninput="updateTotals()">
-                <span class="hint">Additional ₹50,000 over 80C</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Total Summary -->
-        <div class="card" style="padding:16px 18px;margin-bottom:16px;background:var(--accent-l);border:1.5px solid var(--border2)">
-          <div style="font-weight:700;font-size:14px;color:var(--accent);margin-bottom:10px">📊 Declaration Summary</div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;flex-wrap:wrap">
-            <div style="text-align:center;background:#fff;border-radius:8px;padding:10px">
-              <div style="font-size:11px;color:var(--muted)">Total 80C</div>
-              <div style="font-size:18px;font-weight:800;color:var(--accent)" id="sum_80c">₹0</div>
-            </div>
-            <div style="text-align:center;background:#fff;border-radius:8px;padding:10px">
-              <div style="font-size:11px;color:var(--muted)">Other Deductions</div>
-              <div style="font-size:18px;font-weight:800;color:var(--purple)" id="sum_other">₹0</div>
-            </div>
-            <div style="text-align:center;background:#fff;border-radius:8px;padding:10px">
-              <div style="font-size:11px;color:var(--muted)">Total Savings</div>
-              <div style="font-size:18px;font-weight:800;color:var(--green-d)" id="sum_total">₹0</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Buttons -->
-        <div style="display:flex;gap:10px;flex-wrap:wrap" id="decl-btns">
-          <button type="button" class="btn btn-outline" onclick="saveDeclaration('save')">💾 Save Draft</button>
-          <button type="button" class="btn btn-primary" onclick="saveDeclaration('submit')">✅ Submit to HR</button>
-        </div>
-      </form>
-    </div>
-
-    <!-- ── TAB: Proof Upload ── -->
-    <div id="pane-proof" style="display:none">
-      <div class="card" style="padding:14px 18px;margin-bottom:16px">
-        <div style="font-size:13px;color:var(--muted);margin-bottom:4px">
-          Upload supporting documents for your IT Declaration. Accepted formats: PDF, JPG, PNG (max 5MB each).
-        </div>
-        <div style="font-size:12px;color:var(--yellow-d);font-weight:600">
-          ⚠️ Submit your declaration first before uploading proofs.
+        <!-- Save bar -->
+        <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:20px;padding-top:16px;border-top:2px solid #e8eaf6">
+          <button class="btn btn-outline" onclick="saveDeclaration('save')">💾 Save Draft</button>
+          <button class="btn btn-primary" onclick="confirmSubmit()">✅ Submit to HR</button>
         </div>
       </div>
-      <div id="proof-sections"></div>
-    </div>
 
-    <!-- ── TAB: Tax Calculator ── -->
-    <div id="pane-tax" style="display:none">
-      <div class="card" style="padding:18px 20px;margin-bottom:16px">
-        <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px">🧮 Income Tax Calculator</div>
-        <div style="font-size:12px;color:var(--muted)">Based on your salary structure and declaration. Old Regime vs New Regime comparison.</div>
-      </div>
-      <div id="tax-result">
-        <div style="text-align:center;padding:40px;color:var(--muted)">
-          <button class="btn btn-primary" onclick="loadTaxPreview()">Calculate My Tax</button>
+      <!-- ══ TAB: Proof Upload ══ -->
+      <div id="pane-proof" class="itd-body" style="display:none">
+        <div id="proof-content">
+          <div class="loader"><div class="spinner"></div></div>
         </div>
       </div>
-    </div>
 
-    <!-- ── TAB: HR Review ── -->
-    <div id="pane-hr" style="display:none">
-      <div class="card" style="padding:14px 18px;margin-bottom:16px">
-        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
-          <div class="it-field">
-            <label>Filter by FY</label>
-            <select id="hr-fy" class="form-control" style="width:150px" onchange="loadHRView()">
-              <option value="2024-25">FY 2024-25</option>
-              <option value="2025-26" selected>FY 2025-26</option>
-              <option value="2026-27">FY 2026-27</option>
-            </select>
-          </div>
-          <div class="it-field">
-            <label>Status</label>
-            <select id="hr-status" class="form-control" style="width:150px" onchange="loadHRView()">
-              <option value="">All</option>
+      <!-- ══ TAB: Tax Preview ══ -->
+      <div id="pane-tax" class="itd-body" style="display:none">
+        <div id="tax-content">
+          <div class="loader"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- ══ TAB: HR Review ══ -->
+      <div id="pane-hr" class="itd-body" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div style="font-size:13px;font-weight:700;color:#1e3a5f">All Declarations — <span id="hr-fy-label">FY 2025-26</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <select id="hr-filter-status" class="form-control" style="font-size:13px;padding:7px 10px" onchange="loadHRView()">
+              <option value="">All Statuses</option>
+              <option value="draft">Draft</option>
               <option value="submitted">Submitted</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
-              <option value="draft">Draft</option>
             </select>
           </div>
         </div>
-      </div>
-      <div class="card" style="overflow-x:auto">
-        <div id="hr-table-wrap">
-          <div style="text-align:center;padding:30px;color:var(--muted)">Loading…</div>
+        <div style="overflow-x:auto;border-radius:8px;border:1px solid #e0e3ec">
+          <table class="hr-tbl">
+            <thead>
+              <tr>
+                <th>Employee</th><th>Code</th><th>FY</th><th>Regime</th>
+                <th>80C</th><th>Total Deductions</th><th>Status</th>
+                <th>Submitted</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="hr-tbody">
+              <tr><td colspan="9" style="text-align:center;padding:32px;color:#9ca3af">Loading…</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
 
+    </div><!-- .itd-page -->
+    </div><!-- .card -->
   </div>
 </div>
 
 <!-- HR Review Modal -->
-<div id="review-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:none;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:16px;padding:24px;width:680px;max-width:96vw;max-height:90vh;overflow-y:auto">
-    <div style="font-weight:700;font-size:16px;margin-bottom:14px" id="review-modal-title">Review Declaration</div>
-
-    <!-- Inline Proof Documents -->
-    <div id="review-proofs-wrap" style="margin-bottom:14px">
-      <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:var(--muted)">📎 Proof Documents</div>
-      <div id="review-proofs-list" style="font-size:12px;color:var(--muted2)">Loading…</div>
+<div class="modal-overlay" id="modal-review">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('modal-review')">×</button>
+    <h3 id="modal-review-title">Review Declaration</h3>
+    <div id="modal-review-body"></div>
+    <div style="margin-top:16px">
+      <label style="font-size:12px;font-weight:700;color:#546e7a;display:block;margin-bottom:6px">COMMENT (optional)</label>
+      <textarea id="review-comment" class="form-control" rows="3" placeholder="Add comment for employee…"></textarea>
     </div>
-
-    <!-- Inline Document Viewer -->
-    <div id="review-doc-viewer" style="display:none;margin-bottom:14px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
-      <div style="background:var(--bg2);padding:8px 12px;display:flex;align-items:center;justify-content:space-between">
-        <span id="review-doc-name" style="font-size:12px;font-weight:600;color:var(--muted)"></span>
-        <button class="btn btn-outline" style="font-size:11px;padding:3px 8px" onclick="document.getElementById('review-doc-viewer').style.display='none'">✕ Close</button>
-      </div>
-      <div id="review-doc-content" style="min-height:200px;max-height:420px;overflow:auto;display:flex;align-items:center;justify-content:center;background:#f9f9f9"></div>
-    </div>
-
-    <textarea id="review-comment" rows="3" class="form-control" placeholder="Comment (optional for approve, required for reject)…" style="width:100%;margin-bottom:12px"></textarea>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn btn-outline" onclick="closeReviewModal()">Cancel</button>
-      <button class="btn" style="background:var(--red);color:#fff" onclick="submitReview('reject')">❌ Reject</button>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeModal('modal-review')">Cancel</button>
+      <button class="btn btn-sm" style="background:#fee2e2;color:#991b1b;border:1.5px solid #fca5a5;font-weight:700" onclick="submitReview('reject')">❌ Reject</button>
       <button class="btn btn-primary" onclick="submitReview('approve')">✅ Approve</button>
     </div>
+  </div>
+</div>
+
+<!-- Proof view modal -->
+<div class="modal-overlay" id="modal-proof">
+  <div class="modal-box" style="width:min(700px,95vw)">
+    <button class="modal-close" onclick="closeModal('modal-proof')">×</button>
+    <h3 id="modal-proof-title">Proof Documents</h3>
+    <div id="modal-proof-body"></div>
   </div>
 </div>
 
 <script src="app.js"></script>
 <script>
 Auth.guard();
-loadNotifBadge();
-buildSidebar('it-declaration.html');
-  loadNotifBadge();
 
-const itUser = Auth.getUser();
-const itIsHR = ['hr','accounts'].includes(itUser?.role);
+const HR_ROLES = ['hr','accounts','admin','super_admin'];
+let isHR   = false;
+let declId = null;
+let currentRegime = 'old';
+let currentFY     = '2025-26';
+let currentDecl   = null;
+let isLocked      = false;
+let reviewDeclId  = null;
+let taxPreviewData = null;
 
-if (itIsHR) document.getElementById('tab-hr').style.display = '';
+// ── INIT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('load', async () => {
+  buildSidebar('it-declaration.html');
+  const user = Auth.getUser();
+  isHR = HR_ROLES.includes(user.role);
 
-let currentDeclId = null;
-let reviewingDeclId = null;
+  if (isHR) {
+    document.getElementById('itab-hr').style.display = '';
+    document.getElementById('hr-emp-search-wrap').style.display = '';
+    loadHREmployees();
+  }
+
+  await loadDeclaration();
+});
+
+// ── FY / Employee change ──────────────────────────────────────────────────────
+function onFYChange() {
+  currentFY = document.getElementById('sel-fy').value;
+  document.getElementById('hr-fy-label').textContent = 'FY ' + currentFY;
+  loadDeclaration();
+}
+
+async function loadHREmployees() {
+  const res = await api('GET', '/employees');
+  if (!res?.success) return;
+  const sel = document.getElementById('sel-hr-emp');
+  res.data.forEach(e => {
+    const o = document.createElement('option');
+    o.value = e.id;
+    o.textContent = `${e.employee_code} — ${e.first_name} ${e.last_name}`;
+    sel.appendChild(o);
+  });
+}
+
+function onHREmployeeChange() {
+  loadDeclaration();
+}
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
 function switchTab(tab) {
-  ['declaration','proof','tax','hr'].forEach(t => {
-    document.getElementById('pane-' + t).style.display  = t === tab ? '' : 'none';
-    document.getElementById('tab-'  + t)?.classList.toggle('active', t === tab);
+  ['declare','proof','tax','hr'].forEach(t => {
+    document.getElementById('pane-' + t).style.display = t === tab ? '' : 'none';
+    document.getElementById('itab-' + t)?.classList.toggle('active', t === tab);
   });
-  if (tab === 'proof') renderProofSections();
+  if (tab === 'proof') renderProofTab();
   if (tab === 'tax')   loadTaxPreview();
   if (tab === 'hr')    loadHRView();
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-const itN = id => parseFloat(document.getElementById(id)?.value || 0);
-function itFmt(n) { return '₹' + Number(n||0).toLocaleString('en-IN'); }
-
-function updateTotals() {
-  const c80c = Math.min(
-    itN('sec80c_pf') + itN('sec80c_ppf') + itN('sec80c_lic') +
-    itN('sec80c_elss') + itN('sec80c_nsc') + itN('sec80c_home_loan') +
-    itN('sec80c_tuition') + itN('sec80c_other'), 150000
-  );
-  const other =
-    Math.min(itN('sec80d_self'), 25000) + Math.min(itN('sec80d_parents'), 50000) +
-    itN('sec80e_edu_loan') + Math.min(itN('sec24b_home_loan'), 200000) +
-    itN('sec80g_donation') + Math.min(itN('sec80ccd_nps'), 50000);
-  document.getElementById('total_80c_display').textContent = itFmt(c80c);
-  document.getElementById('sum_80c').textContent   = itFmt(c80c);
-  document.getElementById('sum_other').textContent = itFmt(other);
-  document.getElementById('sum_total').textContent = itFmt(c80c + other);
+// ── Regime ────────────────────────────────────────────────────────────────────
+function setRegime(regime) {
+  currentRegime = regime;
+  document.getElementById('rbtn-old').classList.toggle('active', regime === 'old');
+  document.getElementById('rbtn-new').classList.toggle('active', regime === 'new');
+  document.getElementById('old-regime-sections').style.display = regime === 'old' ? '' : 'none';
+  document.getElementById('new-regime-sections').style.display = regime === 'new' ? '' : 'none';
+  // update comparison selection highlight
+  document.getElementById('rcbtn-old').classList.toggle('chosen', regime === 'old');
+  document.getElementById('rcbtn-new').classList.toggle('chosen', regime === 'new');
+  document.getElementById('rc-old').classList.toggle('selected', regime === 'old');
+  document.getElementById('rc-new').classList.toggle('selected', regime === 'new');
 }
 
-// ── Load existing declaration ─────────────────────────────────────────────────
+// ── Section accordion ─────────────────────────────────────────────────────────
+function toggleSec(hdr) {
+  hdr.classList.toggle('open');
+  hdr.nextElementSibling.classList.toggle('open');
+}
+
+// ── 80C live calc ─────────────────────────────────────────────────────────────
+function n(id) { return parseFloat(document.getElementById(id)?.value || 0) || 0; }
+
+function calc80C() {
+  const total = n('sec80c_pf') + n('sec80c_ppf') + n('sec80c_lic') + n('sec80c_elss') +
+                n('sec80c_nsc') + n('sec80c_home_loan') + n('sec80c_tuition') + n('sec80c_other');
+  const eligible = Math.min(total, 150000);
+  const remaining = 150000 - eligible;
+  document.getElementById('c80c-declared').textContent  = fmt.money(total);
+  document.getElementById('c80c-eligible').textContent  = fmt.money(eligible);
+  document.getElementById('c80c-remaining').textContent = fmt.money(remaining);
+  document.getElementById('sec-80c-total').textContent  = eligible > 0 ? fmt.money(eligible) : '';
+  onFieldChange();
+}
+
+function onFieldChange() {
+  // Update rent annually
+  const monthly = n('rent_paid_monthly');
+  const annual  = monthly * 12;
+  const annEl = document.getElementById('annual_rent');
+  if (annEl) annEl.value = annual > 0 ? annual : '';
+  // Update section totals in headers
+  const hra = monthly * 12;
+  document.getElementById('sec-hra-total').textContent  = hra > 0 ? fmt.money(hra) + '/yr' : '';
+  const nps = n('sec80ccd_nps');
+  document.getElementById('sec-nps-total').textContent  = nps > 0 ? fmt.money(Math.min(nps,50000)) : '';
+  const d80d = n('sec80d_self') + n('sec80d_parents');
+  document.getElementById('sec-80d-total').textContent  = d80d > 0 ? fmt.money(d80d) : '';
+  const s24b = n('sec24b_home_loan');
+  document.getElementById('sec-24b-total').textContent  = s24b > 0 ? fmt.money(Math.min(s24b,200000)) : '';
+  const s80e = n('sec80e_edu_loan');
+  document.getElementById('sec-80e-total').textContent  = s80e > 0 ? fmt.money(s80e) : '';
+  const s80g = n('sec80g_donation');
+  document.getElementById('sec-80g-total').textContent  = s80g > 0 ? fmt.money(s80g) : '';
+  const other = n('other_savings_int') + n('other_fd_int') + n('other_dividend') + n('other_misc');
+  document.getElementById('sec-other-total').textContent = other > 0 ? fmt.money(other) : '';
+}
+
+// ── Load Declaration ──────────────────────────────────────────────────────────
 async function loadDeclaration() {
-  const fy = document.getElementById('decl-fy').value;
-  const res = await api('GET', `/it-declaration?fy=${fy}`);
-  if (res?.success && res.data) {
-    const d = res.data;
-    currentDeclId = d.id;
-    const fields = ['rent_paid_monthly','landlord_name','landlord_pan',
-      'sec80c_pf','sec80c_ppf','sec80c_lic','sec80c_elss','sec80c_nsc',
-      'sec80c_home_loan','sec80c_tuition','sec80c_other',
-      'sec80d_self','sec80d_parents','sec80e_edu_loan',
-      'sec24b_home_loan','sec80g_donation','sec80ccd_nps'];
-    fields.forEach(f => {
-      const el = document.getElementById(f);
-      if (el) el.value = d[f] || '';
-    });
-    document.getElementById('decl-regime').value = d.regime || 'old';
-    updateTotals();
+  const fy    = document.getElementById('sel-fy').value;
+  const empId = isHR ? (document.getElementById('sel-hr-emp')?.value || '') : '';
+  const qp    = `?fy=${fy}${empId ? '&employee_id=' + empId : ''}`;
+  const res   = await api('GET', '/it-declaration' + qp);
+  if (!res?.success) return;
 
-    // Show status
-    const statusWrap = document.getElementById('decl-status-wrap');
-    statusWrap.innerHTML = `<span class="status-badge status-${d.status}">${d.status}</span>`;
-    if (d.hr_comment) {
-      statusWrap.innerHTML += `<div style="font-size:12px;color:var(--muted);margin-top:4px">HR: ${d.hr_comment}</div>`;
-    }
+  currentDecl = res.data;
+  declId = currentDecl?.id || null;
 
-    // Lock form if approved/submitted
-    const locked = ['approved','submitted'].includes(d.status);
-    document.getElementById('decl-btns').innerHTML = locked
-      ? `<div style="font-size:13px;color:var(--muted);font-weight:600">
-           ${d.status === 'approved' ? '✅ Declaration approved by HR' : '⏳ Submitted — awaiting HR review'}
-           <button type="button" class="btn btn-outline" style="margin-left:12px;font-size:12px" onclick="unlockDeclaration()">✏️ Edit</button>
-         </div>`
-      : `<button type="button" class="btn btn-outline" onclick="saveDeclaration('save')">💾 Save Draft</button>
-         <button type="button" class="btn btn-primary" onclick="saveDeclaration('submit')">✅ Submit to HR</button>`;
-  } else {
-    currentDeclId = null;
-    document.getElementById('decl-status-wrap').innerHTML = '<span class="status-badge status-draft">New</span>';
-    document.getElementById('decl-btns').innerHTML =
-      `<button type="button" class="btn btn-outline" onclick="saveDeclaration('save')">💾 Save Draft</button>
-       <button type="button" class="btn btn-primary" onclick="saveDeclaration('submit')">✅ Submit to HR</button>`;
+  if (!currentDecl) {
+    setFormDefaults();
+    updateStatusBadge('draft');
+    setLocked(false);
+    document.getElementById('regime-compare-wrap').style.display = 'none';
+    return;
+  }
+
+  fillForm(currentDecl);
+  updateStatusBadge(currentDecl.status);
+  const locked = ['submitted','approved'].includes(currentDecl.status);
+  setLocked(locked);
+}
+
+function setFormDefaults() {
+  ['rent_paid_monthly','annual_rent','landlord_name','landlord_pan',
+   'sec80c_pf','sec80c_ppf','sec80c_lic','sec80c_elss','sec80c_nsc',
+   'sec80c_home_loan','sec80c_tuition','sec80c_other',
+   'sec80d_self','sec80d_parents','sec80e_edu_loan',
+   'sec24b_home_loan','sec80g_donation','sec80ccd_nps',
+   'homeloan_provider','homeloan_address',
+   'sec80g_institution','sec80g_pan',
+   'prev_employer','prev_salary','prev_tds','prev_period',
+   'other_savings_int','other_fd_int','other_dividend','other_misc'
+  ].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  setRegime('old');
+  calc80C(); onFieldChange();
+}
+
+function fillForm(d) {
+  const set = (id, val) => { const el = document.getElementById(id); if(el && val != null) el.value = val; };
+  set('rent_paid_monthly', d.rent_paid_monthly);
+  set('landlord_name', d.landlord_name);
+  set('landlord_pan',  d.landlord_pan);
+  set('sec80c_pf',     d.sec80c_pf);
+  set('sec80c_ppf',    d.sec80c_ppf);
+  set('sec80c_lic',    d.sec80c_lic);
+  set('sec80c_elss',   d.sec80c_elss);
+  set('sec80c_nsc',    d.sec80c_nsc);
+  set('sec80c_home_loan', d.sec80c_home_loan);
+  set('sec80c_tuition',d.sec80c_tuition);
+  set('sec80c_other',  d.sec80c_other);
+  set('sec80d_self',   d.sec80d_self);
+  set('sec80d_parents',d.sec80d_parents);
+  set('sec80e_edu_loan',d.sec80e_edu_loan);
+  set('sec24b_home_loan',d.sec24b_home_loan);
+  set('sec80g_donation',d.sec80g_donation);
+  set('sec80ccd_nps',  d.sec80ccd_nps);
+  setRegime(d.regime || 'old');
+  calc80C(); onFieldChange();
+  // Show HR comment if rejected
+  if (d.status === 'rejected' && d.hr_comment) {
+    toast('Rejected: ' + d.hr_comment, 'error');
   }
 }
 
-function unlockDeclaration() {
-  document.getElementById('decl-btns').innerHTML =
-    `<button type="button" class="btn btn-outline" onclick="saveDeclaration('save')">💾 Save Draft</button>
-     <button type="button" class="btn btn-primary" onclick="saveDeclaration('submit')">✅ Re-submit to HR</button>`;
+function setLocked(locked) {
+  isLocked = locked;
+  document.getElementById('locked-notice').style.display = locked ? '' : 'none';
+  document.getElementById('btn-save').style.display   = locked ? 'none' : '';
+  document.getElementById('btn-submit').style.display = locked && currentDecl?.status !== 'rejected' ? 'none' : '';
+  const inputs = document.querySelectorAll('#pane-declare input, #pane-declare select, #pane-declare textarea');
+  inputs.forEach(el => { el.disabled = locked; });
 }
 
-// ── Save Declaration ──────────────────────────────────────────────────────────
-async function saveDeclaration(action) {
-  const fy = document.getElementById('decl-fy').value;
-  const body = {
-    financial_year: fy,
-    regime: document.getElementById('decl-regime').value,
-    action,
-    rent_paid_monthly: itN('rent_paid_monthly'),
-    landlord_name: document.getElementById('landlord_name').value,
-    landlord_pan:  document.getElementById('landlord_pan').value.toUpperCase(),
-    sec80c_pf:       itN('sec80c_pf'),
-    sec80c_ppf:      itN('sec80c_ppf'),
-    sec80c_lic:      itN('sec80c_lic'),
-    sec80c_elss:     itN('sec80c_elss'),
-    sec80c_nsc:      itN('sec80c_nsc'),
-    sec80c_home_loan:itN('sec80c_home_loan'),
-    sec80c_tuition:  itN('sec80c_tuition'),
-    sec80c_other:    itN('sec80c_other'),
-    sec80d_self:     itN('sec80d_self'),
-    sec80d_parents:  itN('sec80d_parents'),
-    sec80e_edu_loan: itN('sec80e_edu_loan'),
-    sec24b_home_loan:itN('sec24b_home_loan'),
-    sec80g_donation: itN('sec80g_donation'),
-    sec80ccd_nps:    itN('sec80ccd_nps'),
-  };
+function updateStatusBadge(status) {
+  const el = document.getElementById('decl-status-badge');
+  const map = { draft:'st-draft', submitted:'st-submitted', approved:'st-approved', rejected:'st-rejected' };
+  const labels = { draft:'📝 Draft', submitted:'📤 Submitted', approved:'✅ Approved', rejected:'❌ Rejected' };
+  el.className = 'itd-status ' + (map[status] || 'st-draft');
+  el.textContent = labels[status] || status;
+}
 
-  const res = await api('POST', '/it-declaration', body);
+// ── Save / Submit ─────────────────────────────────────────────────────────────
+function getFormData(action = 'save') {
+  return {
+    financial_year: document.getElementById('sel-fy').value,
+    regime: currentRegime,
+    action,
+    rent_paid_monthly: n('rent_paid_monthly'),
+    landlord_name:  document.getElementById('landlord_name')?.value?.trim() || '',
+    landlord_pan:   document.getElementById('landlord_pan')?.value?.trim()  || '',
+    sec80c_pf:      n('sec80c_pf'),
+    sec80c_ppf:     n('sec80c_ppf'),
+    sec80c_lic:     n('sec80c_lic'),
+    sec80c_elss:    n('sec80c_elss'),
+    sec80c_nsc:     n('sec80c_nsc'),
+    sec80c_home_loan: n('sec80c_home_loan'),
+    sec80c_tuition: n('sec80c_tuition'),
+    sec80c_other:   n('sec80c_other'),
+    sec80d_self:    n('sec80d_self'),
+    sec80d_parents: n('sec80d_parents'),
+    sec80e_edu_loan:n('sec80e_edu_loan'),
+    sec24b_home_loan:n('sec24b_home_loan'),
+    sec80g_donation:n('sec80g_donation'),
+    sec80ccd_nps:   n('sec80ccd_nps'),
+  };
+}
+
+async function saveDeclaration(action = 'save') {
+  if (isLocked && action === 'save') { toast('Declaration is locked', 'error'); return; }
+  const body = getFormData(action);
+  const res  = await api('POST', '/it-declaration', body);
   if (res?.success) {
-    currentDeclId = res.data.id;
-    toast(res.message, 'success');
-    loadDeclaration();
+    toast(res.message || 'Saved');
+    declId = res.data?.id;
+    currentDecl = res.data;
+    updateStatusBadge(res.data.status);
+    if (action === 'submit') setLocked(true);
   } else {
     toast(res?.message || 'Failed to save', 'error');
   }
 }
 
-// ── Proof Sections ────────────────────────────────────────────────────────────
+function confirmSubmit() {
+  if (!confirm('Submit this declaration to HR for review?\n\nYou will not be able to edit it after submission.')) return;
+  saveDeclaration('submit');
+}
+
+// ── PROOF TAB ─────────────────────────────────────────────────────────────────
 const PROOF_SECTIONS = [
-  { key: 'HRA',           label: '🏠 HRA — Rent Receipts' },
-  { key: '80C_PF',        label: '💰 80C — PF Statement' },
-  { key: '80C_PPF',       label: '💰 80C — PPF Passbook' },
-  { key: '80C_LIC',       label: '💰 80C — LIC Premium Receipt' },
-  { key: '80C_ELSS',      label: '💰 80C — ELSS Statement' },
-  { key: '80C_HOME_LOAN', label: '💰 80C — Home Loan Principal Certificate' },
-  { key: '80C_TUITION',   label: '💰 80C — School Fee Receipt' },
-  { key: '80D_SELF',      label: '🏥 80D — Health Insurance (Self)' },
-  { key: '80D_PARENTS',   label: '🏥 80D — Health Insurance (Parents)' },
-  { key: '24B',           label: '🏡 24(b) — Home Loan Interest Certificate' },
-  { key: '80E',           label: '📚 80E — Education Loan Certificate' },
-  { key: '80G',           label: '🎁 80G — Donation Receipt' },
-  { key: '80CCD_NPS',     label: '🏦 80CCD — NPS Statement' },
+  { key: 'HRA',         label: '🏠 HRA — Rent Receipts / Rent Agreement' },
+  { key: '80C_EPF',     label: '💰 80C — EPF / PF Statement' },
+  { key: '80C_PPF',     label: '💰 80C — PPF Statement / Passbook' },
+  { key: '80C_LIC',     label: '💰 80C — LIC Premium Receipt' },
+  { key: '80C_ELSS',    label: '💰 80C — ELSS / Mutual Fund Statement' },
+  { key: '80C_OTHER',   label: '💰 80C — Other Investments' },
+  { key: '80CCD',       label: '🏦 NPS — 80CCD(1B) Statement' },
+  { key: '80D_SELF',    label: '🏥 80D — Medical Insurance Receipt (Self)' },
+  { key: '80D_PARENTS', label: '🏥 80D — Medical Insurance Receipt (Parents)' },
+  { key: 'SEC24B',      label: '🏡 Sec 24(b) — Home Loan Interest Certificate' },
+  { key: '80E',         label: '🎓 80E — Education Loan Interest Certificate' },
+  { key: '80G',         label: '🤝 80G — Donation Receipt + 80G Certificate' },
+  { key: 'PREV_EMP',    label: '🏢 Previous Employer — Form 16 / Salary Slips' },
 ];
 
-async function renderProofSections() {
-  const wrap = document.getElementById('proof-sections');
-  if (!currentDeclId) {
-    wrap.innerHTML = '<div class="card" style="padding:20px;text-align:center;color:var(--muted)">Please save your declaration first before uploading proofs.</div>';
+function renderProofTab() {
+  const el = document.getElementById('proof-content');
+  if (!declId) {
+    el.innerHTML = `<div class="empty-state" style="padding:48px"><div class="empty-icon">📎</div><p>Save your declaration first before uploading proofs.</p></div>`;
     return;
   }
-  // Fetch existing proofs
-  const res = await api('GET', `/it-declaration?fy=${document.getElementById('decl-fy').value}`);
-  const existingProofs = res?.data?.proof_documents || [];
-  const proofMap = {};
-  existingProofs.forEach(p => { proofMap[p.section] = p; });
+  const proofs = currentDecl?.proof_documents || [];
+  const byKey  = {};
+  proofs.forEach(p => byKey[p.section] = p);
 
-  wrap.innerHTML = PROOF_SECTIONS.map(s => {
-    const existing = proofMap[s.key];
-    const statusBadge = existing
-      ? `<span class="proof-status status-${existing.status}" style="background:${existing.status==='approved'?'var(--green-l)':existing.status==='rejected'?'var(--red-l)':'var(--yellow-l)'};color:${existing.status==='approved'?'var(--green-d)':existing.status==='rejected'?'var(--red-d)':'var(--yellow-d)'}">${existing.status.toUpperCase()}</span>`
-      : '';
-    const viewBtn = existing
-      ? `<button class="btn btn-outline" style="font-size:11px;padding:4px 10px" onclick="viewProofBlob(${existing.id})">👁 View</button>`
-      : '';
-    const hrComment = existing?.hr_comment ? `<div style="font-size:11px;color:var(--red-d);margin-top:3px">HR: ${existing.hr_comment}</div>` : '';
-    return `
-      <div class="card" style="margin-bottom:10px;padding:14px 18px">
-        <div class="proof-item">
-          <div style="flex:1">
-            <div style="font-weight:600;font-size:13px">${s.label}</div>
-            ${existing ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">📄 ${existing.original_name}</div>${hrComment}` : '<div style="font-size:11px;color:var(--muted2)">No document uploaded</div>'}
+  el.innerHTML = `
+    <div style="font-size:13px;color:#546e7a;margin-bottom:16px">Upload supporting documents for each section. Allowed formats: PDF, JPG, PNG (max 5MB each).</div>
+    ${PROOF_SECTIONS.map(sec => {
+      const proof = byKey[sec.key];
+      const stCls = proof ? `proof-st ${proof.status}` : 'proof-st pending';
+      const stLbl = proof ? (proof.status === 'approved' ? '✅ Verified' : proof.status === 'rejected' ? '❌ Rejected' : '⏳ Pending Review') : '— Not uploaded';
+      const comment = proof?.hr_comment ? `<div style="font-size:11px;color:#ef4444;margin-top:4px">HR: ${proof.hr_comment}</div>` : '';
+      const fileName = proof?.original_name ? `<div style="font-size:11px;color:#546e7a;margin-top:2px">📎 ${proof.original_name}</div>` : '';
+      const viewBtn  = proof ? `<button class="btn btn-outline btn-sm" onclick="viewProof(${proof.id},'${sec.label}')">👁 View</button>` : '';
+      return `
+        <div class="proof-row" data-key="${sec.key}">
+          <div style="flex:1;min-width:0">
+            <div class="proof-name">${sec.label}</div>
+            ${fileName}${comment}
           </div>
-          <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
-            ${statusBadge}
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <span class="${stCls}">${stLbl}</span>
             ${viewBtn}
-            <label class="btn btn-outline" style="font-size:11px;padding:4px 10px;cursor:pointer;margin:0">
-              📎 ${existing ? 'Replace' : 'Upload'}
-              <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="uploadProof(this,'${s.key}','${s.label}')">
+            <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0">
+              📤 Upload
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none"
+                onchange="uploadProof('${sec.key}', '${sec.label}', this)">
             </label>
           </div>
-        </div>
-      </div>`;
-  }).join('');
+        </div>`;
+    }).join('')}`;
 }
 
-// ── Authenticated Proof Viewer ────────────────────────────────────────────────
-async function viewProofBlob(proofId) {
-  try {
-    const token = Auth.getToken();
-    const res = await fetch(`${API_BASE}/it-declaration/proof/${proofId}`, {
-      headers: { Authorization: 'Bearer ' + token }
-    });
-    if (!res.ok) { toast('Could not load proof document', 'error'); return; }
-    const blob = await res.blob();
-    const url  = URL.createObjectURL(blob);
-    const win  = window.open(url, '_blank');
-    // Revoke object URL after window loads to free memory
-    if (win) win.addEventListener('load', () => setTimeout(() => URL.revokeObjectURL(url), 60000));
-  } catch (e) {
-    toast('Failed to open proof document', 'error');
+async function uploadProof(section, sectionLabel, input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('File must be under 5MB', 'error'); return; }
+  const fd = new FormData();
+  fd.append('proof_file', file);
+  fd.append('declaration_id', declId);
+  fd.append('section', section);
+  fd.append('section_label', sectionLabel);
+  const res = await fetch(API_BASE + '/it-declaration/proof', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + Auth.getToken() },
+    body: fd
+  });
+  const data = await res.json();
+  if (data.success) {
+    toast('Proof uploaded ✅');
+    await loadDeclaration();
+    renderProofTab();
+  } else {
+    toast(data.message || 'Upload failed', 'error');
   }
 }
 
-async function uploadProof(input, section, label) {
-  const file = input.files[0];
-  if (!file) return;
-  const fd = new FormData();
-  fd.append('proof_file', file);
-  fd.append('declaration_id', currentDeclId);
-  fd.append('section', section);
-  fd.append('section_label', label);
-
-  const token = Auth.getToken();
-  toast('Uploading…', 'warning');
-  try {
-    const res = await fetch(API_BASE + '/it-declaration/proof', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + token },
-      body: fd
-    });
-    const data = await res.json();
-    if (data.success) { toast('Proof uploaded!', 'success'); renderProofSections(); }
-    else toast(data.message || 'Upload failed', 'error');
-  } catch (e) { toast('Upload failed', 'error'); }
+async function viewProof(proofId, label) {
+  document.getElementById('modal-proof-title').textContent = label;
+  document.getElementById('modal-proof-body').innerHTML = '<div style="text-align:center;padding:32px;color:#888">Loading…</div>';
+  document.getElementById('modal-proof').classList.add('open');
+  const res = await fetch(API_BASE + '/it-declaration/proof/' + proofId, {
+    headers: { Authorization: 'Bearer ' + Auth.getToken() }
+  });
+  const blob = await res.blob();
+  const url  = URL.createObjectURL(blob);
+  if (blob.type.startsWith('image/')) {
+    document.getElementById('modal-proof-body').innerHTML =
+      `<img src="${url}" style="max-width:100%;border-radius:8px">`;
+  } else {
+    document.getElementById('modal-proof-body').innerHTML =
+      `<iframe src="${url}" style="width:100%;height:60vh;border:none;border-radius:8px"></iframe>
+       <a href="${url}" download class="btn btn-outline btn-sm" style="display:block;margin-top:8px;text-align:center">⬇ Download</a>`;
+  }
 }
 
-// ── Tax Calculator ────────────────────────────────────────────────────────────
+// ── TAX PREVIEW ───────────────────────────────────────────────────────────────
 async function loadTaxPreview() {
-  const fy  = document.getElementById('decl-fy').value;
+  const el  = document.getElementById('tax-content');
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const fy  = document.getElementById('sel-fy').value;
   const res = await api('GET', `/it-declaration/tax-preview?fy=${fy}`);
-  const wrap = document.getElementById('tax-result');
-
   if (!res?.success) {
-    wrap.innerHTML = `<div class="card" style="padding:20px;text-align:center;color:var(--red)">${res?.message || 'Could not calculate. Make sure your salary structure is set up.'}</div>`;
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${res?.message || 'Unable to load tax preview. Ensure your salary structure is configured.'}</p></div>`;
     return;
   }
   const d = res.data;
-  const recOld = d.recommended === 'old';
-  wrap.innerHTML = `
-    <div class="card" style="padding:18px 20px;margin-bottom:16px">
-      <div style="font-weight:700;font-size:14px;margin-bottom:12px">FY ${fy} Tax Calculation</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
-        <div style="background:var(--surface3);border-radius:8px;padding:10px;text-align:center">
-          <div style="font-size:11px;color:var(--muted)">Annual Gross Salary</div>
-          <div style="font-size:16px;font-weight:800;color:var(--text)">${itFmt(d.annual_gross)}</div>
-        </div>
-        <div style="background:var(--surface3);border-radius:8px;padding:10px;text-align:center">
-          <div style="font-size:11px;color:var(--muted)">HRA Exemption</div>
-          <div style="font-size:16px;font-weight:800;color:var(--green-d)">${itFmt(d.hra_exemption)}</div>
-        </div>
-        <div style="background:var(--surface3);border-radius:8px;padding:10px;text-align:center">
-          <div style="font-size:11px;color:var(--muted)">Total VI-A Deductions</div>
-          <div style="font-size:16px;font-weight:800;color:var(--purple)">${itFmt(d.total_vi_a)}</div>
-        </div>
-      </div>
+  taxPreviewData = d;
 
-      <div class="tax-compare">
-        <div class="tax-box ${recOld ? 'recommended' : ''}">
-          <div class="regime-name">Old Regime ${recOld ? '<span class="rec-badge">✓ Recommended</span>' : ''}</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Taxable: ${itFmt(d.old_regime.taxable_income)}</div>
-          <div class="tax-amt">${itFmt(d.old_regime.tax)}</div>
-          <div class="monthly">Monthly TDS: ${itFmt(d.old_regime.monthly_tds)}</div>
-        </div>
-        <div class="tax-box ${!recOld ? 'recommended' : ''}">
-          <div class="regime-name">New Regime ${!recOld ? '<span class="rec-badge">✓ Recommended</span>' : ''}</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Taxable: ${itFmt(d.new_regime.taxable_income)}</div>
-          <div class="tax-amt">${itFmt(d.new_regime.tax)}</div>
-          <div class="monthly">Monthly TDS: ${itFmt(d.new_regime.monthly_tds)}</div>
-        </div>
-      </div>
+  const rec = d.recommended;
+  const oldCheap = rec === 'old';
+  const newCheap = rec === 'new';
 
-      <div style="margin-top:14px;padding:12px;background:var(--yellow-l);border-radius:8px;font-size:12px;color:var(--yellow-d);font-weight:600">
-        💡 You save ${itFmt(Math.abs(d.old_regime.tax - d.new_regime.tax))} by choosing the <strong>${d.recommended.toUpperCase()} REGIME</strong>.
-        Update your regime selection in the Declaration tab.
+  // Update comparison cards on declaration tab
+  document.getElementById('rc-old-tax').textContent = fmt.money(d.old_regime.tax);
+  document.getElementById('rc-old-tds').textContent = `Monthly TDS: ${fmt.money(d.old_regime.monthly_tds)}`;
+  document.getElementById('rc-new-tax').textContent = fmt.money(d.new_regime.tax);
+  document.getElementById('rc-new-tds').textContent = `Monthly TDS: ${fmt.money(d.new_regime.monthly_tds)}`;
+  document.getElementById('rc-old').classList.toggle('cheaper', oldCheap);
+  document.getElementById('rc-new').classList.toggle('cheaper', newCheap);
+  document.getElementById('rc-old-badge').innerHTML = oldCheap ? '<span class="save-badge">⭐ RECOMMENDED — LOWER TAX</span>' : '<span class="rec-badge">Old Regime</span>';
+  document.getElementById('rc-new-badge').innerHTML = newCheap ? '<span class="save-badge">⭐ RECOMMENDED — LOWER TAX</span>' : '<span class="rec-badge">New Regime</span>';
+  document.getElementById('regime-compare-wrap').style.display = '';
+
+  const savings = Math.abs(d.old_regime.tax - d.new_regime.tax);
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="regime-card ${oldCheap ? 'cheaper' : ''}">
+        <h3>🏛️ Old Regime</h3>
+        <div class="tax-amt">${fmt.money(d.old_regime.tax)}</div>
+        <div class="tds-line">Monthly TDS: ${fmt.money(d.old_regime.monthly_tds)}</div>
+        <div class="tds-line">Taxable Income: ${fmt.money(d.old_regime.taxable_income)}</div>
+        ${oldCheap ? `<span class="save-badge">⭐ SAVE ${fmt.money(savings)}</span>` : ''}
+      </div>
+      <div class="regime-card ${newCheap ? 'cheaper' : ''}">
+        <h3>✨ New Regime</h3>
+        <div class="tax-amt">${fmt.money(d.new_regime.tax)}</div>
+        <div class="tds-line">Monthly TDS: ${fmt.money(d.new_regime.monthly_tds)}</div>
+        <div class="tds-line">Taxable Income: ${fmt.money(d.new_regime.taxable_income)}</div>
+        ${newCheap ? `<span class="save-badge">⭐ SAVE ${fmt.money(savings)}</span>` : ''}
       </div>
     </div>
 
-    <div class="card" style="padding:16px 18px">
-      <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:var(--accent)">📋 Old Regime Breakdown</div>
-      <div style="font-size:12px;color:var(--muted);display:grid;gap:6px">
-        <div style="display:flex;justify-content:space-between"><span>Gross Salary</span><span style="font-weight:600">${itFmt(d.annual_gross)}</span></div>
-        <div style="display:flex;justify-content:space-between;color:var(--red-d)"><span>— Standard Deduction (u/s 16)</span><span>- ${itFmt(50000)}</span></div>
-        <div style="display:flex;justify-content:space-between;color:var(--red-d)"><span>— HRA Exemption</span><span>- ${itFmt(d.hra_exemption)}</span></div>
-        <div style="display:flex;justify-content:space-between;color:var(--red-d)"><span>— Chapter VI-A Deductions</span><span>- ${itFmt(d.total_vi_a)}</span></div>
-        <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid var(--border);padding-top:6px;color:var(--text)"><span>Net Taxable Income</span><span>${itFmt(d.old_regime.taxable_income)}</span></div>
-        <div style="display:flex;justify-content:space-between;font-weight:800;color:var(--accent);font-size:14px"><span>Tax Payable (incl. 4% cess)</span><span>${itFmt(d.old_regime.tax)}</span></div>
+    <div class="tax-proj">
+      <h4>📊 Old Regime Breakdown</h4>
+      <div class="proj-row"><span class="lbl">Annual Gross Salary</span><span class="val">${fmt.money(d.annual_gross)}</span></div>
+      <div class="proj-row deduct"><span class="lbl">Standard Deduction</span><span class="val">− ${fmt.money(d.std_deduction || 50000)}</span></div>
+      <div class="proj-row deduct"><span class="lbl">HRA Exemption</span><span class="val">− ${fmt.money(d.hra_exemption)}</span></div>
+      <div class="proj-row deduct"><span class="lbl">Total VI-A Deductions (80C, 80D, etc.)</span><span class="val">− ${fmt.money(d.total_vi_a)}</span></div>
+      <div class="proj-row total"><span class="lbl">Net Taxable Income</span><span class="val">${fmt.money(d.old_regime.taxable_income)}</span></div>
+      <div class="proj-row"><span class="lbl">Income Tax + Cess (4%)</span><span class="val">${fmt.money(d.old_regime.tax)}</span></div>
+      <div class="tds-highlight">
+        <div><div class="label">Estimated Monthly TDS (Old Regime)</div><div style="font-size:11px;opacity:.7">Spread over 12 months</div></div>
+        <div class="amount">${fmt.money(d.old_regime.monthly_tds)}<span style="font-size:14px;opacity:.7">/mo</span></div>
       </div>
+    </div>
+
+    <div class="tax-proj" style="background:#f0fdf4;border-color:#86efac">
+      <h4 style="color:#166534">📊 New Regime Breakdown</h4>
+      <div class="proj-row"><span class="lbl">Annual Gross Salary</span><span class="val">${fmt.money(d.annual_gross)}</span></div>
+      <div class="proj-row deduct"><span class="lbl">Standard Deduction (New Regime)</span><span class="val">− ${fmt.money(75000)}</span></div>
+      <div class="proj-row total"><span class="lbl">Net Taxable Income</span><span class="val">${fmt.money(d.new_regime.taxable_income)}</span></div>
+      <div class="proj-row"><span class="lbl">Income Tax + Cess (4%)</span><span class="val">${fmt.money(d.new_regime.tax)}</span></div>
+      <div class="tds-highlight" style="background:linear-gradient(135deg,#166534,#16a34a)">
+        <div><div class="label">Estimated Monthly TDS (New Regime)</div></div>
+        <div class="amount">${fmt.money(d.new_regime.monthly_tds)}<span style="font-size:14px;opacity:.7">/mo</span></div>
+      </div>
+    </div>
+
+    <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:8px;padding:14px 16px;font-size:13px;color:#92400e">
+      💡 <strong>Recommendation:</strong> ${rec === 'old' ? 'Old Regime' : 'New Regime'} saves you <strong>${fmt.money(savings)}</strong> in tax this year.
+      Go to the Declaration tab to select your preferred regime.
     </div>`;
 }
 
-// ── HR Review View ────────────────────────────────────────────────────────────
+// ── HR REVIEW ─────────────────────────────────────────────────────────────────
 async function loadHRView() {
-  const fy     = document.getElementById('hr-fy').value;
-  const status = document.getElementById('hr-status').value;
-  let url = `/it-declaration/all?fy=${fy}`;
-  if (status) url += `&status=${status}`;
-
-  const res = await api('GET', url);
-  const wrap = document.getElementById('hr-table-wrap');
-
-  if (!res?.success || !res.data?.length) {
-    wrap.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)">No declarations found</div>';
+  const fy     = document.getElementById('sel-fy').value;
+  const status = document.getElementById('hr-filter-status').value;
+  const qp     = `?fy=${fy}${status ? '&status=' + status : ''}`;
+  const res    = await api('GET', '/it-declaration/all' + qp);
+  const tbody  = document.getElementById('hr-tbody');
+  if (!res?.success) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#ef4444;padding:24px">Failed to load</td></tr>';
     return;
   }
-
-  wrap.innerHTML = `
-    <table class="hr-table">
-      <thead>
-        <tr>
-          <th>Employee</th>
-          <th>FY</th>
-          <th>Regime</th>
-          <th>80C</th>
-          <th>Total Savings</th>
-          <th>Proofs</th>
-          <th>Submitted</th>
-          <th>Status</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${res.data.map(d => `
-          <tr>
-            <td><div style="font-weight:600">${d.employee_name}</div><div style="font-size:11px;color:var(--muted)">${d.employee_code} · ${d.department||''}</div></td>
-            <td>${d.financial_year}</td>
-            <td><span style="font-size:11px;font-weight:600">${(d.regime||'old').toUpperCase()}</span></td>
-            <td>${itFmt(d.total_80c)}</td>
-            <td>${itFmt(d.total_deductions)}</td>
-            <td style="text-align:center">
-              ${d.proof_count > 0
-                ? `<span style="font-size:12px">${d.proof_count} docs ${d.pending_proofs > 0 ? `<span style="color:var(--yellow-d)">(${d.pending_proofs} pending)</span>` : ''}</span>`
-                : '<span style="color:var(--muted2);font-size:11px">None</span>'
-              }
-            </td>
-            <td style="font-size:12px">${d.submitted_at ? new Date(d.submitted_at).toLocaleDateString('en-IN') : '—'}</td>
-            <td><span class="status-badge status-${d.status}">${d.status}</span></td>
-            <td>
-              ${d.status === 'submitted'
-                ? `<button class="btn btn-outline" style="font-size:11px;padding:4px 10px" onclick="openReviewModal(${d.id},'${d.employee_name}')">Review</button>`
-                : `<button class="btn btn-outline" style="font-size:11px;padding:4px 10px" onclick="openReviewModal(${d.id},'${d.employee_name}')">Re-review</button>`
-              }
-            </td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>`;
-}
-
-function openReviewModal(declId, empName) {
-  reviewingDeclId = declId;
-  document.getElementById('review-modal-title').textContent = `Review — ${empName}`;
-  document.getElementById('review-comment').value = '';
-  document.getElementById('review-doc-viewer').style.display = 'none';
-  document.getElementById('review-modal').style.display = 'flex';
-  loadReviewProofs(declId);
-}
-
-async function loadReviewProofs(declId) {
-  const listEl = document.getElementById('review-proofs-list');
-  listEl.innerHTML = '<span style="color:var(--muted2)">Loading proofs…</span>';
-  try {
-    const res = await api('GET', `/it-declaration/proofs?declaration_id=${declId}`);
-    const proofs = res?.data || [];
-    if (!proofs.length) {
-      listEl.innerHTML = '<span style="color:var(--muted2)">No proof documents uploaded.</span>';
-      return;
-    }
-    listEl.innerHTML = proofs.map(p => `
-      <div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--bg2)">
-        <span style="font-size:18px">${p.mime_type?.startsWith('image/') ? '🖼️' : '📄'}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.section_label || p.section}</div>
-          <div style="font-size:11px;color:var(--muted)">${p.original_name}</div>
+  if (!res.data.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:32px">No declarations found</td></tr>';
+    return;
+  }
+  const stMap = { draft:'st-draft', submitted:'st-submitted', approved:'st-approved', rejected:'st-rejected' };
+  tbody.innerHTML = res.data.map(d => `
+    <tr>
+      <td style="font-weight:700;color:#1e3a5f">${d.employee_name}</td>
+      <td style="color:#546e7a">${d.employee_code}</td>
+      <td>${d.financial_year}</td>
+      <td><span style="font-size:11px;background:#e8eaf6;color:#3949ab;padding:2px 8px;border-radius:4px;font-weight:700">${(d.regime||'old').toUpperCase()}</span></td>
+      <td>${fmt.money(d.total_80c||0)}</td>
+      <td>${fmt.money(d.total_deductions||0)}</td>
+      <td><span class="itd-status ${stMap[d.status]||'st-draft'}">${d.status}</span></td>
+      <td>${d.submitted_at ? fmt.date(d.submitted_at) : '—'}</td>
+      <td>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" onclick="openReviewModal(${d.id},'${d.employee_name}')">📋 Review</button>
+          ${d.proof_count > 0 ? `<button class="btn btn-outline btn-sm" onclick="viewDeclProofs(${d.id})">📎 ${d.proof_count} Proofs</button>` : ''}
         </div>
-        <span class="status-badge status-${p.status}" style="flex-shrink:0;font-size:10px">${p.status}</span>
-        <button class="btn btn-outline" style="font-size:11px;padding:3px 10px;flex-shrink:0" onclick="viewReviewDoc(${p.id},'${p.original_name.replace(/'/g,"\\'")}','${p.mime_type}')">👁 View</button>
-      </div>`).join('');
-  } catch (e) {
-    listEl.innerHTML = '<span style="color:var(--red)">Failed to load proofs.</span>';
-  }
+      </td>
+    </tr>`).join('');
 }
 
-async function viewReviewDoc(proofId, name, mimeType) {
-  const viewer  = document.getElementById('review-doc-viewer');
-  const content = document.getElementById('review-doc-content');
-  const nameEl  = document.getElementById('review-doc-name');
-  content.innerHTML = '<span style="color:var(--muted2);padding:20px">Loading…</span>';
-  viewer.style.display = '';
-  nameEl.textContent = name;
-  try {
-    const token = Auth.getToken();
-    const res = await fetch(`${API_BASE}/it-declaration/proof/${proofId}`, {
-      headers: { Authorization: 'Bearer ' + token }
-    });
-    if (!res.ok) { content.innerHTML = '<span style="color:var(--red);padding:20px">Could not load document.</span>'; return; }
-    const blob = await res.blob();
-    const url  = URL.createObjectURL(blob);
-    if (mimeType?.startsWith('image/')) {
-      content.innerHTML = `<img src="${url}" style="max-width:100%;max-height:400px;object-fit:contain;display:block;margin:auto;padding:8px">`;
-    } else if (mimeType === 'application/pdf') {
-      content.innerHTML = `<iframe src="${url}" style="width:100%;height:420px;border:none"></iframe>`;
-    } else {
-      content.innerHTML = `<a href="${url}" download="${name}" class="btn btn-primary" style="margin:20px">⬇ Download ${name}</a>`;
-    }
-    // Revoke after a while
-    setTimeout(() => URL.revokeObjectURL(url), 120000);
-  } catch (e) {
-    content.innerHTML = '<span style="color:var(--red);padding:20px">Failed to load document.</span>';
-  }
-}
-
-function closeReviewModal() {
-  document.getElementById('review-modal').style.display = 'none';
-  reviewingDeclId = null;
+function openReviewModal(id, name) {
+  reviewDeclId = id;
+  document.getElementById('modal-review-title').textContent = `Review — ${name}`;
+  document.getElementById('review-comment').value = '';
+  document.getElementById('modal-review-body').innerHTML =
+    `<p style="font-size:13px;color:#546e7a">Choose an action for this declaration. You can add a comment for the employee.</p>`;
+  document.getElementById('modal-review').classList.add('open');
 }
 
 async function submitReview(action) {
   const comment = document.getElementById('review-comment').value.trim();
-  if (action === 'reject' && !comment) { toast('Please add a comment for rejection', 'error'); return; }
-  const res = await api('POST', `/it-declaration/${reviewingDeclId}/review`, { action, comment });
-  if (res?.success) { toast(res.message, 'success'); closeReviewModal(); loadHRView(); }
+  const res = await api('POST', `/it-declaration/${reviewDeclId}/review`, { action, comment });
+  if (res?.success) {
+    toast(`Declaration ${action}d ✅`);
+    closeModal('modal-review');
+    loadHRView();
+  } else {
+    toast(res?.message || 'Action failed', 'error');
+  }
+}
+
+async function viewDeclProofs(declId) {
+  document.getElementById('modal-proof-title').textContent = 'Proof Documents';
+  document.getElementById('modal-proof-body').innerHTML = '<div style="text-align:center;padding:24px;color:#888">Loading…</div>';
+  document.getElementById('modal-proof').classList.add('open');
+  const res = await api('GET', `/it-declaration/proofs?declaration_id=${declId}`);
+  if (!res?.success || !res.data.length) {
+    document.getElementById('modal-proof-body').innerHTML = '<p style="color:#9ca3af">No proofs uploaded.</p>';
+    return;
+  }
+  document.getElementById('modal-proof-body').innerHTML = res.data.map(p => `
+    <div class="proof-row">
+      <div>
+        <div class="proof-name">${p.section_label || p.section}</div>
+        <div style="font-size:11px;color:#546e7a">📎 ${p.original_name}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="proof-st ${p.status}">${p.status}</span>
+        <button class="btn btn-outline btn-sm" onclick="viewProof(${p.id},'${p.section_label||p.section}')">👁 View</button>
+        ${p.status !== 'approved' ? `<button class="btn btn-sm" style="background:#dcfce7;color:#166534;border:1px solid #86efac" onclick="reviewProof(${p.id},'approve')">✅</button>` : ''}
+        ${p.status !== 'rejected' ? `<button class="btn btn-sm" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5" onclick="reviewProof(${p.id},'reject')">❌</button>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+async function reviewProof(proofId, action) {
+  const res = await api('POST', `/it-declaration/proof/${proofId}/review`, { action });
+  if (res?.success) { toast(`Proof ${action}d`); viewDeclProofs(reviewDeclId || 0); }
   else toast(res?.message || 'Failed', 'error');
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-loadDeclaration();
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m =>
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); })
+);
 </script>
 </body>
 </html>
