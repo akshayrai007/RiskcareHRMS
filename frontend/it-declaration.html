@@ -1128,9 +1128,9 @@ function renderProofGrids() {
       const stCls  = found ? `ps-${found.status}` : 'ps-none';
       const stLbl  = found ? (found.status==='approved'?'✅ Verified':found.status==='rejected'?'❌ Rejected':'⏳ Pending') : '— Not Uploaded';
       const fname  = found?.file_name ? `<div class="pi-file">📎 ${found.file_name}</div>` : '';
-      const viewBtn= found ? `<button class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px" onclick="viewProof(${found.id},'${def.l}')">👁</button>` : '';
-      const delBtn = found && !isLocked ? `<button class="btn btn-sm" style="font-size:11px;padding:3px 7px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5" onclick="delProof(${found.id},'${sec}','${def.k}')">🗑</button>` : '';
-      const upBtn  = !isLocked ? `<label class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px;cursor:pointer;margin:0">
+      const viewBtn= found ? `<button class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px" title="View / Preview document" onclick="viewProof(${found.id},'${def.l}')">👁</button>` : '';
+      const delBtn = found && !isLocked ? `<button class="btn btn-sm" style="font-size:11px;padding:3px 7px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5" title="Delete this proof" onclick="delProof(${found.id},'${sec}','${def.k}')">🗑</button>` : '';
+      const upBtn  = !isLocked ? `<label class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px;cursor:pointer;margin:0" title="${found ? 'Replace / Re-upload document' : 'Upload document'}">
         📤 <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="uploadProof('${sec}','${def.l}','${def.k}',this)"></label>` : '';
       return `<div class="proof-item">
         <div class="pi-info"><div class="pi-name">${def.l}</div>${fname}</div>
@@ -1314,8 +1314,8 @@ function renderProofTab() {
                 const stCls = found ? `ps-${found.status}` : 'ps-none';
                 const stLbl = found ? (found.status==='approved'?'✅ Verified':found.status==='rejected'?'❌ Rejected':'⏳ Pending') : '— Not Uploaded';
                 const fname = found?.file_name ? `<div class="pi-file">📎 ${found.file_name}</div>` : '';
-                const vBtn  = found ? `<button class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px" onclick="viewProof(${found.id},'${def.l}')">👁</button>` : '';
-                const upBtn = !isLocked ? `<label class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px;cursor:pointer;margin:0">📤
+                const vBtn  = found ? `<button class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px" title="View / Preview document" onclick="viewProof(${found.id},'${def.l}')">👁</button>` : '';
+                const upBtn = !isLocked ? `<label class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px;cursor:pointer;margin:0" title="${found ? 'Replace / Re-upload' : 'Upload document'}">📤
                   <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="uploadProof('${sec}','${def.l}','${def.k}',this)"></label>` : '';
                 return `<div class="proof-item">
                   <div class="pi-info"><div class="pi-name">${def.l}</div>${fname}${found?.hr_comment?`<div style="font-size:11px;color:#ef4444">HR: ${found.hr_comment}</div>`:''}</div>
@@ -1469,9 +1469,9 @@ async function loadHR() {
     <td>${d.submitted_at ? fmt.date(d.submitted_at) : '—'}</td>
     <td>
       <div style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="btn btn-outline btn-sm" style="font-size:11px" onclick="openReview(${d.id},'${d.employee_name}')">📋</button>
-        <button class="btn btn-outline btn-sm" style="font-size:11px" onclick="viewDeclDetail(${d.id})">👁</button>
-        ${d.proof_count > 0 ? `<button class="btn btn-outline btn-sm" style="font-size:11px" onclick="viewDeclProofs(${d.id})">📎${d.proof_count}</button>` : ''}
+        <button class="btn btn-outline btn-sm" style="font-size:11px" title="Approve / Reject declaration" onclick="openReview(${d.id},'${d.employee_name}')">📋 Review</button>
+        <button class="btn btn-outline btn-sm" style="font-size:11px" title="View full declaration details" onclick="viewDeclDetail(${d.id})">👁 Detail</button>
+        ${d.proof_count > 0 ? `<button class="btn btn-outline btn-sm" style="font-size:11px" title="View uploaded proofs" onclick="viewDeclProofs(${d.id})">📎 ${d.proof_count} Proof${d.proof_count==1?'':'s'}</button>` : ''}
       </div>
     </td>
   </tr>`).join('');
@@ -1538,9 +1538,9 @@ async function viewDeclProofs(declId) {
       </div>
       <div class="pi-actions">
         <span class="proof-st ps-${p.status}">${p.status}</span>
-        <button class="btn btn-outline btn-sm" style="font-size:11px" onclick="viewProof(${p.id},'${p.section_label||p.section}')">👁</button>
-        ${p.status!=='approved'?`<button class="btn btn-sm" style="font-size:11px;background:#dcfce7;color:#166534;border:1px solid #86efac" onclick="qkReviewProof(${p.id},'approve')">✅</button>`:''}
-        ${p.status!=='rejected'?`<button class="btn btn-sm" style="font-size:11px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5" onclick="qkReviewProof(${p.id},'reject')">❌</button>`:''}
+        <button class="btn btn-outline btn-sm" style="font-size:11px" title="Preview document" onclick="viewProof(${p.id},'${p.section_label||p.section}')">👁 View</button>
+        ${p.status!=='approved'?`<button class="btn btn-sm" style="font-size:11px;background:#dcfce7;color:#166534;border:1px solid #86efac" title="Approve this proof" onclick="qkReviewProof(${p.id},'approve')">✅ Approve</button>`:''}
+        ${p.status!=='rejected'?`<button class="btn btn-sm" style="font-size:11px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5" title="Reject this proof" onclick="qkReviewProof(${p.id},'reject')">❌ Reject</button>`:''}
       </div>
     </div>`).join('');
 }
