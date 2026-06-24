@@ -846,16 +846,20 @@ router.get('/test-email', authenticate, async (req, res) => {
 });
 
 // ── IT Declaration & Tax ──────────────────────────────────────────────────────
-router.get   ('/it-declaration',              authenticate,                     itDeclCtrl.getDeclaration);
-router.get   ('/it-declaration/all',          authenticate, authorize('hr','accounts'), itDeclCtrl.getAllDeclarations);
-router.get   ('/it-declaration/tax-preview',  authenticate,                     itDeclCtrl.taxPreview);
-router.get   ('/it-declaration/proofs',       authenticate, authorize('hr','accounts'), itDeclCtrl.getProofsByDeclaration);
-router.post  ('/it-declaration',              authenticate,                     itDeclCtrl.saveDeclaration);
-router.post  ('/it-declaration/proof',        authenticate, itDeclCtrl.uploadMiddleware, itDeclCtrl.uploadProof);
-router.get   ('/it-declaration/proof/:id',    authenticate,                     itDeclCtrl.getProof);
-router.get   ('/it-declaration/:id',           authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.getDeclarationById);
-router.post  ('/it-declaration/:id/review',   authenticate, authorize('hr','accounts'), itDeclCtrl.reviewDeclaration);
-router.post  ('/it-declaration/proof/:id/review', authenticate, authorize('hr','accounts'), itDeclCtrl.reviewProof);
+router.get   ('/it-declaration',                    authenticate,                                          itDeclCtrl.getDeclaration);
+router.get   ('/it-declaration/all',                authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.getAllDeclarations);
+router.get   ('/it-declaration/tax-preview',        authenticate,                                          itDeclCtrl.taxPreview);
+router.get   ('/it-declaration/proofs',             authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.getProofsByDeclaration);
+router.get   ('/it-declaration/config',             authenticate,                                          itDeclCtrl.getConfig);
+router.get   ('/it-declaration/dashboard',          authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.getDashboard);
+router.post  ('/it-declaration',                    authenticate,                                          itDeclCtrl.saveDeclaration);
+router.post  ('/it-declaration/proof',              authenticate, itDeclCtrl.uploadMiddleware,             itDeclCtrl.uploadProof);
+router.post  ('/it-declaration/config',             authenticate, authorize('hr','admin','super_admin'),   itDeclCtrl.saveConfig);
+router.get   ('/it-declaration/proof/:id',          authenticate,                                          itDeclCtrl.getProof);
+router.delete('/it-declaration/proof/:id',          authenticate,                                          itDeclCtrl.deleteProof);
+router.get   ('/it-declaration/:id',                authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.getDeclarationById);
+router.post  ('/it-declaration/:id/review',         authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.reviewDeclaration);
+router.post  ('/it-declaration/proof/:id/review',   authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.reviewProof);
 
 // ── Employee Documents module ─────────────────────────────────────────────────
 router.get   ('/documents/checklist',     authenticate,                    docsCtrl.getChecklistDefs);
