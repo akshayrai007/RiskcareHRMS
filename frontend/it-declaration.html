@@ -57,69 +57,39 @@
 .ded-card.used .dc-val{color:#166534}
 .ded-card.warn{border-color:#fde68a;background:#fefce8}
 .ded-card.warn .dc-val{color:#92400e}
-
-/* ── Excel-style sheet frame ── */
-.xl-sheet{border:1px solid #8a9bb0;background:#fff;counter-reset:xlrow 0;font-family:'Segoe UI',Calibri,Arial,sans-serif}
-.xl-colhdr{display:flex;background:#eef1f6;border-bottom:1px solid #8a9bb0;position:sticky;top:0;z-index:2}
-.xl-corner{width:38px;flex-shrink:0;border-right:1px solid #8a9bb0;background:#dde4ee}
-.xl-col{flex:1;text-align:center;font-size:11px;font-weight:700;color:#3c4858;padding:5px 0;border-right:1px solid #c7d0dc;background:#eef1f6}
-.xl-col:last-child{border-right:none}
-.xl-rows{position:relative}
-.xl-rows .it-sec-hdr,.xl-rows .sub-lbl,.xl-rows .lim-bar,.xl-rows .if,.xl-rows .proof-grid,.xl-rows .proof-row{counter-increment:xlrow}
-.xl-rows .it-sec-hdr::before,.xl-rows .sub-lbl::before{content:counter(xlrow);font-size:10px;color:#5b6b85;display:flex;align-items:center;justify-content:center;position:absolute;left:0;top:0;bottom:0;width:38px;background:#dde4ee;border-right:1px solid #b7c2d0}
-.xl-rows .if{position:relative}
-.xl-rows .if::before,.xl-rows .proof-row::before{content:counter(xlrow);font-size:10px;color:#5b6b85;display:flex;align-items:center;justify-content:center}
-.xl-rows .lim-bar{position:relative}
-.xl-rows .lim-bar::before{content:counter(xlrow);font-size:10px;color:#5b6b85;display:flex;align-items:center;justify-content:center;position:absolute;left:0;top:0;bottom:0;width:38px;background:#f4f6f9;border-right:1px solid #d6dce6}
-.xl-rows .proof-grid{position:relative;counter-reset:none}
-.xl-rows .proof-grid::before{content:counter(xlrow);font-size:10px;color:#5b6b85;position:absolute;left:0;top:0;width:38px;text-align:center;padding-top:8px}
 /* ── Section accordion ── */
-.it-sec{border:1px solid #b7c2d0;margin-bottom:0;overflow:hidden;border-top:none}
-.it-sec:first-child{border-top:1px solid #b7c2d0}
-.it-sec-hdr{padding:6px 10px 6px 38px;background:#e8edf5;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;border-bottom:1px solid #b7c2d0;position:relative}
-.it-sec-hdr::before{content:'';position:absolute;left:0;top:0;bottom:0;width:38px;background:#dde4ee;border-right:1px solid #b7c2d0}
-.it-sec-hdr:hover{background:#dde6f5}
-.it-sec-hdr .sh-title{font-size:12.5px;font-weight:700;color:#1b3a6b;display:flex;align-items:center;gap:8px;font-family:'Segoe UI',Calibri,Arial,sans-serif}
+.it-sec{border:1.5px solid #e0e3ec;border-radius:10px;margin-bottom:10px;overflow:hidden}
+.it-sec-hdr{padding:12px 16px;background:#f5f6fb;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+.it-sec-hdr:hover{background:#eef0fb}
+.it-sec-hdr .sh-title{font-size:13px;font-weight:700;color:#283593;display:flex;align-items:center;gap:8px}
 .it-sec-hdr .sh-right{display:flex;align-items:center;gap:8px}
-.it-sec-hdr .sh-amt{font-size:12.5px;font-weight:700;color:#0f7b3a;font-family:'Consolas','Courier New',monospace}
-.it-sec-hdr .sh-chev{font-size:10px;color:#5b6b85;transition:transform .15s}
+.it-sec-hdr .sh-amt{font-size:13px;font-weight:800;color:#166534}
+.it-sec-hdr .sh-chev{font-size:11px;color:#9fa8da;transition:transform .2s}
 .it-sec-hdr.open .sh-chev{transform:rotate(180deg)}
-.it-sec-body{padding:0;display:none;background:#fff}
+.it-sec-body{padding:16px 18px;display:none;background:#fff}
 .it-sec-body.open{display:block}
-/* ── Form (spreadsheet rows) ── */
-.fg2{display:grid;grid-template-columns:1fr 1fr;gap:0}
-.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0}
+/* ── Form ── */
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:13px 18px}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px 18px}
 @media(max-width:680px){.fg2,.fg3{grid-template-columns:1fr}}
-.if{display:grid;grid-template-columns:38px 1fr 1fr;align-items:stretch;border-bottom:1px solid #d6dce6;border-right:1px solid #d6dce6}
-.if::before{content:'';background:#f4f6f9;border-right:1px solid #d6dce6}
-.if label{font-size:11.5px;font-weight:400;color:#1b1b1b;background:#f4f6f9;padding:8px 10px;border-right:1px solid #d6dce6;display:flex;align-items:center;font-family:'Segoe UI',Calibri,Arial,sans-serif;text-transform:none;letter-spacing:0}
-.if input,.if select,.if textarea{padding:7px 10px;border:none;border-radius:0;font-size:13px;font-family:'Consolas','Courier New',monospace;color:#0f1f3d;background:#fff;outline:none;width:100%;box-sizing:border-box;text-align:left}
-.if input[type=number]{text-align:right}
-.if input:focus,.if select:focus,.if textarea:focus{background:#e8f0fe;box-shadow:inset 0 0 0 2px #1a73e8}
-.if input[readonly]{background:#f0f2f8;color:#546e7a;cursor:default;font-style:italic}
-.if .hint{font-size:10.5px;color:#5b6b85;font-family:'Segoe UI',Calibri,Arial,sans-serif;margin-left:6px}
-.sub-lbl{font-size:11px;font-weight:700;color:#fff;letter-spacing:.02em;text-transform:none;margin:0;padding:6px 10px 6px 38px;background:#5b7aad;display:flex;align-items:center;gap:8px;border-bottom:1px solid #b7c2d0;font-family:'Segoe UI',Calibri,Arial,sans-serif}
-.sub-lbl::after{content:none}
-.lim-bar{display:flex;flex-wrap:wrap;gap:0;background:#fffbe6;border:none;border-bottom:1px solid #d6dce6;padding:0 0 0 38px;margin:0;font-size:12px}
-.lim-bar span{font-weight:400;color:#1b1b1b;padding:7px 14px;border-right:1px solid #d6dce6;font-family:'Segoe UI',Calibri,Arial,sans-serif}
-.lim-bar b{color:#0f7b3a;font-family:'Consolas','Courier New',monospace;font-weight:700}
+.if{display:flex;flex-direction:column;gap:4px}
+.if label{font-size:11px;font-weight:700;color:#546e7a;text-transform:uppercase;letter-spacing:.04em}
+.if input,.if select,.if textarea{padding:9px 11px;border:1.5px solid #d0d5e8;border-radius:7px;font-size:13.5px;font-family:inherit;color:#1e293b;background:#f8f9ff;outline:none;transition:border-color .15s,background .15s;width:100%;box-sizing:border-box}
+.if input:focus,.if select:focus,.if textarea:focus{border-color:#3949ab;background:#fff;box-shadow:0 0 0 3px rgba(57,73,171,.07)}
+.if input[readonly]{background:#f0f2f8;color:#546e7a;cursor:default}
+.if .hint{font-size:11px;color:#94a3b8}
+.sub-lbl{font-size:11px;font-weight:800;color:#3949ab;letter-spacing:.06em;text-transform:uppercase;margin:14px 0 10px;display:flex;align-items:center;gap:8px}
+.sub-lbl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,#c5cae9,transparent)}
+.lim-bar{display:flex;flex-wrap:wrap;gap:6px 16px;background:#eef0fb;border:1px solid #c5cae9;border-radius:7px;padding:8px 12px;margin-top:10px;font-size:12px}
+.lim-bar span{font-weight:600;color:#3949ab}.lim-bar b{color:#166534}
 /* ── Proof upload inside section ── */
-.proof-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:0;padding-left:38px}
+.proof-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 @media(max-width:600px){.proof-grid{grid-template-columns:1fr}}
-.proof-item{border:none;border-bottom:1px solid #d6dce6;border-right:1px solid #d6dce6;border-radius:0;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;background:#fff;font-family:'Segoe UI',Calibri,Arial,sans-serif}
+.proof-item{border:1.5px solid #e0e3ec;border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;background:#fafbff}
 .proof-item .pi-info{flex:1;min-width:0}
 .proof-item .pi-name{font-size:12px;font-weight:700;color:#1e3a5f}
 .proof-item .pi-file{font-size:11px;color:#546e7a;margin-top:2px}
 .proof-item .pi-actions{display:flex;gap:5px;align-items:center;flex-shrink:0}
-.proof-tbl{display:flex;flex-direction:column}
-.proof-row{display:grid;grid-template-columns:38px 1.6fr 1fr 1fr;border-bottom:1px solid #d6dce6;align-items:center;font-family:'Segoe UI',Calibri,Arial,sans-serif}
-.proof-row::before{content:'';background:#f4f6f9;border-right:1px solid #d6dce6;align-self:stretch}
-.pr-cell{padding:7px 10px;border-right:1px solid #d6dce6;min-height:36px;display:flex;align-items:center}
-.pr-cell:last-child{border-right:none}
-.pr-name .pi-name{font-size:12px;font-weight:700;color:#1e3a5f}
-.pr-name .pi-file{font-size:11px;color:#546e7a;margin-top:2px}
-.pr-action{gap:5px}
-@media(max-width:680px){.proof-row{grid-template-columns:24px 1fr 1fr 1fr}}
 .proof-st{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:8px}
 .ps-none   {background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb}
 .ps-pending{background:#fef9c3;color:#92400e;border:1px solid #fde68a}
@@ -136,14 +106,13 @@
 .rc .rec-bdg{display:inline-block;background:#166534;color:#fff;font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:10px;margin-top:8px}
 .rc .sel-btn{margin-top:12px;width:100%;padding:8px;border-radius:7px;border:1.5px solid #3949ab;background:#fff;color:#3949ab;font-size:12px;font-weight:700;cursor:pointer}
 .rc .sel-btn:hover,.rc .sel-btn.chosen{background:#3949ab;color:#fff}
-.tax-bk{background:#fff;border:1px solid #8a9bb0;border-radius:0;padding:0;margin-bottom:14px;font-family:'Segoe UI',Calibri,Arial,sans-serif}
-.tax-bk h4{font-size:12px;font-weight:700;color:#1b3a6b;text-transform:none;letter-spacing:0;margin:0;padding:8px 14px;background:#eef1f6;border-bottom:1px solid #8a9bb0}
-.tr{display:flex;justify-content:space-between;padding:6px 14px;border-bottom:1px solid #d6dce6;font-size:13px}
-.tr:last-child{border-bottom:1px solid #d6dce6;font-weight:700;font-size:13px;color:#1b3a6b}
-.tr .tl{color:#1b1b1b}.tr .tv{font-weight:700;color:#0f1f3d;font-family:'Consolas','Courier New',monospace}
-.tr.ded .tv{color:#b91c1c;font-family:'Consolas','Courier New',monospace}
-.tr.total{background:#fffbe6}
-.tr.total .tv{color:#1b3a6b;font-size:14px;font-family:'Consolas','Courier New',monospace}
+.tax-bk{background:#f0f4ff;border:1.5px solid #c5cae9;border-radius:10px;padding:16px 18px;margin-bottom:14px}
+.tax-bk h4{font-size:12px;font-weight:800;color:#3949ab;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px}
+.tr{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #e0e3ec;font-size:13px}
+.tr:last-child{border-bottom:none;font-weight:800;font-size:14px;color:#283593}
+.tr .tl{color:#546e7a}.tr .tv{font-weight:700;color:#1e293b}
+.tr.ded .tv{color:#166534}
+.tr.total .tv{color:#3949ab;font-size:15px}
 .tds-hl{background:linear-gradient(135deg,#1e3a5f,#3949ab);border-radius:9px;padding:14px 18px;color:#fff;display:flex;justify-content:space-between;align-items:center;margin-top:12px}
 .tds-hl .thl{font-size:12.5px;font-weight:600;opacity:.85}
 .tds-hl .tha{font-size:24px;font-weight:800}
@@ -298,16 +267,6 @@
 
       <!-- Deduction Summary Cards -->
       <div class="ded-cards" id="ded-cards"></div>
-
-      <!-- Excel-style Sheet Frame -->
-      <div class="xl-sheet">
-        <div class="xl-colhdr">
-          <div class="xl-corner"></div>
-          <div class="xl-col">A</div>
-          <div class="xl-col">B</div>
-          <div class="xl-col">C</div>
-        </div>
-        <div class="xl-rows">
 
       <!-- OLD REGIME SECTIONS -->
       <div id="old-secs">
@@ -627,9 +586,6 @@
           </div>
         </div>
       </div>
-
-        </div><!-- /xl-rows -->
-      </div><!-- /xl-sheet -->
 
       <!-- Save bar -->
       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;padding-top:14px;border-top:2px solid #e8eaf6">
@@ -1326,25 +1282,17 @@ function renderProofTab() {
       <div class="hr-stat"><div class="hs-n" style="color:#92400e">${pending}</div><div class="hs-l">Pending Review</div></div>
       <div class="hr-stat"><div class="hs-n" style="color:#991b1b">${reject}</div><div class="hs-l">Rejected</div></div>
     </div>
-    <div class="xl-sheet">
-      <div class="xl-colhdr">
-        <div class="xl-corner"></div>
-        <div class="xl-col">A</div>
-        <div class="xl-col">B</div>
-        <div class="xl-col">C</div>
-      </div>
-      <div class="xl-rows">
     ${Object.entries(PROOF_DEFS).map(([sec, defs]) => {
       const secUploads = uploadedProofs[sec] || [];
       if (!secUploads.length && currentRegime === 'new' && ['HRA','80C','80CCD','80D','80DD','80U','80DDB','LTA'].includes(sec)) return '';
       return `
-        <div class="it-sec">
+        <div class="it-sec" style="margin-bottom:8px">
           <div class="it-sec-hdr open" onclick="tgl(this)">
             <span class="sh-title">${sec}</span>
             <span class="sh-right"><span class="sh-amt">${secUploads.length}/${defs.length} uploaded</span><span class="sh-chev">▼</span></span>
           </div>
           <div class="it-sec-body open">
-            <div class="proof-tbl">
+            <div class="proof-grid">
               ${defs.map(def => {
                 const found = secUploads.find(u => u.doc_type === def.k);
                 const stCls = found ? `ps-${found.status}` : 'ps-none';
@@ -1353,20 +1301,16 @@ function renderProofTab() {
                 const vBtn  = found ? `<button class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px" onclick="viewProof(${found.id},'${def.l}')">👁</button>` : '';
                 const upBtn = !isLocked ? `<label class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 7px;cursor:pointer;margin:0">📤
                   <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="uploadProof('${sec}','${def.l}','${def.k}',this)"></label>` : '';
-                return `<div class="proof-row">
-                  <div class="pr-cell pr-name"><div class="pi-name">${def.l}</div>${fname}${found?.hr_comment?`<div style="font-size:11px;color:#ef4444">HR: ${found.hr_comment}</div>`:''}</div>
-                  <div class="pr-cell pr-status"><span class="proof-st ${stCls}">${stLbl}</span></div>
-                  <div class="pr-cell pr-action">${vBtn}${upBtn}</div>
+                return `<div class="proof-item">
+                  <div class="pi-info"><div class="pi-name">${def.l}</div>${fname}${found?.hr_comment?`<div style="font-size:11px;color:#ef4444">HR: ${found.hr_comment}</div>`:''}</div>
+                  <div class="pi-actions"><span class="proof-st ${stCls}">${stLbl}</span>${vBtn}${upBtn}</div>
                 </div>`;
               }).join('')}
             </div>
           </div>
         </div>`;
-    }).join('')}
-      </div>
-    </div>`;
+    }).join('')}`;
 }
-
 
 // ── Tax Preview ───────────────────────────────────────────────────────────────
 async function loadTaxPreview() {
