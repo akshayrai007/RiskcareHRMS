@@ -19,13 +19,14 @@
 .emp-field .val{font-size:13px;font-weight:700;color:#1e3a5f}
 /* ── Controls ── */
 .itd-ctrl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 22px;background:#f8f9ff;border-bottom:1px solid #e0e3ec}
-.itd-window-bar{display:flex;gap:24px;flex-wrap:wrap;padding:10px 22px;background:#eef1fd;border-bottom:1px solid #e0e3ec}
-.iwb-item{display:flex;align-items:center;gap:9px}
-.iwb-icon{font-size:16px}
-.iwb-lbl{font-size:10.5px;font-weight:700;color:#5c6bc0;text-transform:uppercase;letter-spacing:.04em}
-.iwb-val{font-size:13px;font-weight:600;color:#283593}
+.itd-window-bar{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:8px 22px;background:#eef1fd;border-bottom:1px solid #e0e3ec}
+.iwb-item{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.iwb-icon{font-size:15px}
+.iwb-lbl{font-size:11px;font-weight:700;color:#5c6bc0;text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
+.iwb-val{font-size:12.5px;font-weight:600;color:#283593;display:inline}
 .iwb-val.closed{color:#b91c1c}
 .iwb-val.open{color:#166534}
+.iwb-divider{width:1px;height:18px;background:#c5cae9}
 .itd-ctrl label{font-size:11px;font-weight:700;color:#546e7a;text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
 .itd-ctrl select,.itd-ctrl input{padding:7px 11px;border-radius:7px;border:1.5px solid #c5cae9;font-size:13px;font-family:inherit;background:#fff;outline:none}
 .itd-ctrl select:focus{border-color:#3949ab}
@@ -214,7 +215,8 @@
       <div class="itd-ctrl">
         <div><label>Financial Year</label>
           <select id="sel-fy" onchange="onFYChange()">
-            <option value="2025-26">FY 2025-26</option>
+            <option value="2026-27">FY 2026-27</option>
+            <option value="2025-26" selected>FY 2025-26</option>
             <option value="2024-25">FY 2024-25</option>
             <option value="2023-24">FY 2023-24</option>
           </select>
@@ -237,17 +239,14 @@
       <div class="itd-window-bar" id="itd-window-bar">
         <div class="iwb-item">
           <span class="iwb-icon">📝</span>
-          <div>
-            <div class="iwb-lbl">Declaration Window</div>
-            <div class="iwb-val" id="iwb-decl">Loading…</div>
-          </div>
+          <span class="iwb-lbl">Declaration Window:</span>
+          <span class="iwb-val" id="iwb-decl">Loading…</span>
         </div>
+        <div class="iwb-divider"></div>
         <div class="iwb-item">
           <span class="iwb-icon">📎</span>
-          <div>
-            <div class="iwb-lbl">Proof Upload Window</div>
-            <div class="iwb-val" id="iwb-proof">Loading…</div>
-          </div>
+          <span class="iwb-lbl">Proof Upload Window:</span>
+          <span class="iwb-val" id="iwb-proof">Loading…</span>
         </div>
       </div>
 
@@ -1268,7 +1267,7 @@ async function viewProof(proofId, label) {
 // ── Proof Summary Tab ─────────────────────────────────────────────────────────
 function renderProofTab() {
   const el = document.getElementById('proof-content');
-  if (!declId) { el.innerHTML = `<div class="empty-state" style="padding:48px"><div class="empty-icon">📎</div><p>Save your declaration first.</p></div>`; return; }
+  // Show proof sections even without declId — upload will auto-save first
   const allProofs = Object.values(uploadedProofs).flat();
   const total  = Object.values(PROOF_DEFS).flat().length;
   const done   = allProofs.length;
@@ -1284,11 +1283,25 @@ function renderProofTab() {
     </div>
     ${Object.entries(PROOF_DEFS).map(([sec, defs]) => {
       const secUploads = uploadedProofs[sec] || [];
-      if (!secUploads.length && currentRegime === 'new' && ['HRA','80C','80CCD','80D','80DD','80U','80DDB','LTA'].includes(sec)) return '';
+      // In new regime hide old-regime-only sections
+      const OLD_ONLY = ['HRA','80C','80CCD','80D','80DD','80U','80DDB','LTA','80E','80G','HP'];
+      if (currentRegime === 'new' && OLD_ONLY.includes(sec)) return '';
+      // In old regime hide new-regime-only sections
+      const NEW_ONLY = ['PREV_EMP','NEW_HP'];
+      if (currentRegime === 'old' && NEW_ONLY.includes(sec)) return '';
+      const SEC_LABELS = {
+        HRA:'🏠 HRA — House Rent Allowance', '80C':'💰 Section 80C — Investments',
+        '80CCD':'🏦 Section 80CCD(1B) — NPS', '80D':'🏥 Section 80D — Medical Insurance',
+        HP:'🏡 House Property & Sec 24(b)', '80E':'🎓 Section 80E — Education Loan',
+        '80G':'🤝 Section 80G — Donations', '80DD':'♿ Section 80DD — Dependent Disability',
+        '80U':'🦯 Section 80U — Self Disability', '80DDB':'💊 Section 80DDB — Medical Treatment',
+        LTA:'✈️ LTA — Leave Travel Allowance', PREV_EMP:'🏢 Previous Employment',
+        NEW_HP:'🏡 House Property (New Regime)'
+      };
       return `
         <div class="it-sec" style="margin-bottom:8px">
           <div class="it-sec-hdr open" onclick="tgl(this)">
-            <span class="sh-title">${sec}</span>
+            <span class="sh-title">${SEC_LABELS[sec]||sec}</span>
             <span class="sh-right"><span class="sh-amt">${secUploads.length}/${defs.length} uploaded</span><span class="sh-chev">▼</span></span>
           </div>
           <div class="it-sec-body open">

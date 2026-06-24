@@ -46,11 +46,13 @@ exports.initTables = async () => {
       );`);
 
     // Seed default config for FY 2025-26 if not exists
-    const fys = ['2025-26','2024-25','2023-24'];
+    const fys = ['2026-27','2025-26','2024-25','2023-24'];
     for (const fy of fys) {
+      const fyStart = fy.split('-')[0];           // e.g. "2025"
+      const fyEnd   = '20' + fy.split('-')[1];    // e.g. "2026"
       const defaults = [
         ['std_deduction_old',   '50000',   'Standard deduction (Old Regime)'],
-        ['std_deduction_new',   '75000',   'Standard deduction (New Regime) FY26'],
+        ['std_deduction_new',   '75000',   'Standard deduction (New Regime) FY26+'],
         ['limit_80c',           '150000',  'Section 80C max limit'],
         ['limit_80ccd1b',       '50000',   'NPS 80CCD(1B) additional limit'],
         ['limit_80d_self',      '25000',   '80D self + family max'],
@@ -69,14 +71,14 @@ exports.initTables = async () => {
         ['rebate_87a_new',      '700000',  'New Regime rebate threshold'],
         ['rebate_87a_new_amt',  '25000',   'New Regime max rebate amount'],
         ['landlord_pan_thresh', '100000',  'Landlord PAN mandatory if annual rent > this'],
-        ['declaration_start',   `${fy.split('-')[0]}-04-01`, 'Declaration window start'],
-        ['declaration_end',     `20${fy.split('-')[1]}-03-31`, 'Declaration window end'],
-        ['proof_start',         `${fy.split('-')[0]}-11-01`, 'Proof upload window start'],
-        ['proof_end',           `20${fy.split('-')[1]}-02-28`, 'Proof upload window end'],
-        // Old Regime slabs: slab1_low|slab1_high|slab1_rate (pipe-delimited array)
-        ['old_slabs', '0|250000|0,250001|500000|5,500001|1000000|20,1000001|999999999|30', 'Old Regime slabs: low|high|rate% comma-separated'],
-        // New Regime slabs FY26
-        ['new_slabs', '0|300000|0,300001|600000|5,600001|900000|10,900001|1200000|15,1200001|1500000|20,1500001|999999999|30', 'New Regime slabs'],
+        // Windows — open Apr 1 to Mar 31 of the FY (full year open)
+        ['declaration_start',   `${fyStart}-04-01`,  'Declaration window start'],
+        ['declaration_end',     `${fyEnd}-03-31`,    'Declaration window end'],
+        ['proof_start',         `${fyStart}-06-01`,  'Proof upload window start'],
+        ['proof_end',           `${fyEnd}-03-31`,    'Proof upload window end'],
+        // Slabs
+        ['old_slabs', '0|250000|0,250001|500000|5,500001|1000000|20,1000001|999999999|30', 'Old Regime slabs: low|high|rate%'],
+        ['new_slabs', '0|300000|0,300001|600000|5,600001|900000|10,900001|1200000|15,1200001|1500000|20,1500001|999999999|30', 'New Regime slabs FY26+'],
       ];
       for (const [k, v, d] of defaults) {
         await db.query(
@@ -605,10 +607,10 @@ exports.saveDeclaration = async (req, res) => {
         return res.status(403).json({ success:false, message:'Approved declarations cannot be re-submitted.' });
     }
 
-    // Window validation
+    // Window validation — only block employee submissions outside window; HR/Admin can always save
     const cfg = await loadConfig(fy);
     const now = new Date();
-    if (action === 'submit') {
+    if (action === 'submit' && !isPriv) {
       const declEnd = cfg.declaration_end ? new Date(cfg.declaration_end) : null;
       if (declEnd && now > declEnd)
         return res.status(400).json({ success:false, message:`Declaration window closed on ${declEnd.toDateString()}` });
@@ -761,7 +763,7 @@ exports.uploadProof = async (req, res) => {
     const { financial_year: fy, employee_id: empId } = declRow.rows[0];
     const cfg = await loadConfig(fy);
     const proofEnd = cfg.proof_end ? new Date(cfg.proof_end) : null;
-    if (proofEnd && new Date() > proofEnd)
+    if (proofEnd && new Date() > proofEnd && !isPriv)
       return res.status(400).json({ success:false, message:`Proof upload window closed on ${proofEnd.toDateString()}` });
 
     // Store file metadata only — no base64
