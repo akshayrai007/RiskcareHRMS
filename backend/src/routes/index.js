@@ -412,6 +412,7 @@ router.get   ('/gk/leaderboard',        authenticate,                         gk
 router.get   ('/gk/question',           authenticate,                         gkCtrl.getQuestion);
 router.get   ('/gk/thought',            authenticate,                         gkCtrl.getThought);
 router.get   ('/gk/my-stats',           authenticate,                         gkCtrl.getMyStats);
+router.get   ('/gk/my-history',         authenticate,                         gkCtrl.getMyHistory);
 router.get   ('/gk/responses',          authenticate, authorize(...HR_ADMIN), gkCtrl.getResponses);
 router.get   ('/gk/questions',          authenticate, authorize(...HR_ADMIN), gkCtrl.getQuestions);
 router.post  ('/gk/questions',          authenticate, authorize(...HR_ADMIN), gkCtrl.createQuestion);

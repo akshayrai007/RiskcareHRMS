@@ -212,7 +212,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div class="card gk-card" style="margin-bottom:18px" id="gk-section">
           <div class="card-header" style="background:var(--green-pale);display:flex;align-items:center;justify-content:space-between">
             <div class="card-title">🧠 Daily GK Question</div>
-            <span id="gk-date-badge" style="font-size:11px;color:var(--muted)"></span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="gk-date-badge" style="font-size:11px;color:var(--muted)"></span>
+              <button onclick="openGKHistory()" style="padding:5px 12px;border-radius:7px;border:1.5px solid #10b981;background:#f0fdf4;color:#065f46;font-size:11.5px;font-weight:700;cursor:pointer">📖 My History</button>
+            </div>
           </div>
           <div class="card-body">
             <div id="gk-content"><div class="loading">Loading question...</div></div>
@@ -246,6 +249,51 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
             </div>
             <div id="gk-modal-result" style="display:none;margin:14px 22px;padding:11px 14px;border-radius:10px;font-size:13px;font-weight:600"></div>
             <div style="height:18px"></div>
+          </div>
+        </div>
+
+        <!-- GK HISTORY MODAL -->
+        <div id="gk-history-overlay" style="display:none;position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center" onclick="if(event.target===this)closeGKHistory()">
+          <div style="background:#fff;border-radius:16px;width:min(760px,96vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden">
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg,#065f46,#10b981);padding:18px 22px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+              <div>
+                <div style="color:#fff;font-weight:800;font-size:16px">📖 My GK Answer History</div>
+                <div style="color:rgba(255,255,255,.75);font-size:12px" id="gk-hist-subtitle">Showing your answers with correct answers</div>
+              </div>
+              <button onclick="closeGKHistory()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
+            </div>
+            <!-- Stats bar -->
+            <div id="gk-hist-stats" style="display:flex;gap:0;background:#f0fdf4;border-bottom:1px solid #d1fae5;flex-shrink:0"></div>
+            <!-- HR employee selector -->
+            <div id="gk-hist-hr-row" style="display:none;padding:10px 16px;background:#f8faff;border-bottom:1px solid #e0e3ec;flex-shrink:0">
+              <label style="font-size:11px;font-weight:700;color:#546e7a;text-transform:uppercase;letter-spacing:.04em;margin-right:8px">View Employee:</label>
+              <select id="gk-hist-emp-sel" onchange="loadGKHistory()" style="padding:6px 10px;border-radius:7px;border:1.5px solid #c5cae9;font-size:13px;font-family:inherit;min-width:200px">
+                <option value="">— My Own —</option>
+              </select>
+            </div>
+            <!-- Table -->
+            <div style="overflow-y:auto;flex:1">
+              <table style="width:100%;border-collapse:collapse;font-size:13px">
+                <thead>
+                  <tr style="background:#f8faff;position:sticky;top:0;z-index:1">
+                    <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #e0e3ec;font-weight:700;color:#1e3a5f;width:90px">Date</th>
+                    <th style="padding:10px 12px;text-align:left;border-bottom:2px solid #e0e3ec;font-weight:700;color:#1e3a5f">Question</th>
+                    <th style="padding:10px 12px;text-align:center;border-bottom:2px solid #e0e3ec;font-weight:700;color:#1e3a5f;width:90px">Your Answer</th>
+                    <th style="padding:10px 12px;text-align:center;border-bottom:2px solid #e0e3ec;font-weight:700;color:#065f46;width:100px">✅ Correct</th>
+                    <th style="padding:10px 12px;text-align:center;border-bottom:2px solid #e0e3ec;font-weight:700;color:#1e3a5f;width:70px">Score</th>
+                  </tr>
+                </thead>
+                <tbody id="gk-hist-body">
+                  <tr><td colspan="5" style="text-align:center;padding:32px;color:#9ca3af">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- Load more -->
+            <div style="padding:12px 16px;border-top:1px solid #e0e3ec;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;background:#f8f9ff">
+              <span id="gk-hist-count" style="font-size:12px;color:#546e7a"></span>
+              <button id="gk-hist-more" onclick="loadGKHistory(true)" style="padding:6px 16px;border-radius:7px;border:1.5px solid #c5cae9;background:#fff;color:#3949ab;font-size:12.5px;font-weight:600;cursor:pointer;display:none">Load More</button>
+            </div>
           </div>
         </div>
 

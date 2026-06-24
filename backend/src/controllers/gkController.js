@@ -226,8 +226,53 @@ exports.getMyStats = async (req, res) => {
 };
 
 // ══════════════════════════════════════════════════
-//  THOUGHT OF THE DAY   GET /gk/thought?date=YYYY-MM-DD
+//  MY HISTORY WITH CORRECT ANSWERS   GET /gk/my-history
+//  Also usable by HR: GET /gk/my-history?employee_id=6
 // ══════════════════════════════════════════════════
+exports.getMyHistory = async (req, res) => {
+  try {
+    const reqUser   = req.user;
+    const isPriv    = ['hr','accounts','admin','super_admin'].includes(reqUser.role);
+    const targetId  = (isPriv && req.query.employee_id)
+      ? parseInt(req.query.employee_id)
+      : reqUser.id;
+    const limit     = Math.min(parseInt(req.query.limit) || 50, 200);
+    const offset    = parseInt(req.query.offset) || 0;
+
+    // Non-HR can only see own history
+    if (!isPriv && targetId !== reqUser.id)
+      return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const r = await db.query(
+      `SELECT
+         gr.id,
+         gr.question_id,
+         gr.answer              AS selected_answer,
+         gr.is_correct,
+         gr.score_change,
+         gr.answered_at,
+         gq.question_date,
+         gq.question,
+         gq.option_a,
+         gq.option_b,
+         gq.option_c,
+         gq.option_d,
+         gq.correct_answer,
+         gq.about              AS explanation
+       FROM gk_daily_responses gr
+       JOIN gk_daily_questions gq ON gr.question_id = gq.id
+       WHERE gr.employee_id = $1
+       ORDER BY gr.answered_at DESC
+       LIMIT $2 OFFSET $3`,
+      [targetId, limit, offset]
+    );
+
+    res.json({ success: true, data: r.rows, total: r.rowCount });
+  } catch (err) {
+    console.error('[getMyHistory]', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
 exports.getThought = async (req, res) => {
   try {
     const date = req.query.date || new Date().toISOString().split('T')[0];
