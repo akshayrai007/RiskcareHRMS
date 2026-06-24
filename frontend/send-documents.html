@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Send Documents</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+.content .card { overflow:visible; padding:0; }
+.content { padding:16px; }
+.doc-page { width:100%; }
+
+/* ── Top bar ── */
+.doc-topbar { padding:16px 24px 0;background:#fff;border-radius:12px 12px 0 0;border-bottom:2px solid #e8eaf6; }
+
+/* ── HR Search (same pattern as documents.html) ── */
+.hr-search-row { display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding-bottom:14px; }
+.hr-search-label { font-size:11px;font-weight:800;color:#9fa8da;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap; }
+.hr-search-bar { position:relative; }
+.hr-search-input { width:280px;padding:9px 14px 9px 36px;border-radius:8px;border:1.5px solid #c5cae9;font-size:13px;font-family:inherit;outline:none;transition:border-color .15s;background:#f5f6fb; }
+.hr-search-input:focus { border-color:#3949ab;background:#fff; }
+.hr-search-icon { position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none;color:#9fa8da; }
+.hr-search-dropdown { position:absolute;top:calc(100% + 4px);left:0;min-width:300px;background:#fff;border:1.5px solid #9fa8da;border-radius:10px;box-shadow:0 8px 32px rgba(57,73,171,.14);z-index:9999;max-height:260px;overflow-y:auto;display:none; }
+.hr-search-dropdown.open { display:block }
+.hr-search-option { padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f2f8; }
+.hr-search-option:last-child { border-bottom:none }
+.hr-search-option:hover { background:#e8eaf6 }
+.hr-selected-badge { display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#3949ab,#5c6bc0);color:#fff;border-radius:20px;padding:6px 14px;font-size:12.5px;font-weight:600;box-shadow:0 2px 8px rgba(57,73,171,.25); }
+.hr-selected-badge .badge-clear { cursor:pointer;opacity:.75;font-size:16px;line-height:1;margin-left:2px; }
+.hr-selected-badge .badge-clear:hover { opacity:1 }
+
+/* ── Tabs ── */
+.doc-tabs { display:flex;width:100%;margin-top:6px; }
+.doc-tab-btn { flex:1;padding:14px 10px;border:none;background:transparent;font-size:13.5px;font-weight:600;color:#78909c;cursor:pointer;transition:all .15s;border-bottom:3px solid transparent;text-align:center;letter-spacing:.01em; }
+.doc-tab-btn:hover { color:#3949ab;background:#f5f6fb; }
+.doc-tab-btn.active { color:#3949ab;border-bottom:3px solid #3949ab;font-weight:700; }
+.doc-tab-body { padding:24px; }
+
+/* ── Form box (matches documents.html) ── */
+.form-box { border:1.5px solid #1a1a2e;border-radius:10px;padding:24px 28px;margin-bottom:24px;background:#fff; }
+.form-box-title { font-size:15px;font-weight:800;color:#283593;margin:0 0 20px;padding-bottom:12px;border-bottom:2px solid #e8eaf6; }
+.fg { display:grid;grid-template-columns:1fr 1fr;gap:16px 24px; }
+@media(max-width:768px){ .fg { grid-template-columns:1fr } }
+.fl { font-size:11px;font-weight:700;color:#546e7a;letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px;display:block; }
+.fc { font-size:13.5px;padding:10px 14px;border-radius:7px;border:1.5px solid #d0d5e8;background:#f8f9ff;width:100%;box-sizing:border-box;font-family:inherit;transition:border-color .15s,background .15s; }
+.fc:focus { border-color:#3949ab;background:#fff;outline:none;box-shadow:0 0 0 3px rgba(57,73,171,.08); }
+textarea.fc { resize:vertical;min-height:70px; }
+.fbtn { display:flex;justify-content:flex-end;gap:12px;padding-top:16px;border-top:2px solid #e8eaf6;margin-top:20px; }
+
+/* ── File drop zone ── */
+.drop-zone {
+  border:2px dashed var(--cfg-upload-border,#00AEEF);background:var(--cfg-upload-bg,#F0FAFF);
+  border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .15s;
+}
+.drop-zone:hover, .drop-zone.dragover { background:#e3f5ff;border-color:#0288d1; }
+.drop-zone-icon { font-size:28px;margin-bottom:8px; }
+.drop-zone-text { font-size:13px;color:#546e7a;font-weight:600; }
+.drop-zone-sub { font-size:11.5px;color:#90a4ae;margin-top:4px; }
+.picked-files { display:flex;flex-wrap:wrap;gap:8px;margin-top:14px; }
+.picked-chip {
+  display:inline-flex;align-items:center;gap:8px;background:#e8eaf6;border:1px solid #c5cae9;
+  border-radius:8px;padding:7px 12px;font-size:12.5px;font-weight:600;color:#3949ab;max-width:240px;
+}
+.picked-chip-name { overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px; }
+.picked-chip-size { color:#7986cb;font-weight:500;flex-shrink:0; }
+.picked-chip-del { cursor:pointer;color:#7986cb;font-size:15px;line-height:1;flex-shrink:0; }
+.picked-chip-del:hover { color:#c62828; }
+.picked-count-warn { font-size:12px;color:#c62828;font-weight:700;margin-top:8px; }
+
+/* ── Batch cards (Sent / Received) ── */
+.batch-card {
+  border:1.5px solid #e0e4f5;border-radius:12px;padding:18px 20px;margin-bottom:14px;background:#fff;
+  transition:box-shadow .15s;
+}
+.batch-card:hover { box-shadow:0 4px 18px rgba(57,73,171,.08); }
+.batch-card.unread { border-color:#3949ab;background:#f7f8ff; }
+.batch-head { display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap; }
+.batch-title { font-size:14.5px;font-weight:800;color:#1a237e;margin:0 0 4px; }
+.batch-meta { font-size:12px;color:#78909c;display:flex;gap:10px;flex-wrap:wrap;align-items:center; }
+.batch-meta b { color:#455a64; }
+.batch-note { font-size:13px;color:#546e7a;margin:10px 0 0;background:#f5f6fb;border-radius:8px;padding:9px 12px;border-left:3px solid #c5cae9; }
+.new-pill { display:inline-block;background:#3949ab;color:#fff;font-size:10px;font-weight:800;letter-spacing:.05em;padding:2px 9px;border-radius:20px;vertical-align:middle;margin-left:6px; }
+.batch-files { display:flex;flex-wrap:wrap;gap:8px;margin-top:12px; }
+.file-chip {
+  display:inline-flex;align-items:center;gap:8px;background:#e8f5e9;border:1px solid #a5d6a7;
+  border-radius:7px;padding:6px 10px;font-size:12.5px;color:#1b5e20;font-weight:600;max-width:220px;
+}
+.file-chip-name { overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px;cursor:pointer; }
+.file-chip-name:hover { text-decoration:underline; }
+.file-chip-dl { cursor:pointer;font-size:14px;line-height:1; }
+.file-chip-del { cursor:pointer;color:#90a4ae;font-size:14px;line-height:1; }
+.file-chip-del:hover { color:#c62828; }
+.batch-actions { display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;justify-content:flex-end; }
+
+/* ── Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;width:min(640px,95vw);max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.modal-box h3{font-size:17px;font-weight:700;margin-bottom:16px;color:#1b4332}
+.modal-close{float:right;background:none;border:none;font-size:22px;cursor:pointer;color:#888;margin-top:-4px}
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div><div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div></div></div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+      <div class="topbar-title">📤 Send Documents</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-outline btn-sm" onclick="refreshCurrentTab()">🔄 Refresh</button>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+    <div class="card">
+    <div class="doc-page">
+
+      <!-- ── Tabs top bar ── -->
+      <div class="doc-topbar">
+        <div class="doc-tabs" id="main-tabs">
+          <button class="doc-tab-btn active" id="tab-btn-send"     onclick="switchMainTab('send')">📤 Send Documents</button>
+          <button class="doc-tab-btn"        id="tab-btn-received" onclick="switchMainTab('received')">📥 Received <span id="received-count-pill"></span></button>
+          <button class="doc-tab-btn"        id="tab-btn-sent"     onclick="switchMainTab('sent')">📁 Sent by Me</button>
+        </div>
+      </div>
+
+      <!-- ═══════ TAB: Send ═══════ -->
+      <div id="tab-send" class="doc-tab-body">
+        <div class="form-box">
+          <div class="form-box-title">➕ Send up to 5 documents to a user</div>
+
+          <div class="fg">
+            <div class="form-group" style="grid-column:1/-1">
+              <label class="fl">Recipient *</label>
+              <div id="hr-search-section">
+                <div class="hr-search-row" style="padding-bottom:0">
+                  <div class="hr-search-bar" style="flex:1;min-width:240px">
+                    <span class="hr-search-icon">🔍</span>
+                    <input id="hr-search-input" class="hr-search-input" style="width:100%"
+                      placeholder="Type name or employee ID…" autocomplete="off"
+                      oninput="onSearchInput()" onfocus="showDropdown()" onblur="hideDropdownDelayed()">
+                    <div id="hr-search-dropdown" class="hr-search-dropdown"></div>
+                  </div>
+                  <div id="hr-selected-badge" style="display:none">
+                    <span class="hr-selected-badge">
+                      👤 <span id="hr-selected-label"></span>
+                      <span class="badge-clear" onclick="clearRecipientSelection()" title="Clear">×</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="fl">Title <span style="opacity:.6;text-transform:none;font-weight:500">(optional)</span></label>
+              <input type="text" id="sd-title" class="fc" placeholder="e.g. Increment Letter 2026" maxlength="255">
+            </div>
+            <div class="form-group">
+              <label class="fl">Note to recipient <span style="opacity:.6;text-transform:none;font-weight:500">(optional)</span></label>
+              <input type="text" id="sd-note" class="fc" placeholder="e.g. Please review and acknowledge">
+            </div>
+          </div>
+
+          <div style="margin-top:18px">
+            <label class="fl">Files (max 5, up to 10MB each) *</label>
+            <div class="drop-zone" id="drop-zone" onclick="document.getElementById('sd-file-input').click()">
+              <div class="drop-zone-icon">📎</div>
+              <div class="drop-zone-text">Click to choose files or drag &amp; drop here</div>
+              <div class="drop-zone-sub">PDF, JPG, PNG, DOC, DOCX, XLS, XLSX — up to 5 files, 10MB each</div>
+            </div>
+            <input type="file" id="sd-file-input" multiple style="display:none"
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" onchange="onSendFilesChosen(this.files)">
+            <div class="picked-files" id="picked-files"></div>
+            <div id="picked-warn"></div>
+          </div>
+
+          <div class="fbtn">
+            <button class="btn btn-outline btn-sm" onclick="resetSendForm()">✕ Clear</button>
+            <button class="btn btn-primary" id="send-btn" onclick="submitSend()">📤 Send Documents</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ TAB: Received ═══════ -->
+      <div id="tab-received" class="doc-tab-body" style="display:none">
+        <div id="received-wrap"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+
+      <!-- ═══════ TAB: Sent by Me ═══════ -->
+      <div id="tab-sent" class="doc-tab-body" style="display:none">
+        <div id="sent-wrap"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+
+    </div><!-- .doc-page -->
+    </div><!-- .card -->
+  </div>
+</div>
+
+<!-- ── Attachment Viewer Modal ── -->
+<div class="modal-overlay" id="viewerModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('viewerModal')">×</button>
+    <h3 id="viewerTitle">Attachment</h3>
+    <div id="viewerBody"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+Auth.guard();
+
+const HR_ROLES = ['hr','admin','super_admin','accounts'];
+const me = Auth.getUser();
+const isSender = HR_ROLES.includes(me?.role);
+
+let allEmployees   = [];
+let selectedRecipientId = null;
+let pickedFiles    = []; // File[] currently staged for sending
+let currentMainTab = 'send';
+
+window.addEventListener('load', () => {
+  buildSidebar('send-documents.html');
+
+  if (!isSender) {
+    // Plain employees only see Received — hide Send and Sent-by-me tabs
+    document.getElementById('tab-btn-send').style.display = 'none';
+    document.getElementById('tab-btn-sent').style.display = 'none';
+    switchMainTab('received');
+  } else {
+    loadAllEmployees();
+    refreshReceivedBadge();
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ══════════════════════════════════════════════════════════════════════════════
+function switchMainTab(name) {
+  currentMainTab = name;
+  ['send','received','sent'].forEach(t => {
+    const body = document.getElementById('tab-' + t);
+    const btn  = document.getElementById('tab-btn-' + t);
+    if (body) body.style.display = (t === name) ? '' : 'none';
+    if (btn)  btn.classList.toggle('active', t === name);
+  });
+  if (name === 'received') loadReceived();
+  if (name === 'sent')     loadSent();
+}
+
+function refreshCurrentTab() {
+  if (currentMainTab === 'received') loadReceived();
+  if (currentMainTab === 'sent')     loadSent();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RECIPIENT SEARCH (same pattern as documents.html)
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadAllEmployees() {
+  const res = await api('GET', '/employees');
+  if (res?.success) allEmployees = (res.data || []).filter(e => e.id !== me.id);
+}
+
+function onSearchInput() {
+  const q  = document.getElementById('hr-search-input').value.trim().toLowerCase();
+  const dd = document.getElementById('hr-search-dropdown');
+  if (!q) { dd.classList.remove('open'); return; }
+  const matches = allEmployees.filter(e =>
+    (e.first_name + ' ' + e.last_name).toLowerCase().includes(q) ||
+    (e.employee_code || '').toLowerCase().includes(q)
+  ).slice(0, 10);
+  if (!matches.length) {
+    dd.innerHTML = '<div class="hr-search-option" style="color:#90a4ae">No results found</div>';
+    dd.classList.add('open'); return;
+  }
+  dd.innerHTML = matches.map(e =>
+    `<div class="hr-search-option" onmousedown="selectRecipient(${e.id},'${escAttr(e.employee_code)} — ${escAttr(e.first_name)} ${escAttr(e.last_name)}')">${e.employee_code} — ${e.first_name} ${e.last_name}</div>`
+  ).join('');
+  dd.classList.add('open');
+}
+
+function showDropdown() {
+  if (document.getElementById('hr-search-input').value.trim()) onSearchInput();
+}
+function hideDropdownDelayed() {
+  setTimeout(() => document.getElementById('hr-search-dropdown').classList.remove('open'), 150);
+}
+
+function selectRecipient(id, label) {
+  selectedRecipientId = id;
+  document.getElementById('hr-search-input').value = '';
+  document.getElementById('hr-search-dropdown').classList.remove('open');
+  document.getElementById('hr-selected-label').textContent = label;
+  document.getElementById('hr-selected-badge').style.display = '';
+}
+
+function clearRecipientSelection() {
+  selectedRecipientId = null;
+  document.getElementById('hr-selected-badge').style.display = 'none';
+  document.getElementById('hr-selected-label').textContent   = '';
+  document.getElementById('hr-search-input').value           = '';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FILE PICKING (max 5, 10MB each)
+// ══════════════════════════════════════════════════════════════════════════════
+const MAX_FILES = 5;
+const MAX_SIZE  = 10 * 1024 * 1024;
+
+function onSendFilesChosen(fileList) {
+  addFiles(Array.from(fileList));
+  document.getElementById('sd-file-input').value = '';
+}
+
+function addFiles(files) {
+  const warnEl = document.getElementById('picked-warn');
+  warnEl.innerHTML = '';
+
+  const oversized = files.filter(f => f.size > MAX_SIZE);
+  let incoming = files.filter(f => f.size <= MAX_SIZE);
+
+  if (oversized.length) {
+    warnEl.innerHTML = `<div class="picked-count-warn">⚠ Skipped (over 10MB): ${oversized.map(f=>escAttr(f.name)).join(', ')}</div>`;
+  }
+
+  for (const f of incoming) {
+    if (pickedFiles.length >= MAX_FILES) {
+      warnEl.innerHTML += `<div class="picked-count-warn">⚠ Maximum ${MAX_FILES} files per send — extra files were not added.</div>`;
+      break;
+    }
+    // avoid exact duplicate name+size
+    if (pickedFiles.some(p => p.name === f.name && p.size === f.size)) continue;
+    pickedFiles.push(f);
+  }
+  renderPickedFiles();
+}
+
+function renderPickedFiles() {
+  const wrap = document.getElementById('picked-files');
+  if (!pickedFiles.length) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = pickedFiles.map((f, i) => `
+    <span class="picked-chip">
+      📄 <span class="picked-chip-name" title="${escAttr(f.name)}">${escAttr(f.name)}</span>
+      <span class="picked-chip-size">${fmtSize(f.size)}</span>
+      <span class="picked-chip-del" onclick="removePickedFile(${i})" title="Remove">×</span>
+    </span>
+  `).join('');
+}
+
+function removePickedFile(i) {
+  pickedFiles.splice(i, 1);
+  document.getElementById('picked-warn').innerHTML = '';
+  renderPickedFiles();
+}
+
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+
+// Drag & drop
+(function() {
+  const dz = document.getElementById('drop-zone');
+  if (!dz) return;
+  ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => {
+    e.preventDefault(); e.stopPropagation(); dz.classList.add('dragover');
+  }));
+  ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => {
+    e.preventDefault(); e.stopPropagation(); dz.classList.remove('dragover');
+  }));
+  dz.addEventListener('drop', e => {
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length) addFiles(files);
+  });
+})();
+
+function resetSendForm() {
+  clearRecipientSelection();
+  document.getElementById('sd-title').value = '';
+  document.getElementById('sd-note').value  = '';
+  pickedFiles = [];
+  document.getElementById('picked-warn').innerHTML = '';
+  renderPickedFiles();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SUBMIT SEND
+// ══════════════════════════════════════════════════════════════════════════════
+async function submitSend() {
+  if (!selectedRecipientId) { toast('Please select a recipient', 'error'); return; }
+  if (!pickedFiles.length)  { toast('Please attach at least 1 file (max 5)', 'error'); return; }
+  if (pickedFiles.length > MAX_FILES) { toast(`Maximum ${MAX_FILES} files allowed`, 'error'); return; }
+
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true; btn.textContent = '⏳ Sending…';
+
+  const fd = new FormData();
+  fd.append('recipient_id', selectedRecipientId);
+  fd.append('title', document.getElementById('sd-title').value.trim());
+  fd.append('note',  document.getElementById('sd-note').value.trim());
+  pickedFiles.forEach(f => fd.append('files', f));
+
+  try {
+    const res = await fetch(API_BASE + '/send-documents/send', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + Auth.getToken() },
+      body: fd
+    });
+    const data = await res.json();
+    if (data?.success) {
+      toast(`${pickedFiles.length} document(s) sent ✅`);
+      resetSendForm();
+      loadSent();
+    } else {
+      toast(data?.message || 'Failed to send', 'error');
+    }
+  } catch (err) {
+    toast('Failed to send: ' + err.message, 'error');
+  }
+
+  btn.disabled = false; btn.textContent = '📤 Send Documents';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RECEIVED TAB
+// ══════════════════════════════════════════════════════════════════════════════
+let receivedBatches = [];
+
+async function loadReceived() {
+  const wrap = document.getElementById('received-wrap');
+  wrap.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const res = await api('GET', '/send-documents/received');
+  if (!res?.success) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${escAttr(res?.message || 'Failed to load documents')}</p></div>`;
+    return;
+  }
+  receivedBatches = res.data || [];
+  if (!receivedBatches.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>No documents have been sent to you yet.</p></div>`;
+    refreshReceivedBadge();
+    return;
+  }
+  wrap.innerHTML = receivedBatches.map(b => buildBatchCard(b, 'received')).join('');
+  refreshReceivedBadge();
+}
+
+function refreshReceivedBadge() {
+  api('GET', '/send-documents/received').then(res => {
+    if (!res?.success) return;
+    const unread = (res.data || []).filter(b => b.files.some(f => !f.read_at)).length;
+    const pill = document.getElementById('received-count-pill');
+    pill.innerHTML = unread ? `<span class="new-pill">${unread}</span>` : '';
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SENT-BY-ME TAB
+// ══════════════════════════════════════════════════════════════════════════════
+let sentBatches = [];
+
+async function loadSent() {
+  const wrap = document.getElementById('sent-wrap');
+  wrap.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const res = await api('GET', '/send-documents/sent');
+  if (!res?.success) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${escAttr(res?.message || 'Failed to load documents')}</p></div>`;
+    return;
+  }
+  sentBatches = res.data || [];
+  if (!sentBatches.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>You haven't sent any documents yet.</p></div>`;
+    return;
+  }
+  wrap.innerHTML = sentBatches.map(b => buildBatchCard(b, 'sent')).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SHARED BATCH CARD RENDERER
+// ══════════════════════════════════════════════════════════════════════════════
+function buildBatchCard(b, mode) {
+  const hasUnread = mode === 'received' && b.files.some(f => !f.read_at);
+  const personLine = mode === 'received'
+    ? `Sent by <b>${escAttr(b.sender_name)}</b>`
+    : `Sent to <b>${escAttr(b.recipient_name)}</b>`;
+
+  const fileChips = b.files.map(f => `
+    <span class="file-chip">
+      📄 <span class="file-chip-name" title="${escAttr(f.original_name)}" onclick="viewAttachment(${f.id},'${escAttr(f.original_name)}','${escAttr(f.mime_type||'')}')">${escAttr(f.original_name)}</span>
+      <span class="file-chip-size" style="color:#558b2f;font-weight:500">${fmtSize(f.file_size||0)}</span>
+      <span class="file-chip-dl" title="Download" onclick="downloadFile(${f.id},'${escAttr(f.original_name)}')">⬇️</span>
+      ${mode === 'sent' ? `<span class="file-chip-del" title="Remove" onclick="deleteSentFile(${f.id},'${b.batch_id}')">×</span>` : ''}
+    </span>
+  `).join('');
+
+  return `
+    <div class="batch-card ${hasUnread ? 'unread' : ''}">
+      <div class="batch-head">
+        <div>
+          <div class="batch-title">${escAttr(b.title) || '📁 Untitled batch'} ${hasUnread ? '<span class="new-pill">NEW</span>' : ''}</div>
+          <div class="batch-meta">
+            <span>${personLine}</span>
+            <span>•</span>
+            <span><b>${b.files.length}</b> file${b.files.length>1?'s':''}</span>
+            <span>•</span>
+            <span>${fmt.date(b.sent_at)}</span>
+          </div>
+        </div>
+      </div>
+      ${b.note ? `<div class="batch-note">💬 ${escAttr(b.note)}</div>` : ''}
+      <div class="batch-files">${fileChips}</div>
+      <div class="batch-actions">
+        <button class="btn btn-outline btn-sm" onclick="downloadZip('${b.batch_id}')">⬇️ Download All as ZIP</button>
+      </div>
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FILE VIEW / DOWNLOAD / DELETE / ZIP
+// ══════════════════════════════════════════════════════════════════════════════
+async function viewAttachment(docId, name, mime) {
+  document.getElementById('viewerTitle').textContent = '📎 ' + (name || 'Attachment');
+  document.getElementById('viewerBody').innerHTML = '<div style="text-align:center;padding:30px;color:#888">Loading…</div>';
+  document.getElementById('viewerModal').classList.add('open');
+  try {
+    const res = await fetch(`${API_BASE}/send-documents/file/${docId}`,
+      { headers: { Authorization: 'Bearer ' + Auth.getToken() } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const m = blob.type || mime || '';
+    if (m.startsWith('image/')) {
+      document.getElementById('viewerBody').innerHTML =
+        `<img src="${blobUrl}" style="max-width:100%;max-height:72vh;border-radius:8px;display:block;margin:0 auto" alt="${escAttr(name)}"/>
+         <a href="${blobUrl}" download="${escAttr(name)}" class="btn btn-outline btn-sm" style="margin-top:10px;display:inline-block">⬇ Download</a>`;
+    } else if (m === 'application/pdf') {
+      document.getElementById('viewerBody').innerHTML =
+        `<iframe src="${blobUrl}" style="width:100%;height:72vh;border:none;border-radius:8px"></iframe>
+         <a href="${blobUrl}" download="${escAttr(name)}" class="btn btn-outline btn-sm" style="margin-top:8px;display:inline-block">⬇ Download</a>`;
+    } else {
+      document.getElementById('viewerBody').innerHTML =
+        `<p style="color:#555;margin-bottom:12px">Cannot preview <b>${escAttr(name)}</b>.</p>
+         <a href="${blobUrl}" download="${escAttr(name)}" class="btn btn-primary btn-sm">⬇ Download</a>`;
+    }
+    // mark as read if it was unread (cheap refresh of the badge/list)
+    if (currentMainTab === 'received') { loadReceived(); }
+  } catch (err) {
+    document.getElementById('viewerBody').innerHTML =
+      `<p style="color:#c62828">Failed to load.<br><small>${escAttr(err.message)}</small></p>`;
+  }
+}
+
+async function downloadFile(docId, name) {
+  try {
+    const res = await fetch(`${API_BASE}/send-documents/file/${docId}`,
+      { headers: { Authorization: 'Bearer ' + Auth.getToken() } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name || 'document';
+    a.click();
+    URL.revokeObjectURL(url);
+    if (currentMainTab === 'received') loadReceived();
+  } catch (err) {
+    toast('Download failed: ' + err.message, 'error');
+  }
+}
+
+async function downloadZip(batchId) {
+  try {
+    const res = await fetch(`${API_BASE}/send-documents/zip/${batchId}`,
+      { headers: { Authorization: 'Bearer ' + Auth.getToken() } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'documents.zip';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('ZIP downloaded ✅');
+    if (currentMainTab === 'received') loadReceived();
+  } catch (err) {
+    toast('Download failed: ' + err.message, 'error');
+  }
+}
+
+async function deleteSentFile(docId, batchId) {
+  if (!confirm('Remove this document? The recipient will no longer be able to access it.')) return;
+  const res = await api('DELETE', '/send-documents/' + docId);
+  if (res?.success) { toast('Removed'); loadSent(); }
+  else toast(res?.message || 'Failed', 'error');
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m =>
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); })
+);
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function escAttr(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
