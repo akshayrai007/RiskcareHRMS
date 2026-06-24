@@ -1082,9 +1082,13 @@ function renderProofGrids() {
 
 // ── Save / Submit ─────────────────────────────────────────────────────────────
 function getBody(action) {
+  const user = Auth.getUser();
+  const isHRViewing = isHR && currentEmpId && currentEmpId !== user.id;
   return {
     financial_year: document.getElementById('sel-fy').value,
     regime: currentRegime, action,
+    // When HR is saving on behalf of an employee, pass their ID
+    ...(isHRViewing ? { employee_id: currentEmpId } : {}),
     rent_paid_monthly: n('rent_paid_monthly'), hra_city_type: document.getElementById('hra_city_type').value,
     landlord_name: document.getElementById('landlord_name').value.trim(),
     landlord_pan:  document.getElementById('landlord_pan').value.trim().toUpperCase(),
@@ -1150,10 +1154,22 @@ function confirmSubmit() {
 
 // ── Proof upload / delete / view ──────────────────────────────────────────────
 async function uploadProof(sec, secLabel, docType, input) {
-  if (!declId) { toast('Save declaration first', 'error'); return; }
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 10*1024*1024) { toast('Max 10MB', 'error'); return; }
+  if (file.size > 10*1024*1024) { toast('Max 10MB', 'error'); input.value=''; return; }
+
+  // Auto-save a draft first if declaration doesn't exist yet
+  if (!declId) {
+    toast('Auto-saving draft…', 'info');
+    const saveRes = await api('POST', '/it-declaration', getBody('save'));
+    if (!saveRes?.success) { toast('Could not save declaration: ' + (saveRes?.message||'error'), 'error'); input.value=''; return; }
+    declId = saveRes.data?.id;
+    currentDecl = saveRes.data;
+    updateSt(saveRes.data.status);
+  }
+
+  if (!declId) { toast('Could not create declaration', 'error'); input.value=''; return; }
+
   const fd = new FormData();
   fd.append('proof_file', file);
   fd.append('declaration_id', declId);

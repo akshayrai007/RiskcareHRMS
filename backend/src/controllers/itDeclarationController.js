@@ -504,10 +504,13 @@ exports.getDeclarationById = async (req, res) => {
 // ── POST /it-declaration ──────────────────────────────────────────────────────
 exports.saveDeclaration = async (req, res) => {
   try {
-    const empId = req.user.id;
-    const b     = req.body;
-    const fy    = b.financial_year || '2025-26';
-    const action= b.action || 'save';
+    const reqUser = req.user;
+    const isPriv  = ['hr','accounts','admin','super_admin'].includes(reqUser.role);
+    const b       = req.body;
+    // HR can save on behalf of an employee by passing employee_id in body
+    const empId   = (isPriv && b.employee_id) ? parseInt(b.employee_id) : reqUser.id;
+    const fy      = b.financial_year || '2025-26';
+    const action  = b.action || 'save';
 
     // Check if locked
     const existing = await db.query(
@@ -660,27 +663,27 @@ exports.saveDeclaration = async (req, res) => {
 // ── POST /it-declaration/proof ────────────────────────────────────────────────
 exports.uploadProof = async (req, res) => {
   try {
-    const empId = req.user.id;
+    const reqUser = req.user;
+    const isPriv  = ['hr','accounts','admin','super_admin'].includes(reqUser.role);
     const { declaration_id, section, section_label, doc_type } = req.body;
     const file  = req.file;
     if (!file) return res.status(400).json({ success:false, message:'No file uploaded' });
     if (!declaration_id || !section)
       return res.status(400).json({ success:false, message:'declaration_id and section required' });
 
-    // Check window
-    const declRow = await db.query(
-      `SELECT id, financial_year FROM it_declarations WHERE id=$1 AND employee_id=$2`,
-      [declaration_id, empId]
-    );
-    if (!declRow.rows.length) return res.status(403).json({ success:false, message:'Declaration not found' });
+    // HR can upload for any employee; employees only for their own
+    const declRow = isPriv
+      ? await db.query(`SELECT id, financial_year, employee_id FROM it_declarations WHERE id=$1`, [declaration_id])
+      : await db.query(`SELECT id, financial_year, employee_id FROM it_declarations WHERE id=$1 AND employee_id=$2`, [declaration_id, reqUser.id]);
+    if (!declRow.rows.length) return res.status(403).json({ success:false, message:'Declaration not found or access denied' });
 
-    const fy  = declRow.rows[0].financial_year;
+    const { financial_year: fy, employee_id: empId } = declRow.rows[0];
     const cfg = await loadConfig(fy);
     const proofEnd = cfg.proof_end ? new Date(cfg.proof_end) : null;
     if (proofEnd && new Date() > proofEnd)
       return res.status(400).json({ success:false, message:`Proof upload window closed on ${proofEnd.toDateString()}` });
 
-    // Store file metadata (no base64)
+    // Store file metadata only — no base64
     const relPath = path.relative(process.cwd(), file.path).replace(/\\/g, '/');
 
     await db.query(`
@@ -695,7 +698,7 @@ exports.uploadProof = async (req, res) => {
     await db.query(
       `INSERT INTO it_audit_logs(declaration_id, action, performed_by, details)
        VALUES($1,'PROOF_UPLOADED',$2,$3)`,
-      [declaration_id, empId, { section, file_name: file.originalname }]
+      [declaration_id, reqUser.id, { section, file_name: file.originalname }]
     );
 
     res.json({ success:true, message:'Proof uploaded successfully' });
