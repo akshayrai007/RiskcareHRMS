@@ -18,7 +18,8 @@
 .emp-field .lbl{font-size:10px;font-weight:700;color:#9fa8da;text-transform:uppercase;letter-spacing:.05em}
 .emp-field .val{font-size:13px;font-weight:700;color:#1e3a5f}
 /* ── Controls ── */
-.itd-ctrl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 22px;background:#f8f9ff;border-bottom:1px solid #e0e3ec}
+.itd-ctrl{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:10px 22px;background:#f8f9ff;border-bottom:1px solid #e0e3ec}
+.itd-ctrl-item{display:flex;align-items:center;gap:8px}
 .itd-window-bar{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:8px 22px;background:#eef1fd;border-bottom:1px solid #e0e3ec}
 .iwb-item{display:flex;align-items:center;gap:8px;white-space:nowrap}
 .iwb-icon{font-size:15px}
@@ -27,7 +28,7 @@
 .iwb-val.closed{color:#b91c1c}
 .iwb-val.open{color:#166534}
 .iwb-divider{width:1px;height:18px;background:#c5cae9}
-.itd-ctrl label{font-size:11px;font-weight:700;color:#546e7a;text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
+.itd-ctrl label{font-size:11px;font-weight:700;color:#546e7a;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;margin:0}
 .itd-ctrl select,.itd-ctrl input{padding:7px 11px;border-radius:7px;border:1.5px solid #c5cae9;font-size:13px;font-family:inherit;background:#fff;outline:none}
 .itd-ctrl select:focus{border-color:#3949ab}
 /* ── Regime toggle ── */
@@ -213,7 +214,8 @@
 
       <!-- Controls -->
       <div class="itd-ctrl">
-        <div><label>Financial Year</label>
+        <div class="itd-ctrl-item">
+          <label>Financial Year</label>
           <select id="sel-fy" onchange="onFYChange()">
             <option value="2026-27">FY 2026-27</option>
             <option value="2025-26" selected>FY 2025-26</option>
@@ -221,13 +223,14 @@
             <option value="2023-24">FY 2023-24</option>
           </select>
         </div>
-        <div><label>Tax Regime</label>
+        <div class="itd-ctrl-item">
+          <label>Tax Regime</label>
           <div class="reg-tog">
             <button class="reg-btn active" id="rb-old" onclick="setRegime('old')">🏛️ Old Regime</button>
             <button class="reg-btn" id="rb-new" onclick="setRegime('new')">✨ New Regime</button>
           </div>
         </div>
-        <div id="hr-sel-wrap" style="display:none">
+        <div class="itd-ctrl-item" id="hr-sel-wrap" style="display:none">
           <label>Employee</label>
           <select id="sel-hr-emp" style="min-width:200px" onchange="onHREmpChange()">
             <option value="">— All / Select Employee —</option>
