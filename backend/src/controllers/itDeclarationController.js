@@ -240,6 +240,37 @@ exports.initTables = async () => {
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS other_capital_gains NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS employer_nps NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS locked BOOLEAN DEFAULT FALSE`).catch(()=>{});
+    // HRA columns
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS annual_rent NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS landlord_name VARCHAR(200)`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS landlord_pan VARCHAR(20)`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS hra_city_type VARCHAR(10) DEFAULT 'metro'`).catch(()=>{});
+    // 80C columns
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80c_pf NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80c_ppf NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80c_lic NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80c_elss NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80c_nsc NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80c_home_loan NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80c_tuition NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80c_fd NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80c_other NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    // NPS / 80D columns
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80ccd_nps NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80d_self NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80d_parents NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80d_senior_parent BOOLEAN DEFAULT FALSE`).catch(()=>{});
+    // Home loan columns
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec24b_home_loan NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS homeloan_provider VARCHAR(200)`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS homeloan_address TEXT`).catch(()=>{});
+    // Other deduction columns
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80e_edu_loan NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80g_donation NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80g_institution VARCHAR(200)`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80g_pan VARCHAR(20)`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80g_category VARCHAR(10)`).catch(()=>{});
+    // 80DD, 80U, 80DDB columns
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80dd_amount NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80dd_dependent VARCHAR(200)`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80dd_relation VARCHAR(100)`).catch(()=>{});
@@ -251,25 +282,29 @@ exports.initTables = async () => {
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80ddb_disease VARCHAR(200)`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80ddb_patient VARCHAR(200)`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80ddb_relation VARCHAR(100)`).catch(()=>{});
+    // LTA columns
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS lta_amount NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS lta_destination VARCHAR(300)`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS lta_travel_period VARCHAR(100)`).catch(()=>{});
+    // Previous employment columns
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS prev_employer VARCHAR(300)`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS prev_employer_tan VARCHAR(20)`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS prev_period VARCHAR(100)`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS prev_gross_salary NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS prev_taxable_income NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS prev_tds NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS prev_pf NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    // House property / other income / computed columns
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS house_properties JSONB DEFAULT '[]'`).catch(()=>{});
-    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS hra_city_type VARCHAR(10) DEFAULT 'metro'`).catch(()=>{});
-    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80c_fd NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
-    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS homeloan_provider VARCHAR(200)`).catch(()=>{});
-    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS homeloan_address TEXT`).catch(()=>{});
-    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80g_institution VARCHAR(200)`).catch(()=>{});
-    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80g_pan VARCHAR(20)`).catch(()=>{});
-    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80g_category VARCHAR(10)`).catch(()=>{});
-    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS sec80d_senior_parent BOOLEAN DEFAULT FALSE`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS other_savings_int NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS other_fd_int NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS other_dividend NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS other_misc NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS total_80c NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS total_deductions NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS estimated_tax NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS monthly_tds NUMERIC(14,2) DEFAULT 0`).catch(()=>{});
+    // Workflow columns
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS approved_by INTEGER`).catch(()=>{});
     await db.query(`ALTER TABLE it_declarations ADD COLUMN IF NOT EXISTS proof_submitted_at TIMESTAMPTZ`).catch(()=>{});
