@@ -68,6 +68,11 @@
 .it-sec-hdr .sh-amt{font-size:13px;font-weight:800;color:#166534}
 .it-sec-hdr .sh-chev{font-size:11px;color:#9fa8da;transition:transform .2s}
 .it-sec-hdr.open .sh-chev{transform:rotate(180deg)}
+.it-sec-hdr.sec-complete{background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-bottom:2px solid #86efac}
+.it-sec-hdr.sec-complete .sh-title{color:#166534}
+.it-sec.sec-complete-wrap{border-color:#86efac}
+.sec-done-badge{font-size:11px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:12px;padding:2px 10px;display:inline-flex;align-items:center;gap:4px}
+.sec-upload-badge{font-size:11px;font-weight:600;color:#6b7280;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:12px;padding:2px 10px}
 .it-sec-body{padding:16px 18px;display:none;background:#fff}
 .it-sec-body.open{display:block}
 /* ── Form ── */
@@ -271,10 +276,10 @@
       <!-- OLD REGIME SECTIONS -->
       <div id="old-secs">
         <!-- HRA -->
-        <div class="it-sec">
+        <div class="it-sec" id="itsec-HRA">
           <div class="it-sec-hdr" onclick="tgl(this)">
             <span class="sh-title">🏠 HRA — House Rent Allowance</span>
-            <span class="sh-right"><span class="sh-amt" id="s-hra"></span><span class="sh-chev">▼</span></span>
+            <span class="sh-right"><span class="sh-amt" id="s-hra"></span><span id="secb-HRA" style="margin-right:6px"></span><span class="sh-chev">▼</span></span>
           </div>
           <div class="it-sec-body">
             <div class="fg2">
@@ -296,10 +301,10 @@
         </div>
 
         <!-- 80C -->
-        <div class="it-sec">
+        <div class="it-sec" id="itsec-80C">
           <div class="it-sec-hdr" onclick="tgl(this)">
             <span class="sh-title">💰 Section 80C — Investments</span>
-            <span class="sh-right"><span class="sh-amt" id="s-80c"></span><span class="sh-chev">▼</span></span>
+            <span class="sh-right"><span class="sh-amt" id="s-80c"></span><span id="secb-80C" style="margin-right:6px"></span><span class="sh-chev">▼</span></span>
           </div>
           <div class="it-sec-body">
             <div class="fg2">
@@ -324,10 +329,10 @@
         </div>
 
         <!-- NPS 80CCD(1B) -->
-        <div class="it-sec">
+        <div class="it-sec" id="itsec-80CCD">
           <div class="it-sec-hdr" onclick="tgl(this)">
             <span class="sh-title">🏦 Section 80CCD(1B) — NPS</span>
-            <span class="sh-right"><span class="sh-amt" id="s-nps"></span><span class="sh-chev">▼</span></span>
+            <span class="sh-right"><span class="sh-amt" id="s-nps"></span><span id="secb-80CCD" style="margin-right:6px"></span><span class="sh-chev">▼</span></span>
           </div>
           <div class="it-sec-body">
             <div class="fg2">
@@ -340,10 +345,10 @@
         </div>
 
         <!-- 80D -->
-        <div class="it-sec">
+        <div class="it-sec" id="itsec-80D">
           <div class="it-sec-hdr" onclick="tgl(this)">
             <span class="sh-title">🏥 Section 80D — Medical Insurance</span>
-            <span class="sh-right"><span class="sh-amt" id="s-80d"></span><span class="sh-chev">▼</span></span>
+            <span class="sh-right"><span class="sh-amt" id="s-80d"></span><span id="secb-80D" style="margin-right:6px"></span><span class="sh-chev">▼</span></span>
           </div>
           <div class="it-sec-body">
             <div class="fg2">
@@ -362,10 +367,10 @@
         </div>
 
         <!-- House Property / Sec 24b -->
-        <div class="it-sec">
+        <div class="it-sec" id="itsec-HP">
           <div class="it-sec-hdr" onclick="tgl(this)">
             <span class="sh-title">🏡 House Property Income & Sec 24(b)</span>
-            <span class="sh-right"><span class="sh-amt" id="s-hp"></span><span class="sh-chev">▼</span></span>
+            <span class="sh-right"><span class="sh-amt" id="s-hp"></span><span id="secb-HP" style="margin-right:6px"></span><span class="sh-chev">▼</span></span>
           </div>
           <div class="it-sec-body">
             <div id="hp-list"></div>
@@ -382,10 +387,10 @@
         </div>
 
         <!-- 80E -->
-        <div class="it-sec">
+        <div class="it-sec" id="itsec-80E">
           <div class="it-sec-hdr" onclick="tgl(this)">
             <span class="sh-title">🎓 Section 80E — Education Loan Interest</span>
-            <span class="sh-right"><span class="sh-amt" id="s-80e"></span><span class="sh-chev">▼</span></span>
+            <span class="sh-right"><span class="sh-amt" id="s-80e"></span><span id="secb-80E" style="margin-right:6px"></span><span class="sh-chev">▼</span></span>
           </div>
           <div class="it-sec-body">
             <div class="fg2">
@@ -397,10 +402,10 @@
         </div>
 
         <!-- 80G -->
-        <div class="it-sec">
+        <div class="it-sec" id="itsec-80G">
           <div class="it-sec-hdr" onclick="tgl(this)">
             <span class="sh-title">🤝 Section 80G — Donations</span>
-            <span class="sh-right"><span class="sh-amt" id="s-80g"></span><span class="sh-chev">▼</span></span>
+            <span class="sh-right"><span class="sh-amt" id="s-80g"></span><span id="secb-80G" style="margin-right:6px"></span><span class="sh-chev">▼</span></span>
           </div>
           <div class="it-sec-body">
             <div class="fg2">
@@ -420,10 +425,10 @@
         </div>
 
         <!-- 80DD -->
-        <div class="it-sec">
+        <div class="it-sec" id="itsec-80DD">
           <div class="it-sec-hdr" onclick="tgl(this)">
             <span class="sh-title">♿ Section 80DD — Dependent Disability</span>
-            <span class="sh-right"><span class="sh-amt" id="s-80dd"></span><span class="sh-chev">▼</span></span>
+            <span class="sh-right"><span class="sh-amt" id="s-80dd"></span><span id="secb-80DD" style="margin-right:6px"></span><span class="sh-chev">▼</span></span>
           </div>
           <div class="it-sec-body">
             <div class="fg2">
@@ -438,10 +443,10 @@
         </div>
 
         <!-- 80U -->
-        <div class="it-sec">
+        <div class="it-sec" id="itsec-80U">
           <div class="it-sec-hdr" onclick="tgl(this)">
             <span class="sh-title">🦯 Section 80U — Self Disability</span>
-            <span class="sh-right"><span class="sh-amt" id="s-80u"></span><span class="sh-chev">▼</span></span>
+            <span class="sh-right"><span class="sh-amt" id="s-80u"></span><span id="secb-80U" style="margin-right:6px"></span><span class="sh-chev">▼</span></span>
           </div>
           <div class="it-sec-body">
             <div class="fg2">
@@ -455,10 +460,10 @@
         </div>
 
         <!-- 80DDB -->
-        <div class="it-sec">
+        <div class="it-sec" id="itsec-80DDB">
           <div class="it-sec-hdr" onclick="tgl(this)">
             <span class="sh-title">💊 Section 80DDB — Medical Treatment</span>
-            <span class="sh-right"><span class="sh-amt" id="s-80ddb"></span><span class="sh-chev">▼</span></span>
+            <span class="sh-right"><span class="sh-amt" id="s-80ddb"></span><span id="secb-80DDB" style="margin-right:6px"></span><span class="sh-chev">▼</span></span>
           </div>
           <div class="it-sec-body">
             <div class="fg2">
@@ -473,10 +478,10 @@
         </div>
 
         <!-- LTA -->
-        <div class="it-sec">
+        <div class="it-sec" id="itsec-LTA">
           <div class="it-sec-hdr" onclick="tgl(this)">
             <span class="sh-title">✈️ LTA — Leave Travel Allowance</span>
-            <span class="sh-right"><span class="sh-amt" id="s-lta"></span><span class="sh-chev">▼</span></span>
+            <span class="sh-right"><span class="sh-amt" id="s-lta"></span><span id="secb-LTA" style="margin-right:6px"></span><span class="sh-chev">▼</span></span>
           </div>
           <div class="it-sec-body">
             <div class="fg2">
@@ -494,10 +499,10 @@
       <div id="new-secs" style="display:none">
 
         <!-- 1. Previous Employment Income -->
-        <div class="it-sec">
+        <div class="it-sec" id="itsec-PREV_EMP">
           <div class="it-sec-hdr" onclick="tgl(this)">
             <span class="sh-title">🏢 Previous Employment Income</span>
-            <span class="sh-right"><span class="sh-amt" id="s-prev-emp"></span><span class="sh-chev">▼</span></span>
+            <span class="sh-right"><span class="sh-amt" id="s-prev-emp"></span><span id="secb-PREV_EMP" style="margin-right:6px"></span><span class="sh-chev">▼</span></span>
           </div>
           <div class="it-sec-body">
             <div class="fg2">
@@ -515,10 +520,10 @@
         </div>
 
         <!-- 2. Income From House Property -->
-        <div class="it-sec">
+        <div class="it-sec" id="itsec-NEW_HP">
           <div class="it-sec-hdr" onclick="tgl(this)">
             <span class="sh-title">🏡 Income From House Property</span>
-            <span class="sh-right"><span class="sh-amt" id="s-new-hp"></span><span class="sh-chev">▼</span></span>
+            <span class="sh-right"><span class="sh-amt" id="s-new-hp"></span><span id="secb-NEW_HP" style="margin-right:6px"></span><span class="sh-chev">▼</span></span>
           </div>
           <div class="it-sec-body">
             <div id="new-hp-list"></div>
@@ -1155,6 +1160,32 @@ function renderProofGrids() {
     const el = document.getElementById('pg-' + sec);
     if (!el) return;
     const uploaded = uploadedProofs[sec] || [];
+
+    // ── Check completion: every doc type has at least 1 upload ──────────────
+    const totalDocs    = defs.length;
+    const uploadedDocs = defs.filter(def => uploaded.some(u => u.doc_type === def.k)).length;
+    const allDone      = uploadedDocs === totalDocs && totalDocs > 0;
+
+    // ── Update section header badge + color ──────────────────────────────────
+    const badge  = document.getElementById('secb-' + sec);
+    const secDiv = document.getElementById('itsec-' + sec);
+    const hdr    = secDiv?.querySelector('.it-sec-hdr');
+    if (badge) {
+      if (allDone) {
+        badge.innerHTML = `<span class="sec-done-badge">✅ Complete</span>`;
+      } else if (uploadedDocs > 0) {
+        badge.innerHTML = `<span class="sec-upload-badge">${uploadedDocs}/${totalDocs} uploaded</span>`;
+      } else {
+        badge.innerHTML = '';
+      }
+    }
+    if (hdr) {
+      hdr.classList.toggle('sec-complete', allDone);
+    }
+    if (secDiv) {
+      secDiv.classList.toggle('sec-complete-wrap', allDone);
+    }
+
     el.innerHTML = defs.map(def => {
       // ALL files for this doc_type (not just the first)
       const allFiles = uploaded.filter(u => u.doc_type === def.k);
