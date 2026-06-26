@@ -1105,17 +1105,18 @@ exports.getDashboard = async (req, res) => {
   }
 };
 
-// ── GET /it-declaration/export-excel — HR Excel export with proofs ────────────
-// Query params: fy, status (optional filter)
-// Each employee = one sheet. Sheet name = "EmpCode - Name"
-// Columns: all declaration fields + one column per proof doc with view URL
+
+// ── GET /it-declaration/export-excel ─────────────────────────────────────────
+// Colorful Excel: each employee = one sheet, sections with headers + colors
+// Proof documents appear inline after each section they belong to
 exports.exportExcel = async (req, res) => {
   try {
     const XLSX = require('xlsx');
     const { fy = '2025-26', status } = req.query;
     const baseUrl = process.env.BACKEND_URL || req.protocol + '://' + req.get('host');
+    const token   = (req.headers.authorization || '').replace('Bearer ', '');
 
-    // ── 1. Fetch all declarations for FY (+ optional status filter) ────────────
+    // ── Fetch declarations ────────────────────────────────────────────────────
     let q = `
       SELECT d.*,
              CONCAT(e.first_name,' ',e.last_name) AS employee_name,
@@ -1131,150 +1132,341 @@ exports.exportExcel = async (req, res) => {
     q += ` ORDER BY e.employee_code, e.first_name`;
 
     const decls = (await db.query(q, params)).rows;
-    if (!decls.length) {
-      return res.status(404).json({ success: false, message: 'No declarations found for the selected filters.' });
-    }
+    if (!decls.length)
+      return res.status(404).json({ success: false, message: 'No declarations found for selected filters.' });
 
-    // ── 2. Fetch all proofs for these declaration IDs ──────────────────────────
+    // ── Fetch proofs ──────────────────────────────────────────────────────────
     const declIds = decls.map(d => d.id);
     const proofRows = (await db.query(
-      `SELECT declaration_id, section_label, doc_type, file_name, file_size, mime_type, status, uploaded_at
+      `SELECT declaration_id, section, section_label, doc_type, file_name, file_size, mime_type, status AS proof_status, uploaded_at
        FROM it_proof_documents WHERE declaration_id = ANY($1) ORDER BY declaration_id, section, uploaded_at`,
       [declIds]
     )).rows;
 
-    // Group proofs by declaration_id
+    // Group proofs: proofsMap[declaration_id][section] = [...]
     const proofsMap = {};
     for (const p of proofRows) {
-      if (!proofsMap[p.declaration_id]) proofsMap[p.declaration_id] = [];
-      proofsMap[p.declaration_id].push(p);
+      if (!proofsMap[p.declaration_id]) proofsMap[p.declaration_id] = {};
+      if (!proofsMap[p.declaration_id][p.section]) proofsMap[p.declaration_id][p.section] = [];
+      proofsMap[p.declaration_id][p.section].push(p);
     }
 
-    const wb = XLSX.utils.book_new();
-    const token = req.headers.authorization?.replace('Bearer ', '') || '';
+    // ── Color palette ─────────────────────────────────────────────────────────
+    const C = {
+      // Header band
+      hdBg:   'C0272D', hdFg:   'FFFFFF',
+      // Sub-header (section titles)
+      shBg:   '1E3A5F', shFg:   'FFFFFF',
+      // Label cells
+      lbBg:   'F5F6FB', lbFg:   '374151',
+      // Value cells
+      vaBg:   'FFFFFF', vaFg:   '111827',
+      // Proof header
+      phBg:   '2E7D32', phFg:   'FFFFFF',
+      // Proof row alt
+      prBg1:  'F0FDF4', prBg2:  'FFFFFF',
+      // Number cells
+      numFg:  '1D4ED8',
+      // Total rows
+      totBg:  'FEF3C7', totFg:  '92400E',
+      // Pending proof badge
+      pendFg: 'D97706',
+      // Approved proof
+      apprFg: '15803D',
+      // Rejected
+      rejFg:  'BE123C',
+    };
 
-    // ── 3. Build one sheet per employee ────────────────────────────────────────
-    for (const d of decls) {
-      const proofs = proofsMap[d.id] || [];
+    // ── Style helpers ─────────────────────────────────────────────────────────
+    const font  = (bold, sz, color, name='Calibri') => ({ name, sz: sz||11, bold:!!bold, color:{rgb:color||'000000'} });
+    const fill  = (rgb) => ({ patternType:'solid', fgColor:{rgb} });
+    const border = () => ({
+      top:{style:'thin',color:{rgb:'D1D5DB'}}, bottom:{style:'thin',color:{rgb:'D1D5DB'}},
+      left:{style:'thin',color:{rgb:'D1D5DB'}}, right:{style:'thin',color:{rgb:'D1D5DB'}}
+    });
+    const thickBorder = () => ({
+      top:{style:'medium',color:{rgb:'9CA3AF'}}, bottom:{style:'medium',color:{rgb:'9CA3AF'}},
+      left:{style:'medium',color:{rgb:'9CA3AF'}}, right:{style:'medium',color:{rgb:'9CA3AF'}}
+    });
 
-      // Row-pair layout: label in col A, value in col B
-      const rows = [
-        // Header
-        [`IT Declaration Export — FY ${fy}`, '', '', ''],
-        ['Employee', d.employee_name, 'Code', d.employee_code],
-        ['PAN', d.pan_number || '—', 'Department', d.department || '—'],
-        ['Designation', d.designation || '—', 'Regime', (d.regime || 'old').toUpperCase()],
-        ['Status', d.status || '—', 'Submitted At', d.submitted_at ? new Date(d.submitted_at).toLocaleDateString('en-IN') : '—'],
-        [''],
-        // HRA / Rent
-        ['── HRA / RENT ──'],
-        ['Rent Paid Monthly', d.rent_paid_monthly || 0, 'Annual Rent', d.annual_rent || 0],
-        ['Landlord Name', d.landlord_name || '—', 'Landlord PAN', d.landlord_pan || '—'],
-        ['HRA City Type', d.hra_city_type || '—'],
-        [''],
-        // 80C
-        ['── SEC 80C ──'],
-        ['PF (80C)', d.sec80c_pf || 0, 'PPF', d.sec80c_ppf || 0],
-        ['LIC Premium', d.sec80c_lic || 0, 'ELSS', d.sec80c_elss || 0],
-        ['NSC', d.sec80c_nsc || 0, 'Home Loan Principal', d.sec80c_home_loan || 0],
-        ['Tuition Fees', d.sec80c_tuition || 0, 'Tax Saving FD', d.sec80c_fd || 0],
-        ['Other 80C', d.sec80c_other || 0, 'Total 80C', d.total_80c || 0],
-        [''],
-        // NPS / 80D
-        ['── NPS & HEALTH ──'],
-        ['NPS 80CCD(1B)', d.sec80ccd_nps || 0, 'Employer NPS', d.employer_nps || 0],
-        ['80D Self', d.sec80d_self || 0, '80D Parents', d.sec80d_parents || 0],
-        ['Senior Parent', d.sec80d_senior_parent ? 'Yes' : 'No'],
-        [''],
-        // Home Loan / Edu / Donation
-        ['── DEDUCTIONS ──'],
-        ['Sec24b Home Loan Int.', d.sec24b_home_loan || 0, 'Loan Provider', d.homeloan_provider || '—'],
-        ['80E Edu Loan', d.sec80e_edu_loan || 0],
-        ['80G Donation', d.sec80g_donation || 0, '80G Institution', d.sec80g_institution || '—'],
-        ['80DD Amount', d.sec80dd_amount || 0, '80U Amount', d.sec80u_amount || 0],
-        ['80DDB Amount', d.sec80ddb_amount || 0, 'Disease', d.sec80ddb_disease || '—'],
-        [''],
-        // LTA
-        ['── LTA ──'],
-        ['LTA Amount', d.lta_amount || 0, 'Destination', d.lta_destination || '—'],
-        ['Travel Period', d.lta_travel_period || '—'],
-        [''],
-        // Previous Employer
-        ['── PREVIOUS EMPLOYMENT ──'],
-        ['Prev Employer', d.prev_employer || '—', 'TAN', d.prev_employer_tan || '—'],
-        ['Prev Period', d.prev_period || '—', 'Prev Gross Salary', d.prev_gross_salary || 0],
-        ['Prev Taxable Income', d.prev_taxable_income || 0, 'Prev TDS', d.prev_tds || 0],
-        ['Prev PF', d.prev_pf || 0],
-        [''],
-        // Other Income
-        ['── OTHER INCOME ──'],
-        ['Savings Interest', d.other_savings_int || 0, 'FD Interest', d.other_fd_int || 0],
-        ['Dividend', d.other_dividend || 0, 'Misc', d.other_misc || 0],
-        [''],
-        // Totals
-        ['── COMPUTED TOTALS ──'],
-        ['Total Deductions', d.total_deductions || 0, 'Estimated Tax', d.estimated_tax || 0],
-        ['Monthly TDS', d.monthly_tds || 0],
-        [''],
-        // Proofs
-        ['── UPLOADED PROOF DOCUMENTS ──'],
-        proofs.length
-          ? ['Section', 'Document', 'File Name', 'Size (KB)', 'Status', 'View Link', 'Uploaded At']
-          : ['No proof documents uploaded'],
-      ];
-
-      if (proofs.length) {
-        for (const p of proofs) {
-          const viewUrl = `${baseUrl}/api/it-declaration/proof/${p.declaration_id}/doc?doc_type=${encodeURIComponent(p.doc_type)}&token=${token}`;
-          rows.push([
-            p.section_label || p.doc_type,
-            p.doc_type,
-            p.file_name,
-            p.file_size ? Math.round(p.file_size / 1024) : '—',
-            p.status,
-            viewUrl,
-            p.uploaded_at ? new Date(p.uploaded_at).toLocaleDateString('en-IN') : '—',
-          ]);
-        }
+    const cell = (v, bold, sz, fgText, bgRgb, align, numFmt, italic) => ({
+      v: v ?? '',
+      t: typeof v === 'number' ? 'n' : 's',
+      s: {
+        font: { name:'Calibri', sz:sz||11, bold:!!bold, italic:!!italic, color:{rgb:fgText||'000000'} },
+        fill: bgRgb ? fill(bgRgb) : undefined,
+        alignment: { horizontal: align||'left', vertical:'center', wrapText:true },
+        border: border(),
+        numFmt: numFmt || (typeof v==='number' ? '#,##0.00' : undefined),
       }
+    });
 
-      const ws = XLSX.utils.aoa_to_sheet(rows);
+    const headerCell = (v) => ({
+      v, t:'s',
+      s: { font:font(true,11,C.hdFg), fill:fill(C.hdBg),
+           alignment:{horizontal:'left',vertical:'center'},
+           border:thickBorder() }
+    });
+    const sectionCell = (v) => ({
+      v, t:'s',
+      s: { font:font(true,10,C.shFg), fill:fill(C.shBg),
+           alignment:{horizontal:'left',vertical:'center'},
+           border:border() }
+    });
+    const labelCell = (v) => ({
+      v, t:'s',
+      s: { font:font(true,10,C.lbFg), fill:fill(C.lbBg),
+           alignment:{horizontal:'left',vertical:'center'},
+           border:border() }
+    });
+    const valCell = (v, isNum) => ({
+      v: v ?? '', t: typeof v==='number'?'n':'s',
+      s: { font:{ name:'Calibri', sz:10, bold:false, color:{rgb: isNum ? C.numFg : C.vaFg} },
+           fill:fill(C.vaBg),
+           alignment:{horizontal:typeof v==='number'?'right':'left', vertical:'center'},
+           border:border(),
+           numFmt: typeof v==='number' ? '#,##0.00' : undefined }
+    });
+    const totLabelCell = (v) => ({
+      v, t:'s',
+      s:{ font:font(true,10,C.totFg), fill:fill(C.totBg), alignment:{horizontal:'left',vertical:'center'}, border:thickBorder() }
+    });
+    const totValCell  = (v) => ({
+      v: v??0, t:'n',
+      s:{ font:font(true,10,C.totFg), fill:fill(C.totBg), alignment:{horizontal:'right',vertical:'center'}, border:thickBorder(), numFmt:'#,##0.00' }
+    });
+    const proofHdrCell = (v) => ({
+      v, t:'s',
+      s:{ font:font(true,9,C.phFg), fill:fill(C.phBg), alignment:{horizontal:'center',vertical:'center'}, border:border() }
+    });
+    const proofValCell = (v, rowI, link) => {
+      const bg = rowI%2===0 ? C.prBg1 : C.prBg2;
+      const o = { v:v??'', t:'s',
+        s:{ font:{name:'Calibri',sz:9,color:{rgb:'374151'}}, fill:fill(bg),
+            alignment:{horizontal:'left',vertical:'center',wrapText:true}, border:border() }};
+      if (link) o.l = { Target:link, Tooltip:'Click to view proof' };
+      return o;
+    };
+    const proofStatusCell = (v, rowI) => {
+      const bg = rowI%2===0 ? C.prBg1 : C.prBg2;
+      const fg = v==='approved' ? C.apprFg : v==='rejected' ? C.rejFg : C.pendFg;
+      return { v:v??'', t:'s',
+        s:{ font:{name:'Calibri',sz:9,bold:true,color:{rgb:fg}}, fill:fill(bg),
+            alignment:{horizontal:'center',vertical:'center'}, border:border() }};
+    };
+
+    // ── Fmt helpers ───────────────────────────────────────────────────────────
+    const n = (v) => parseFloat(v||0);
+    const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN') : '—';
+
+    const wb = XLSX.utils.book_new();
+
+    // ── Build one sheet per employee ──────────────────────────────────────────
+    for (const d of decls) {
+      const sectionProofs = proofsMap[d.id] || {};
+
+      // ws data: array of rows, each row = array of cell objects
+      // We'll build as aoa first, then apply styles via cell-by-cell assignment
+      const data = []; // [{r, c, cell}]
+      let row = 0;
+
+      const addRow = (...cells) => {
+        cells.forEach((c, col) => { data.push({r:row, c:col, cell:c}); });
+        row++;
+      };
+
+      const addBlank = () => { data.push({r:row,c:0,cell:{v:'',t:'s',s:{}}}); row++; };
+
+      const addSection = (title, icon) => {
+        addBlank();
+        // span across 6 cols
+        for(let c=0;c<6;c++) data.push({r:row,c,cell:sectionCell(c===0?`${icon} ${title}`:'')});
+        row++;
+      };
+
+      const addLV = (label, val, label2, val2) => {
+        addRow(
+          labelCell(label), valCell(val, typeof val==='number'),
+          label2 ? labelCell(label2) : {v:'',t:'s',s:{fill:fill(C.vaBg),border:border()}},
+          label2 ? valCell(val2, typeof val2==='number') : {v:'',t:'s',s:{fill:fill(C.vaBg),border:border()}},
+          {v:'',t:'s',s:{fill:fill(C.vaBg),border:border()}},
+          {v:'',t:'s',s:{fill:fill(C.vaBg),border:border()}}
+        );
+      };
+
+      const addProofs = (section) => {
+        const proofs = sectionProofs[section] || [];
+        if (!proofs.length) return;
+        // Proof sub-header
+        addRow(
+          proofHdrCell('📎 Proof'), proofHdrCell('Document'), proofHdrCell('File Name'),
+          proofHdrCell('Size'), proofHdrCell('Status'), proofHdrCell('View Link')
+        );
+        proofs.forEach((p, i) => {
+          const viewUrl = `${baseUrl}/api/it-declaration/proof/${p.declaration_id}/doc?doc_type=${encodeURIComponent(p.doc_type)}&token=${token}`;
+          addRow(
+            proofValCell(p.section_label || p.doc_type, i),
+            proofValCell(p.doc_type, i),
+            proofValCell(p.file_name, i),
+            proofValCell(p.file_size ? Math.round(p.file_size/1024)+' KB' : '—', i),
+            proofStatusCell(p.proof_status, i),
+            proofValCell(viewUrl, i, viewUrl)
+          );
+        });
+      };
+
+      // ── Title Banner ──────────────────────────────────────────────────────
+      for(let c=0;c<6;c++) data.push({r:row, c, cell: c===0
+        ? {...headerCell(`IT Declaration Export  —  FY ${fy}`), s:{
+            font:{name:'Calibri',sz:14,bold:true,color:{rgb:C.hdFg}},
+            fill:fill(C.hdBg), alignment:{horizontal:'left',vertical:'center',wrapText:false},
+            border:thickBorder() }}
+        : {...headerCell(''), s:{font:font(false,14,C.hdFg), fill:fill(C.hdBg), border:thickBorder()}}
+      });
+      row++;
+
+      // Employee Info sub-banner
+      for(let c=0;c<6;c++) data.push({r:row, c, cell: {v:c===0?`${d.employee_name}  |  ${d.employee_code}  |  PAN: ${d.pan_number||'N/A'}  |  ${(d.regime||'OLD').toUpperCase()} Regime  |  Status: ${(d.status||'draft').toUpperCase()}`:'',
+        t:'s', s:{ font:{name:'Calibri',sz:10,bold:true,color:{rgb:'1E3A5F'}},
+          fill:fill('EFF6FF'), alignment:{horizontal:'left',vertical:'center',wrapText:false},
+          border:border() }}});
+      row++;
+      addBlank();
+
+      // ── Employee Details ──────────────────────────────────────────────────
+      addSection('EMPLOYEE DETAILS', '👤');
+      addLV('Department',   d.department||'—',    'Designation', d.designation||'—');
+      addLV('PAN Number',   d.pan_number||'—',    'Regime',      (d.regime||'old').toUpperCase());
+      addLV('Status',       (d.status||'draft').toUpperCase(), 'Submitted At', fmtDate(d.submitted_at));
+      addLV('HR Comment',   d.hr_comment||'—',    'Reviewed At', fmtDate(d.reviewed_at));
+
+      // ── HRA / RENT ────────────────────────────────────────────────────────
+      addSection('HRA / RENT', '🏠');
+      addLV('Rent Paid Monthly (₹)', n(d.rent_paid_monthly), 'Annual Rent (₹)', n(d.annual_rent));
+      addLV('Landlord Name', d.landlord_name||'—', 'Landlord PAN', d.landlord_pan||'—');
+      addLV('HRA City Type', d.hra_city_type||'—');
+      addProofs('hra');
+
+      // ── SEC 80C ───────────────────────────────────────────────────────────
+      addSection('SEC 80C — INVESTMENTS & SAVINGS', '💰');
+      addLV('PF (80C)',             n(d.sec80c_pf),        'PPF',                  n(d.sec80c_ppf));
+      addLV('LIC Premium',          n(d.sec80c_lic),       'ELSS Mutual Fund',     n(d.sec80c_elss));
+      addLV('NSC',                  n(d.sec80c_nsc),       'Home Loan Principal',  n(d.sec80c_home_loan));
+      addLV('Tuition Fees',         n(d.sec80c_tuition),   'Tax Saving FD (5yr)',  n(d.sec80c_fd));
+      addLV('Other 80C',            n(d.sec80c_other));
+      addRow(totLabelCell('Total 80C'), totValCell(n(d.total_80c)),
+             {v:'',t:'s',s:{fill:fill(C.totBg),border:thickBorder()}},{v:'',t:'s',s:{fill:fill(C.totBg),border:thickBorder()}},
+             {v:'',t:'s',s:{fill:fill(C.totBg),border:thickBorder()}},{v:'',t:'s',s:{fill:fill(C.totBg),border:thickBorder()}});
+      addProofs('80c');
+
+      // ── NPS ───────────────────────────────────────────────────────────────
+      addSection('NPS — 80CCD(1B)', '📈');
+      addLV('Employee NPS 80CCD(1B)', n(d.sec80ccd_nps), 'Employer NPS (80CCD2)', n(d.employer_nps));
+      addProofs('nps');
+
+      // ── 80D Health Insurance ──────────────────────────────────────────────
+      addSection('HEALTH INSURANCE — 80D', '🏥');
+      addLV('Self & Family (80D)',  n(d.sec80d_self),    'Parents (80D)',           n(d.sec80d_parents));
+      addLV('Senior Citizen Parent', d.sec80d_senior_parent ? 'Yes' : 'No');
+      addProofs('80d');
+
+      // ── HOME LOAN SEC 24B ─────────────────────────────────────────────────
+      addSection('HOME LOAN INTEREST — SEC 24B', '🏡');
+      addLV('Interest Amount (₹)', n(d.sec24b_home_loan), 'Loan Provider', d.homeloan_provider||'—');
+      addLV('Property Address', d.homeloan_address||'—');
+      addProofs('24b');
+
+      // ── 80E Edu Loan ──────────────────────────────────────────────────────
+      addSection('EDUCATION LOAN — 80E', '🎓');
+      addLV('Interest on Edu Loan', n(d.sec80e_edu_loan));
+      addProofs('80e');
+
+      // ── 80G Donation ──────────────────────────────────────────────────────
+      addSection('DONATIONS — 80G', '🤝');
+      addLV('Donation Amount',   n(d.sec80g_donation),     'Institution',     d.sec80g_institution||'—');
+      addLV('Institution PAN',   d.sec80g_pan||'—',        'Category',        d.sec80g_category||'—');
+      addProofs('80g');
+
+      // ── 80DD / 80U / 80DDB ────────────────────────────────────────────────
+      addSection('DISABILITY & MEDICAL — 80DD / 80U / 80DDB', '♿');
+      addLV('80DD Dependent Disability', n(d.sec80dd_amount), '80U Self Disability', n(d.sec80u_amount));
+      addLV('80DDB Medical Treatment',   n(d.sec80ddb_amount), 'Disease', d.sec80ddb_disease||'—');
+      addProofs('80dd');
+      addProofs('80u');
+      addProofs('80ddb');
+
+      // ── LTA ───────────────────────────────────────────────────────────────
+      addSection('LEAVE TRAVEL ALLOWANCE (LTA)', '✈️');
+      addLV('LTA Amount', n(d.lta_amount), 'Destination', d.lta_destination||'—');
+      addLV('Travel Period', d.lta_travel_period||'—');
+      addProofs('lta');
+
+      // ── PREVIOUS EMPLOYMENT ───────────────────────────────────────────────
+      addSection('PREVIOUS EMPLOYMENT', '🏢');
+      addLV('Employer Name',        d.prev_employer||'—',       'TAN',              d.prev_employer_tan||'—');
+      addLV('Period',               d.prev_period||'—',         'Gross Salary (₹)', n(d.prev_gross_salary));
+      addLV('Taxable Income (₹)',   n(d.prev_taxable_income),   'TDS Deducted (₹)', n(d.prev_tds));
+      addLV('PF (₹)',               n(d.prev_pf));
+      addProofs('prev_employment');
+
+      // ── OTHER INCOME ──────────────────────────────────────────────────────
+      addSection('OTHER INCOME', '📊');
+      addLV('Savings Bank Interest', n(d.other_savings_int), 'FD Interest',    n(d.other_fd_int));
+      addLV('Dividend Income',       n(d.other_dividend),    'Miscellaneous',  n(d.other_misc));
+
+      // ── COMPUTED TOTALS ───────────────────────────────────────────────────
+      addBlank();
+      for(let c=0;c<6;c++) data.push({r:row,c,cell:{v:c===0?'📋  SUMMARY & COMPUTED TOTALS':'',t:'s',
+        s:{font:{name:'Calibri',sz:11,bold:true,color:{rgb:'92400E'}},fill:fill('FEF3C7'),
+           alignment:{horizontal:'left',vertical:'center'},border:thickBorder()}}});
+      row++;
+      addRow(totLabelCell('Total Deductions'), totValCell(n(d.total_deductions)),
+             totLabelCell('Estimated Annual Tax'), totValCell(n(d.estimated_tax)),
+             {v:'',t:'s',s:{fill:fill(C.totBg),border:thickBorder()}},
+             {v:'',t:'s',s:{fill:fill(C.totBg),border:thickBorder()}});
+      addRow(totLabelCell('Monthly TDS'), totValCell(n(d.monthly_tds)),
+             {v:'',t:'s',s:{fill:fill(C.totBg),border:thickBorder()}},
+             {v:'',t:'s',s:{fill:fill(C.totBg),border:thickBorder()}},
+             {v:'',t:'s',s:{fill:fill(C.totBg),border:thickBorder()}},
+             {v:'',t:'s',s:{fill:fill(C.totBg),border:thickBorder()}});
+
+      // ── Build the worksheet object ────────────────────────────────────────
+      const ws = {};
+      const maxR = row;
+      for (const { r, c, cell } of data) {
+        const ref = XLSX.utils.encode_cell({ r, c });
+        ws[ref] = cell;
+      }
+      ws['!ref'] = XLSX.utils.encode_range({ s:{r:0,c:0}, e:{r:maxR,c:5} });
 
       // Column widths
       ws['!cols'] = [
-        { wch: 28 }, { wch: 22 }, { wch: 26 }, { wch: 22 },
-        { wch: 14 }, { wch: 55 }, { wch: 14 },
+        { wch: 32 }, { wch: 20 }, { wch: 32 }, { wch: 20 }, { wch: 14 }, { wch: 52 }
       ];
 
-      // Make proof view links clickable hyperlinks
-      if (proofs.length) {
-        const headerRowIdx = rows.length - proofs.length - 1;
-        proofs.forEach((p, i) => {
-          const rowIdx = headerRowIdx + 1 + i;
-          const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c: 5 });
-          const viewUrl = `${baseUrl}/api/it-declaration/proof/${p.declaration_id}/doc?doc_type=${encodeURIComponent(p.doc_type)}&token=${token}`;
-          if (ws[cellRef]) {
-            ws[cellRef].l = { Target: viewUrl, Tooltip: 'Click to view proof' };
-          }
-        });
-      }
+      // Merge title row across all 6 cols
+      ws['!merges'] = [
+        { s:{r:0,c:0}, e:{r:0,c:5} }, // Title banner
+        { s:{r:1,c:0}, e:{r:1,c:5} }, // Employee sub-banner
+      ];
 
-      // Safe sheet name: max 31 chars, no special chars
+      // Row heights: title rows taller
+      ws['!rows'] = [];
+      ws['!rows'][0] = { hpt: 28 };
+      ws['!rows'][1] = { hpt: 20 };
+
       const sheetName = `${d.employee_code} - ${d.employee_name}`
-        .replace(/[:\\\/\?\*\[\]]/g, '')
-        .substring(0, 31);
-
+        .replace(/[:\\\/\?\*\[\]]/g, '').substring(0, 31);
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
     }
 
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    const fname = `IT_Declaration_${fy.replace('-','_')}${status ? '_' + status : ''}.xlsx`;
-
+    const buf = XLSX.write(wb, { type:'buffer', bookType:'xlsx', cellStyles:true });
+    const fname = `IT_Declaration_${fy.replace('-','_')}${status?'_'+status:''}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
     res.send(buf);
   } catch (err) {
-    console.error('[exportExcel]', err.message);
-    res.status(500).json({ success: false, message: 'Export failed: ' + err.message });
+    console.error('[exportExcel]', err.message, err.stack);
+    res.status(500).json({ success:false, message:'Export failed: ' + err.message });
   }
 };
