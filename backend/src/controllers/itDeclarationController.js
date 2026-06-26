@@ -1104,3 +1104,177 @@ exports.getDashboard = async (req, res) => {
     res.status(500).json({ success:false, message:'Server error' });
   }
 };
+
+// ── GET /it-declaration/export-excel — HR Excel export with proofs ────────────
+// Query params: fy, status (optional filter)
+// Each employee = one sheet. Sheet name = "EmpCode - Name"
+// Columns: all declaration fields + one column per proof doc with view URL
+exports.exportExcel = async (req, res) => {
+  try {
+    const XLSX = require('xlsx');
+    const { fy = '2025-26', status } = req.query;
+    const baseUrl = process.env.BACKEND_URL || req.protocol + '://' + req.get('host');
+
+    // ── 1. Fetch all declarations for FY (+ optional status filter) ────────────
+    let q = `
+      SELECT d.*,
+             CONCAT(e.first_name,' ',e.last_name) AS employee_name,
+             e.employee_code, e.pan_number,
+             dept.name AS department, des.title AS designation
+      FROM it_declarations d
+      JOIN employees e ON d.employee_id = e.id
+      LEFT JOIN departments  dept ON e.department_id  = dept.id
+      LEFT JOIN designations des  ON e.designation_id = des.id
+      WHERE d.financial_year = $1`;
+    const params = [fy];
+    if (status) { params.push(status); q += ` AND d.status = $${params.length}`; }
+    q += ` ORDER BY e.employee_code, e.first_name`;
+
+    const decls = (await db.query(q, params)).rows;
+    if (!decls.length) {
+      return res.status(404).json({ success: false, message: 'No declarations found for the selected filters.' });
+    }
+
+    // ── 2. Fetch all proofs for these declaration IDs ──────────────────────────
+    const declIds = decls.map(d => d.id);
+    const proofRows = (await db.query(
+      `SELECT declaration_id, section_label, doc_type, file_name, file_size, mime_type, status, uploaded_at
+       FROM it_proof_documents WHERE declaration_id = ANY($1) ORDER BY declaration_id, section, uploaded_at`,
+      [declIds]
+    )).rows;
+
+    // Group proofs by declaration_id
+    const proofsMap = {};
+    for (const p of proofRows) {
+      if (!proofsMap[p.declaration_id]) proofsMap[p.declaration_id] = [];
+      proofsMap[p.declaration_id].push(p);
+    }
+
+    const wb = XLSX.utils.book_new();
+    const token = req.headers.authorization?.replace('Bearer ', '') || '';
+
+    // ── 3. Build one sheet per employee ────────────────────────────────────────
+    for (const d of decls) {
+      const proofs = proofsMap[d.id] || [];
+
+      // Row-pair layout: label in col A, value in col B
+      const rows = [
+        // Header
+        [`IT Declaration Export — FY ${fy}`, '', '', ''],
+        ['Employee', d.employee_name, 'Code', d.employee_code],
+        ['PAN', d.pan_number || '—', 'Department', d.department || '—'],
+        ['Designation', d.designation || '—', 'Regime', (d.regime || 'old').toUpperCase()],
+        ['Status', d.status || '—', 'Submitted At', d.submitted_at ? new Date(d.submitted_at).toLocaleDateString('en-IN') : '—'],
+        [''],
+        // HRA / Rent
+        ['── HRA / RENT ──'],
+        ['Rent Paid Monthly', d.rent_paid_monthly || 0, 'Annual Rent', d.annual_rent || 0],
+        ['Landlord Name', d.landlord_name || '—', 'Landlord PAN', d.landlord_pan || '—'],
+        ['HRA City Type', d.hra_city_type || '—'],
+        [''],
+        // 80C
+        ['── SEC 80C ──'],
+        ['PF (80C)', d.sec80c_pf || 0, 'PPF', d.sec80c_ppf || 0],
+        ['LIC Premium', d.sec80c_lic || 0, 'ELSS', d.sec80c_elss || 0],
+        ['NSC', d.sec80c_nsc || 0, 'Home Loan Principal', d.sec80c_home_loan || 0],
+        ['Tuition Fees', d.sec80c_tuition || 0, 'Tax Saving FD', d.sec80c_fd || 0],
+        ['Other 80C', d.sec80c_other || 0, 'Total 80C', d.total_80c || 0],
+        [''],
+        // NPS / 80D
+        ['── NPS & HEALTH ──'],
+        ['NPS 80CCD(1B)', d.sec80ccd_nps || 0, 'Employer NPS', d.employer_nps || 0],
+        ['80D Self', d.sec80d_self || 0, '80D Parents', d.sec80d_parents || 0],
+        ['Senior Parent', d.sec80d_senior_parent ? 'Yes' : 'No'],
+        [''],
+        // Home Loan / Edu / Donation
+        ['── DEDUCTIONS ──'],
+        ['Sec24b Home Loan Int.', d.sec24b_home_loan || 0, 'Loan Provider', d.homeloan_provider || '—'],
+        ['80E Edu Loan', d.sec80e_edu_loan || 0],
+        ['80G Donation', d.sec80g_donation || 0, '80G Institution', d.sec80g_institution || '—'],
+        ['80DD Amount', d.sec80dd_amount || 0, '80U Amount', d.sec80u_amount || 0],
+        ['80DDB Amount', d.sec80ddb_amount || 0, 'Disease', d.sec80ddb_disease || '—'],
+        [''],
+        // LTA
+        ['── LTA ──'],
+        ['LTA Amount', d.lta_amount || 0, 'Destination', d.lta_destination || '—'],
+        ['Travel Period', d.lta_travel_period || '—'],
+        [''],
+        // Previous Employer
+        ['── PREVIOUS EMPLOYMENT ──'],
+        ['Prev Employer', d.prev_employer || '—', 'TAN', d.prev_employer_tan || '—'],
+        ['Prev Period', d.prev_period || '—', 'Prev Gross Salary', d.prev_gross_salary || 0],
+        ['Prev Taxable Income', d.prev_taxable_income || 0, 'Prev TDS', d.prev_tds || 0],
+        ['Prev PF', d.prev_pf || 0],
+        [''],
+        // Other Income
+        ['── OTHER INCOME ──'],
+        ['Savings Interest', d.other_savings_int || 0, 'FD Interest', d.other_fd_int || 0],
+        ['Dividend', d.other_dividend || 0, 'Misc', d.other_misc || 0],
+        [''],
+        // Totals
+        ['── COMPUTED TOTALS ──'],
+        ['Total Deductions', d.total_deductions || 0, 'Estimated Tax', d.estimated_tax || 0],
+        ['Monthly TDS', d.monthly_tds || 0],
+        [''],
+        // Proofs
+        ['── UPLOADED PROOF DOCUMENTS ──'],
+        proofs.length
+          ? ['Section', 'Document', 'File Name', 'Size (KB)', 'Status', 'View Link', 'Uploaded At']
+          : ['No proof documents uploaded'],
+      ];
+
+      if (proofs.length) {
+        for (const p of proofs) {
+          const viewUrl = `${baseUrl}/api/it-declaration/proof/${p.declaration_id}/doc?doc_type=${encodeURIComponent(p.doc_type)}&token=${token}`;
+          rows.push([
+            p.section_label || p.doc_type,
+            p.doc_type,
+            p.file_name,
+            p.file_size ? Math.round(p.file_size / 1024) : '—',
+            p.status,
+            viewUrl,
+            p.uploaded_at ? new Date(p.uploaded_at).toLocaleDateString('en-IN') : '—',
+          ]);
+        }
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+
+      // Column widths
+      ws['!cols'] = [
+        { wch: 28 }, { wch: 22 }, { wch: 26 }, { wch: 22 },
+        { wch: 14 }, { wch: 55 }, { wch: 14 },
+      ];
+
+      // Make proof view links clickable hyperlinks
+      if (proofs.length) {
+        const headerRowIdx = rows.length - proofs.length - 1;
+        proofs.forEach((p, i) => {
+          const rowIdx = headerRowIdx + 1 + i;
+          const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c: 5 });
+          const viewUrl = `${baseUrl}/api/it-declaration/proof/${p.declaration_id}/doc?doc_type=${encodeURIComponent(p.doc_type)}&token=${token}`;
+          if (ws[cellRef]) {
+            ws[cellRef].l = { Target: viewUrl, Tooltip: 'Click to view proof' };
+          }
+        });
+      }
+
+      // Safe sheet name: max 31 chars, no special chars
+      const sheetName = `${d.employee_code} - ${d.employee_name}`
+        .replace(/[:\\\/\?\*\[\]]/g, '')
+        .substring(0, 31);
+
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    }
+
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const fname = `IT_Declaration_${fy.replace('-','_')}${status ? '_' + status : ''}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
+    res.send(buf);
+  } catch (err) {
+    console.error('[exportExcel]', err.message);
+    res.status(500).json({ success: false, message: 'Export failed: ' + err.message });
+  }
+};

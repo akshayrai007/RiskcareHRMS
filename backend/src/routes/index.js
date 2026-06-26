@@ -870,6 +870,7 @@ router.get('/test-email', authenticate, async (req, res) => {
 // ── IT Declaration & Tax ──────────────────────────────────────────────────────
 router.get   ('/it-declaration',                    authenticate,                                          itDeclCtrl.getDeclaration);
 router.get   ('/it-declaration/all',                authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.getAllDeclarations);
+router.get   ('/it-declaration/export-excel',       authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.exportExcel);
 router.get   ('/it-declaration/tax-preview',        authenticate,                                          itDeclCtrl.taxPreview);
 router.get   ('/it-declaration/proofs',             authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.getProofsByDeclaration);
 router.get   ('/it-declaration/config',             authenticate,                                          itDeclCtrl.getConfig);

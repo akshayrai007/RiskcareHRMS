@@ -615,14 +615,26 @@
       <div id="hr-stats-row" class="hr-stats"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div style="font-size:13px;font-weight:700;color:#1e3a5f">All Declarations</div>
-        <select id="hr-filter-st" class="form-control" style="font-size:13px;padding:7px 10px;width:auto" onchange="loadHR()">
-          <option value="">All Statuses</option>
-          <option value="submitted">Submitted</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
-          <option value="verified">Verified</option>
-          <option value="draft">Draft</option>
-        </select>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="hr-filter-fy" class="form-control" style="font-size:13px;padding:7px 10px;width:auto" onchange="loadHR()">
+            <option value="2025-26">FY 2025-26</option>
+            <option value="2024-25">FY 2024-25</option>
+            <option value="2023-24">FY 2023-24</option>
+            <option value="2022-23">FY 2022-23</option>
+            <option value="2021-22">FY 2021-22</option>
+          </select>
+          <select id="hr-filter-st" class="form-control" style="font-size:13px;padding:7px 10px;width:auto" onchange="loadHR()">
+            <option value="">All Statuses</option>
+            <option value="submitted">Submitted</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="verified">Verified</option>
+            <option value="draft">Draft</option>
+          </select>
+          <button class="btn btn-primary btn-sm" id="hr-export-btn" onclick="exportHRExcel()" style="font-size:12px;padding:7px 14px;font-weight:700">
+            📊 Export Excel
+          </button>
+        </div>
       </div>
       <div style="overflow-x:auto;border-radius:8px;border:1px solid #e0e3ec">
         <table class="hr-tbl">
@@ -1482,12 +1494,12 @@ async function loadHRStats() {
 
 async function loadHR() {
   loadHRStats();
-  const fy  = document.getElementById('sel-fy').value;
+  const fy  = document.getElementById('hr-filter-fy')?.value || document.getElementById('sel-fy').value;
   const st  = document.getElementById('hr-filter-st').value;
   const res = await api('GET', `/it-declaration/all?fy=${fy}${st?'&status='+st:''}`);
   const tb  = document.getElementById('hr-tbody');
   if (!res?.success) { tb.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#ef4444">Failed to load</td></tr>'; return; }
-  if (!res.data.length) { tb.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#9ca3af;padding:28px">No records</td></tr>'; return; }
+  if (!res.data.length) { tb.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#9ca3af;padding:28px">No records found for selected filters</td></tr>'; return; }
   const stM = {draft:'st-draft',submitted:'st-submitted',approved:'st-approved',rejected:'st-rejected',verified:'st-verified'};
   tb.innerHTML = res.data.map(d => `<tr>
     <td style="font-weight:700;color:#1e3a5f">${d.employee_name}${d.locked?'&nbsp;🔒':''}</td>
@@ -1509,6 +1521,32 @@ async function loadHR() {
       </div>
     </td>
   </tr>`).join('');
+}
+
+async function exportHRExcel() {
+  const fy  = document.getElementById('hr-filter-fy')?.value || document.getElementById('sel-fy').value;
+  const st  = document.getElementById('hr-filter-st').value;
+  const btn = document.getElementById('hr-export-btn');
+  btn.disabled = true; btn.textContent = '⏳ Exporting…';
+  try {
+    const url = `${API_BASE}/it-declaration/export-excel?fy=${fy}${st ? '&status=' + st : ''}`;
+    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + Auth.getToken() } });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      toast(err.message || 'Export failed', 'error');
+      return;
+    }
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `IT_Declaration_${fy.replace('-','_')}${st ? '_' + st : ''}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('Excel exported ✅');
+  } catch(err) {
+    toast('Export failed: ' + err.message, 'error');
+  }
+  btn.disabled = false; btn.textContent = '📊 Export Excel';
 }
 
 function openReview(id, name) {
