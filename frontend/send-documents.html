@@ -9,6 +9,7 @@
 <style>
 /* ── Layout ── */
 .sd-layout { display:grid; grid-template-columns:420px 1fr; gap:20px; align-items:start; }
+.sd-layout.full-width { grid-template-columns:1fr; }
 @media(max-width:900px){ .sd-layout { grid-template-columns:1fr; } }
 
 /* ── Send Panel ── */
@@ -118,22 +119,30 @@
 .batch-note  { font-size:12.5px; color:#6b7280; background:#f9fafb; border-left:3px solid #fca5a5; border-radius:0 6px 6px 0; padding:8px 12px; margin:10px 0; }
 .new-pill { background:#C0272D; color:#fff; font-size:9px; font-weight:800; letter-spacing:.05em; padding:2px 8px; border-radius:20px; vertical-align:middle; margin-left:6px; }
 
-/* ── File chips in batch ── */
-.batch-files { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
-.file-chip {
-  display:inline-flex; align-items:center; gap:7px;
-  background:#fff; border:1.5px solid #e5e7eb; border-radius:8px;
-  padding:6px 12px; font-size:12px; color:#374151; font-weight:600;
-  transition:.15s; cursor:default;
+/* ── File rows in batch ── */
+.file-list { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+.file-row {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  background:#f9fafb; border:1.5px solid #f3f4f6; border-radius:10px; padding:10px 14px;
+  transition:.15s;
 }
-.file-chip:hover { border-color:#fca5a5; background:#fff8f8; }
-.file-chip-name { max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
-.file-chip-name:hover { color:#C0272D; text-decoration:underline; }
-.file-chip-size { color:#9ca3af; font-weight:400; font-size:11px; }
-.file-chip-dl   { cursor:pointer; font-size:13px; color:#9ca3af; transition:.1s; }
-.file-chip-dl:hover { color:#C0272D; }
-.file-chip-del  { cursor:pointer; font-size:14px; color:#d1d5db; transition:.1s; }
-.file-chip-del:hover { color:#C0272D; }
+.file-row:hover { border-color:#fca5a5; background:#fff8f8; }
+.file-row-left { display:flex; align-items:center; gap:10px; flex:1; min-width:0; }
+.file-row-icon { font-size:22px; flex-shrink:0; }
+.file-row-info { display:flex; flex-direction:column; min-width:0; }
+.file-row-name { font-size:13px; font-weight:600; color:#111827; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.file-row-size { font-size:11px; color:#9ca3af; margin-top:1px; }
+.file-row-actions { display:flex; gap:6px; flex-shrink:0; }
+.file-action-btn {
+  border:none; border-radius:7px; padding:6px 12px; font-size:11.5px; font-weight:700;
+  cursor:pointer; transition:.15s; letter-spacing:.2px;
+}
+.view-btn { background:#EFF6FF; color:#1D4ED8; }
+.view-btn:hover { background:#DBEAFE; }
+.dl-btn { background:#F0FDF4; color:#15803D; }
+.dl-btn:hover { background:#DCFCE7; }
+.del-btn { background:#FFF1F2; color:#BE123C; }
+.del-btn:hover { background:#FFE4E6; }
 
 /* ── Empty / loader ── */
 .sd-empty { text-align:center; padding:48px 20px; color:#9ca3af; }
@@ -286,6 +295,7 @@ window.addEventListener('load', () => {
 
   if (!isSender) {
     document.getElementById('send-panel-wrap').style.display = 'none';
+    document.querySelector('.sd-layout').classList.add('full-width');
     document.getElementById('tab-sent').style.display = 'none';
   } else {
     loadAllEmployees();
@@ -454,13 +464,20 @@ function batchCard(b, mode) {
     : `Sent to <b>${esc(b.recipient_name)}</b>`;
 
   const chips = b.files.map(f => `
-    <span class="file-chip">
-      ${fileIcon(f.original_name)}
-      <span class="file-chip-name" title="${esc(f.original_name)}" onclick="viewFile(${f.id},'${esc(f.original_name)}','${esc(f.mime_type||'')}')">${esc(f.original_name)}</span>
-      <span class="file-chip-size">${fmtSz(f.file_size||0)}</span>
-      <span class="file-chip-dl" title="Download" onclick="dlFile(${f.id},'${esc(f.original_name)}')">⬇</span>
-      ${mode==='sent' ? `<span class="file-chip-del" title="Remove" onclick="delFile(${f.id},'${b.batch_id}')">×</span>` : ''}
-    </span>`).join('');
+    <div class="file-row">
+      <div class="file-row-left">
+        <span class="file-row-icon">${fileIcon(f.original_name)}</span>
+        <div class="file-row-info">
+          <span class="file-row-name" title="${esc(f.original_name)}">${esc(f.original_name)}</span>
+          <span class="file-row-size">${fmtSz(f.file_size||0)}</span>
+        </div>
+      </div>
+      <div class="file-row-actions">
+        <button class="file-action-btn view-btn" onclick="viewFile(${f.id},'${esc(f.original_name)}','${esc(f.mime_type||'')}')">👁 View</button>
+        <button class="file-action-btn dl-btn" onclick="dlFile(${f.id},'${esc(f.original_name)}')">⬇ Download</button>
+        ${mode==='sent' ? `<button class="file-action-btn del-btn" onclick="delFile(${f.id},'${b.batch_id}')">🗑</button>` : ''}
+      </div>
+    </div>`).join('');
 
   return `
     <div class="batch-card ${hasUnread?'unread':''}">
@@ -477,7 +494,7 @@ function batchCard(b, mode) {
         </div>
       </div>
       ${b.note ? `<div class="batch-note">💬 ${esc(b.note)}</div>` : ''}
-      <div class="batch-files">${chips}</div>
+      <div class="file-list">${chips}</div>
     </div>`;
 }
 
