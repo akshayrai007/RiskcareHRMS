@@ -1417,8 +1417,12 @@ exports.exportExcel = async (req, res) => {
 
       // ── 80DD / 80U / 80DDB ────────────────────────────────────────────────
       addSection('DISABILITY & MEDICAL — 80DD / 80U / 80DDB', '♿');
-      addLV('80DD Dependent Disability', n(d.sec80dd_amount), '80U Self Disability', n(d.sec80u_amount));
-      addLV('80DDB Medical Treatment',   n(d.sec80ddb_amount), 'Disease', d.sec80ddb_disease||'—');
+      addLV('80DD Dependent Disability (₹)', n(d.sec80dd_amount), '80U Self Disability (₹)', n(d.sec80u_amount));
+      addLV('80DD Dependent Name',  d.sec80dd_dependent||'—',  '80DD Relation',       d.sec80dd_relation||'—');
+      addLV('80DD Disability %',    d.sec80dd_pct||'—',        '80U Disability %',    d.sec80u_pct||'—');
+      addLV('80U Category',         d.sec80u_category||'—');
+      addLV('80DDB Disease Name',   d.sec80ddb_disease||'—',   '80DDB Amount (₹)',    n(d.sec80ddb_amount));
+      addLV('80DDB Patient Name',   d.sec80ddb_patient||'—',   '80DDB Relation',      d.sec80ddb_relation||'—');
       addProofs('80DD');
       addProofs('80U');
       addProofs('80DDB');
