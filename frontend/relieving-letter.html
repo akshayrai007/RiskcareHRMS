@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RiskCare HR - Relieving Letters</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  /* ── Stats Banner ── */
+  .stats-banner{display:flex;gap:14px;margin-bottom:18px}
+  .sb-item{flex:1;padding:16px 20px;text-align:center;color:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+  .sb-item:nth-child(1){background:linear-gradient(135deg,#8B1A1A,#C0272D)}
+  .sb-item:nth-child(2){background:linear-gradient(135deg,#C0272D,#E53935)}
+  .sb-item:nth-child(3){background:linear-gradient(135deg,#B45309,#D97706)}
+  .sb-item .sb-num{font-size:28px;font-weight:800}
+  .sb-item .sb-lbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;opacity:.85}
+
+  /* ── Toolbar Card ── */
+  .tool-card{background:#fff;border:1px solid #fecaca;border-radius:10px;padding:14px 18px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+  .tool-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+  .cc-row{display:flex;gap:12px;flex-wrap:wrap}
+  .cc-row>div{flex:1;min-width:180px}
+  .cc-row label{font-size:11px;font-weight:600;color:#C0272D;display:block;margin-bottom:3px}
+  .cc-row input{width:100%;padding:7px 10px;border:1px solid #fecaca;border-radius:6px;font-size:12px;background:#fff8f8}
+
+  /* ── Excel-style Table ── */
+  .rl-table{width:100%;border-collapse:collapse;font-size:12px;border:2px solid #C0272D}
+  .rl-table thead th{background:linear-gradient(180deg,#8B1A1A,#C0272D);color:#fff;padding:10px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;text-align:center;border:1px solid #7f1d1d;position:sticky;top:0}
+  .rl-table tbody td{padding:8px 10px;border:1px solid #fecaca;vertical-align:middle;background:#fff}
+  .rl-table tbody tr:nth-child(even) td{background:#fff5f5}
+  .rl-table tbody tr:hover td{background:#fee2e2}
+
+  .c-center{text-align:center}
+  .c-left{text-align:left}
+
+  /* ── Badges ── */
+  .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;letter-spacing:.3px}
+  .badge-sent{background:#C0272D;color:#fff}
+  .badge-pending{background:#D97706;color:#fff}
+  .badge-no-email{background:#6b7280;color:#fff}
+  .badge-type{background:#fee2e2;color:#991b1b;font-size:9px;padding:2px 8px;border-radius:6px;margin-top:3px;display:inline-block;font-weight:600}
+
+  /* ── Inputs inside table ── */
+  .t-date{border:1px solid #fca5a5;border-radius:4px;padding:5px 6px;font-size:11px;width:118px;background:#fff8f8}
+  .t-date:focus{border-color:#C0272D;outline:none;box-shadow:0 0 0 2px rgba(192,39,45,.15)}
+  .t-email{border:1px solid #fca5a5;border-radius:4px;padding:5px 6px;font-size:11px;width:155px;background:#fff8f8}
+  .t-email:focus{border-color:#C0272D;outline:none;box-shadow:0 0 0 2px rgba(192,39,45,.15)}
+
+  /* ── Action Buttons ── */
+  .act-btn{border:none;border-radius:6px;padding:6px 12px;font-size:10px;font-weight:700;cursor:pointer;color:#fff;display:inline-flex;align-items:center;gap:4px;letter-spacing:.3px;transition:all .15s}
+  .act-btn:disabled{opacity:.35;cursor:not-allowed}
+  .act-save{background:linear-gradient(135deg,#8B1A1A,#C0272D);min-width:50px;justify-content:center}
+  .act-save:hover{background:linear-gradient(135deg,#7f1d1d,#991b1b)}
+  .act-preview{background:linear-gradient(135deg,#1565C0,#1976D2)}
+  .act-preview:hover:not(:disabled){background:linear-gradient(135deg,#0D47A1,#1565C0)}
+  .act-send{background:linear-gradient(135deg,#C0272D,#E53935)}
+  .act-send:hover:not(:disabled){background:linear-gradient(135deg,#8B1A1A,#C0272D)}
+
+  /* ── Modal ── */
+  .modal-bg{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:999;justify-content:center;align-items:center}
+  .modal-bg.active{display:flex}
+  .modal-box{background:#fff;border-radius:12px;padding:24px;max-width:560px;width:95%;max-height:85vh;overflow-y:auto;position:relative;border-top:4px solid #C0272D}
+  .modal-box h3{margin:0 0 4px;font-size:16px;color:#C0272D}
+  .modal-box .sub{color:#666;font-size:12px;margin-bottom:14px}
+  .modal-box .close-x{position:absolute;top:12px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#888}
+  .result-tbl{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;border:1px solid #fecaca}
+  .result-tbl th{background:#C0272D;color:#fff;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase}
+  .result-tbl td{padding:6px 8px;border-bottom:1px solid #fee2e2}
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark"></div>
+    <div><div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div></div>
+    <div class="sidebar-company-short" id="sidebar-company-short"></div></div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign Out</button>
+  </div>
+</aside>
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">Relieving Letters</div>
+    </div>
+    <div class="topbar-right">
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+  <div class="content fade-in">
+
+    <!-- Stats Banner -->
+    <div class="stats-banner">
+      <div class="sb-item"><div class="sb-num" id="stat-total">0</div><div class="sb-lbl">Total Separated</div></div>
+      <div class="sb-item"><div class="sb-num" id="stat-sent">0</div><div class="sb-lbl">Letters Sent</div></div>
+      <div class="sb-item"><div class="sb-num" id="stat-pending">0</div><div class="sb-lbl">Pending</div></div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="tool-card">
+      <div class="tool-row">
+        <div class="input-with-icon" style="flex:1;min-width:200px;max-width:280px"><span class="input-icon">🔍</span>
+          <input id="search-input" class="form-control" placeholder="Search name, code, email…" oninput="renderTable()">
+        </div>
+        <button class="act-btn act-send" id="btn-bulk-send" disabled onclick="bulkSendSelected()">📤 SEND SELECTED (<span id="selected-count">0</span>)</button>
+        <button class="act-btn" onclick="openBulkExcelModal()" style="background:linear-gradient(135deg,#6A1B9A,#8E24AA)">📊 BULK BY EXCEL</button>
+      </div>
+      <div class="cc-row">
+        <div><label>CC (comma separated)</label><input type="text" id="cc-input" placeholder="hr@riskcare.co.in"></div>
+        <div><label>BCC (comma separated)</label><input type="text" id="bcc-input" placeholder="records@riskcare.co.in"></div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div style="overflow-x:auto;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+      <div id="table-wrap"><div style="text-align:center;padding:50px;color:#888">Loading…</div></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Bulk Excel Modal -->
+<div class="modal-bg" id="bulk-excel-modal">
+  <div class="modal-box">
+    <button class="close-x" onclick="closeBulkExcelModal()">×</button>
+    <h3>📊 Bulk Send Relieving Letters</h3>
+    <p class="sub">Upload Excel → Generate PDF → Send to each employee's personal email</p>
+    <div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:14px;margin-bottom:14px">
+      <strong style="font-size:13px;color:#C0272D">Step 1 — Download Template</strong>
+      <p style="font-size:12px;color:#555;margin:4px 0">Fill employee codes + personal emails. CC/BCC in first row apply to all.</p>
+      <button class="act-btn act-save" onclick="downloadBulkTemplate()">⬇ DOWNLOAD</button>
+    </div>
+    <strong style="font-size:13px;color:#C0272D">Step 2 — Upload Filled Excel</strong>
+    <input type="file" id="bulk-file" accept=".xlsx,.xls" style="display:block;width:100%;padding:10px;border:2px dashed #C0272D;border-radius:8px;cursor:pointer;font-size:12px;box-sizing:border-box;margin:6px 0 0;background:#fff8f8">
+    <button class="act-btn act-send" id="bulk-excel-btn" onclick="startBulkExcelSend()" style="width:100%;margin-top:14px;padding:12px;justify-content:center;font-size:13px">📤 GENERATE PDFs & SEND ALL</button>
+    <div id="bulk-progress" style="display:none">
+      <p style="font-size:12px;margin-top:10px"><strong>Progress</strong><span id="bulk-status" style="float:right;color:#666;font-size:11px">Uploading…</span></p>
+      <div style="width:100%;height:5px;background:#fee2e2;border-radius:3px;margin-top:4px"><div id="bulk-fill" style="height:100%;background:linear-gradient(90deg,#C0272D,#E53935);border-radius:3px;transition:width .3s;width:0%"></div></div>
+    </div>
+    <div id="bulk-results"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>
+Auth.guard();
+buildSidebar('relieving-letter.html');
+let employees=[];
+
+async function loadData(){
+  const data=await api('GET','/relieving-letters/eligible');
+  if(!data?.success){document.getElementById('table-wrap').innerHTML='<div style="text-align:center;padding:50px;color:#c62828">Failed to load</div>';return;}
+  employees=data.data||[];
+  updateStats();renderTable();
+}
+
+function updateStats(){
+  const t=employees.length,s=employees.filter(e=>e.relieving_letter_sent_at).length;
+  document.getElementById('stat-total').textContent=t;
+  document.getElementById('stat-sent').textContent=s;
+  document.getElementById('stat-pending').textContent=t-s;
+}
+
+function renderTable(){
+  const q=(document.getElementById('search-input').value||'').toLowerCase();
+  const list=employees.filter(e=>{
+    const n=((e.first_name||'')+(e.last_name||'')).toLowerCase();
+    return !q||n.includes(q)||(e.employee_code||'').toLowerCase().includes(q)||(e.alternate_email||'').toLowerCase().includes(q);
+  });
+  if(!list.length){document.getElementById('table-wrap').innerHTML='<div style="text-align:center;padding:50px;color:#888">No separated employees found</div>';return;}
+
+  let h=`<table class="rl-table"><thead><tr>
+    <th style="width:30px"><input type="checkbox" onchange="toggleAll(this)"></th>
+    <th class="c-left">Employee</th>
+    <th class="c-left">Designation</th>
+    <th class="c-center">Joining Date</th>
+    <th class="c-center">Relieving Date</th>
+    <th class="c-center">Personal Email</th>
+    <th class="c-center">Save</th>
+    <th class="c-center">Status</th>
+    <th class="c-center">Preview</th>
+    <th class="c-center">Send</th>
+  </tr></thead><tbody>`;
+
+  for(const e of list){
+    const name=((e.first_name||'')+' '+(e.last_name||'')).trim();
+    const pe=e.alternate_email||'';
+    const ok=pe&&pe.includes('@')&&!pe.toLowerCase().includes('@riskcare.co.in')&&!pe.toLowerCase().includes('@riskcareinsure.com');
+    const sent=!!e.relieving_letter_sent_at;
+    const jdVal=e.joining_date?new Date(e.joining_date).toISOString().split('T')[0]:'';
+    const rdRaw=e.separation_date||e.last_working_date||'';
+    const rdVal=rdRaw?new Date(rdRaw).toISOString().split('T')[0]:'';
+    const st=e.separation_type||e.sep_type||'';
+    const badge=sent?'<span class="badge badge-sent">✓ Sent</span>':!ok?'<span class="badge badge-no-email">✗ No Email</span>':'<span class="badge badge-pending">● Pending</span>';
+
+    h+=`<tr>
+      <td class="c-center"><input type="checkbox" class="row-chk" data-id="${e.id}" ${!ok?'disabled':''} onchange="updateSelected()"></td>
+      <td class="c-left">
+        <strong style="color:#C0272D">${name}</strong><br>
+        <span style="color:#888;font-size:10px">${e.employee_code||''}</span>
+        ${st?' <span class="badge-type">'+st+'</span>':''}
+      </td>
+      <td class="c-left" style="font-size:11px">${e.designation_title||'—'}<br><span style="color:#888">${e.department_name||''}</span></td>
+      <td class="c-center"><input type="date" class="t-date" value="${jdVal}" id="jd-${e.id}"></td>
+      <td class="c-center"><input type="date" class="t-date" value="${rdVal}" id="rd-${e.id}"></td>
+      <td class="c-center"><input type="text" class="t-email" value="${pe}" id="em-${e.id}" placeholder="personal@gmail.com"></td>
+      <td class="c-center"><button class="act-btn act-save" onclick="saveRow(${e.id})">💾</button></td>
+      <td class="c-center">${badge}</td>
+      <td class="c-center"><button class="act-btn act-preview" onclick="previewLetter(${e.id})">👁 Preview</button></td>
+      <td class="c-center"><button class="act-btn act-send" ${!ok?'disabled':''} onclick="sendOne(${e.id},this)">${sent?'🔄 Resend':'📤 Send'}</button></td>
+    </tr>`;
+  }
+  h+='</tbody></table>';
+  document.getElementById('table-wrap').innerHTML=h;
+  updateSelected();
+}
+
+function toggleAll(el){document.querySelectorAll('.row-chk:not(:disabled)').forEach(c=>c.checked=el.checked);updateSelected();}
+function updateSelected(){
+  const n=document.querySelectorAll('.row-chk:checked').length;
+  document.getElementById('selected-count').textContent=n;
+  document.getElementById('btn-bulk-send').disabled=n===0;
+}
+
+async function saveRow(id){
+  const email=document.getElementById('em-'+id).value.trim();
+  const jd=document.getElementById('jd-'+id).value;
+  const rd=document.getElementById('rd-'+id).value;
+  let saved=0;
+  if(email&&email.includes('@')){const d=await api('PUT',`/relieving-letters/update-email/${id}`,{alternate_email:email});if(d?.success)saved++;}
+  const body={};if(jd)body.joining_date=jd;if(rd)body.separation_date=rd;
+  if(Object.keys(body).length){const d=await api('PUT',`/relieving-letters/update-dates/${id}`,body);if(d?.success)saved++;}
+  if(saved){toast('Saved','success');loadData();}else toast('Nothing to save','error');
+}
+
+function previewLetter(id){window.open(API_BASE+`/relieving-letters/preview/${id}?token=${Auth.getToken()}`,'_blank');}
+
+function getCcBcc(){return{
+  cc:document.getElementById('cc-input').value.split(',').map(e=>e.trim()).filter(e=>e.includes('@')),
+  bcc:document.getElementById('bcc-input').value.split(',').map(e=>e.trim()).filter(e=>e.includes('@'))
+};}
+
+async function sendOne(id,btn){
+  btn.disabled=true;btn.innerHTML='⏳…';
+  const d=await api('POST',`/relieving-letters/send/${id}`,getCcBcc());
+  if(d?.success){toast(d.message,'success');loadData();}
+  else{toast(d?.message||'Failed','error');btn.disabled=false;btn.innerHTML='📤 Send';}
+}
+
+async function bulkSendSelected(){
+  const ids=Array.from(document.querySelectorAll('.row-chk:checked')).map(c=>parseInt(c.dataset.id));
+  if(!ids.length)return;if(!confirm(`Send relieving letters to ${ids.length} employee(s)?`))return;
+  const btn=document.getElementById('btn-bulk-send');btn.disabled=true;btn.innerHTML='⏳ PROCESSING…';
+  const resp=await fetch(API_BASE+'/relieving-letters/bulk-send',{
+    method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
+    body:JSON.stringify({employee_ids:ids})
+  });
+  const d=await resp.json();
+  if(d?.success){toast(`Done — ${d.sent} sent, ${d.failed} failed`,d.failed?'error':'success');
+    if(d.failed)alert('Failed:\n'+d.results.filter(r=>r.status==='failed').map(r=>`${r.name}: ${r.reason}`).join('\n'));loadData();}
+  else toast(d?.message||'Failed','error');
+  btn.innerHTML='📤 SEND SELECTED (<span id="selected-count">0</span>)';updateSelected();
+}
+
+function openBulkExcelModal(){document.getElementById('bulk-excel-modal').classList.add('active');}
+function closeBulkExcelModal(){document.getElementById('bulk-excel-modal').classList.remove('active');document.getElementById('bulk-results').innerHTML='';}
+
+function downloadBulkTemplate(){
+  const hd=['Employee Code','Personal Email','CC','BCC'];
+  const s1=['RC-2024-001','employee@gmail.com','hr@riskcare.co.in','records@riskcare.co.in'];
+  const ws=XLSX.utils.aoa_to_sheet([hd,s1]);ws['!cols']=hd.map(h=>({wch:Math.max(h.length+4,20)}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Relieving Letters');
+  XLSX.writeFile(wb,'Relieving_Letter_Bulk_Template.xlsx');
+}
+
+async function startBulkExcelSend(){
+  const fi=document.getElementById('bulk-file');if(!fi.files.length){toast('Select a file','error');return;}
+  const btn=document.getElementById('bulk-excel-btn');btn.disabled=true;btn.textContent='⏳ PROCESSING…';
+  document.getElementById('bulk-progress').style.display='block';
+  document.getElementById('bulk-fill').style.width='30%';document.getElementById('bulk-status').textContent='Uploading…';
+  const fd=new FormData();fd.append('file',fi.files[0]);
+  try{
+    const resp=await fetch(API_BASE+'/relieving-letters/bulk-send-excel',{method:'POST',headers:{'Authorization':'Bearer '+Auth.getToken()},body:fd});
+    const d=await resp.json();document.getElementById('bulk-fill').style.width='100%';document.getElementById('bulk-status').textContent='Complete';
+    if(d?.success){
+      let r=`<p style="margin-top:10px;font-weight:700;color:#C0272D">✅ Sent: ${d.sent} | ❌ Failed: ${d.failed}</p>`;
+      r+='<table class="result-tbl"><thead><tr><th>Row</th><th>Name</th><th>Email</th><th>Status</th><th>Reason</th></tr></thead><tbody>';
+      for(const x of d.results){const c=x.status==='sent'?'#C0272D':'#c62828';r+=`<tr><td>${x.row}</td><td>${x.name}</td><td>${x.email}</td><td style="color:${c};font-weight:700">${x.status}</td><td style="font-size:11px">${x.reason||'—'}</td></tr>`;}
+      r+='</tbody></table>';document.getElementById('bulk-results').innerHTML=r;loadData();
+    }else document.getElementById('bulk-results').innerHTML=`<p style="color:#c62828">Error: ${d?.message||'Unknown'}</p>`;
+  }catch(err){document.getElementById('bulk-results').innerHTML=`<p style="color:#c62828">Error: ${err.message}</p>`;}
+  btn.disabled=false;btn.textContent='📤 GENERATE PDFs & SEND ALL';
+}
+
+loadData();
+</script>
+</body>
+</html>

@@ -175,8 +175,10 @@ const NAV_GROUPS = [
   {
     label: 'Organisation',
     items: [
-      { href:'employees.html',      icon: ICONS.employees,    label:'Employees',        roles:['admin','super_admin','hr','accounts','manager','tl'] },
-      { href:'separation.html',     icon: ICONS.separation,   label:'Separation',       always:true },
+      { href:'employees.html',         icon: ICONS.employees,    label:'Employees',          roles:['admin','super_admin','hr','accounts','manager','tl'] },
+      { href:'separation.html',        icon: ICONS.separation,   label:'Separation',         always:true },
+      { href:'offer-letter.html',      icon: '📄',               label:'Offer Letters',       roles:['admin','super_admin','hr'] },
+      { href:'relieving-letter.html',  icon: '📋',               label:'Relieving Letters',   roles:['admin','super_admin','hr'] },
     ]
   },
   {
