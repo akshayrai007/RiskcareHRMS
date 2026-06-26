@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RiskCareHR - Offer Letters</title>
+<script src="config.js"></script>
   <link rel="icon" type="image/x-icon" href="Logo.png">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -675,15 +676,11 @@ function showToast(msg) {
   setTimeout(() => t.remove(), 3000);
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-// ── HR-only page guard ────────────────────────────────────────────────────────
-(function() {
-  const user = Auth.getUser();
-  if (!user || !['hr','admin','super_admin'].includes(user.role)) {
-    window.location.href = 'dashboard.html';
-  }
-})();
-
+// ── Init ─────────────────────────────────────────────────────────────────────
+Auth.guard();
+if (!['hr','admin','super_admin'].includes(Auth.getUser()?.role)) {
+  window.location.href = 'dashboard.html';
+}
 buildSidebar('offer-letter.html');
 loadNotifBadge();
 </script>
