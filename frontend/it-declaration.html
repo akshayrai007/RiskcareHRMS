@@ -1613,7 +1613,7 @@ async function submitReview() {
     loadHR();
     loadHRStats();
     // If HR is also viewing their own declaration, refresh it
-    if (currentEmpId) loadDeclaration();
+    if (currentEmpId) loadDecl();
   } else toast(res?.message||'Failed', 'error');
 }
 

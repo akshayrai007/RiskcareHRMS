@@ -805,12 +805,22 @@ exports.getProof = async (req, res) => {
     if (!isPriv && proof.employee_id !== reqUser.id)
       return res.status(403).json({ success:false, message:'Access denied' });
 
-    const absPath = path.isAbsolute(proof.file_path)
-      ? proof.file_path
-      : path.resolve(process.cwd(), proof.file_path);
-    if (!fs.existsSync(absPath))
+    // Try multiple path resolutions to handle old relative paths stored before migration
+    const UPLOAD_DIR_ABS = path.join(__dirname, '../../../../uploads/it-proofs');
+    const candidatePaths = [
+      proof.file_path, // new: already absolute
+      path.resolve(process.cwd(), proof.file_path), // old: relative from cwd
+      path.join(UPLOAD_DIR_ABS, path.basename(proof.file_path)), // just filename in upload dir
+      path.resolve(__dirname, '../../../../', proof.file_path), // relative from project root
+    ].filter(Boolean);
+
+    let absPath = null;
+    for (const p of candidatePaths) {
+      try { if (fs.existsSync(p)) { absPath = p; break; } } catch(_) {}
+    }
+    if (!absPath)
       return res.status(404).json({ success:false, message:'File not found on server' });
-    res.setHeader('Content-Type', proof.mime_type);
+    res.setHeader('Content-Type', proof.mime_type || 'application/octet-stream');
     res.setHeader('Content-Disposition', `inline; filename="${proof.file_name}"`);
     fs.createReadStream(absPath).pipe(res);
   } catch (err) {
@@ -851,9 +861,17 @@ exports.deleteProof = async (req, res) => {
     if (['approved','verified'].includes(proof.status))
       return res.status(400).json({ success:false, message:'Cannot delete a verified proof' });
     // Remove file from disk
-    const absPath = path.isAbsolute(proof.file_path)
-      ? proof.file_path
-      : path.resolve(process.cwd(), proof.file_path);
+    const UPLOAD_DIR_ABS2 = path.join(__dirname, '../../../../uploads/it-proofs');
+    const candidates2 = [
+      proof.file_path,
+      path.resolve(process.cwd(), proof.file_path),
+      path.join(UPLOAD_DIR_ABS2, path.basename(proof.file_path)),
+      path.resolve(__dirname, '../../../../', proof.file_path),
+    ].filter(Boolean);
+    let absPath = null;
+    for (const p of candidates2) {
+      try { if (fs.existsSync(p)) { absPath = p; break; } } catch(_) {}
+    }
     if (fs.existsSync(absPath)) fs.unlinkSync(absPath);
     await db.query(`DELETE FROM it_proof_documents WHERE id=$1`, [proofId]);
     res.json({ success:true, message:'Proof deleted' });
