@@ -1111,7 +1111,7 @@ exports.getDashboard = async (req, res) => {
 // Proof documents appear inline after each section they belong to
 exports.exportExcel = async (req, res) => {
   try {
-    const XLSX = require('xlsx');
+    const XLSX = require('xlsx-js-style');
     const { fy = '2025-26', status } = req.query;
     const baseUrl = process.env.BACKEND_URL || req.protocol + '://' + req.get('host');
     const token   = (req.headers.authorization || '').replace('Bearer ', '');
@@ -1269,6 +1269,10 @@ exports.exportExcel = async (req, res) => {
       // We'll build as aoa first, then apply styles via cell-by-cell assignment
       const data = []; // [{r, c, cell}]
       let row = 0;
+      const merges = [
+        { s:{r:0,c:0}, e:{r:0,c:5} }, // Title banner
+        { s:{r:1,c:0}, e:{r:1,c:5} }, // Employee sub-banner
+      ];
 
       const addRow = (...cells) => {
         cells.forEach((c, col) => { data.push({r:row, c:col, cell:c}); });
@@ -1279,8 +1283,10 @@ exports.exportExcel = async (req, res) => {
 
       const addSection = (title, icon) => {
         addBlank();
-        // span across 6 cols
-        for(let c=0;c<6;c++) data.push({r:row,c,cell:sectionCell(c===0?`${icon} ${title}`:'')});
+        // Full-width section header merged across all 6 cols
+        data.push({r:row, c:0, cell:sectionCell(`  ${icon}  ${title}`)});
+        for(let c=1;c<6;c++) data.push({r:row,c,cell:{v:'',t:'s',s:{fill:fill(C.shBg),border:border()}}});
+        merges.push({ s:{r:row,c:0}, e:{r:row,c:5} });
         row++;
       };
 
@@ -1416,9 +1422,11 @@ exports.exportExcel = async (req, res) => {
 
       // ── COMPUTED TOTALS ───────────────────────────────────────────────────
       addBlank();
-      for(let c=0;c<6;c++) data.push({r:row,c,cell:{v:c===0?'📋  SUMMARY & COMPUTED TOTALS':'',t:'s',
+      data.push({r:row,c:0,cell:{v:'  📋  SUMMARY & COMPUTED TOTALS',t:'s',
         s:{font:{name:'Calibri',sz:11,bold:true,color:{rgb:'92400E'}},fill:fill('FEF3C7'),
            alignment:{horizontal:'left',vertical:'center'},border:thickBorder()}}});
+      for(let c=1;c<6;c++) data.push({r:row,c,cell:{v:'',t:'s',s:{fill:fill('FEF3C7'),border:thickBorder()}}});
+      merges.push({ s:{r:row,c:0}, e:{r:row,c:5} });
       row++;
       addRow(totLabelCell('Total Deductions'), totValCell(n(d.total_deductions)),
              totLabelCell('Estimated Annual Tax'), totValCell(n(d.estimated_tax)),
@@ -1445,10 +1453,7 @@ exports.exportExcel = async (req, res) => {
       ];
 
       // Merge title row across all 6 cols
-      ws['!merges'] = [
-        { s:{r:0,c:0}, e:{r:0,c:5} }, // Title banner
-        { s:{r:1,c:0}, e:{r:1,c:5} }, // Employee sub-banner
-      ];
+      ws['!merges'] = merges;
 
       // Row heights: title rows taller
       ws['!rows'] = [];
