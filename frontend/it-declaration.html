@@ -218,13 +218,7 @@
           <label>Financial Year</label>
           <select id="sel-fy" onchange="onFYChange()">
             <option value="2030-31">FY 2030-31</option>
-            <option value="2029-30">FY 2029-30</option>
-            <option value="2028-29">FY 2028-29</option>
-            <option value="2027-28">FY 2027-28</option>
-            <option value="2026-27" selected>FY 2026-27</option>
-            <option value="2025-26">FY 2025-26</option>
-            <option value="2024-25">FY 2024-25</option>
-            <option value="2023-24">FY 2023-24</option>
+            <!-- populated by buildFYDropdowns() -->
           </select>
         </div>
         <div class="itd-ctrl-item">
@@ -617,11 +611,7 @@
         <div style="font-size:13px;font-weight:700;color:#1e3a5f">All Declarations</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <select id="hr-filter-fy" class="form-control" style="font-size:13px;padding:7px 10px;width:auto" onchange="loadHR()">
-            <option value="2025-26">FY 2025-26</option>
-            <option value="2024-25">FY 2024-25</option>
-            <option value="2023-24">FY 2023-24</option>
-            <option value="2022-23">FY 2022-23</option>
-            <option value="2021-22">FY 2021-22</option>
+            <!-- populated by buildFYDropdowns() -->
           </select>
           <select id="hr-filter-st" class="form-control" style="font-size:13px;padding:7px 10px;width:auto" onchange="loadHR()">
             <option value="">All Statuses</option>
@@ -704,6 +694,31 @@
 
 <script src="app.js"></script>
 <script>
+// ── Build FY dropdowns dynamically ───────────────────────────────────────────
+function buildFYDropdowns() {
+  const now = new Date();
+  // Indian FY: Apr-Mar. Current FY start year = year if month>=4, else year-1
+  const curFYStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const startYear  = 2021; // earliest FY to show
+  const endYear    = curFYStart + 5; // 5 years into future
+
+  const fys = [];
+  for (let y = endYear; y >= startYear; y--) {
+    const val   = `${y}-${String(y + 1).slice(-2)}`;
+    const label = `FY ${val}`;
+    fys.push({ val, label, selected: y === curFYStart });
+  }
+
+  const toOptions = (fys) => fys.map(f =>
+    `<option value="${f.val}"${f.selected ? ' selected' : ''}>${f.label}</option>`
+  ).join('');
+
+  const selFY    = document.getElementById('sel-fy');
+  const hrFiltFY = document.getElementById('hr-filter-fy');
+  if (selFY)    selFY.innerHTML    = toOptions(fys);
+  if (hrFiltFY) hrFiltFY.innerHTML = toOptions(fys);
+}
+
 Auth.guard();
 const HR_ROLES = ['hr','accounts','admin','super_admin'];
 const ADMIN_ROLES = ['admin','super_admin'];
@@ -768,6 +783,7 @@ async function loadWindowBanner() {
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 window.addEventListener('load', async () => {
+  buildFYDropdowns();
   buildSidebar('it-declaration.html');
   const user = Auth.getUser();
   isHR    = HR_ROLES.includes(user.role);
