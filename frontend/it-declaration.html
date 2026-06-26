@@ -1065,7 +1065,7 @@ async function loadDecl() {
   }
   fillForm(currentDecl);
   updateSt(currentDecl.status);
-  setLocked(currentDecl.locked || ['approved','verified'].includes(currentDecl.status));
+  setLocked(currentDecl.locked || ['approved','verified','submitted'].includes(currentDecl.status));
   if (currentDecl.status === 'rejected' && currentDecl.hr_comment)
     toast('Rejected: ' + currentDecl.hr_comment, 'error');
   renderProofGrids();
@@ -1146,10 +1146,41 @@ function updateSt(st) {
 
 function setLocked(locked) {
   isLocked = locked;
-  document.getElementById('lk-notice').style.display = locked ? '' : 'none';
-  document.getElementById('btn-save').style.display   = locked ? 'none' : '';
-  const canSubmit = !locked || currentDecl?.status === 'rejected';
-  document.getElementById('btn-submit').style.display = canSubmit ? '' : 'none';
+  const status = currentDecl?.status || 'draft';
+  const isSubmitted = status === 'submitted';
+  const isRejected  = status === 'rejected';
+  const isApproved  = ['approved','verified'].includes(status);
+
+  // Submitted banner
+  const lkNotice = document.getElementById('lk-notice');
+  if (isSubmitted) {
+    lkNotice.style.display = '';
+    lkNotice.style.background = '#eff6ff';
+    lkNotice.style.border = '1px solid #93c5fd';
+    lkNotice.style.color = '#1d4ed8';
+    lkNotice.innerHTML = '📤 <strong>Declaration submitted to HR.</strong> You cannot edit until HR sends it back or rejects it.';
+  } else if (isApproved) {
+    lkNotice.style.display = '';
+    lkNotice.style.background = '#f0fdf4';
+    lkNotice.style.border = '1px solid #86efac';
+    lkNotice.style.color = '#166534';
+    lkNotice.innerHTML = '✅ <strong>Declaration approved by HR.</strong> No further changes allowed.';
+  } else if (isRejected) {
+    lkNotice.style.display = '';
+    lkNotice.style.background = '#fef2f2';
+    lkNotice.style.border = '1px solid #fca5a5';
+    lkNotice.style.color = '#991b1b';
+    lkNotice.innerHTML = '❌ <strong>Declaration rejected by HR.</strong> ' + (currentDecl?.hr_comment ? 'Reason: ' + currentDecl.hr_comment : 'Please revise and re-submit.');
+  } else {
+    lkNotice.style.display = 'none';
+    lkNotice.innerHTML = '';
+  }
+
+  // Save/Submit buttons
+  document.getElementById('btn-save').style.display   = (locked && !isRejected) ? 'none' : '';
+  document.getElementById('btn-submit').style.display = (!locked || isRejected)  ? '' : 'none';
+
+  // Disable all inputs when locked
   document.querySelectorAll('#pane-decl input, #pane-decl select, #pane-decl textarea')
     .forEach(el => { el.disabled = locked; });
 }
