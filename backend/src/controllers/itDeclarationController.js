@@ -1373,61 +1373,61 @@ exports.exportExcel = async (req, res) => {
       addLV('Rent Paid Monthly (₹)', n(d.rent_paid_monthly), 'Annual Rent (₹)', n(d.annual_rent));
       addLV('Landlord Name', d.landlord_name||'—', 'Landlord PAN', d.landlord_pan||'—');
       addLV('HRA City Type', d.hra_city_type||'—');
-      addProofs('hra');
+      addProofs('HRA');
 
       // ── SEC 80C ───────────────────────────────────────────────────────────
       addSection('SEC 80C — INVESTMENTS & SAVINGS', '💰');
-      addLV('PF (80C)',             n(d.sec80c_pf),        'PPF',                  n(d.sec80c_ppf));
-      addLV('LIC Premium',          n(d.sec80c_lic),       'ELSS Mutual Fund',     n(d.sec80c_elss));
-      addLV('NSC',                  n(d.sec80c_nsc),       'Home Loan Principal',  n(d.sec80c_home_loan));
-      addLV('Tuition Fees',         n(d.sec80c_tuition),   'Tax Saving FD (5yr)',  n(d.sec80c_fd));
+      addLV('EPF (₹)',              n(d.sec80c_pf),        'PPF (₹)',                  n(d.sec80c_ppf));
+      addLV('LIC Premium (₹)',      n(d.sec80c_lic),       'ELSS Mutual Fund (₹)',     n(d.sec80c_elss));
+      addLV('NSC (₹)',              n(d.sec80c_nsc),       'Home Loan Principal (₹)',  n(d.sec80c_home_loan));
+      addLV('Tuition Fees (₹)',     n(d.sec80c_tuition),   'Tax Saving FD (₹)',  n(d.sec80c_fd));
       addLV('Other 80C',            n(d.sec80c_other));
       addRow(totLabelCell('Total 80C'), totValCell(n(d.total_80c)),
              {v:'',t:'s',s:{fill:fill(C.totBg),border:thickBorder()}},{v:'',t:'s',s:{fill:fill(C.totBg),border:thickBorder()}},
              {v:'',t:'s',s:{fill:fill(C.totBg),border:thickBorder()}},{v:'',t:'s',s:{fill:fill(C.totBg),border:thickBorder()}});
-      addProofs('80c');
+      addProofs('80C');
 
       // ── NPS ───────────────────────────────────────────────────────────────
       addSection('NPS — 80CCD(1B)', '📈');
       addLV('Employee NPS 80CCD(1B)', n(d.sec80ccd_nps), 'Employer NPS (80CCD2)', n(d.employer_nps));
-      addProofs('nps');
+      addProofs('80CCD');
 
       // ── 80D Health Insurance ──────────────────────────────────────────────
       addSection('HEALTH INSURANCE — 80D', '🏥');
       addLV('Self & Family (80D)',  n(d.sec80d_self),    'Parents (80D)',           n(d.sec80d_parents));
       addLV('Senior Citizen Parent', d.sec80d_senior_parent ? 'Yes' : 'No');
-      addProofs('80d');
+      addProofs('80D');
 
       // ── HOME LOAN SEC 24B ─────────────────────────────────────────────────
       addSection('HOME LOAN INTEREST — SEC 24B', '🏡');
       addLV('Interest Amount (₹)', n(d.sec24b_home_loan), 'Loan Provider', d.homeloan_provider||'—');
       addLV('Property Address', d.homeloan_address||'—');
-      addProofs('24b');
+      addProofs('HP');
 
       // ── 80E Edu Loan ──────────────────────────────────────────────────────
       addSection('EDUCATION LOAN — 80E', '🎓');
       addLV('Interest on Edu Loan', n(d.sec80e_edu_loan));
-      addProofs('80e');
+      addProofs('80E');
 
       // ── 80G Donation ──────────────────────────────────────────────────────
       addSection('DONATIONS — 80G', '🤝');
       addLV('Donation Amount',   n(d.sec80g_donation),     'Institution',     d.sec80g_institution||'—');
       addLV('Institution PAN',   d.sec80g_pan||'—',        'Category',        d.sec80g_category||'—');
-      addProofs('80g');
+      addProofs('80G');
 
       // ── 80DD / 80U / 80DDB ────────────────────────────────────────────────
       addSection('DISABILITY & MEDICAL — 80DD / 80U / 80DDB', '♿');
       addLV('80DD Dependent Disability', n(d.sec80dd_amount), '80U Self Disability', n(d.sec80u_amount));
       addLV('80DDB Medical Treatment',   n(d.sec80ddb_amount), 'Disease', d.sec80ddb_disease||'—');
-      addProofs('80dd');
-      addProofs('80u');
-      addProofs('80ddb');
+      addProofs('80DD');
+      addProofs('80U');
+      addProofs('80DDB');
 
       // ── LTA ───────────────────────────────────────────────────────────────
       addSection('LEAVE TRAVEL ALLOWANCE (LTA)', '✈️');
       addLV('LTA Amount', n(d.lta_amount), 'Destination', d.lta_destination||'—');
       addLV('Travel Period', d.lta_travel_period||'—');
-      addProofs('lta');
+      addProofs('LTA');
 
       // ── PREVIOUS EMPLOYMENT ───────────────────────────────────────────────
       addSection('PREVIOUS EMPLOYMENT', '🏢');
@@ -1435,7 +1435,7 @@ exports.exportExcel = async (req, res) => {
       addLV('Period',               d.prev_period||'—',         'Gross Salary (₹)', n(d.prev_gross_salary));
       addLV('Taxable Income (₹)',   n(d.prev_taxable_income),   'TDS Deducted (₹)', n(d.prev_tds));
       addLV('PF (₹)',               n(d.prev_pf));
-      addProofs('prev_employment');
+      addProofs('PREV_EMP');
 
       // ── OTHER INCOME ──────────────────────────────────────────────────────
       addSection('OTHER INCOME', '📊');
