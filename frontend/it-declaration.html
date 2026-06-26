@@ -1320,13 +1320,42 @@ async function viewProof(proofId, label) {
   document.getElementById('mo-proof-title').textContent = label;
   document.getElementById('mo-proof-body').innerHTML = '<div style="text-align:center;padding:32px;color:#888">Loading…</div>';
   document.getElementById('mo-proof').classList.add('open');
-  const r    = await fetch(API_BASE + '/it-declaration/proof/' + proofId, { headers:{ Authorization:'Bearer '+Auth.getToken() } });
-  const blob = await r.blob();
-  const url  = URL.createObjectURL(blob);
-  document.getElementById('mo-proof-body').innerHTML = blob.type.startsWith('image/')
-    ? `<img src="${url}" style="max-width:100%;border-radius:8px">`
-    : `<iframe src="${url}" style="width:100%;height:65vh;border:none;border-radius:8px"></iframe>
-       <a href="${url}" download class="btn btn-outline btn-sm" style="display:block;margin-top:8px;text-align:center">⬇ Download</a>`;
+  try {
+    const r = await fetch(API_BASE + '/it-declaration/proof/' + proofId, { headers:{ Authorization:'Bearer '+Auth.getToken() } });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      document.getElementById('mo-proof-body').innerHTML =
+        `<div style="text-align:center;padding:32px;color:#c62828">
+          <div style="font-size:32px;margin-bottom:8px">⚠️</div>
+          <div style="font-weight:700">${err.message || 'Failed to load file'}</div>
+          <div style="font-size:12px;color:#888;margin-top:4px">The file may have been uploaded before a server migration.<br>Please re-upload the document.</div>
+        </div>`;
+      return;
+    }
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const mime = blob.type || '';
+    if (mime.startsWith('image/')) {
+      document.getElementById('mo-proof-body').innerHTML =
+        `<img src="${url}" style="max-width:100%;border-radius:8px;display:block;margin:0 auto">
+         <a href="${url}" download="${label}" class="btn btn-outline btn-sm" style="display:block;margin-top:10px;text-align:center">⬇ Download</a>`;
+    } else if (mime === 'application/pdf') {
+      document.getElementById('mo-proof-body').innerHTML =
+        `<iframe src="${url}" style="width:100%;height:68vh;border:none;border-radius:8px"></iframe>
+         <a href="${url}" download="${label}" class="btn btn-outline btn-sm" style="display:block;margin-top:8px;text-align:center">⬇ Download</a>`;
+    } else {
+      document.getElementById('mo-proof-body').innerHTML =
+        `<p style="color:#555;margin-bottom:12px">Cannot preview this file type.</p>
+         <a href="${url}" download="${label}" class="btn btn-primary btn-sm">⬇ Download</a>`;
+    }
+  } catch(err) {
+    document.getElementById('mo-proof-body').innerHTML =
+      `<div style="text-align:center;padding:32px;color:#c62828">
+        <div style="font-size:32px;margin-bottom:8px">⚠️</div>
+        <div style="font-weight:700">Network error</div>
+        <div style="font-size:12px;color:#888;margin-top:4px">${err.message}</div>
+      </div>`;
+  }
 }
 
 // ── Proof Summary Tab ─────────────────────────────────────────────────────────
@@ -1576,8 +1605,16 @@ async function submitReview() {
   const action  = document.getElementById('review-action').value;
   const comment = document.getElementById('review-comment').value.trim();
   const res = await api('POST', `/it-declaration/${reviewDeclId}/review`, { action, comment });
-  if (res?.success) { toast(`${action} done ✅`); closeMo('mo-review'); loadHR(); }
-  else toast(res?.message||'Failed', 'error');
+  if (res?.success) {
+    const labels = { approve:'Approved ✅', reject:'Rejected ❌', send_back:'Sent back to employee ↩️',
+                     request_clarification:'Clarification requested ❓', reopen:'Reopened 🔓' };
+    toast(labels[action] || `${action} done ✅`);
+    closeMo('mo-review');
+    loadHR();
+    loadHRStats();
+    // If HR is also viewing their own declaration, refresh it
+    if (currentEmpId) loadDeclaration();
+  } else toast(res?.message||'Failed', 'error');
 }
 
 async function viewDeclDetail(id) {

@@ -884,8 +884,12 @@ exports.reviewDeclaration = async (req, res) => {
       UPDATE it_declarations SET
         status=$1, hr_comment=$2, reviewed_at=NOW(), reviewed_by=$3,
         locked=$4,
-        approved_at = CASE WHEN $5='approved' THEN NOW() ELSE approved_at END,
-        approved_by = CASE WHEN $5='approved' THEN $3 ELSE approved_by END
+        approved_at = CASE WHEN $5='approved' THEN NOW()
+                          WHEN $5 IN ('draft','rejected') THEN NULL
+                          ELSE approved_at END,
+        approved_by = CASE WHEN $5='approved' THEN $3
+                          WHEN $5 IN ('draft','rejected') THEN NULL
+                          ELSE approved_by END
       WHERE id=$6`,
       [newStatus, comment||null, hrId, locked, newStatus, declId]
     );
@@ -1138,7 +1142,7 @@ exports.exportExcel = async (req, res) => {
     // ── Fetch proofs ──────────────────────────────────────────────────────────
     const declIds = decls.map(d => d.id);
     const proofRows = (await db.query(
-      `SELECT declaration_id, section, section_label, doc_type, file_name, file_size, mime_type, status AS proof_status, uploaded_at
+      `SELECT id, declaration_id, section, section_label, doc_type, file_name, file_size, mime_type, status AS proof_status, uploaded_at
        FROM it_proof_documents WHERE declaration_id = ANY($1) ORDER BY declaration_id, section, uploaded_at`,
       [declIds]
     )).rows;
@@ -1309,7 +1313,7 @@ exports.exportExcel = async (req, res) => {
           proofHdrCell('Size'), proofHdrCell('Status'), proofHdrCell('View Link')
         );
         proofs.forEach((p, i) => {
-          const viewUrl = `${baseUrl}/api/it-declaration/proof/${p.declaration_id}/doc?doc_type=${encodeURIComponent(p.doc_type)}&token=${token}`;
+          const viewUrl = `${baseUrl}/api/it-declaration/proof/${p.id}?token=${token}`;
           addRow(
             proofValCell(p.section_label || p.doc_type, i),
             proofValCell(p.doc_type, i),
