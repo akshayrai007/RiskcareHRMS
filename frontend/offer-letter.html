@@ -3,89 +3,91 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title id="page-title">Offer Letter</title>
-<script src="config.js"></script>
-  <link rel="icon" type="image/x-icon" href="Logo.ico">
-  <link rel="stylesheet" href="style.css">
+  <title>RiskCareHR - Offer Letters</title>
+  <link rel="icon" type="image/x-icon" href="Logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
   <style>
     /* ── page layout ── */
-    .ol-layout { display:flex; gap:24px; align-items:flex-start; }
+    .ol-layout { display:flex; gap:20px; align-items:flex-start; }
     .ol-form-panel { flex:1; min-width:0; }
     .ol-list-panel { width:340px; flex-shrink:0; }
 
     /* ── form card ── */
-    .form-card { background:#fff; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.08); padding:24px; }
-    .form-card h3 { margin:0 0 20px; font-size:1.1rem; color:var(--cfg-primary); display:flex; align-items:center; gap:8px; }
+    .form-card { background:#fff; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.08); padding:24px; border:1px solid #fecaca; }
+    .form-card h3 { margin:0 0 20px; font-size:1.1rem; color:#fff; display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#8B1A1A,#C0272D); margin:-24px -24px 20px; padding:16px 24px; border-radius:12px 12px 0 0; }
 
     /* ── section headers ── */
     .section-label {
       font-size:.78rem; font-weight:700; text-transform:uppercase;
-      letter-spacing:.08em; color:var(--cfg-accent); margin:20px 0 10px;
-      padding-bottom:6px; border-bottom:2px solid var(--cfg-pale);
+      letter-spacing:.08em; color:#fff; margin:22px 0 12px;
+      padding:8px 14px; border-radius:6px;
+      background:linear-gradient(135deg,#C0272D,#E53935);
     }
 
     /* ── grid ── */
     .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     .form-grid .full { grid-column:1/-1; }
     .form-group { display:flex; flex-direction:column; gap:4px; }
-    .form-group label { font-size:.8rem; font-weight:600; color:#555; }
+    .form-group label { font-size:.8rem; font-weight:600; color:#8B1A1A; }
     .form-group input, .form-group select, .form-group textarea {
-      padding:8px 10px; border:1px solid #ddd; border-radius:8px;
-      font-size:.88rem; transition:border-color .2s;
+      padding:8px 10px; border:1px solid #fca5a5; border-radius:8px;
+      font-size:.88rem; transition:all .2s; background:#fff8f8;
     }
     .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-      outline:none; border-color:var(--cfg-accent); box-shadow:0 0 0 3px rgba(var(--cfg-accent-rgb),.1);
+      outline:none; border-color:#8B1A1A; box-shadow:0 0 0 3px rgba(192,39,45,.15);
     }
 
     /* ── salary auto-calc note ── */
     .calc-note { font-size:.75rem; color:#888; margin-top:4px; }
-    .auto-tag { font-size:.7rem; background:var(--cfg-pale); color:var(--cfg-accent); padding:1px 6px; border-radius:4px; font-weight:600; }
+    .auto-tag { font-size:.7rem; background:#8B1A1A; color:#fff; padding:2px 8px; border-radius:4px; font-weight:600; }
 
     /* ── email chips ── */
     .chip-box {
       display:flex; flex-wrap:wrap; gap:6px; align-items:center;
-      border:1px solid #ddd; border-radius:8px; padding:6px 10px; min-height:38px;
-      cursor:text;
+      border:1px solid #fca5a5; border-radius:8px; padding:6px 10px; min-height:38px;
+      cursor:text; background:#fff8f8;
     }
-    .chip-box:focus-within { border-color:var(--cfg-accent); box-shadow:0 0 0 3px rgba(var(--cfg-accent-rgb),.1); }
+    .chip-box:focus-within { border-color:#8B1A1A; box-shadow:0 0 0 3px rgba(192,39,45,.15); }
     .chip {
       display:inline-flex; align-items:center; gap:4px;
-      background:var(--cfg-pale); border:1px solid var(--cfg-border); border-radius:20px;
-      padding:2px 10px; font-size:.8rem; color:var(--cfg-primary);
+      background:#8B1A1A; border-radius:20px;
+      padding:3px 12px; font-size:.8rem; color:#fff;
     }
-    .chip button { background:none; border:none; cursor:pointer; color:#666; padding:0 2px; font-size:1rem; line-height:1; }
-    .chip-input { flex:1; min-width:140px; border:none; outline:none; font-size:.85rem; padding:2px 0; }
+    .chip button { background:none; border:none; cursor:pointer; color:#fff; padding:0 2px; font-size:1rem; line-height:1; opacity:.7; }
+    .chip button:hover { opacity:1; }
+    .chip-input { flex:1; min-width:140px; border:none; outline:none; font-size:.85rem; padding:2px 0; background:transparent; }
 
     /* ── action buttons ── */
     .btn-row { display:flex; gap:10px; margin-top:20px; flex-wrap:wrap; }
-    .btn { padding:10px 20px; border-radius:8px; border:none; cursor:pointer; font-size:.88rem; font-weight:600; transition:all .2s; }
-    .btn-primary { background:var(--cfg-accent); color:#fff; }
-    .btn-primary:hover { background:var(--cfg-primary); }
+    .btn { padding:10px 20px; border-radius:8px; border:none; cursor:pointer; font-size:.85rem; font-weight:700; transition:all .2s; letter-spacing:.3px; }
+    .btn-primary { background:linear-gradient(135deg,#8B1A1A,#C0272D); color:#fff; }
+    .btn-primary:hover { background:linear-gradient(135deg,#7f1d1d,#C0272D); box-shadow:0 2px 8px rgba(192,39,45,.3); }
     .btn-secondary { background:#f5f5f5; color:#333; border:1px solid #ddd; }
     .btn-secondary:hover { background:#e8e8e8; }
-    .btn-preview { background:#1565C0; color:#fff; }
-    .btn-preview:hover { background:#0D47A1; }
-    .btn-send { background:#E65100; color:#fff; }
-    .btn-send:hover { background:#BF360C; }
+    .btn-send { background:linear-gradient(135deg,#E65100,#F57C00); color:#fff; }
+    .btn-send:hover { background:linear-gradient(135deg,#BF360C,#E65100); box-shadow:0 2px 8px rgba(230,81,0,.3); }
+    .btn-bulk { background:linear-gradient(135deg,#6A1B9A,#8E24AA); color:#fff; }
+    .btn-bulk:hover { background:linear-gradient(135deg,#4A148C,#6A1B9A); box-shadow:0 2px 8px rgba(106,27,154,.3); }
     .btn-danger { background:#fff; color:#c62828; border:1px solid #ef9a9a; }
     .btn-danger:hover { background:#ffebee; }
 
     /* ── offer list ── */
     .offer-list { display:flex; flex-direction:column; gap:8px; max-height:75vh; overflow-y:auto; }
     .offer-card {
-      background:#fff; border:1px solid #eee; border-radius:10px; padding:14px;
-      cursor:pointer; transition:all .2s;
+      background:#fff; border:1px solid #fecaca; border-radius:10px; padding:14px;
+      cursor:pointer; transition:all .2s; border-left:4px solid #fca5a5;
     }
-    .offer-card:hover { border-color:var(--cfg-accent); box-shadow:0 2px 8px rgba(var(--cfg-accent-rgb),.1); }
-    .offer-card.active { border-color:var(--cfg-accent); background:var(--cfg-active-card); }
-    .offer-card .oc-name { font-weight:700; font-size:.9rem; color:#222; }
+    .offer-card:hover { border-color:#8B1A1A; border-left-color:#8B1A1A; box-shadow:0 2px 8px rgba(192,39,45,.12); }
+    .offer-card.active { border-color:#8B1A1A; border-left-color:#8B1A1A; background:#fff5f5; }
+    .offer-card .oc-name { font-weight:700; font-size:.9rem; color:#8B1A1A; }
     .offer-card .oc-desig { font-size:.8rem; color:#666; margin-top:2px; }
     .offer-card .oc-meta { display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; align-items:center; }
-    .badge { padding:2px 8px; border-radius:12px; font-size:.7rem; font-weight:700; }
-    .badge-draft   { background:#FFF3E0; color:#E65100; }
-    .badge-sent    { background:#E3F2FD; color:#1565C0; }
-    .badge-accepted{ background:var(--cfg-pale); color:var(--cfg-accent); }
-    .badge-rejected{ background:#FFEBEE; color:#C62828; }
+    .badge { padding:3px 10px; border-radius:12px; font-size:.7rem; font-weight:700; }
+    .badge-draft   { background:#FF9800; color:#fff; }
+    .badge-sent    { background:#8B1A1A; color:#fff; }
+    .badge-accepted{ background:#C0272D; color:#fff; }
+    .badge-rejected{ background:#C62828; color:#fff; }
 
     /* ── responsive ── */
     @media(max-width:900px) {
@@ -99,11 +101,10 @@
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <div class="logo-mark" id="sidebar-logo-mark">
-      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-    </div>
+    <div class="logo-mark" id="sidebar-logo-mark"></div>
     <div>
-      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div></div>
+      <div class="sidebar-company-short" id="sidebar-company-short"></div>
     </div>
   </div>
   <nav id="sidebar-nav"></nav>
@@ -120,19 +121,16 @@
   <div class="topbar">
     <div class="topbar-left">
       <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
-      <div class="topbar-title">📄 Offer Letters</div>
+      <div class="topbar-title">Offer Letters</div>
     </div>
     <div class="topbar-right">
+      <button class="btn btn-primary" onclick="resetForm()" style="padding:6px 16px;border-radius:8px;font-size:.82rem;">＋ New Letter</button>
       <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
       <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
     </div>
   </div>
 
   <div class="content fade-in">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-      <div></div>
-      <button class="btn btn-secondary" onclick="resetForm()" style="padding:8px 16px;border-radius:8px;border:1px solid #ddd;background:#f5f5f5;cursor:pointer;font-size:.88rem;font-weight:600;">＋ New Letter</button>
-    </div>
 
     <div class="ol-layout">
       <!-- ── LEFT: FORM ──────────────────────────────────────────── -->
@@ -171,7 +169,7 @@
             </div>
             <div class="form-group">
               <label>Location</label>
-              <input type="text" id="ol-location" placeholder="City">
+              <input type="text" id="ol-location" value="Mumbai" placeholder="Mumbai">
             </div>
             <div class="form-group">
               <label>Offer Date</label>
@@ -193,56 +191,64 @@
               <label>Notice Period (months)</label>
               <input type="number" id="ol-notice" value="3" min="0">
             </div>
+            <div class="form-group">
+              <label>Employment Type</label>
+              <select id="ol-emp-type">
+                <option value="permanent">Permanent</option>
+                <option value="contract">Contract</option>
+                <option value="provision">Provisional</option>
+              </select>
+            </div>
+            <div class="form-group" id="contract-months-group" style="display:none;">
+              <label>Contract Duration (months)</label>
+              <input type="number" id="ol-contract-months" value="0" min="0">
+            </div>
           </div>
 
           <!-- SALARY STRUCTURE -->
           <div class="section-label">💰 Salary Structure</div>
           <div class="form-grid">
             <div class="form-group">
-              <label id="lbl-ctc">Annual CTC *</label>
-              <input type="number" id="ol-ctc" placeholder="1250004" oninput="autoCalcSalary()">
+              <label>Annual CTC (₹) *</label>
+              <input type="number" id="ol-ctc" placeholder="1250004">
             </div>
             <div class="form-group">
-              <label id="lbl-basic">Basic (monthly)</label>
+              <label>Basic (monthly) ₹</label>
               <input type="number" id="ol-basic" placeholder="25000" oninput="calcGross()">
             </div>
             <div class="form-group">
-              <label id="lbl-hra">HRA (monthly) <span class="auto-tag">auto</span></label>
+              <label>HRA (monthly) ₹</label>
               <input type="number" id="ol-hra" placeholder="12500" oninput="calcGross()">
-              <span class="calc-note">Auto = 50% of Basic</span>
             </div>
             <div class="form-group">
-              <label id="lbl-conv">Conveyance (monthly)</label>
+              <label>Conveyance (monthly) ₹</label>
               <input type="number" id="ol-conv" value="0" oninput="calcGross()">
             </div>
             <div class="form-group">
-              <label id="lbl-other">Other Allowance (monthly) <span class="auto-tag">auto</span></label>
+              <label>Other Allowance (monthly) ₹</label>
               <input type="number" id="ol-other" placeholder="63515" oninput="calcGross()">
-              <span class="calc-note">Auto = CTC monthly − Basic − HRA − Conv − Gratuity − PF</span>
             </div>
             <div class="form-group">
-              <label id="lbl-gratuity">Gratuity (monthly) <span class="auto-tag">auto</span></label>
+              <label>Gratuity (monthly) ₹</label>
               <input type="number" id="ol-gratuity" placeholder="1202" oninput="calcGross()">
-              <span class="calc-note">Auto = Basic × 4.81%</span>
             </div>
             <div class="form-group">
-              <label id="lbl-pf-emp">PF Employee (monthly) <span class="auto-tag">auto</span></label>
+              <label>PF Employee (monthly) ₹</label>
               <input type="number" id="ol-pf-emp" placeholder="1800" oninput="calcGross()">
-              <span class="calc-note">Auto = 12% of Basic (max 1800)</span>
             </div>
             <div class="form-group">
-              <label id="lbl-pf-er">PF Employer (monthly)</label>
+              <label>PF Employer (monthly) ₹</label>
               <input type="number" id="ol-pf-er" placeholder="1800" oninput="calcGross()">
             </div>
             <div class="form-group">
-              <label id="lbl-pf-admin">PF Admin Charges (monthly)</label>
+              <label>PF Admin Charges (monthly) ₹</label>
               <input type="number" id="ol-pf-admin" placeholder="150" oninput="calcGross()">
             </div>
           </div>
 
           <!-- CTC Summary -->
-          <div id="ctc-summary" style="background:var(--cfg-active-card);border-radius:8px;padding:12px;margin-top:12px;font-size:.83rem;display:none;">
-            <div style="font-weight:700;color:var(--cfg-primary);margin-bottom:6px;">📊 Calculated Summary</div>
+          <div id="ctc-summary" style="background:#FFF5F5;border-radius:8px;padding:12px;margin-top:12px;font-size:.83rem;display:none;">
+            <div style="font-weight:700;color:#8B1A1A;margin-bottom:6px;">📊 Calculated Summary</div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
               <div><div style="color:#666;font-size:.75rem;">Gross Monthly</div><div id="s-gross" style="font-weight:700;">—</div></div>
               <div><div style="color:#666;font-size:.75rem;">Net Monthly</div><div id="s-net" style="font-weight:700;color:#1565C0;">—</div></div>
@@ -284,7 +290,7 @@
           <div class="section-label">✉️ Email Cover Message</div>
           <div class="form-group">
             <label>Message Body <span style="font-weight:400;color:#888;">(sent in email body — offer letter attached as file)</span></label>
-            <textarea id="ol-email-msg" rows="6" placeholder="Dear [Name],&#10;&#10;Please find attached your offer letter for the position of...&#10;&#10;Kindly review and revert with your acceptance within 7 days.&#10;&#10;Warm regards,&#10;HR Team"></textarea>
+            <textarea id="ol-email-msg" rows="6" placeholder="Dear [Name],&#10;&#10;Please find attached your offer letter for the position of...&#10;&#10;Kindly review and revert with your acceptance within 7 days.&#10;&#10;Warm regards,&#10;HR Team - Risk Care Insurance"></textarea>
             <span class="calc-note">Leave blank to use default message. Candidate opens the attached file in browser → Ctrl+P → Save as PDF.</span>
           </div>
 
@@ -308,8 +314,8 @@
           <!-- ACTIONS -->
           <div class="btn-row">
             <button class="btn btn-primary" onclick="saveOL()">💾 Save</button>
-            <button class="btn btn-preview" id="btn-preview" onclick="previewOL()">👁 Preview</button>
             <button class="btn btn-send"    id="btn-send"    onclick="sendOL()">📤 Send Email</button>
+            <button class="btn btn-bulk"    onclick="openBulkModal()">📊 Bulk Send Excel</button>
             <button class="btn btn-secondary" onclick="resetForm()">✕ Clear</button>
             <button class="btn btn-danger"   id="btn-delete"  onclick="deleteOL()"   style="display:none;">🗑 Delete</button>
           </div>
@@ -330,40 +336,9 @@
 </div><!-- /main -->
 </div>
 
-<script src="config.js"></script>
 <script src="app.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
-// ── Apply CFG identity ─────────────────────────────────────────────────────
-document.getElementById('page-title').textContent = 'Offer Letter | ' + window.CFG.clientName;
-document.getElementById('sidebar-logo-text').innerHTML = window.CFG.logoHtml;
-(document.getElementById('sidebar-company-sub')||document.getElementById('sidebar-company-short')||{}).textContent = window.CFG.companyShortName;
-
-// ── Inject accent RGB for rgba() box-shadows in CSS ───────────────────────
-(function() {
-  const hex = (window.CFG.accentColor).replace('#','');
-  const r = parseInt(hex.substring(0,2),16);
-  const g = parseInt(hex.substring(2,4),16);
-  const b = parseInt(hex.substring(4,6),16);
-  document.documentElement.style.setProperty('--cfg-accent-rgb', `${r},${g},${b}`);
-})();
-
-// ── Apply currency symbol to salary labels ────────────────────────────────
-(function() {
-  const sym = window.CFG.currencySymbol;
-  document.getElementById('lbl-ctc').textContent       = `Annual CTC (${sym}) *`;
-  document.getElementById('lbl-basic').textContent     = `Basic (monthly) ${sym}`;
-  document.getElementById('lbl-hra').innerHTML         = `HRA (monthly) ${sym} <span class="auto-tag">auto</span>`;
-  document.getElementById('lbl-conv').textContent      = `Conveyance (monthly) ${sym}`;
-  document.getElementById('lbl-other').innerHTML       = `Other Allowance (monthly) ${sym} <span class="auto-tag">auto</span>`;
-  document.getElementById('lbl-gratuity').innerHTML    = `Gratuity (monthly) ${sym} <span class="auto-tag">auto</span>`;
-  document.getElementById('lbl-pf-emp').innerHTML      = `PF Employee (monthly) ${sym} <span class="auto-tag">auto</span>`;
-  document.getElementById('lbl-pf-er').textContent     = `PF Employer (monthly) ${sym}`;
-  document.getElementById('lbl-pf-admin').textContent  = `PF Admin Charges (monthly) ${sym}`;
-  // Set location input default and placeholder
-  const locInput = document.getElementById('ol-location');
-  locInput.placeholder = window.CFG.companyCity;
-  locInput.value = window.CFG.companyCity;
-})();
 // ── State ──────────────────────────────────────────────────────────────────────
 const ccEmails  = [];
 const bccEmails = [];
@@ -416,31 +391,8 @@ function removeChip(btn, type, val) {
   btn.parentElement.remove();
 }
 
-// ── Auto salary calc ──────────────────────────────────────────────────────────
-function autoCalcSalary() {
-  const ctc = parseFloat(document.getElementById('ol-ctc').value) || 0;
-  if (!ctc) return;
-  // From actual offer letter: basic=25000 from ctc=1250004
-  // Ratio: basic ~ 24% of CTC annually
-  const ctcM = ctc / 12;
-  const basic = Math.round(ctc * 0.24 / 12);
-  const hra   = Math.round(basic * 0.5);
-  const pfEmp = Math.min(Math.round(basic * 0.12), 1800);
-  const pfEr  = pfEmp;
-  const pfAdm = Math.round(pfEr * 0.083) || 150;
-  const grat  = Math.round(basic * 0.0481);
-  const gross = ctcM - pfEr - pfAdm;
-  const other = Math.round(gross - basic - hra - grat);
-
-  document.getElementById('ol-basic').value   = basic;
-  document.getElementById('ol-hra').value     = hra;
-  document.getElementById('ol-gratuity').value = grat;
-  document.getElementById('ol-pf-emp').value  = pfEmp;
-  document.getElementById('ol-pf-er').value   = pfEr;
-  document.getElementById('ol-pf-admin').value = pfAdm;
-  document.getElementById('ol-other').value   = Math.max(0, other);
-  calcGross();
-}
+// ── Auto salary calc (disabled) ───────────────────────────────────────────────
+function autoCalcSalary() { /* disabled — all fields are manual */ }
 
 function calcGross() {
   const n = id => parseFloat(document.getElementById(id).value) || 0;
@@ -468,7 +420,7 @@ function calcGross() {
   const net   = gross - pfEmp;
   const ctcM  = gross + pfEr + pfAdm;
 
-  const fmt = v => window.CFG.currencySymbol + Math.round(v).toLocaleString(window.CFG.currencyLocale);
+  const fmt = v => '₹' + Math.round(v).toLocaleString('en-IN');
   document.getElementById('s-gross').textContent = fmt(gross);
   document.getElementById('s-net').textContent   = fmt(net);
   document.getElementById('s-ctc').textContent   = fmt(ctcM);
@@ -490,8 +442,8 @@ async function loadList() {
         <div class="oc-desig">${ol.designation}</div>
         <div class="oc-meta">
           <span class="badge badge-${ol.status}">${ol.status.toUpperCase()}</span>
-          <span style="font-size:.75rem;color:#999;">${new Date(ol.created_at).toLocaleDateString(window.CFG.currencyLocale)}</span>
-          ${ol.ctc_annual ? `<span style="font-size:.75rem;color:var(--cfg-accent);font-weight:600;">${window.CFG.currencySymbol}${Number(ol.ctc_annual).toLocaleString(window.CFG.currencyLocale)}</span>` : ''}
+          <span style="font-size:.75rem;color:#999;">${new Date(ol.created_at).toLocaleDateString('en-IN')}</span>
+          ${ol.ctc_annual ? `<span style="font-size:.75rem;color:#C0272D;font-weight:600;">₹${Number(ol.ctc_annual).toLocaleString('en-IN')}</span>` : ''}
         </div>
       </div>
     `).join('');
@@ -516,12 +468,15 @@ async function loadForm(id) {
   document.getElementById('ol-mobile').value       = ol.candidate_mobile || '';
   document.getElementById('ol-address').value      = ol.candidate_address || '';
   document.getElementById('ol-designation').value  = ol.designation;
-  document.getElementById('ol-location').value     = ol.location || window.CFG.companyCity;
+  document.getElementById('ol-location').value     = ol.location || 'Mumbai';
   document.getElementById('ol-offer-date').value   = ol.offer_date?.split('T')[0] || '';
   document.getElementById('ol-joining-date').value = ol.joining_date?.split('T')[0] || '';
   document.getElementById('ol-valid-days').value   = ol.offer_valid_days || 7;
   document.getElementById('ol-probation').value    = ol.probation_months || 6;
   document.getElementById('ol-notice').value       = ol.notice_period_months || 3;
+  document.getElementById('ol-emp-type').value       = ol.employment_type || 'permanent';
+  document.getElementById('ol-contract-months').value = ol.contract_months || 0;
+  toggleContractMonths();
   document.getElementById('ol-ctc').value          = ol.ctc_annual || '';
   document.getElementById('ol-basic').value        = ol.basic_monthly || '';
   document.getElementById('ol-hra').value          = ol.hra_monthly || '';
@@ -540,8 +495,6 @@ async function loadForm(id) {
   else clearSig('sig2');
 
   calcGross();
-
-  document.getElementById('btn-preview').disabled = false;
   document.getElementById('btn-send').disabled    = !ol.candidate_email;
   document.getElementById('btn-delete').style.display = '';
 }
@@ -559,12 +512,14 @@ async function saveOL() {
     candidate_mobile:         document.getElementById('ol-mobile').value.trim() || null,
     candidate_address:        document.getElementById('ol-address').value.trim() || null,
     designation:              desig,
-    location:                 document.getElementById('ol-location').value.trim() || window.CFG.companyCity,
+    location:                 document.getElementById('ol-location').value.trim() || 'Mumbai',
     offer_date:               document.getElementById('ol-offer-date').value || null,
     joining_date:             document.getElementById('ol-joining-date').value || null,
     offer_valid_days:         parseInt(document.getElementById('ol-valid-days').value) || 7,
     probation_months:         parseInt(document.getElementById('ol-probation').value) || 6,
     notice_period_months:     parseInt(document.getElementById('ol-notice').value) || 3,
+    employment_type:          document.getElementById('ol-emp-type').value || 'permanent',
+    contract_months:          parseInt(document.getElementById('ol-contract-months').value) || 0,
     ctc_annual:               parseFloat(document.getElementById('ol-ctc').value) || 0,
     basic_monthly:            parseFloat(document.getElementById('ol-basic').value) || 0,
     hra_monthly:              parseFloat(document.getElementById('ol-hra').value) || 0,
@@ -587,7 +542,6 @@ async function saveOL() {
   // If new, load the created record
   if (!id && res.data?.id) {
     document.getElementById('ol-id').value = res.data.id;
-    document.getElementById('btn-preview').disabled = false;
     document.getElementById('btn-send').disabled    = !body.candidate_email;
     document.getElementById('btn-delete').style.display = '';
     document.getElementById('form-title').textContent = `✏️ Edit — ${name}`;
@@ -597,24 +551,6 @@ async function saveOL() {
   loadList();
 }
 
-// ── Preview ───────────────────────────────────────────────────────────────────
-async function previewOL() {
-  // Auto-save first so latest changes are reflected
-  const id = document.getElementById('ol-id').value;
-  if (!id) {
-    // Need to save first
-    await saveOL();
-  } else {
-    await saveOL();
-  }
-  const savedId = document.getElementById('ol-id').value;
-  if (!savedId) return;
-  const token = Auth.getToken();
-  window.open(`${API_BASE}/offer-letters/${savedId}/preview?token=${token}`, '_blank');
-}
-
-// ── Send Email ────────────────────────────────────────────────────────────────
-// ── Signature helpers ─────────────────────────────────────────────────────────
 function loadSigPreview(input, key) {
   const file = input.files[0];
   if (!file) return;
@@ -700,20 +636,22 @@ async function deleteOL() {
 function resetForm() {
   document.getElementById('ol-id').value = '';
   document.getElementById('form-title').textContent = '📝 Create Offer Letter';
-  ['ol-name','ol-email','ol-mobile','ol-address','ol-designation','ol-joining-date','ol-clauses','ol-email-msg',
+  ['ol-name','ol-email','ol-mobile','ol-address','ol-designation','ol-joining-date','ol-clauses','ol-email-msg','ol-contract-months',
    'ol-ctc','ol-basic','ol-hra','ol-other','ol-gratuity','ol-pf-emp','ol-pf-er','ol-pf-admin'].forEach(id => {
     document.getElementById(id).value = '';
   });
-  document.getElementById('ol-location').value = window.CFG.companyCity;
+  document.getElementById('ol-location').value = 'Mumbai';
   document.getElementById('ol-offer-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('ol-valid-days').value = 7;
   document.getElementById('ol-probation').value  = 6;
   document.getElementById('ol-notice').value     = 3;
+  document.getElementById('ol-emp-type').value     = 'permanent';
+  document.getElementById('ol-contract-months').value = 0;
+  toggleContractMonths();
   document.getElementById('ol-conv').value       = 0;
   document.getElementById('ctc-summary').style.display = 'none';
   clearSig('sig1');
   clearSig('sig2');
-  document.getElementById('btn-preview').disabled = true;
   document.getElementById('btn-send').disabled    = true;
   document.getElementById('btn-delete').style.display = 'none';
 
@@ -731,7 +669,7 @@ function resetForm() {
 // ── Toast ─────────────────────────────────────────────────────────────────────
 function showToast(msg) {
   const t = document.createElement('div');
-  t.style.cssText = `position:fixed;bottom:24px;right:24px;background:${window.CFG.primaryColor};color:#fff;padding:12px 20px;border-radius:10px;z-index:9999;font-size:.9rem;box-shadow:0 4px 16px rgba(0,0,0,.2);animation:fadeIn .3s ease`;
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#8B1A1A;color:#fff;padding:12px 20px;border-radius:10px;z-index:9999;font-size:.9rem;box-shadow:0 4px 16px rgba(0,0,0,.2);animation:fadeIn .3s ease';
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
@@ -741,7 +679,7 @@ function showToast(msg) {
 // ── HR-only page guard ────────────────────────────────────────────────────────
 (function() {
   const user = Auth.getUser();
-  if (!user || user.role !== 'hr') {
+  if (!user || !['hr','admin','super_admin'].includes(user.role)) {
     window.location.href = 'dashboard.html';
   }
 })();
@@ -749,5 +687,237 @@ function showToast(msg) {
 buildSidebar('offer-letter.html');
 loadNotifBadge();
 </script>
+<!-- ── BULK SEND MODAL ─────────────────────────────────────────────────── -->
+<div id="bulk-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;width:700px;max-width:95vw;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.3);">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#8B1A1A,#C0272D);padding:16px 24px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+      <div>
+        <div style="color:#fff;font-size:16px;font-weight:700;">📊 Bulk Send Offer Letters</div>
+        <div style="color:#fca5a5;font-size:12px;margin-top:2px;">Upload Excel → Generate PDF → Send individually to each candidate</div>
+      </div>
+      <button onclick="closeBulkModal()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:24px;overflow-y:auto;flex:1;">
+
+      <!-- Step 1: Download Template -->
+      <div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
+        <div style="font-weight:700;color:#8B1A1A;margin-bottom:6px;">Step 1 — Download Excel Template</div>
+        <div style="font-size:13px;color:#555;margin-bottom:10px;">Fill in one row per candidate. CC and BCC in the first row apply to all emails.</div>
+        <button onclick="downloadBulkTemplate()" style="background:linear-gradient(135deg,#8B1A1A,#C0272D);color:#fff;border:none;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600;">⬇ Download Template</button>
+      </div>
+
+      <!-- Step 2: Upload -->
+      <div style="margin-bottom:20px;">
+        <div style="font-weight:700;color:#333;margin-bottom:8px;">Step 2 — Upload Filled Excel</div>
+        <input type="file" id="bulk-file" accept=".xlsx,.xls" style="display:block;width:100%;padding:10px;border:2px dashed #8B1A1A;border-radius:8px;cursor:pointer;font-size:13px;box-sizing:border-box;">
+        <div id="bulk-file-info" style="font-size:12px;color:#777;margin-top:4px;"></div>
+      </div>
+
+      <!-- Send button -->
+      <button id="bulk-send-btn" onclick="startBulkSend()" style="background:linear-gradient(135deg,#E65100,#F57C00);color:#fff;border:none;border-radius:8px;padding:12px 28px;font-size:14px;font-weight:700;cursor:pointer;width:100%;">
+        📤 Generate PDFs &amp; Send All Emails
+      </button>
+
+      <!-- Progress -->
+      <div id="bulk-progress" style="display:none;margin-top:20px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-weight:700;color:#333;">Progress</span>
+          <span id="bulk-progress-text" style="font-size:13px;color:#666;"></span>
+        </div>
+        <div style="background:#f0f0f0;border-radius:20px;height:10px;margin-bottom:16px;">
+          <div id="bulk-progress-bar" style="background:linear-gradient(90deg,#8B1A1A,#E53935);height:10px;border-radius:20px;width:0%;transition:width .3s;"></div>
+        </div>
+
+        <!-- Summary cards -->
+        <div id="bulk-summary" style="display:none;display:flex;gap:12px;margin-bottom:16px;">
+          <div style="flex:1;background:#FFF5F5;border:1px solid #fca5a5;border-radius:8px;padding:12px;text-align:center;">
+            <div id="bulk-sent-count" style="font-size:28px;font-weight:900;color:#C0272D;">0</div>
+            <div style="font-size:12px;color:#555;margin-top:2px;">✅ Sent</div>
+          </div>
+          <div style="flex:1;background:#FFF3E0;border:1px solid #FFCC80;border-radius:8px;padding:12px;text-align:center;">
+            <div id="bulk-failed-count" style="font-size:28px;font-weight:900;color:#E65100;">0</div>
+            <div style="font-size:12px;color:#555;margin-top:2px;">❌ Failed</div>
+          </div>
+          <div style="flex:1;background:#E3F2FD;border:1px solid #90CAF9;border-radius:8px;padding:12px;text-align:center;">
+            <div id="bulk-total-count" style="font-size:28px;font-weight:900;color:#1565C0;">0</div>
+            <div style="font-size:12px;color:#555;margin-top:2px;">📋 Total</div>
+          </div>
+        </div>
+
+        <!-- Results table -->
+        <div id="bulk-results-wrap" style="display:none;">
+          <div style="font-weight:700;color:#333;margin-bottom:8px;">Detailed Results</div>
+          <div style="max-height:260px;overflow-y:auto;border:1px solid #eee;border-radius:8px;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead>
+                <tr style="background:#f5f5f5;position:sticky;top:0;">
+                  <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #ddd;">Row</th>
+                  <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #ddd;">Name</th>
+                  <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #ddd;">Email</th>
+                  <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #ddd;">Status</th>
+                  <th style="padding:8px 10px;text-align:left;border-bottom:1px solid #ddd;">Reason</th>
+                </tr>
+              </thead>
+              <tbody id="bulk-results-tbody"></tbody>
+            </table>
+          </div>
+          <button onclick="downloadBulkReport()" style="margin-top:10px;background:#1565C0;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-size:12px;font-weight:600;">⬇ Download Report (CSV)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── BULK SEND ─────────────────────────────────────────────────────────────────
+let bulkReportData = [];
+
+function openBulkModal() {
+  document.getElementById('bulk-modal').style.display = 'flex';
+  document.getElementById('bulk-progress').style.display = 'none';
+  document.getElementById('bulk-file').value = '';
+  document.getElementById('bulk-file-info').textContent = '';
+}
+
+function closeBulkModal() {
+  document.getElementById('bulk-modal').style.display = 'none';
+}
+
+document.getElementById('bulk-file')?.addEventListener('change', function() {
+  const f = this.files[0];
+  if (f) document.getElementById('bulk-file-info').textContent = `Selected: ${f.name} (${(f.size/1024).toFixed(1)} KB)`;
+});
+
+function downloadBulkTemplate() {
+  const headers = [
+    'Candidate Name','Email','Mobile','Address','Designation','Location',
+    'Joining Date','Offer Valid Days','Probation Months','Notice Period Months',
+    'Employee Code','Employment Type','Contract Months',
+    'CTC Annual','Basic Monthly','HRA Monthly','Conveyance Monthly',
+    'Other Allowance','Gratuity Monthly','PF Employee','PF Employer','PF Admin',
+    'Professional Tax','Custom Clauses','CC','BCC'
+  ];
+  const sample1 = [
+    'Rahul Sharma','rahul@example.com','9876543210','B-12, Andheri West, Mumbai',
+    'Senior GIS Analyst','Mumbai','2026-08-01',7,6,3,
+    'KCMS-001','permanent',0,
+    1500000,30000,15000,0,76818,1442,1800,1800,150,200,
+    '','hr@riskcare.co.in',''
+  ];
+  const sample2 = [
+    'Amit Kumar','amit@example.com','8877665544','D-78, Jogeshwari East, Mumbai',
+    'Field Survey Executive','Mumbai','2026-07-15',7,0,1,
+    'KCMS-002','contract',12,
+    600000,12000,6000,0,30350,577,1080,1080,90,0,
+    '','hr@riskcare.co.in',''
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, sample1, sample2]);
+
+  // Auto-width columns
+  ws['!cols'] = headers.map((h, i) => {
+    let maxLen = h.length;
+    [sample1, sample2].forEach(row => {
+      const val = String(row[i] || '');
+      if (val.length > maxLen) maxLen = val.length;
+    });
+    return { wch: Math.min(maxLen + 4, 35) };
+  });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Offer Letters');
+  XLSX.writeFile(wb, 'Offer_Letter_Bulk_Template.xlsx');
+}
+
+async function startBulkSend() {
+  const fileInput = document.getElementById('bulk-file');
+  if (!fileInput.files[0]) { alert('Please select an Excel file first.'); return; }
+
+  const btn = document.getElementById('bulk-send-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Processing...';
+
+  document.getElementById('bulk-progress').style.display = 'block';
+  document.getElementById('bulk-summary').style.display = 'none';
+  document.getElementById('bulk-results-wrap').style.display = 'none';
+  document.getElementById('bulk-progress-bar').style.width = '0%';
+  document.getElementById('bulk-progress-text').textContent = 'Uploading & processing...';
+
+  const fd = new FormData();
+  fd.append('file', fileInput.files[0]);
+
+  try {
+    const resp = await fetch(API_BASE + '/offer-letters/bulk-send', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() },
+      body: fd,
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok || !data.success) {
+      alert('Error: ' + (data.message || 'Unknown error'));
+      btn.disabled = false;
+      btn.textContent = '📤 Generate PDFs & Send All Emails';
+      return;
+    }
+
+    // Show results
+    document.getElementById('bulk-progress-bar').style.width = '100%';
+    document.getElementById('bulk-progress-text').textContent = `Done — ${data.sent} sent, ${data.failed} failed`;
+    document.getElementById('bulk-summary').style.display = 'flex';
+    document.getElementById('bulk-sent-count').textContent  = data.sent;
+    document.getElementById('bulk-failed-count').textContent = data.failed;
+    document.getElementById('bulk-total-count').textContent  = data.total;
+
+    // Results table
+    bulkReportData = data.results;
+    const tbody = document.getElementById('bulk-results-tbody');
+    tbody.innerHTML = '';
+    data.results.forEach(r => {
+      const isFailed = r.status === 'failed';
+      tbody.innerHTML += `
+        <tr style="border-bottom:1px solid #f0f0f0;background:${isFailed?'#FFF3E0':'#fff'};">
+          <td style="padding:7px 10px;">${r.row}</td>
+          <td style="padding:7px 10px;">${r.name}</td>
+          <td style="padding:7px 10px;">${r.email}</td>
+          <td style="padding:7px 10px;font-weight:600;color:${isFailed?'#E65100':'#C0272D'};">${r.status}</td>
+          <td style="padding:7px 10px;color:#666;font-size:11px;">${r.reason||'—'}</td>
+        </tr>`;
+    });
+    document.getElementById('bulk-results-wrap').style.display = 'block';
+
+  } catch(e) {
+    alert('Network error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📤 Generate PDFs & Send All Emails';
+  }
+}
+
+function downloadBulkReport() {
+  const headers = ['Row','Name','Email','Status','Reason'];
+  const rows = bulkReportData.map(r => [r.row, r.name, r.email, r.status, r.reason||''].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Bulk_Offer_Report_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+}
+
+// Show/hide contract months based on employment type
+function toggleContractMonths() {
+  const empType = document.getElementById('ol-emp-type').value;
+  document.getElementById('contract-months-group').style.display = empType === 'contract' ? '' : 'none';
+}
+document.getElementById('ol-emp-type').addEventListener('change', toggleContractMonths);
+
+</script>
+
 </body>
 </html>
