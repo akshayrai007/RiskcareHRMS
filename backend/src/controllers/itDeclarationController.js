@@ -765,15 +765,15 @@ exports.uploadProof = async (req, res) => {
     if (proofEnd && new Date() > proofEnd && !isPriv)
       return res.status(400).json({ success:false, message:`Proof upload window closed on ${proofEnd.toDateString()}` });
 
-    // Store file metadata only — no base64
-    const relPath = path.relative(process.cwd(), file.path).replace(/\\/g, '/');
+    // Store absolute file path — relative paths break when cwd changes between deploys
+    const absFilePath = file.path; // multer diskStorage already gives absolute path
 
     await db.query(`
       INSERT INTO it_proof_documents
         (declaration_id, employee_id, section, section_label, doc_type, file_name, file_path, file_size, mime_type, status, uploaded_at)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending',NOW())`,
       [declaration_id, empId, section, section_label||section, doc_type||section,
-       file.originalname, relPath, file.size, file.mimetype]
+       file.originalname, absFilePath, file.size, file.mimetype]
     );
 
     // Audit
@@ -805,7 +805,9 @@ exports.getProof = async (req, res) => {
     if (!isPriv && proof.employee_id !== reqUser.id)
       return res.status(403).json({ success:false, message:'Access denied' });
 
-    const absPath = path.resolve(process.cwd(), proof.file_path);
+    const absPath = path.isAbsolute(proof.file_path)
+      ? proof.file_path
+      : path.resolve(process.cwd(), proof.file_path);
     if (!fs.existsSync(absPath))
       return res.status(404).json({ success:false, message:'File not found on server' });
     res.setHeader('Content-Type', proof.mime_type);
@@ -849,7 +851,9 @@ exports.deleteProof = async (req, res) => {
     if (['approved','verified'].includes(proof.status))
       return res.status(400).json({ success:false, message:'Cannot delete a verified proof' });
     // Remove file from disk
-    const absPath = path.resolve(process.cwd(), proof.file_path);
+    const absPath = path.isAbsolute(proof.file_path)
+      ? proof.file_path
+      : path.resolve(process.cwd(), proof.file_path);
     if (fs.existsSync(absPath)) fs.unlinkSync(absPath);
     await db.query(`DELETE FROM it_proof_documents WHERE id=$1`, [proofId]);
     res.json({ success:true, message:'Proof deleted' });
