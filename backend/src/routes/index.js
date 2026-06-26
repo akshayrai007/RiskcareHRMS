@@ -23,7 +23,9 @@ const annCtrl        = require('../controllers/announcementController');
 const gkCtrl         = require('../controllers/gkController');
 const provCtrl       = require('../controllers/provisionController');
 const itDeclCtrl     = require('../controllers/itDeclarationController');
-const docsCtrl       = require('../controllers/documentsController');
+const docsCtrl        = require('../controllers/documentsController');
+const offerCtrl       = require('../controllers/offerLetterController');
+const relievingCtrl   = require('../controllers/relievingLetterController');
 
 const ADMIN      = ['admin','super_admin'];
 const HR_ADMIN   = ['hr','admin','super_admin','accounts'];
@@ -809,6 +811,24 @@ router.get('/anniversaries/upcoming', authenticate, async (req, res) => {
 });
 
 // ── Offer Letters ─────────────────────────────────────────────────────────────
+const xlsxUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+router.get   ('/offer-letters',              authenticate, authorize('hr'), offerCtrl.getAll);
+router.post  ('/offer-letters',              authenticate, authorize('hr'), offerCtrl.create);
+router.get   ('/offer-letters/:id',          authenticate, authorize('hr'), offerCtrl.getOne);
+router.put   ('/offer-letters/:id',          authenticate, authorize('hr'), offerCtrl.update);
+router.delete('/offer-letters/:id',          authenticate, authorize('hr'), offerCtrl.remove);
+router.post  ('/offer-letters/:id/send',     authenticate, authorize('hr'), offerCtrl.sendEmail);
+router.post  ('/offer-letters/bulk-send',    authenticate, authorize('hr'), xlsxUpload.single('file'), offerCtrl.bulkSend);
+
+// ── Relieving Letters ─────────────────────────────────────────────────────────
+router.get ('/relieving-letters/eligible',          authenticate, authorize('hr', 'admin', 'super_admin'), relievingCtrl.getEligible);
+router.get ('/relieving-letters/preview/:id',       authenticate, authorize('hr', 'admin', 'super_admin'), relievingCtrl.preview);
+router.put ('/relieving-letters/update-email/:id',  authenticate, authorize('hr', 'admin', 'super_admin'), relievingCtrl.updateEmail);
+router.put ('/relieving-letters/update-dates/:id',  authenticate, authorize('hr', 'admin', 'super_admin'), relievingCtrl.updateDates);
+router.post('/relieving-letters/send/:id',          authenticate, authorize('hr', 'admin', 'super_admin'), relievingCtrl.sendRelievingLetter);
+router.post('/relieving-letters/bulk-send',         authenticate, authorize('hr', 'admin', 'super_admin'), relievingCtrl.bulkSend);
+router.post('/relieving-letters/bulk-send-excel',   authenticate, authorize('hr', 'admin', 'super_admin'), xlsxUpload.single('file'), relievingCtrl.bulkSendExcel);
 
 // ── Test Email (debug only) ───────────────────────────────────────────────────
 router.get('/test-email', authenticate, async (req, res) => {

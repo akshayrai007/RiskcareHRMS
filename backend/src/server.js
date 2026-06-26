@@ -13,7 +13,8 @@ const chatCtrl   = require('./controllers/chatController');
 const attCtrl    = require('./controllers/attendanceController');
 const alertsCtrl = require('./controllers/movementAlertsController');
 const emailSvc = require('./config/emailService'); // for startup repair
-const offerCtrl  = require('./controllers/offerLetterController');
+const offerCtrl      = require('./controllers/offerLetterController');
+const relievingCtrl  = require('./controllers/relievingLetterController');
 const itDeclCtrl = require('./controllers/itDeclarationController');
 
 const app    = express();
