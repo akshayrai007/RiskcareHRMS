@@ -70,6 +70,9 @@
     .btn-send:hover { background:linear-gradient(135deg,#BF360C,#E65100); box-shadow:0 2px 8px rgba(230,81,0,.3); }
     .btn-bulk { background:linear-gradient(135deg,#6A1B9A,#8E24AA); color:#fff; }
     .btn-bulk:hover { background:linear-gradient(135deg,#4A148C,#6A1B9A); box-shadow:0 2px 8px rgba(106,27,154,.3); }
+    .btn-preview { background:linear-gradient(135deg,#1565C0,#1976D2); color:#fff; }
+    .btn-preview:hover:not(:disabled) { background:linear-gradient(135deg,#0D47A1,#1565C0); box-shadow:0 2px 8px rgba(21,101,192,.3); }
+    .btn-preview:disabled { opacity:.45; cursor:not-allowed; }
     .btn-danger { background:#fff; color:#c62828; border:1px solid #ef9a9a; }
     .btn-danger:hover { background:#ffebee; }
 
@@ -315,6 +318,7 @@
           <!-- ACTIONS -->
           <div class="btn-row">
             <button class="btn btn-primary" onclick="saveOL()">💾 Save</button>
+            <button class="btn btn-preview" id="btn-preview" onclick="previewOL()" disabled>👁 Preview</button>
             <button class="btn btn-send"    id="btn-send"    onclick="sendOL()">📤 Send Email</button>
             <button class="btn btn-bulk"    onclick="openBulkModal()">📊 Bulk Send Excel</button>
             <button class="btn btn-secondary" onclick="resetForm()">✕ Clear</button>
@@ -497,6 +501,7 @@ async function loadForm(id) {
 
   calcGross();
   document.getElementById('btn-send').disabled    = !ol.candidate_email;
+  document.getElementById('btn-preview').disabled = false;
   document.getElementById('btn-delete').style.display = '';
 }
 
@@ -623,6 +628,15 @@ async function sendOL() {
   else alert(res.message || 'Send failed');
 }
 
+// ── Preview PDF ───────────────────────────────────────────────────────────────
+async function previewOL() {
+  const id = document.getElementById('ol-id').value;
+  if (!id) return alert('Save the offer letter first to preview it.');
+  // Auto-save first so preview reflects latest edits
+  await saveOL();
+  window.open(API_BASE + `/offer-letters/${id}/preview?token=${Auth.getToken()}`, '_blank');
+}
+
 // ── Delete ────────────────────────────────────────────────────────────────────
 async function deleteOL() {
   const id = document.getElementById('ol-id').value;
@@ -654,6 +668,7 @@ function resetForm() {
   clearSig('sig1');
   clearSig('sig2');
   document.getElementById('btn-send').disabled    = true;
+  document.getElementById('btn-preview').disabled = true;
   document.getElementById('btn-delete').style.display = 'none';
 
   // Clear chips

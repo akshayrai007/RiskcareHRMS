@@ -373,6 +373,25 @@ function buildOfferLetterHTML(ol) {
 </html>`;
 }
 
+// ── GET /offer-letters/:id/preview — generate PDF and stream inline ───────────
+exports.preview = async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM offer_letters WHERE id=$1', [req.params.id]);
+    if (!result.rows.length) return res.status(404).json({ success: false, message: 'Not found' });
+
+    const ol = result.rows[0];
+    const html = buildOfferLetterHTML(ol);
+    const pdfBuffer = await htmlToPdf(html);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Offer_Letter_${(ol.candidate_name || 'preview').replace(/\s+/g, '_')}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error('[offerLetter.preview]', err.message);
+    res.status(500).json({ success: false, message: `Server error: ${err.message}` });
+  }
+};
+
 // ── CRUD ───────────────────────────────────────────────────────────────────────
 exports.getAll = async (req, res) => {
   try {

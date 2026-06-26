@@ -815,6 +815,7 @@ const xlsxUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize:
 
 router.get   ('/offer-letters',              authenticate, authorize('hr'), offerCtrl.getAll);
 router.post  ('/offer-letters',              authenticate, authorize('hr'), offerCtrl.create);
+router.get   ('/offer-letters/:id/preview',  authenticate, authorize('hr', 'admin', 'super_admin'), offerCtrl.preview);
 router.get   ('/offer-letters/:id',          authenticate, authorize('hr'), offerCtrl.getOne);
 router.put   ('/offer-letters/:id',          authenticate, authorize('hr'), offerCtrl.update);
 router.delete('/offer-letters/:id',          authenticate, authorize('hr'), offerCtrl.remove);
