@@ -3,15 +3,7 @@ const path = require('path');
 const fs   = require('fs');
 const multer = require('multer');
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '../../uploads/emp-documents');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + Math.round(Math.random()*1e9) + path.extname(file.originalname))
-});
-const upload = multer({ storage, limits: { fileSize: 10*1024*1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10*1024*1024 } });
 exports.upload = upload;
 
 const DOCUMENT_TYPES = [
@@ -72,11 +64,38 @@ exports.uploadDocument = async (req, res) => {
     if (!docType) return res.status(400).json({ success: false, message: 'Type required' });
     if (empId !== req.user.id && !['hr','admin','super_admin'].includes(req.user.role))
       return res.status(403).json({ success: false, message: 'Access denied' });
+    // Store file as base64 in DB (no disk dependency)
+    const base64Data = file.buffer.toString('base64');
     const result = await db.query(
       `INSERT INTO employee_documents (employee_id,document_type,file_name,file_path,uploaded_by)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [empId, docType, file.originalname, '/uploads/emp-documents/'+file.filename, req.user.id]);
+       VALUES ($1,$2,$3,$4,$5) RETURNING id,employee_id,document_type,file_name,uploaded_at`,
+      [empId, docType, file.originalname, 'base64:' + base64Data, req.user.id]);
     res.json({ success: true, data: result.rows[0] });
+  } catch(err) { res.status(500).json({ success: false, message: err.message }); }
+};
+
+
+exports.getFile = async (req, res) => {
+  try {
+    const doc = await db.query(`SELECT * FROM employee_documents WHERE id=$1`, [req.params.id]);
+    if (!doc.rows[0]) return res.status(404).json({ success: false, message: 'Not found' });
+    const d = doc.rows[0];
+    if (d.employee_id !== req.user.id && !['hr','admin','super_admin'].includes(req.user.role))
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    const filePath = d.file_path || '';
+    if (filePath.startsWith('base64:')) {
+      const b64 = filePath.slice(7);
+      const buf = Buffer.from(b64, 'base64');
+      const ext = (d.file_name || '').split('.').pop().toLowerCase();
+      const mime = ext === 'pdf' ? 'application/pdf'
+                 : ext === 'png' ? 'image/png'
+                 : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+                 : 'application/octet-stream';
+      res.setHeader('Content-Type', mime);
+      res.setHeader('Content-Disposition', `inline; filename="${d.file_name || 'document'}"`);
+      return res.send(buf);
+    }
+    res.status(404).json({ success: false, message: 'File not available' });
   } catch(err) { res.status(500).json({ success: false, message: err.message }); }
 };
 
@@ -87,8 +106,7 @@ exports.deleteDocument = async (req, res) => {
     const d = doc.rows[0];
     if (d.employee_id !== req.user.id && !['hr','admin','super_admin'].includes(req.user.role))
       return res.status(403).json({ success: false, message: 'Access denied' });
-    const fp = path.join(__dirname, '../..', d.file_path);
-    if (fs.existsSync(fp)) fs.unlinkSync(fp);
+    // file stored as base64 in DB, no disk cleanup needed
     await db.query(`DELETE FROM employee_documents WHERE id=$1`, [req.params.id]);
     res.json({ success: true });
   } catch(err) { res.status(500).json({ success: false, message: err.message }); }
