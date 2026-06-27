@@ -1014,7 +1014,7 @@ const empDocsCtrl = require('../controllers/empDocsController');
 router.get   ('/emp-documents/types',                                         authenticate, empDocsCtrl.getDocumentTypes);
 router.get   ('/emp-documents/file/:id',     authenticate, empDocsCtrl.getFile);
 router.get   ('/emp-documents/:employee_id',                                  authenticate, empDocsCtrl.getDocuments);
-router.post  ('/emp-documents/upload', empDocsCtrl.upload.single('file'),    authenticate, empDocsCtrl.uploadDocument);
+router.post  ('/emp-documents/upload', authenticate, empDocsCtrl.upload.single('file'), empDocsCtrl.uploadDocument);
 router.delete('/emp-documents/:id',                                           authenticate, empDocsCtrl.deleteDocument);
 // Multi-file upload for the documents checklist page
 router.post  ('/emp-documents/upload-multi', authenticate, (req, res, next) => {
