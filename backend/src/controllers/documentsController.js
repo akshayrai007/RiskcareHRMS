@@ -1,7 +1,8 @@
 // src/controllers/documentsController.js
 // Employee Documents module
 // - Every employee can view/add/edit their OWN documents
-// - HR (and admin/super_admin) can view/edit/save documents for ANY employee
+// - HR and Accounts can view/edit/save documents for ANY employee
+// - Admin/super_admin/employees can only access their own documents
 
 const db     = require('../config/db');
 const multer = require('multer');
@@ -23,7 +24,7 @@ exports.uploadMiddleware = upload.single('file');
 exports.uploadMultiMiddleware = upload.array('files', 10);
 
 // Roles allowed to view/edit ANY employee's documents
-const HR_ROLES = ['hr', 'admin', 'super_admin'];
+const HR_ROLES = ['hr', 'accounts'];
 
 // ── Fixed document checklist definition ────────────────────────────────────────
 // key must be stable — used as the unique identifier per employee per document
