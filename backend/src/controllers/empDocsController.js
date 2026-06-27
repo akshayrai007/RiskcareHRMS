@@ -104,9 +104,8 @@ exports.deleteDocument = async (req, res) => {
     const doc = await db.query(`SELECT * FROM employee_documents WHERE id=$1`, [req.params.id]);
     if (!doc.rows[0]) return res.status(404).json({ success: false, message: 'Not found' });
     const d = doc.rows[0];
-    if (d.employee_id !== req.user.id && !['hr','admin','super_admin'].includes(req.user.role))
+    if (parseInt(d.employee_id) !== parseInt(req.user.id) && !['hr','admin','super_admin'].includes(req.user.role))
       return res.status(403).json({ success: false, message: 'Access denied' });
-    // file stored as base64 in DB, no disk cleanup needed
     await db.query(`DELETE FROM employee_documents WHERE id=$1`, [req.params.id]);
     res.json({ success: true });
   } catch(err) { res.status(500).json({ success: false, message: err.message }); }
