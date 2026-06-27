@@ -95,7 +95,7 @@ exports.getFile = async (req, res) => {
       res.setHeader('Content-Disposition', `inline; filename="${d.file_name || 'document'}"`);
       return res.send(buf);
     }
-    res.status(404).json({ success: false, message: 'File not available' });
+    res.status(404).json({ success: false, message: 'File not available — please re-upload this document.' });
   } catch(err) { res.status(500).json({ success: false, message: err.message }); }
 };
 
