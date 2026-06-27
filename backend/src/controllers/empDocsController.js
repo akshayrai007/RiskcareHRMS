@@ -42,6 +42,8 @@ exports.getDocumentTypes = (req, res) => res.json({ success: true, data: DOCUMEN
 
 exports.getDocuments = async (req, res) => {
   try {
+    // Ensure file_path is TEXT for base64 storage
+    await db.query(`ALTER TABLE employee_documents ALTER COLUMN file_path TYPE TEXT`).catch(()=>{});
     const empId = req.params.employee_id || req.user.id;
     if (parseInt(empId) !== req.user.id && !['hr','admin','super_admin'].includes(req.user.role))
       return res.status(403).json({ success: false, message: 'Access denied' });
