@@ -564,7 +564,7 @@ async function saveAll() {
     fd.append('employee_id', currentEmployeeId);
     fd.append('doc_key', docKey);
     try {
-      const r = await fetch(API_BASE+'/emp-documents/upload-multi',
+      const r = await fetch(API_BASE+'/documents/upload-multi',
         { method:'POST', headers:{ Authorization:'Bearer '+Auth.getToken() }, body:fd });
       const d = await r.json();
       if (d.success) ok+=files.length; else fail+=files.length;
