@@ -102,9 +102,17 @@ exports.initTables = async () => {
 };
 
 // ── Helper: can the requesting user act on this employee's documents? ─────────
-function canAccess(reqUser, targetEmployeeId) {
-  if (HR_ROLES.includes(reqUser.role)) return true;
-  return parseInt(targetEmployeeId) === parseInt(reqUser.id);
+async function canAccess(reqUser, targetEmployeeId) {
+  if (parseInt(targetEmployeeId) === parseInt(reqUser.id)) return true;
+  if (!HR_ROLES.includes(reqUser.role)) return false;
+  if (reqUser.role === 'client_admin' && reqUser.client_id) {
+    const check = await db.query(
+      `SELECT id FROM employees WHERE id=$1 AND client_id=$2`,
+      [targetEmployeeId, reqUser.client_id]
+    );
+    return check.rows.length > 0;
+  }
+  return true;
 }
 
 // ── GET /documents/checklist — static document definition list ────────────────
@@ -119,7 +127,7 @@ exports.getDocuments = async (req, res) => {
     const reqUser = req.user;
     const targetId = req.query.employee_id ? parseInt(req.query.employee_id) : reqUser.id;
 
-    if (!canAccess(reqUser, targetId)) {
+    if (!await canAccess(reqUser, targetId)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -164,7 +172,7 @@ exports.uploadDocument = async (req, res) => {
     if (!doc_key)  return res.status(400).json({ success: false, message: 'doc_key required' });
 
     const targetId = employee_id ? parseInt(employee_id) : reqUser.id;
-    if (!canAccess(reqUser, targetId)) {
+    if (!await canAccess(reqUser, targetId)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -199,7 +207,7 @@ exports.uploadMultiDocument = async (req, res) => {
     if (!doc_key)                 return res.status(400).json({ success: false, message: 'doc_key required' });
 
     const targetId = employee_id ? parseInt(employee_id) : reqUser.id;
-    if (!canAccess(reqUser, targetId)) {
+    if (!await canAccess(reqUser, targetId)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -235,7 +243,7 @@ exports.getFile = async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ success: false, message: 'Document not found' });
 
     const doc = result.rows[0];
-    if (!canAccess(reqUser, doc.employee_id)) {
+    if (!await canAccess(reqUser, doc.employee_id)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -258,7 +266,7 @@ exports.deleteDocument = async (req, res) => {
     const result = await db.query(`SELECT employee_id FROM employee_doc_checklist WHERE id = $1`, [docId]);
     if (!result.rows.length) return res.status(404).json({ success: false, message: 'Document not found' });
 
-    if (!canAccess(reqUser, result.rows[0].employee_id)) {
+    if (!await canAccess(reqUser, result.rows[0].employee_id)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -292,7 +300,7 @@ exports.downloadZip = async (req, res) => {
   try {
     const reqUser = req.user;
     const empId   = parseInt(req.params.employee_id);
-    if (!canAccess(reqUser, empId)) {
+    if (!await canAccess(reqUser, empId)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
