@@ -186,8 +186,8 @@ function buildOfferLetterHTML(ol) {
           <img src="${LOGO_B64}" style="width:110px;height:auto;display:block;">
         </td>
         <td style="text-align:center;vertical-align:middle;">
-          <div style="font-family:Arial,sans-serif;font-size:20px;font-weight:bold;color:#000;margin-bottom:4px;">Risk Care Insurance Broking Services Private Limited</div>
-          <div style="font-family:Arial,sans-serif;font-size:11px;color:#444;"><strong>Registered Office:</strong> #708, 7th Floor, Hubtown Viva, Western Express Highway,<br>Shankarwadi, Jogeshwari (East), Mumbai 400060, Maharashtra</div>
+          <div style="font-family:Arial,sans-serif;font-size:20px;font-weight:bold;color:#000;margin-bottom:4px;">${CONFIG.companyFullName}</div>
+          <div style="font-family:Arial,sans-serif;font-size:11px;color:#444;"><strong>Registered Office:</strong> ${CONFIG.companyOfficeAddr}</div>
           <div style="font-family:Arial,sans-serif;font-size:11px;color:#444;margin-top:2px;">Phone: +91 22 61473232 &nbsp;|&nbsp; Email: support@riskcare.co.in &nbsp;|&nbsp; Website: www.riskcareinsure.com</div>
         </td>
       </tr>
@@ -196,7 +196,7 @@ function buildOfferLetterHTML(ol) {
   // ── RiskCare Footer ────────────────────────────────────────────────────────
   const ftr = `
     <div class="footer">
-      CIN: U51109MH2005PTC199431 &nbsp;|&nbsp; Registration No: 401 &nbsp;|&nbsp; Validity: 29/04/2025 to 28/04/2028 &nbsp;|&nbsp; Category: Composite Broker
+      CIN: ${CONFIG.companyCIN}
     </div>`;
 
   const convRow = conv > 0 ? `<tr>
@@ -247,7 +247,7 @@ function buildOfferLetterHTML(ol) {
   li { margin-bottom: 5px; text-align: justify; font-size: 13px; }
   .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-family: 'Arial',sans-serif; border: 1px solid #000; }
   .data-table th, .data-table td { border: 1px solid #000; padding: 8px 8px; font-size: 12px; }
-  .data-table th { background-color: #C0272D; color: #fff; font-weight: bold; text-transform: uppercase; }
+  .data-table th { background-color: ${CONFIG.primaryColor}; color: #fff; font-weight: bold; text-transform: uppercase; }
   .col-sr { width: 8%; text-align: center; }
   .col-part { width: 48%; text-align: left; }
   .col-num { width: 22%; text-align: right; }
@@ -278,7 +278,7 @@ function buildOfferLetterHTML(ol) {
   </div>
   <p>Dear ${(ol.candidate_name || '').split(' ')[0]},</p>
   <div class="subject-line">Sub: Letter of offer/Appointment for the position of &ldquo;${ol.designation || ''}&rdquo;</div>
-  <p>In reference to our discussions, we are pleased to offer you the position of <strong>&ldquo;${ol.designation || ''}&rdquo;</strong> in Risk Care Insurance Broking Services Private Limited${empTypeLabel}, to be based at our <strong>${ol.location || 'Mumbai'} Office${ol.joining_date ? ' as from <strong>' + joiningDateHTML(ol.joining_date) + '</strong>' : ''}.</strong></p>
+  <p>In reference to our discussions, we are pleased to offer you the position of <strong>&ldquo;${ol.designation || ''}&rdquo;</strong> in ${CONFIG.companyFullName}${empTypeLabel}, to be based at our <strong>${ol.location || CONFIG.companyCity} Office${ol.joining_date ? ' as from <strong>' + joiningDateHTML(ol.joining_date) + '</strong>' : ''}.</strong></p>
   <p>The offer letter is valid for <strong>${ol.offer_valid_days || 7} days</strong> by which time we must be informed of your decision; the said offer letter shall stand cancelled after the above-mentioned date.</p>
   <p>We are pleased to issue this letter of offer on the following terms &amp; conditions:</p>
   <p><u><strong>EMOLUMENTS:</strong></u><br>
@@ -312,7 +312,7 @@ function buildOfferLetterHTML(ol) {
   <p><strong>If you are willing to accept this offer for the said position, we request you to submit 3 copies of your latest coloured Passport Size photograph, Self-attested Copy of your academic qualification, Self-attested copy of your PAN Card, Self-attested copy of your Aadhar Card, Self-attested Copy of Address Proof, and last 3 month Pay Slip / Form 16 from your previous employer. In addition, upon joining, you will have to submit a copy of your relieving letter from your previous employer.</strong></p>
   <p>As a token of your acceptance and in confirmation of the terms and conditions of this offer, please sign the duplicate copy of this letter and return to us at the earliest duly intimating when you are going to join.</p>
   <div class="main-signature-block">
-    <p>Yours truly,<br>From <strong>Risk Care Insurance Broking Services Private Limited,</strong></p>
+    <p>Yours truly,<br>From <strong>${CONFIG.companyFullName},</strong></p>
     <div class="dual-signature">
       <div class="sig-left">${sig1HTML}Authorized Signatory</div>
       <div class="sig-right">${sig2HTML}(Authorized Signatory)<br><br>Human Resource</div>
@@ -328,7 +328,7 @@ function buildOfferLetterHTML(ol) {
   <p style="margin-top:10px;font-size:13px;">
     <strong>Name:</strong> ${ol.candidate_name || ''}<br>
     <strong>Designation:</strong> ${ol.designation || ''}<br>
-    <strong>Location:</strong> ${ol.location || 'Mumbai'}<br>
+    <strong>Location:</strong> ${ol.location || CONFIG.companyCity}<br>
     <strong>Annual Cost to Company:</strong> Rs.${Number(ctcAnnual).toLocaleString('en-IN')} (Rupees ${numberToWords(Math.round(ctcAnnual))} Only)
   </p>
   <table class="data-table">
@@ -422,7 +422,7 @@ exports.create = async (req, res) => {
   try {
     const {
       candidate_name, candidate_email, candidate_address, candidate_mobile,
-      designation, location = 'Mumbai', joining_date, offer_date, offer_valid_days = 7,
+      designation, location = CONFIG.companyCity, joining_date, offer_date, offer_valid_days = 7,
       ctc_annual, basic_monthly, hra_monthly, conveyance_monthly = 0,
       other_allowance_monthly, gratuity_monthly = 0,
       pf_employee_monthly = 0, pf_employer_monthly = 0, pf_admin_monthly = 0,
@@ -514,12 +514,12 @@ exports.sendEmail = async (req, res) => {
       console.error('[offerLetter.sendEmail] PDF generation failed:', pdfErr.message);
     }
 
-    const defaultMsg = `Dear ${ol.candidate_name.split(' ')[0] || ol.candidate_name},\n\nPlease find attached your offer letter for the position of "${ol.designation}" at Risk Care Insurance Broking Services Private Limited.\n\nKindly review the letter and revert back with your acceptance within ${ol.offer_valid_days || 7} days.\n\nFor any queries, feel free to reach out to us.\n\nWarm regards,\nHuman Resource Team\nRisk Care Insurance Broking Services Pvt. Ltd.`;
+    const defaultMsg = `Dear ${ol.candidate_name.split(' ')[0] || ol.candidate_name},\n\nPlease find attached your offer letter for the position of "${ol.designation}" at ${CONFIG.companyFullName}.\n\nKindly review the letter and revert back with your acceptance within ${ol.offer_valid_days || 7} days.\n\nFor any queries, feel free to reach out to us.\n\nWarm regards,\nHuman Resource Team\n${CONFIG.companyFullName}`;
 
     const coverText = (email_message || defaultMsg).replace(/\n/g, '<br>');
     const coverHtml = `
       <div style="font-family:Arial,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:600px;">
-        <div style="background:#C0272D;padding:16px 24px;border-radius:8px 8px 0 0;">
+        <div style="background:${CONFIG.primaryColor};padding:16px 24px;border-radius:8px 8px 0 0;">
           <span style="color:#fff;font-size:16px;font-weight:700;">RiskCare HR</span>
           <span style="color:#f5b5b5;font-size:12px;margin-left:8px;">Risk Care Insurance Broking Services</span>
         </div>
@@ -676,16 +676,16 @@ exports.bulkSend = async (req, res) => {
         const firstName = candidateName.split(' ').filter(w => !['Mr.', 'Ms.', 'Mrs.', 'Dr.'].includes(w))[0] || candidateName;
         const coverHtml = `
           <div style="font-family:Arial,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:600px;">
-            <div style="background:#C0272D;padding:16px 24px;border-radius:8px 8px 0 0;">
+            <div style="background:${CONFIG.primaryColor};padding:16px 24px;border-radius:8px 8px 0 0;">
               <span style="color:#fff;font-size:16px;font-weight:700;">RiskCare HR</span>
               <span style="color:#f5b5b5;font-size:12px;margin-left:8px;">Risk Care Insurance Broking Services</span>
             </div>
             <div style="border:1px solid #e0e0e0;border-top:none;padding:24px;border-radius:0 0 8px 8px;">
               <p>Dear ${firstName},</p>
-              <p>Please find attached your offer letter for the position of <strong>"${designation}"</strong> at Risk Care Insurance Broking Services Private Limited.</p>
+              <p>Please find attached your offer letter for the position of <strong>"${designation}"</strong> at ${CONFIG.companyFullName}.</p>
               <p>Kindly review the letter and revert back with your acceptance within <strong>${offerValidDays} days</strong>.</p>
               <p>For any queries, feel free to reach out to us.</p>
-              <p>Warm regards,<br>Human Resource Team<br>Risk Care Insurance Broking Services Pvt. Ltd.</p>
+              <p>Warm regards,<br>Human Resource Team<br>${CONFIG.companyFullName}</p>
             </div>
           </div>`;
 

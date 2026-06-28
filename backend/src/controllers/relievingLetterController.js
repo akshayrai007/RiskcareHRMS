@@ -79,8 +79,8 @@ function buildRelievingLetterHTML(emp, sig1Image, sig2Image) {
           <img src="${LOGO_B64}" style="width:110px;height:auto;display:block;">
         </td>
         <td style="text-align:center;vertical-align:middle;">
-          <div style="font-family:Arial,sans-serif;font-size:20px;font-weight:bold;color:#000;margin-bottom:4px;">Risk Care Insurance Broking Services Private Limited</div>
-          <div style="font-family:Arial,sans-serif;font-size:11px;color:#444;"><strong>Registered Office:</strong> #708, 7th Floor, Hubtown Viva, Western Express Highway,<br>Shankarwadi, Jogeshwari (East), Mumbai 400060, Maharashtra</div>
+          <div style="font-family:Arial,sans-serif;font-size:20px;font-weight:bold;color:#000;margin-bottom:4px;">${CONFIG.companyFullName}</div>
+          <div style="font-family:Arial,sans-serif;font-size:11px;color:#444;"><strong>Registered Office:</strong> ${CONFIG.companyOfficeAddr}</div>
           <div style="font-family:Arial,sans-serif;font-size:11px;color:#444;margin-top:2px;">Phone: +91 22 61473232 &nbsp;|&nbsp; Email: support@riskcare.co.in &nbsp;|&nbsp; Website: www.riskcareinsure.com</div>
         </td>
       </tr>
@@ -89,7 +89,7 @@ function buildRelievingLetterHTML(emp, sig1Image, sig2Image) {
   // ── RiskCare Footer ────────────────────────────────────────────────────────
   const ftr = `
     <div class="footer">
-      CIN: U51109MH2005PTC199431 &nbsp;|&nbsp; Registration No: 401 &nbsp;|&nbsp; Validity: 29/04/2025 to 28/04/2028 &nbsp;|&nbsp; Category: Composite Broker
+      CIN: ${CONFIG.companyCIN}
     </div>`;
 
   return `<!DOCTYPE html>
@@ -147,7 +147,7 @@ function buildRelievingLetterHTML(emp, sig1Image, sig2Image) {
 
   <p style="text-align:center;font-weight:bold;font-size:13px;margin-bottom:16px;">Sub: Relieving Letter &ndash; ${mrOrMs} ${fullName} (${emp.employee_code || 'N/A'})</p>
 
-  <p>This is to certify that <strong>${mrOrMs} ${fullName}</strong> (Employee Code: <strong>${emp.employee_code || 'N/A'}</strong>) was employed with <strong>Risk Care Insurance Broking Services Private Limited</strong> from <strong>${joiningDate}</strong> to <strong>${relievingDate}</strong>. ${heOrShe} was designated as <strong>&ldquo;${designation}&rdquo;</strong> in the <strong>${department}</strong> department, based at our <strong>${emp.city || emp.location || 'Mumbai'}</strong> office.</p>
+  <p>This is to certify that <strong>${mrOrMs} ${fullName}</strong> (Employee Code: <strong>${emp.employee_code || 'N/A'}</strong>) was employed with <strong>${CONFIG.companyFullName}</strong> from <strong>${joiningDate}</strong> to <strong>${relievingDate}</strong>. ${heOrShe} was designated as <strong>&ldquo;${designation}&rdquo;</strong> in the <strong>${department}</strong> department, based at our <strong>${emp.city || emp.location || CONFIG.companyCity}</strong> office.</p>
 
   <p>${heOrShe} has been relieved from ${hisOrHer} duties and responsibilities with effect from <strong>${relievingDate}</strong>, consequent upon ${hisOrHer} ${(st || 'resignation').toLowerCase()} from the services of the company.</p>
 
@@ -163,7 +163,7 @@ function buildRelievingLetterHTML(emp, sig1Image, sig2Image) {
 
   <div class="sig-block">
     <p>Yours truly,</p>
-    <p>For <strong>Risk Care Insurance Broking Services Private Limited,</strong></p>
+    <p>For <strong>${CONFIG.companyFullName},</strong></p>
     <div class="dual-signature">
       <div class="sig-left">
         ${sig1Image ? '<img src="' + sig1Image + '" style="height:44px;display:block;margin-bottom:4px;">' : '<div style="height:44px;"></div>'}
@@ -325,21 +325,21 @@ exports.sendRelievingLetter = async (req, res) => {
       <div style="font-family:Arial,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:600px;">
         <div style="background:#C0272D;padding:16px 24px;border-radius:8px 8px 0 0;">
           <span style="color:#fff;font-size:16px;font-weight:700;">RiskCare HR</span>
-          <span style="color:#f5b5b5;font-size:12px;margin-left:8px;">Risk Care Insurance Broking Services</span>
+          <span style="color:#f5b5b5;font-size:12px;margin-left:8px;">${CONFIG.companyShortName}</span>
         </div>
         <div style="border:1px solid #e0e0e0;border-top:none;padding:24px;border-radius:0 0 8px 8px;">
           <p>Dear ${emp.first_name},</p>
-          <p>Please find attached your <strong>Relieving Letter</strong> from Risk Care Insurance Broking Services Private Limited.</p>
+          <p>Please find attached your <strong>Relieving Letter</strong> from ${CONFIG.companyFullName}.</p>
           <p>We thank you for your contributions during your tenure and wish you all the very best in your future endeavours.</p>
           <p>For any queries, feel free to reach out to us.</p>
-          <p>Warm regards,<br>Human Resource Team<br>Risk Care Insurance Broking Services Pvt. Ltd.</p>
+          <p>Warm regards,<br>Human Resource Team<br>${CONFIG.companyFullName}</p>
         </div>
       </div>`;
 
     const payload = {
       sender: { name: process.env.EMAIL_FROM_NAME || 'RiskCareHR', email: process.env.EMAIL_FROM || 'hr@riskcare.co.in' },
       to: [{ email: personalEmail, name: fullName }],
-      subject: `Relieving Letter — ${fullName} | Risk Care Insurance Broking Services`,
+      subject: `Relieving Letter — ${fullName} | ${CONFIG.companyShortName}`,
       htmlContent: coverHtml,
       attachment: [{ name: `Relieving_Letter_${fullName.replace(/\s+/g, '_')}.pdf`, content: pdfBuffer.toString('base64') }],
     };
@@ -431,20 +431,20 @@ exports.bulkSend = async (req, res) => {
             <div style="font-family:Arial,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:600px;">
               <div style="background:#C0272D;padding:16px 24px;border-radius:8px 8px 0 0;">
                 <span style="color:#fff;font-size:16px;font-weight:700;">RiskCare HR</span>
-                <span style="color:#f5b5b5;font-size:12px;margin-left:8px;">Risk Care Insurance Broking Services</span>
+                <span style="color:#f5b5b5;font-size:12px;margin-left:8px;">${CONFIG.companyShortName}</span>
               </div>
               <div style="border:1px solid #e0e0e0;border-top:none;padding:24px;border-radius:0 0 8px 8px;">
                 <p>Dear ${emp.first_name},</p>
-                <p>Please find attached your <strong>Relieving Letter</strong> from Risk Care Insurance Broking Services Private Limited.</p>
+                <p>Please find attached your <strong>Relieving Letter</strong> from ${CONFIG.companyFullName}.</p>
                 <p>We wish you all the very best in your future endeavours.</p>
-                <p>Warm regards,<br>Human Resource Team<br>Risk Care Insurance Broking Services Pvt. Ltd.</p>
+                <p>Warm regards,<br>Human Resource Team<br>${CONFIG.companyFullName}</p>
               </div>
             </div>`;
 
           const payload = {
             sender: { name: process.env.EMAIL_FROM_NAME || 'RiskCareHR', email: process.env.EMAIL_FROM || 'hr@riskcare.co.in' },
             to: [{ email: personalEmail, name: fullName }],
-            subject: `Relieving Letter — ${fullName} | Risk Care Insurance Broking Services`,
+            subject: `Relieving Letter — ${fullName} | ${CONFIG.companyShortName}`,
             htmlContent: coverHtml,
             attachment: [{ name: `Relieving_Letter_${fullName.replace(/\s+/g, '_')}.pdf`, content: pdfBuffer.toString('base64') }],
           };
@@ -578,20 +578,20 @@ exports.bulkSendExcel = async (req, res) => {
             <div style="font-family:Arial,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:600px;">
               <div style="background:#C0272D;padding:16px 24px;border-radius:8px 8px 0 0;">
                 <span style="color:#fff;font-size:16px;font-weight:700;">RiskCare HR</span>
-                <span style="color:#f5b5b5;font-size:12px;margin-left:8px;">Risk Care Insurance Broking Services</span>
+                <span style="color:#f5b5b5;font-size:12px;margin-left:8px;">${CONFIG.companyShortName}</span>
               </div>
               <div style="border:1px solid #e0e0e0;border-top:none;padding:24px;border-radius:0 0 8px 8px;">
                 <p>Dear ${emp.first_name},</p>
                 <p>Please find attached your <strong>Relieving Letter</strong>.</p>
                 <p>We wish you all the very best in your future endeavours.</p>
-                <p>Warm regards,<br>Human Resource Team<br>Risk Care Insurance Broking Services Pvt. Ltd.</p>
+                <p>Warm regards,<br>Human Resource Team<br>${CONFIG.companyFullName}</p>
               </div>
             </div>`;
 
           const payload = {
             sender: { name: process.env.EMAIL_FROM_NAME || 'RiskCareHR', email: process.env.EMAIL_FROM || 'hr@riskcare.co.in' },
             to: [{ email: targetEmail, name: fullName }],
-            subject: `Relieving Letter — ${fullName} | Risk Care Insurance Broking Services`,
+            subject: `Relieving Letter — ${fullName} | ${CONFIG.companyShortName}`,
             htmlContent: coverHtml,
             attachment: [{ name: `Relieving_Letter_${fullName.replace(/\s+/g, '_')}.pdf`, content: pdfBuffer.toString('base64') }],
           };
