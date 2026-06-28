@@ -188,7 +188,7 @@ function buildOfferLetterHTML(ol) {
         <td style="text-align:center;vertical-align:middle;">
           <div style="font-family:Arial,sans-serif;font-size:20px;font-weight:bold;color:#000;margin-bottom:4px;">${CONFIG.companyFullName}</div>
           <div style="font-family:Arial,sans-serif;font-size:11px;color:#444;"><strong>Registered Office:</strong> ${CONFIG.companyOfficeAddr}</div>
-          <div style="font-family:Arial,sans-serif;font-size:11px;color:#444;margin-top:2px;">Phone: +91 22 61473232 &nbsp;|&nbsp; Email: support@riskcare.co.in &nbsp;|&nbsp; Website: www.riskcareinsure.com</div>
+          <div style="font-family:Arial,sans-serif;font-size:11px;color:#444;margin-top:2px;">Phone: ${CONFIG.companyTel} &nbsp;|&nbsp; Email: ${CONFIG.supportEmail} &nbsp;|&nbsp; Website: ${CONFIG.websiteUrl}</div>
         </td>
       </tr>
     </table>`;
@@ -520,8 +520,8 @@ exports.sendEmail = async (req, res) => {
     const coverHtml = `
       <div style="font-family:Arial,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:600px;">
         <div style="background:${CONFIG.primaryColor};padding:16px 24px;border-radius:8px 8px 0 0;">
-          <span style="color:#fff;font-size:16px;font-weight:700;">RiskCare HR</span>
-          <span style="color:#f5b5b5;font-size:12px;margin-left:8px;">Risk Care Insurance Broking Services</span>
+          <span style="color:#fff;font-size:16px;font-weight:700;">${CONFIG.clientName}</span>
+          <span style="color:#f5b5b5;font-size:12px;margin-left:8px;">${CONFIG.companyShortName}</span>
         </div>
         <div style="border:1px solid #e0e0e0;border-top:none;padding:24px;border-radius:0 0 8px 8px;">
           <p>${coverText}</p>
@@ -539,9 +539,9 @@ exports.sendEmail = async (req, res) => {
     }
 
     const payload = {
-      sender: { name: process.env.EMAIL_FROM_NAME || 'RiskCareHR', email: process.env.EMAIL_FROM || 'hr@riskcare.co.in' },
+      sender: { name: process.env.EMAIL_FROM_NAME || CONFIG.senderName, email: process.env.EMAIL_FROM || CONFIG.supportEmail },
       to: [{ email: ol.candidate_email, name: ol.candidate_name }],
-      subject: `Offer Letter — ${ol.designation} | Risk Care Insurance Broking Services`,
+      subject: `Offer Letter — ${ol.designation} | ${CONFIG.companyShortName}`,
       htmlContent: coverHtml,
       attachment: attachments,
     };
@@ -677,8 +677,8 @@ exports.bulkSend = async (req, res) => {
         const coverHtml = `
           <div style="font-family:Arial,sans-serif;font-size:13px;color:#222;line-height:1.7;max-width:600px;">
             <div style="background:${CONFIG.primaryColor};padding:16px 24px;border-radius:8px 8px 0 0;">
-              <span style="color:#fff;font-size:16px;font-weight:700;">RiskCare HR</span>
-              <span style="color:#f5b5b5;font-size:12px;margin-left:8px;">Risk Care Insurance Broking Services</span>
+              <span style="color:#fff;font-size:16px;font-weight:700;">${CONFIG.clientName}</span>
+              <span style="color:#f5b5b5;font-size:12px;margin-left:8px;">${CONFIG.companyShortName}</span>
             </div>
             <div style="border:1px solid #e0e0e0;border-top:none;padding:24px;border-radius:0 0 8px 8px;">
               <p>Dear ${firstName},</p>
@@ -691,9 +691,9 @@ exports.bulkSend = async (req, res) => {
 
         const attachments = [{ name: `Offer_Letter_${candidateName.replace(/\s+/g, '_')}.pdf`, content: offerPdfBuffer.toString('base64') }];
         const payload = {
-          sender: { name: process.env.EMAIL_FROM_NAME || 'RiskCareHR', email: process.env.EMAIL_FROM || 'hr@riskcare.co.in' },
+          sender: { name: process.env.EMAIL_FROM_NAME || CONFIG.senderName, email: process.env.EMAIL_FROM || CONFIG.supportEmail },
           to: [{ email: candidateEmail, name: candidateName }],
-          subject: `Offer Letter — ${designation} | Risk Care Insurance Broking Services`,
+          subject: `Offer Letter — ${designation} | ${CONFIG.companyShortName}`,
           htmlContent: coverHtml,
           attachment: attachments,
         };

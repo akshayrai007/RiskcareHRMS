@@ -82,7 +82,7 @@ exports.downloadAbsentReportExcel = async (req, res) => {
 
     // ── Build workbook ────────────────────────────────────────────────────────
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'RiskCare HRMS';
+    wb.creator = CONFIG.clientName + ' HRMS';
     const ws = wb.addWorksheet(`Absent Report ${monthName} ${yr}`, {
       views: [{ freezeRow: 3, freezeCol: 5 }]
     });

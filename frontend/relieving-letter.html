@@ -10,8 +10,8 @@
   /* ── Stats Banner ── */
   .stats-banner{display:flex;gap:14px;margin-bottom:18px}
   .sb-item{flex:1;padding:16px 20px;text-align:center;color:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
-  .sb-item:nth-child(1){background:linear-gradient(135deg,#8B1A1A,#C0272D)}
-  .sb-item:nth-child(2){background:linear-gradient(135deg,#C0272D,#E53935)}
+  .sb-item:nth-child(1){background:linear-gradient(135deg,#8B1A1A,var(--cfg-primary))}
+  .sb-item:nth-child(2){background:linear-gradient(135deg,var(--cfg-primary),var(--cfg-accent))}
   .sb-item:nth-child(3){background:linear-gradient(135deg,#B45309,#D97706)}
   .sb-item .sb-num{font-size:28px;font-weight:800}
   .sb-item .sb-lbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;opacity:.85}
@@ -21,12 +21,12 @@
   .tool-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
   .cc-row{display:flex;gap:12px;flex-wrap:wrap}
   .cc-row>div{flex:1;min-width:180px}
-  .cc-row label{font-size:11px;font-weight:600;color:#C0272D;display:block;margin-bottom:3px}
+  .cc-row label{font-size:11px;font-weight:600;color:var(--cfg-primary);display:block;margin-bottom:3px}
   .cc-row input{width:100%;padding:7px 10px;border:1px solid #fecaca;border-radius:6px;font-size:12px;background:#fff8f8}
 
   /* ── Excel-style Table ── */
-  .rl-table{width:100%;border-collapse:collapse;font-size:12px;border:2px solid #C0272D}
-  .rl-table thead th{background:linear-gradient(180deg,#8B1A1A,#C0272D);color:#fff;padding:10px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;text-align:center;border:1px solid #7f1d1d;position:sticky;top:0}
+  .rl-table{width:100%;border-collapse:collapse;font-size:12px;border:2px solid var(--cfg-primary)}
+  .rl-table thead th{background:linear-gradient(180deg,#8B1A1A,var(--cfg-primary));color:#fff;padding:10px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;text-align:center;border:1px solid #7f1d1d;position:sticky;top:0}
   .rl-table tbody td{padding:8px 10px;border:1px solid #fecaca;vertical-align:middle;background:#fff}
   .rl-table tbody tr:nth-child(even) td{background:#fff5f5}
   .rl-table tbody tr:hover td{background:#fee2e2}
@@ -36,36 +36,36 @@
 
   /* ── Badges ── */
   .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;letter-spacing:.3px}
-  .badge-sent{background:#C0272D;color:#fff}
+  .badge-sent{background:var(--cfg-primary);color:#fff}
   .badge-pending{background:#D97706;color:#fff}
   .badge-no-email{background:#6b7280;color:#fff}
   .badge-type{background:#fee2e2;color:#991b1b;font-size:9px;padding:2px 8px;border-radius:6px;margin-top:3px;display:inline-block;font-weight:600}
 
   /* ── Inputs inside table ── */
   .t-date{border:1px solid #fca5a5;border-radius:4px;padding:5px 6px;font-size:11px;width:118px;background:#fff8f8}
-  .t-date:focus{border-color:#C0272D;outline:none;box-shadow:0 0 0 2px rgba(192,39,45,.15)}
+  .t-date:focus{border-color:var(--cfg-primary);outline:none;box-shadow:0 0 0 2px rgba(192,39,45,.15)}
   .t-email{border:1px solid #fca5a5;border-radius:4px;padding:5px 6px;font-size:11px;width:155px;background:#fff8f8}
-  .t-email:focus{border-color:#C0272D;outline:none;box-shadow:0 0 0 2px rgba(192,39,45,.15)}
+  .t-email:focus{border-color:var(--cfg-primary);outline:none;box-shadow:0 0 0 2px rgba(192,39,45,.15)}
 
   /* ── Action Buttons ── */
   .act-btn{border:none;border-radius:6px;padding:6px 12px;font-size:10px;font-weight:700;cursor:pointer;color:#fff;display:inline-flex;align-items:center;gap:4px;letter-spacing:.3px;transition:all .15s}
   .act-btn:disabled{opacity:.35;cursor:not-allowed}
-  .act-save{background:linear-gradient(135deg,#8B1A1A,#C0272D);min-width:50px;justify-content:center}
+  .act-save{background:linear-gradient(135deg,#8B1A1A,var(--cfg-primary));min-width:50px;justify-content:center}
   .act-save:hover{background:linear-gradient(135deg,#7f1d1d,#991b1b)}
   .act-preview{background:linear-gradient(135deg,#1565C0,#1976D2)}
   .act-preview:hover:not(:disabled){background:linear-gradient(135deg,#0D47A1,#1565C0)}
-  .act-send{background:linear-gradient(135deg,#C0272D,#E53935)}
-  .act-send:hover:not(:disabled){background:linear-gradient(135deg,#8B1A1A,#C0272D)}
+  .act-send{background:linear-gradient(135deg,var(--cfg-primary),var(--cfg-accent))}
+  .act-send:hover:not(:disabled){background:linear-gradient(135deg,#8B1A1A,var(--cfg-primary))}
 
   /* ── Modal ── */
   .modal-bg{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:999;justify-content:center;align-items:center}
   .modal-bg.active{display:flex}
-  .modal-box{background:#fff;border-radius:12px;padding:24px;max-width:560px;width:95%;max-height:85vh;overflow-y:auto;position:relative;border-top:4px solid #C0272D}
-  .modal-box h3{margin:0 0 4px;font-size:16px;color:#C0272D}
+  .modal-box{background:#fff;border-radius:12px;padding:24px;max-width:560px;width:95%;max-height:85vh;overflow-y:auto;position:relative;border-top:4px solid var(--cfg-primary)}
+  .modal-box h3{margin:0 0 4px;font-size:16px;color:var(--cfg-primary)}
   .modal-box .sub{color:#666;font-size:12px;margin-bottom:14px}
   .modal-box .close-x{position:absolute;top:12px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#888}
   .result-tbl{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;border:1px solid #fecaca}
-  .result-tbl th{background:#C0272D;color:#fff;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase}
+  .result-tbl th{background:var(--cfg-primary);color:#fff;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase}
   .result-tbl td{padding:6px 8px;border-bottom:1px solid #fee2e2}
 </style>
 </head>
@@ -113,8 +113,8 @@
         <button class="act-btn" onclick="openBulkExcelModal()" style="background:linear-gradient(135deg,#6A1B9A,#8E24AA)">📊 BULK BY EXCEL</button>
       </div>
       <div class="cc-row">
-        <div><label>CC (comma separated)</label><input type="text" id="cc-input" placeholder="hr@riskcare.co.in"></div>
-        <div><label>BCC (comma separated)</label><input type="text" id="bcc-input" placeholder="records@riskcare.co.in"></div>
+        <div><label>CC (comma separated)</label><input type="text" id="cc-input" placeholder="HR email"></div>
+        <div><label>BCC (comma separated)</label><input type="text" id="bcc-input" placeholder="BCC email"></div>
       </div>
     </div>
 
@@ -133,16 +133,16 @@
     <h3>📊 Bulk Send Relieving Letters</h3>
     <p class="sub">Upload Excel → Generate PDF → Send to each employee's personal email</p>
     <div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:14px;margin-bottom:14px">
-      <strong style="font-size:13px;color:#C0272D">Step 1 — Download Template</strong>
+      <strong style="font-size:13px;color:var(--cfg-primary)">Step 1 — Download Template</strong>
       <p style="font-size:12px;color:#555;margin:4px 0">Fill employee codes + personal emails. CC/BCC in first row apply to all.</p>
       <button class="act-btn act-save" onclick="downloadBulkTemplate()">⬇ DOWNLOAD</button>
     </div>
-    <strong style="font-size:13px;color:#C0272D">Step 2 — Upload Filled Excel</strong>
-    <input type="file" id="bulk-file" accept=".xlsx,.xls" style="display:block;width:100%;padding:10px;border:2px dashed #C0272D;border-radius:8px;cursor:pointer;font-size:12px;box-sizing:border-box;margin:6px 0 0;background:#fff8f8">
+    <strong style="font-size:13px;color:var(--cfg-primary)">Step 2 — Upload Filled Excel</strong>
+    <input type="file" id="bulk-file" accept=".xlsx,.xls" style="display:block;width:100%;padding:10px;border:2px dashed var(--cfg-primary);border-radius:8px;cursor:pointer;font-size:12px;box-sizing:border-box;margin:6px 0 0;background:#fff8f8">
     <button class="act-btn act-send" id="bulk-excel-btn" onclick="startBulkExcelSend()" style="width:100%;margin-top:14px;padding:12px;justify-content:center;font-size:13px">📤 GENERATE PDFs & SEND ALL</button>
     <div id="bulk-progress" style="display:none">
       <p style="font-size:12px;margin-top:10px"><strong>Progress</strong><span id="bulk-status" style="float:right;color:#666;font-size:11px">Uploading…</span></p>
-      <div style="width:100%;height:5px;background:#fee2e2;border-radius:3px;margin-top:4px"><div id="bulk-fill" style="height:100%;background:linear-gradient(90deg,#C0272D,#E53935);border-radius:3px;transition:width .3s;width:0%"></div></div>
+      <div style="width:100%;height:5px;background:#fee2e2;border-radius:3px;margin-top:4px"><div id="bulk-fill" style="height:100%;background:linear-gradient(90deg,var(--cfg-primary),var(--cfg-accent));border-radius:3px;transition:width .3s;width:0%"></div></div>
     </div>
     <div id="bulk-results"></div>
   </div>
@@ -193,7 +193,7 @@ function renderTable(){
   for(const e of list){
     const name=((e.first_name||'')+' '+(e.last_name||'')).trim();
     const pe=e.alternate_email||'';
-    const ok=pe&&pe.includes('@')&&!pe.toLowerCase().includes('@riskcare.co.in')&&!pe.toLowerCase().includes('@riskcareinsure.com');
+    const ok=pe&&pe.includes('@')&&!pe.toLowerCase().includes((window.CFG?.supportEmail||'').split('@')[1]||'riskcare.co.in');
     const sent=!!e.relieving_letter_sent_at;
     const jdVal=e.joining_date?new Date(e.joining_date).toISOString().split('T')[0]:'';
     const rdRaw=e.separation_date||e.last_working_date||'';
@@ -204,7 +204,7 @@ function renderTable(){
     h+=`<tr>
       <td class="c-center"><input type="checkbox" class="row-chk" data-id="${e.id}" ${!ok?'disabled':''} onchange="updateSelected()"></td>
       <td class="c-left">
-        <strong style="color:#C0272D">${name}</strong><br>
+        <strong style="color:var(--cfg-primary)">${name}</strong><br>
         <span style="color:#888;font-size:10px">${e.employee_code||''}</span>
         ${st?' <span class="badge-type">'+st+'</span>':''}
       </td>
@@ -275,7 +275,7 @@ function closeBulkExcelModal(){document.getElementById('bulk-excel-modal').class
 
 function downloadBulkTemplate(){
   const hd=['Employee Code','Personal Email','CC','BCC'];
-  const s1=['RC-2024-001','employee@gmail.com','hr@riskcare.co.in','records@riskcare.co.in'];
+  const s1=['RC-2024-001','employee@gmail.com',window.CFG?.supportEmail||'hr@riskcare.co.in',''];
   const ws=XLSX.utils.aoa_to_sheet([hd,s1]);ws['!cols']=hd.map(h=>({wch:Math.max(h.length+4,20)}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Relieving Letters');
   XLSX.writeFile(wb,'Relieving_Letter_Bulk_Template.xlsx');
@@ -291,9 +291,9 @@ async function startBulkExcelSend(){
     const resp=await fetch(API_BASE+'/relieving-letters/bulk-send-excel',{method:'POST',headers:{'Authorization':'Bearer '+Auth.getToken()},body:fd});
     const d=await resp.json();document.getElementById('bulk-fill').style.width='100%';document.getElementById('bulk-status').textContent='Complete';
     if(d?.success){
-      let r=`<p style="margin-top:10px;font-weight:700;color:#C0272D">✅ Sent: ${d.sent} | ❌ Failed: ${d.failed}</p>`;
+      let r=`<p style="margin-top:10px;font-weight:700;color:var(--cfg-primary)">✅ Sent: ${d.sent} | ❌ Failed: ${d.failed}</p>`;
       r+='<table class="result-tbl"><thead><tr><th>Row</th><th>Name</th><th>Email</th><th>Status</th><th>Reason</th></tr></thead><tbody>';
-      for(const x of d.results){const c=x.status==='sent'?'#C0272D':'#c62828';r+=`<tr><td>${x.row}</td><td>${x.name}</td><td>${x.email}</td><td style="color:${c};font-weight:700">${x.status}</td><td style="font-size:11px">${x.reason||'—'}</td></tr>`;}
+      for(const x of d.results){const c=x.status==='sent'?'var(--cfg-primary)':'#c62828';r+=`<tr><td>${x.row}</td><td>${x.name}</td><td>${x.email}</td><td style="color:${c};font-weight:700">${x.status}</td><td style="font-size:11px">${x.reason||'—'}</td></tr>`;}
       r+='</tbody></table>';document.getElementById('bulk-results').innerHTML=r;loadData();
     }else document.getElementById('bulk-results').innerHTML=`<p style="color:#c62828">Error: ${d?.message||'Unknown'}</p>`;
   }catch(err){document.getElementById('bulk-results').innerHTML=`<p style="color:#c62828">Error: ${err.message}</p>`;}

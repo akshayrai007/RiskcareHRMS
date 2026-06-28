@@ -402,7 +402,7 @@ exports.update = async (req, res) => {
 // Reset Password
 exports.resetPassword = async (req, res) => {
   try {
-    const { employee_id, new_password = 'Admin@1234' } = req.body;
+    const { employee_id, new_password = CONFIG.defaultPassword } = req.body;
     const hash = await bcrypt.hash(new_password, 10);
     await db.query(`UPDATE employees SET password_hash=$1 WHERE id=$2`, [hash, employee_id]);
     res.json({ success: true, message: 'Password reset successfully' });

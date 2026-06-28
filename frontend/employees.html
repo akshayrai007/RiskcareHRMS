@@ -913,8 +913,8 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Password</label>
-          <input id="new-password" class="form-control" value="Admin@1234">
-          <div style="font-size:11px;color:var(--muted);margin-top:3px">Default: Admin@1234</div>
+          <input id="new-password" class="form-control" value="">
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Default: from config</div>
         </div>
         <div class="form-group">
           <label class="form-label">Blood Group</label>
@@ -1603,7 +1603,7 @@ async function toggleWFH(id, current) {
 }
 
 async function resetPassword(id, email) {
-  const newPw = prompt(`Reset password for ${email}. Leave blank for default Admin@1234:`) || 'Admin@1234';
+  const newPw = prompt(`Reset password for ${email}. Leave blank for default:`) || (window.CFG?.defaultPassword || 'Admin@1234');
   const data = await api('POST', '/employees/reset-password', { employee_id: id, new_password: newPw });
   if (data?.success) toast(`Password reset to: ${newPw}`);
   else toast(data?.message || 'Failed', 'error');
@@ -1710,7 +1710,7 @@ async function addEmployee() {
     pan_number: g('new-pan').value.trim() || null, aadhar_number: g('new-aadhar').value.trim() || null,
     bank_name: g('new-bank-name').value.trim() || null, bank_account: g('new-bank-acc').value.trim() || null,
     bank_ifsc: g('new-bank-ifsc').value.trim() || null, city: g('new-city').value.trim() || null,
-    password: g('new-password').value || 'Admin@1234',
+    password: g('new-password').value || window.CFG?.defaultPassword || 'Admin@1234',
   };
   const data = await api('POST', '/employees', body);
   if (data?.success) {

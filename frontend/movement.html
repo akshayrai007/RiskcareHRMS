@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <!-- Google Maps API (replaces Leaflet) -->
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlfD24fvfHS4agCYkrxg4v_SQWgnYuNxA&libraries=geometry,marker&v=weekly"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=${window.CFG?.googleMapsApiKey || 'AIzaSyBlfD24fvfHS4agCYkrxg4v_SQWgnYuNxA'}&libraries=geometry,marker&v=weekly"></script>
 <style>
   #mv-route-map { border-radius: 8px; }
   .gm-style { font-family: 'DM Sans', sans-serif; }
@@ -245,7 +245,7 @@ let _mvInfoWindow   = null;
 let _mvMarkers      = [];
 let _mvPolyline     = null;
 let _mvCurrentType  = 'hybrid';
-const MAPS_KEY      = 'AIzaSyBlfD24fvfHS4agCYkrxg4v_SQWgnYuNxA';
+const MAPS_KEY      = window.CFG?.googleMapsApiKey || 'AIzaSyBlfD24fvfHS4agCYkrxg4v_SQWgnYuNxA';
 
 function setMapType(type) {
   _mvCurrentType = type;
