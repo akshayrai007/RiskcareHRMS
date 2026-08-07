@@ -152,21 +152,21 @@ exports.changePassword = async (req, res) => {
   }
 };
 
-// ── Forgot Password — Step 1: Verify Employee Code + Email ───────────────────
+// ── Forgot Password — Step 1: Verify Email + Date of Birth ───────────────────
 exports.forgotVerify = async (req, res) => {
   try {
-    const { employee_code, email } = req.body;
-    if (!employee_code || !email)
-      return res.status(400).json({ success: false, message: 'Employee Code and Email required' });
+    const { email, date_of_birth } = req.body;
+    if (!email || !date_of_birth)
+      return res.status(400).json({ success: false, message: 'Email and Date of Birth required' });
 
     const result = await db.query(
       `SELECT id, first_name, last_name, email, employee_code
-       FROM employees WHERE LOWER(employee_code)=LOWER($1) AND LOWER(email)=LOWER($2) AND is_active=true`,
-      [employee_code.trim(), email.trim()]
+       FROM employees WHERE LOWER(email)=LOWER($1) AND date_of_birth=$2 AND is_active=true`,
+      [email.trim(), date_of_birth]
     );
 
     if (!result.rows.length)
-      return res.status(404).json({ success: false, message: 'No employee found with this Employee Code and Email combination' });
+      return res.status(404).json({ success: false, message: 'No employee found with this Email and Date of Birth combination' });
 
     const emp = result.rows[0];
     res.json({
@@ -180,15 +180,15 @@ exports.forgotVerify = async (req, res) => {
   }
 };
 
-// ── Forgot Password — Step 2: Verify PAN Number ──────────────────────────────
-exports.forgotVerifyPAN = async (req, res) => {
+// ── Forgot Password — Step 2: Verify Employee ID ──────────────────────────────
+exports.forgotVerifyEmployeeId = async (req, res) => {
   try {
-    const { employee_id, pan_number } = req.body;
-    if (!employee_id || !pan_number)
-      return res.status(400).json({ success: false, message: 'Employee ID and PAN required' });
+    const { employee_id, employee_code } = req.body;
+    if (!employee_id || !employee_code)
+      return res.status(400).json({ success: false, message: 'Employee ID required' });
 
     const result = await db.query(
-      `SELECT id, pan_number FROM employees WHERE id=$1 AND is_active=true`,
+      `SELECT id, employee_code FROM employees WHERE id=$1 AND is_active=true`,
       [employee_id]
     );
 
@@ -196,11 +196,8 @@ exports.forgotVerifyPAN = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Employee not found' });
 
     const emp = result.rows[0];
-    if (!emp.pan_number)
-      return res.status(400).json({ success: false, message: 'No PAN number on file. Please contact HR to reset your password.' });
-
-    if (emp.pan_number.toUpperCase().trim() !== pan_number.toUpperCase().trim())
-      return res.status(401).json({ success: false, message: 'PAN number does not match our records' });
+    if (emp.employee_code.toUpperCase().trim() !== employee_code.toUpperCase().trim())
+      return res.status(401).json({ success: false, message: 'Employee ID does not match our records' });
 
     // Generate a short-lived reset token (valid 15 mins)
     const resetToken = jwt.sign(
@@ -211,7 +208,7 @@ exports.forgotVerifyPAN = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'PAN verified. You can now reset your password.',
+      message: 'Employee ID verified. You can now reset your password.',
       data: { reset_token: resetToken }
     });
   } catch (err) {

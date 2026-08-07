@@ -37,9 +37,9 @@ const PROVISION_APPROVERS = ['hr','admin','super_admin','manager','tl'];
 // ── Auth ──────────────────────────────────────────────────────────────────────
 router.post('/auth/login',                      authCtrl.login);
 router.post('/auth/refresh',                    authCtrl.refreshToken);
-router.post('/auth/forgot-password/verify',     authCtrl.forgotVerify);
-router.post('/auth/forgot-password/verify-pan', authCtrl.forgotVerifyPAN);
-router.post('/auth/forgot-password/reset',      authCtrl.forgotReset);
+router.post('/auth/forgot-password/verify',            authCtrl.forgotVerify);
+router.post('/auth/forgot-password/verify-employee-id', authCtrl.forgotVerifyEmployeeId);
+router.post('/auth/forgot-password/reset',              authCtrl.forgotReset);
 router.get ('/auth/me',          authenticate,  authCtrl.getMe);
 router.post('/auth/change-password', authenticate, authCtrl.changePassword);
 router.post('/auth/update-photo',     authenticate, authCtrl.updatePhoto);
