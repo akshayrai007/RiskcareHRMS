@@ -3,7 +3,7 @@
 const db     = require('../config/db');
 const CONFIG = require('../Main_file');
 
-const ADMIN_ROLES    = CONFIG.performanceAdminRoles    || ['hr','admin','super_admin'];    // ['hr','admin','super_admin']
+const ADMIN_ROLES    = CONFIG.performanceAdminRoles    || ['hr','super_admin','accounts'];    // full-access roles only (admin is scoped)
 const REVIEWER_ROLES = CONFIG.performanceReviewerRoles || ['hr','admin','super_admin','manager','tl']; // ['hr','admin','super_admin','manager','tl']
 const DEFAULT_WEIGHT = CONFIG.performanceDefaultWeight || 20;
 

@@ -5,6 +5,7 @@
 //        professional styled Excel export.
 
 const db   = require('../config/db');
+const scope = require('../utils/scope');
 const XLSX = require('xlsx');
 const multer = require('multer');
 
@@ -292,12 +293,13 @@ exports.getWFH = async (req, res) => {
     const userId = req.user.id;
     let cond = '', params = [];
 
-    if (!['admin','hr','manager','tl'].includes(role)) {
+    if (scope.hasFullAccess(role)) {
+      // hr/super_admin/accounts — no restriction
+    } else if (scope.isScopedManager(role)) {
+      // admin/manager/tl — direct reports only (was whole-department for manager)
+      cond = 'WHERE (e.reporting_manager_id=$1 OR e.team_leader_id=$1)'; params.push(userId);
+    } else {
       cond = 'WHERE w.employee_id=$1'; params.push(userId);
-    } else if (role === 'manager') {
-      cond = 'WHERE e.department_id=(SELECT department_id FROM employees WHERE id=$1)'; params.push(userId);
-    } else if (role === 'tl') {
-      cond = 'WHERE e.team_leader_id=$1'; params.push(userId);
     }
 
     const r = await db.query(

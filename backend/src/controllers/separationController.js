@@ -5,6 +5,7 @@ const CONFIG = require('../Main_file');
 
 const emailSvc = require('../config/emailService');
 const db = require('../config/db');
+const scope = require('../utils/scope');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function getNoticePeriod(role) {
@@ -231,7 +232,7 @@ exports.withdraw = async (req, res) => {
 
     const s = sep.rows[0];
     const isOwn     = s.employee_id === empId;
-    const isHRAdmin = ['hr','admin','super_admin'].includes(empRole);
+    const isHRAdmin = scope.hasFullAccess(empRole);
     if (!isOwn && !isHRAdmin)
       return res.status(403).json({ success: false, message: 'Not authorized' });
 
@@ -641,7 +642,7 @@ exports.getOne = async (req, res) => {
     const sep  = result.rows[0];
     const isOwn     = sep.employee_id === req.user.id;
     const isManager = sep.manager_id  === req.user.id;
-    const isHRAdmin = ['hr','admin','super_admin','accounts'].includes(req.user.role);
+    const isHRAdmin = scope.hasFullAccess(req.user.role);
     if (!isOwn && !isManager && !isHRAdmin)
       return res.status(403).json({ success: false, message: 'Not authorized' });
 
@@ -657,6 +658,22 @@ exports.getAll = async (req, res) => {
   try {
     const { status, employee_id, include_inactive, search } = req.query;
     let conds = [], params = [], idx = 1;
+
+    // Row scoping: full-access roles (super_admin/hr/accounts) see all.
+    // Scoped roles (manager/tl/admin) see only their direct reports' separations
+    // (matched by the separation's manager_id OR the employee's current manager).
+    if (!scope.hasFullAccess(req.user.role)) {
+      if (scope.isScopedManager(req.user.role)) {
+        conds.push(
+          `(s.manager_id=$${idx} OR s.employee_id=$${idx}
+            OR e.reporting_manager_id=$${idx} OR e.team_leader_id=$${idx})`
+        );
+        params.push(req.user.id); idx++;
+      } else {
+        conds.push(`s.employee_id=$${idx++}`); params.push(req.user.id);
+      }
+    }
+
     if (status)      { conds.push(`s.status=$${idx++}`);      params.push(status); }
     if (employee_id) { conds.push(`s.employee_id=$${idx++}`); params.push(employee_id); }
     // Search by name or employee code

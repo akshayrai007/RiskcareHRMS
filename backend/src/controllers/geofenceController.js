@@ -1,6 +1,7 @@
 const CONFIG = require('../Main_file');
 // src/controllers/geofenceController.js — COMPLETE
 const db = require('../config/db');
+const scope = require('../utils/scope');
 
 // Haversine distance in meters
 function haversine(lat1, lon1, lat2, lon2) {
@@ -557,13 +558,14 @@ exports.getLogs = async (req, res) => {
 
     let conds = [], params = [], idx = 1;
 
-    if (role === 'manager') {
+    if (scope.isScopedManager(role)) {
+      // manager/tl/admin — direct reports only (was whole-department for manager)
       conds.push(`gl.employee_id IN (
-        SELECT id FROM employees WHERE department_id=(SELECT department_id FROM employees WHERE id=$${idx++})
+        SELECT id FROM employees WHERE reporting_manager_id=$${idx} OR team_leader_id=$${idx}
       )`);
-      params.push(userId);
-    } else if (role === 'tl') {
-      conds.push(`gl.employee_id IN (SELECT id FROM employees WHERE team_leader_id=$${idx++})`);
+      params.push(userId); idx++;
+    } else if (!scope.hasFullAccess(role)) {
+      conds.push(`gl.employee_id=$${idx++}`);
       params.push(userId);
     }
 

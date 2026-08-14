@@ -3,6 +3,7 @@ const CONFIG = require('../Main_file');
 // Approval chain: same logic as advance (Manager → COO → MD → Accounts)
 
 const db       = require('../config/db');
+const scope    = require('../utils/scope');
 const emailSvc = require('../config/emailService');
 const multer   = require('multer');
 
@@ -197,6 +198,10 @@ exports.getAll = async (req, res) => {
     let conds = [], params = [], idx = 1;
 
     if (employee_id) {
+      // Scoped roles may only filter to themselves or a direct report.
+      if (parseInt(employee_id) !== userId &&
+          !(await scope.canAccessEmployee(req.user, employee_id, db)))
+        return res.status(403).json({ success: false, message: 'Access denied' });
       conds.push(`r.employee_id=$${idx++}`); params.push(employee_id);
     } else if (userRole === 'hr') {
       // see all

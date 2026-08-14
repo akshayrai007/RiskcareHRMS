@@ -3,6 +3,7 @@ const CONFIG = require('../Main_file');
 const db      = require('../config/db');
 const { getEmployeeRegion } = require('../config/regionHelper');
 const emailSvc = require('../config/emailService');
+const scope   = require('../utils/scope');
 
 // ── Timezone-safe date helper ─────────────────────────────────────────────────
 // Avoids UTC shift bug (toISOString rolls back 1 day for IST +5:30)
@@ -238,7 +239,10 @@ exports.action = async (req, res) => {
 
     // Verify actor is allowed to act
     const isSuperAdmin      = actorRole === 'super_admin';
-    const isAdmin           = actorRole === 'admin';
+    // NOTE: `admin` is NO LONGER a blanket approver. Admins are scoped to their
+    // own direct reports, so they must pass the reporting-manager/team-leader
+    // check below just like a manager. Only super_admin keeps a special path.
+    const isAdmin           = false;
     const isCurrentApprover = actorCode === currentCode;
 
     // super_admin (KC01/MD) may only action leave for KC718 (COO)
@@ -450,7 +454,7 @@ exports.getRequests = async (req, res) => {
       conds.push(`lr.status='pending'`);
       conds.push(`lr.employee_id != $${idx++}`);
       params.push(userId);
-      if (!['super_admin','hr','admin'].includes(userRole)) {
+      if (!scope.hasFullAccess(userRole)) {
         conds.push(
           `(lr.current_approver_code=$${idx++}
             OR EXISTS (
@@ -463,8 +467,8 @@ exports.getRequests = async (req, res) => {
       }
     }
     // scope=all or no scope → role-based access
-    else if (userRole === 'super_admin') {
-      // super_admin sees everything
+    else if (userRole === 'super_admin' || userRole === 'accounts') {
+      // super_admin / accounts see everything
     } else if (userRole === 'hr') {
       // HR sees all requests for non-pending views (history, reports).
       // For the pending queue, scope to requests where HR is the current
@@ -482,11 +486,7 @@ exports.getRequests = async (req, res) => {
         conds.push(`lr.employee_id != $${idx++}`);
         params.push(userId);
       }
-    } else if (userRole === 'admin') {
-      // Admin sees: pending (current approver) + history (actioned by them) + own requests
-      conds.push(`(lr.current_approver_code=$${idx++} OR lr.actioned_by=$${idx++} OR lr.employee_id=$${idx++})`);
-      params.push(userCode, userId, userId);
-    } else if (['manager','tl'].includes(userRole)) {
+    } else if (scope.isScopedManager(userRole)) {  // manager / tl / admin
       // Manager/TL sees: pending where current approver, history they actioned, own requests,
       // AND any request from an employee who reports to them (reporting_manager_id OR team_leader_id).
       // The team_leader_id check ensures TLs see requests from employees who have a different
@@ -1006,18 +1006,26 @@ exports.getLeaveReport = async (req, res) => {
     const year    = parseInt(req.query.year) || new Date().getFullYear();
     const userId  = req.user.id;
     const role    = req.user.role;
-    const isHrAdmin = ['hr','admin','super_admin','accounts'].includes(role);
+    const isHrAdmin = scope.hasFullAccess(role);
 
     // Who are we reporting on?
     let employeeIds = [];
     if (req.query.employee_id) {
       const eid = parseInt(req.query.employee_id);
-      // Employees can only view their own
-      if (!isHrAdmin && eid !== userId)
+      // Full-access roles: anyone. Scoped managers: self or a direct report. Others: self only.
+      if (!isHrAdmin && !(await scope.canAccessEmployee(req.user, eid, db)))
         return res.status(403).json({ success: false, message: 'Access denied' });
       employeeIds = [eid];
     } else if (isHrAdmin) {
       const res2 = await db.query(`SELECT id FROM employees WHERE is_active=true ORDER BY id`);
+      employeeIds = res2.rows.map(r => r.id);
+    } else if (scope.isScopedManager(role)) {
+      // No employee_id given — default to self + direct reports (not everyone).
+      const res2 = await db.query(
+        `SELECT id FROM employees WHERE is_active=true
+           AND (id=$1 OR reporting_manager_id=$1 OR team_leader_id=$1) ORDER BY id`,
+        [userId]
+      );
       employeeIds = res2.rows.map(r => r.id);
     } else {
       employeeIds = [userId];
@@ -1150,7 +1158,7 @@ exports.cancel = async (req, res) => {
     const leave = lr.rows[0];
 
     // Only employee or hr/admin can cancel
-    if (leave.employee_id !== req.user.id && !['hr','admin','super_admin'].includes(req.user.role))
+    if (leave.employee_id !== req.user.id && !scope.hasFullAccess(req.user.role))
       return res.status(403).json({ success: false, message: 'Access denied' });
 
     if (!['pending'].includes(leave.status))
@@ -1192,7 +1200,7 @@ exports.revoke = async (req, res) => {
     const leave = lr.rows[0];
 
     // Only the employee themselves can revoke their own approved leave
-    if (leave.employee_id !== req.user.id && !['hr','admin','super_admin'].includes(req.user.role))
+    if (leave.employee_id !== req.user.id && !scope.hasFullAccess(req.user.role))
       return res.status(403).json({ success: false, message: 'Access denied' });
 
     // Can only revoke approved leaves

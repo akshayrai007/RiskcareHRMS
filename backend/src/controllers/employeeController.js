@@ -17,6 +17,7 @@ function toISTDateString(date) {
 }
 const { getEmployeeRegion } = require('../config/regionHelper');
 const db = require('../config/db');
+const scope = require('../utils/scope');
 
 // Auto-generate employee code
 async function generateEmployeeCode(client, employeeCategory) {
@@ -64,19 +65,19 @@ exports.getAll = async (req, res) => {
       conditions.push("(e.is_active = true AND NOT EXISTS (SELECT 1 FROM separations sep WHERE sep.employee_id = e.id AND sep.status = 'completed'))");
     }
 
-    if (userRole === 'manager') {
-      // If reporting_manager_id is explicitly passed (e.g. from movement.html), don't add dept filter
-      // The reporting_manager_id condition will be added below
-      if (!reporting_manager_id) {
-        conditions.push(`e.department_id = (SELECT department_id FROM employees WHERE id=$${idx++})`);
+    // Access scoping: full-access roles (super_admin/hr/accounts) see everyone.
+    // Scoped managers (manager/tl/admin) see only self + their DIRECT reports.
+    // Everyone else sees only their own record.
+    if (!scope.hasFullAccess(userRole)) {
+      if (scope.isScopedManager(userRole)) {
+        conditions.push(
+          `(e.id=$${idx} OR e.reporting_manager_id=$${idx} OR e.team_leader_id=$${idx})`
+        );
+        params.push(userId); idx++;
+      } else {
+        conditions.push(`e.id=$${idx++}`);
         params.push(userId);
       }
-    } else if (userRole === 'tl') {
-      conditions.push(`(e.team_leader_id=$${idx} OR e.id=$${idx})`);
-      params.push(userId); idx++;
-    } else if (userRole === 'employee') {
-      conditions.push(`e.id=$${idx++}`);
-      params.push(userId);
     }
 
     if (department_id)       { conditions.push(`e.department_id=$${idx++}`);           params.push(parseInt(department_id)); }
@@ -180,8 +181,20 @@ exports.getOne = async (req, res) => {
     const role     = req.user.role;
     const userId   = req.user.id;
 
-    if (role === 'employee' && targetId !== userId)
-      return res.status(403).json({ success: false, message: 'Access denied' });
+    // Access scoping: full-access roles see anyone; scoped managers see self +
+    // direct reports; everyone else only themselves.
+    if (!scope.hasFullAccess(role) && targetId !== userId) {
+      if (scope.isScopedManager(role)) {
+        const chk = await db.query(
+          `SELECT 1 FROM employees WHERE id=$1 AND (reporting_manager_id=$2 OR team_leader_id=$2)`,
+          [targetId, userId]
+        );
+        if (!chk.rows.length)
+          return res.status(403).json({ success: false, message: 'Access denied' });
+      } else {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
 
     const result = await db.query(
       `SELECT e.*,
@@ -204,7 +217,7 @@ exports.getOne = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Employee not found' });
 
     const emp = result.rows[0];
-    if (!['admin','super_admin','hr'].includes(role) && targetId !== userId) {
+    if (!scope.hasFullAccess(role) && targetId !== userId) {
       delete emp.password_hash; delete emp.pan_number;
       delete emp.aadhar_number; delete emp.bank_account;
       delete emp.bank_ifsc;     delete emp.uan_number;

@@ -446,7 +446,7 @@ exports.getDeclaration = async (req, res) => {
     const reqUser = req.user;
     const empId   = req.query.employee_id ? parseInt(req.query.employee_id) : reqUser.id;
     const fy      = req.query.fy || '2025-26';
-    const isPriv  = ['super_admin','admin','hr','accounts'].includes(reqUser.role);
+    const isPriv  = ['super_admin','hr','accounts'].includes(reqUser.role);
     if (!isPriv && empId !== reqUser.id)
       return res.status(403).json({ success:false, message:'Access denied' });
 
@@ -561,7 +561,7 @@ exports.getDeclarationById = async (req, res) => {
       WHERE d.id=$1`, [declId]);
     if (!result.rows.length) return res.status(404).json({ success:false, message:'Not found' });
     const decl = result.rows[0];
-    const isPriv = ['super_admin','admin','hr','accounts'].includes(reqUser.role);
+    const isPriv = ['super_admin','hr','accounts'].includes(reqUser.role);
     if (!isPriv && decl.employee_id !== reqUser.id)
       return res.status(403).json({ success:false, message:'Access denied' });
     const docs = await db.query(
@@ -587,7 +587,7 @@ exports.getDeclarationById = async (req, res) => {
 exports.saveDeclaration = async (req, res) => {
   try {
     const reqUser = req.user;
-    const isPriv  = ['hr','accounts','admin','super_admin'].includes(reqUser.role);
+    const isPriv  = ['super_admin','hr','accounts'].includes(reqUser.role);
     const b       = req.body;
     // HR can save on behalf of an employee by passing employee_id in body
     const empId   = (isPriv && b.employee_id) ? parseInt(b.employee_id) : reqUser.id;
@@ -746,7 +746,7 @@ exports.saveDeclaration = async (req, res) => {
 exports.uploadProof = async (req, res) => {
   try {
     const reqUser = req.user;
-    const isPriv  = ['hr','accounts','admin','super_admin'].includes(reqUser.role);
+    const isPriv  = ['super_admin','hr','accounts'].includes(reqUser.role);
     const { declaration_id, section, section_label, doc_type } = req.body;
     const file  = req.file;
     if (!file) return res.status(400).json({ success:false, message:'No file uploaded' });
@@ -801,7 +801,7 @@ exports.getProof = async (req, res) => {
     );
     if (!result.rows.length) return res.status(404).json({ success:false, message:'Not found' });
     const proof = result.rows[0];
-    const isPriv = ['hr','accounts','admin','super_admin'].includes(reqUser.role);
+    const isPriv = ['super_admin','hr','accounts'].includes(reqUser.role);
     if (!isPriv && proof.employee_id !== reqUser.id)
       return res.status(403).json({ success:false, message:'Access denied' });
 
@@ -856,7 +856,7 @@ exports.deleteProof = async (req, res) => {
     );
     if (!result.rows.length) return res.status(404).json({ success:false, message:'Not found' });
     const proof = result.rows[0];
-    if (proof.employee_id !== empId && !['hr','admin','super_admin'].includes(req.user.role))
+    if (proof.employee_id !== empId && !['super_admin','hr','accounts'].includes(req.user.role))
       return res.status(403).json({ success:false, message:'Access denied' });
     if (['approved','verified'].includes(proof.status))
       return res.status(400).json({ success:false, message:'Cannot delete a verified proof' });

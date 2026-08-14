@@ -1,4 +1,5 @@
 const db   = require('../config/db');
+const scope = require('../utils/scope');
 const path = require('path');
 const fs   = require('fs');
 const multer = require('multer');
@@ -45,7 +46,8 @@ exports.getDocuments = async (req, res) => {
     // Ensure file_path is TEXT for base64 storage
     await db.query(`ALTER TABLE employee_documents ALTER COLUMN file_path TYPE TEXT`).catch(()=>{});
     const empId = req.params.employee_id || req.user.id;
-    if (parseInt(empId) !== req.user.id && !['hr','admin','super_admin'].includes(req.user.role))
+    // Self, full-access roles, or a scoped manager viewing their own direct report.
+    if (parseInt(empId) !== req.user.id && !(await scope.canAccessEmployee(req.user, empId, db)))
       return res.status(403).json({ success: false, message: 'Access denied' });
     const result = await db.query(
       `SELECT d.*, CONCAT(u.first_name,' ',u.last_name) AS uploaded_by_name
@@ -64,7 +66,7 @@ exports.uploadDocument = async (req, res) => {
     const file = req.file;
     if (!file) return res.status(400).json({ success: false, message: 'No file' });
     if (!docType) return res.status(400).json({ success: false, message: 'Type required' });
-    if (empId !== req.user.id && !['hr','admin','super_admin'].includes(req.user.role))
+    if (empId !== req.user.id && !['hr','super_admin','accounts'].includes(req.user.role))
       return res.status(403).json({ success: false, message: 'Access denied' });
     // Store file as base64 in DB (no disk dependency)
     const base64Data = file.buffer.toString('base64');
@@ -82,7 +84,7 @@ exports.getFile = async (req, res) => {
     const doc = await db.query(`SELECT * FROM employee_documents WHERE id=$1`, [req.params.id]);
     if (!doc.rows[0]) return res.status(404).json({ success: false, message: 'Not found' });
     const d = doc.rows[0];
-    if (d.employee_id !== req.user.id && !['hr','admin','super_admin'].includes(req.user.role))
+    if (d.employee_id !== req.user.id && !['hr','super_admin','accounts'].includes(req.user.role))
       return res.status(403).json({ success: false, message: 'Access denied' });
     const filePath = d.file_path || '';
     if (filePath.startsWith('base64:')) {
@@ -106,7 +108,7 @@ exports.deleteDocument = async (req, res) => {
     const doc = await db.query(`SELECT * FROM employee_documents WHERE id=$1`, [req.params.id]);
     if (!doc.rows[0]) return res.status(404).json({ success: false, message: 'Not found' });
     const d = doc.rows[0];
-    if (parseInt(d.employee_id) !== parseInt(req.user.id) && !['hr','admin','super_admin'].includes(req.user.role))
+    if (parseInt(d.employee_id) !== parseInt(req.user.id) && !['hr','super_admin','accounts'].includes(req.user.role))
       return res.status(403).json({ success: false, message: 'Access denied' });
     await db.query(`DELETE FROM employee_documents WHERE id=$1`, [req.params.id]);
     res.json({ success: true });
@@ -116,7 +118,7 @@ exports.deleteDocument = async (req, res) => {
 exports.getPrevEmployment = async (req, res) => {
   try { await ensureTables();
     const empId = req.params.employee_id || req.user.id;
-    if (parseInt(empId) !== req.user.id && !['hr','admin','super_admin'].includes(req.user.role))
+    if (parseInt(empId) !== req.user.id && !(await scope.canAccessEmployee(req.user, empId, db)))
       return res.status(403).json({ success: false, message: 'Access denied' });
     const r = await db.query(`SELECT * FROM employee_previous_employment WHERE employee_id=$1 ORDER BY from_date DESC NULLS LAST`, [empId]);
     res.json({ success: true, data: r.rows });
@@ -125,7 +127,7 @@ exports.getPrevEmployment = async (req, res) => {
 
 exports.upsertPrevEmployment = async (req, res) => {
   try { await ensureTables();
-    const isHR = ['hr','admin','super_admin'].includes(req.user.role);
+    const isHR = ['hr','super_admin','accounts'].includes(req.user.role);
     const empId = isHR && req.body.employee_id ? parseInt(req.body.employee_id) : req.user.id;
     const { id, company_name, company_address, city, state, from_date, to_date, designation,
             job_type, prev_manager_name, prev_manager_phone, prev_manager_email,
@@ -159,7 +161,7 @@ exports.upsertPrevEmployment = async (req, res) => {
 
 exports.deletePrevEmployment = async (req, res) => {
   try {
-    if (!['hr','admin','super_admin'].includes(req.user.role))
+    if (!['hr','super_admin','accounts'].includes(req.user.role))
       return res.status(403).json({ success: false, message: 'HR only' });
     await db.query(`DELETE FROM employee_previous_employment WHERE id=$1`, [req.params.id]);
     res.json({ success: true });
@@ -169,7 +171,7 @@ exports.deletePrevEmployment = async (req, res) => {
 exports.getQualifications = async (req, res) => {
   try { await ensureTables();
     const empId = req.params.employee_id || req.user.id;
-    if (parseInt(empId) !== req.user.id && !['hr','admin','super_admin'].includes(req.user.role))
+    if (parseInt(empId) !== req.user.id && !(await scope.canAccessEmployee(req.user, empId, db)))
       return res.status(403).json({ success: false, message: 'Access denied' });
     const r = await db.query(`SELECT * FROM employee_qualifications WHERE employee_id=$1 ORDER BY passing_year DESC NULLS LAST`, [empId]);
     res.json({ success: true, data: r.rows });
@@ -178,7 +180,7 @@ exports.getQualifications = async (req, res) => {
 
 exports.upsertQualification = async (req, res) => {
   try { await ensureTables();
-    const isHR = ['hr','admin','super_admin'].includes(req.user.role);
+    const isHR = ['hr','super_admin','accounts'].includes(req.user.role);
     const empId = isHR && req.body.employee_id ? parseInt(req.body.employee_id) : req.user.id;
     const { id, qualification, degree, specialization, institute_name, board_university,
             mode_of_education, state_location, grade_percentage, passing_month, passing_year,
@@ -208,7 +210,7 @@ exports.upsertQualification = async (req, res) => {
 
 exports.deleteQualification = async (req, res) => {
   try {
-    if (!['hr','admin','super_admin'].includes(req.user.role))
+    if (!['hr','super_admin','accounts'].includes(req.user.role))
       return res.status(403).json({ success: false, message: 'HR only' });
     await db.query(`DELETE FROM employee_qualifications WHERE id=$1`, [req.params.id]);
     res.json({ success: true });

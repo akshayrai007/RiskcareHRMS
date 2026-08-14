@@ -6,6 +6,7 @@ const CONFIG = require('../Main_file');
 
 const emailSvc = require('../config/emailService');
 const db = require('../config/db');
+const scope = require('../utils/scope');
 
 // ── Helper: calculate prorated leave for a partial month ─────────────────────
 // E.g. employee confirmed on 24 March → they worked (31-24)/31 fraction of March
@@ -40,9 +41,14 @@ exports.listProvisionEmployees = async (req, res) => {
     let whereExtra = '';
     const params = [];
 
-    // Manager / TL only sees their direct reports
-    if (role === 'manager' || role === 'tl') {
-      whereExtra = `AND e.reporting_manager_id = $1`;
+    // Scoped roles (manager/tl/admin) only see their direct reports.
+    // Full-access roles (super_admin/hr/accounts) see all.
+    if (scope.isScopedManager(role)) {
+      whereExtra = `AND (e.reporting_manager_id = $1 OR e.team_leader_id = $1)`;
+      params.push(userId);
+    } else if (!scope.hasFullAccess(role)) {
+      // Any other role (plain employee) — only their own record.
+      whereExtra = `AND e.id = $1`;
       params.push(userId);
     }
 

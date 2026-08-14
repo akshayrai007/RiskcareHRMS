@@ -22,6 +22,7 @@ const CONFIG = require('../Main_file');
 // ─────────────────────────────────────────────────────────────────────────────
 
 const db = require('../config/db');
+const scope = require('../utils/scope');
 
 const SILENCE_THRESHOLD_MINS = 30;  // flag if no ping for 30+ min
 const LOW_BATTERY_PCT        = 15;  // flag if battery <= 15%
@@ -234,11 +235,13 @@ exports.getActiveAlerts = async (req, res) => {
     const params = [today];
     let idx = 2;
 
-    // Scope: HR/super_admin see all; manager sees direct reports
-    const seeAll = ['hr', 'super_admin', 'admin'].includes(caller.role);
+    // Scope: full-access roles (super_admin/hr/accounts) see all;
+    // scoped roles (manager/tl/admin) see only their direct reports.
+    const seeAll = scope.hasFullAccess(caller.role);
     if (!seeAll) {
       params.push(caller.id);
-      scopeCond += ` AND e.reporting_manager_id = $${idx++}`;
+      scopeCond += ` AND (e.reporting_manager_id = $${idx} OR e.team_leader_id = $${idx})`;
+      idx++;
     }
     if (employee_id) {
       params.push(parseInt(employee_id));

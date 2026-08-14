@@ -100,7 +100,10 @@ document.querySelector("head").insertAdjacentHTML("beforeend",'<script src="http
   /* Auto-scroll wrap — hide native scrollbar, show fade mask */
   #team-scroll-wrap { scrollbar-width: none; -ms-overflow-style: none; }
   #team-scroll-wrap::-webkit-scrollbar { display: none; }
-  #team-scroll-wrap::after {
+  /* Fade mask only applied when the list actually overflows and auto-scrolls
+     (class added in JS). Without this guard the mask sat over the last rows
+     of short lists, washing out employee names in a white blur. */
+  #team-scroll-wrap.has-overflow::after {
     content: '';
     position: absolute;
     bottom: 0; left: 0; right: 0;
@@ -1030,11 +1033,15 @@ async function loadTeamToday() {
   requestAnimationFrame(() => {
     const contentH = inner.scrollHeight;
     if (contentH <= 320) {
-      // Not enough content to scroll — show static list with scrollbar
+      // Not enough content to scroll — show static list with scrollbar, no fade mask
       wrap.style.overflowY = 'auto';
+      wrap.classList.remove('has-overflow');
       clone.style.display = 'none';
       return;
     }
+
+    // Content overflows — enable auto-scroll and the bottom fade mask
+    wrap.classList.add('has-overflow');
 
     // Seamless infinite scroll
     let pos = 0;

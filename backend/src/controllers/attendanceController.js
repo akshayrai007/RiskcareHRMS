@@ -4,6 +4,7 @@ const db = require('../config/db');
 const { getEmployeeRegion } = require('../config/regionHelper');
 const emailSvc = require('../config/emailService');
 const { validateEmployeeBuffer } = require('./geofenceController');
+const scope = require('../utils/scope');
 
 // ── IST Helpers (UTC+5:30) ────────────────────────────────────────────────────
 // Always use IST regardless of server timezone (Render runs UTC)
@@ -390,10 +391,14 @@ exports.get = async (req, res) => {
     const mon = parseInt(month) || new Date().getMonth() + 1;
     const yr  = parseInt(year)  || new Date().getFullYear();
 
-    // HR/Admin/Manager can query other employees
+    // HR/Admin/Manager can query other employees — but scoped roles only their
+    // own direct reports. Verify before honouring an employee_id override.
     let targetId = empId;
-    if (employee_id && ['admin','super_admin','hr','accounts','manager','tl'].includes(role))
+    if (employee_id && parseInt(employee_id) !== empId) {
+      if (!(await scope.canAccessEmployee(req.user, employee_id, db)))
+        return res.status(403).json({ success: false, message: 'Access denied' });
       targetId = parseInt(employee_id);
+    }
 
     const result = await db.query(
       `SELECT a.*,
@@ -452,8 +457,11 @@ exports.getSummary = async (req, res) => {
     const yr  = parseInt(year)  || new Date().getFullYear();
 
     let targetId = empId;
-    if (employee_id && ['admin','super_admin','hr','accounts','manager','tl'].includes(role))
+    if (employee_id && parseInt(employee_id) !== empId) {
+      if (!(await scope.canAccessEmployee(req.user, employee_id, db)))
+        return res.status(403).json({ success: false, message: 'Access denied' });
       targetId = parseInt(employee_id);
+    }
 
     // Get holidays for the month — filtered by employee region
     // WFH employees fall back to their manager's region
@@ -562,29 +570,11 @@ exports.getTeamToday = async (req, res) => {
       empCond = `AND e.role != 'super_admin' AND e.id != $2`;
       params.push(userId);
 
-    } else if (role === 'admin') {
-      // Check if this admin reports directly to a super_admin (i.e. is COO level)
-      // If yes → see all employees (like Gurudutt/COO)
-      // If no  → see only direct reports (like Akshay, Raj, Dushyant)
-      const mgrCheck = await db.query(
-        `SELECT m.role FROM employees e
-         LEFT JOIN employees m ON e.reporting_manager_id = m.id
-         WHERE e.id = $1`, [userId]
-      );
-      const managerRole = mgrCheck.rows[0]?.role;
-      if (managerRole === 'super_admin') {
-        // COO-level admin — sees everyone except super_admin and self
-        empCond = `AND e.role != 'super_admin' AND e.id != $2`;
-        params.push(userId);
-      } else {
-        // AVP/Manager-level admin — sees only direct reports, exclude self
-        empCond = `AND e.reporting_manager_id = $2 AND e.id != $2`;
-        params.push(userId);
-      }
-
-    } else if (role === 'manager' || role === 'tl') {
-      // Direct reports only, exclude self
-      empCond = `AND e.reporting_manager_id = $2 AND e.id != $2`;
+    } else if (role === 'admin' || role === 'manager' || role === 'tl') {
+      // Scoped roles (admin/manager/tl) see ONLY their direct reports — self excluded.
+      // NOTE: admins are no longer treated as org-wide "COO-level"; only
+      // super_admin/hr/accounts have full visibility.
+      empCond = `AND (e.reporting_manager_id = $2 OR e.team_leader_id = $2) AND e.id != $2`;
       params.push(userId);
 
     } else {
@@ -706,23 +696,9 @@ exports.getPunchLocations = async (req, res) => {
       empCond = `AND e.role != 'super_admin' AND e.id != $2`;
       params.push(userId);
 
-    } else if (role === 'admin') {
-      // COO-level admin (reports to super_admin) sees everyone; AVP/manager-level sees only direct reports
-      const mgrCheck = await db.query(
-        `SELECT m.role FROM employees e
-         LEFT JOIN employees m ON e.reporting_manager_id = m.id
-         WHERE e.id = $1`, [userId]
-      );
-      const managerRole = mgrCheck.rows[0]?.role;
-      if (managerRole === 'super_admin') {
-        empCond = `AND e.role != 'super_admin' AND e.id != $2`;
-      } else {
-        empCond = `AND e.reporting_manager_id = $2 AND e.id != $2`;
-      }
-      params.push(userId);
-
-    } else if (role === 'manager' || role === 'tl') {
-      empCond = `AND e.reporting_manager_id = $2 AND e.id != $2`;
+    } else if (role === 'admin' || role === 'manager' || role === 'tl') {
+      // Scoped roles see ONLY their direct reports (admins are no longer org-wide).
+      empCond = `AND (e.reporting_manager_id = $2 OR e.team_leader_id = $2) AND e.id != $2`;
       params.push(userId);
 
     } else {

@@ -4,6 +4,7 @@ const CONFIG = require('../Main_file');
 // For direct-reports-of-COO: COO → MD → HR notified
 
 const db       = require('../config/db');
+const scope    = require('../utils/scope');
 const emailSvc = require('../config/emailService');
 
 const COO_CODE      = CONFIG.cooEmployeeCode;  // Gurudatt
@@ -375,6 +376,10 @@ exports.getAll = async (req, res) => {
 
     // Explicit employee_id filter (e.g. "My Requests" tab on frontend)
     if (employee_id) {
+      // Scoped roles may only filter to themselves or a direct report.
+      if (parseInt(employee_id) !== userId &&
+          !(await scope.canAccessEmployee(req.user, employee_id, db)))
+        return res.status(403).json({ success: false, message: 'Access denied' });
       conds.push(`a.employee_id=$${idx++}`);
       params.push(employee_id);
 

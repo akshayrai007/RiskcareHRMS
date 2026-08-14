@@ -1,15 +1,18 @@
 const db = require('../config/db');
+const scope = require('../utils/scope');
 
 exports.getPendingApprovals = async (req, res) => {
   try {
     const userId = req.user.id;
     const role   = req.user.role;
-    const isHR   = ['hr','admin','super_admin'].includes(role);
-    const isMgr  = ['manager','tl','hr','admin','super_admin'].includes(role);
+    // Full access (super_admin/hr/accounts) see all pending items.
+    // Scoped managers (manager/tl/admin) see only their direct reports' items.
+    const isHR   = scope.hasFullAccess(role);
+    const isMgr  = isHR || scope.isScopedManager(role);
     if (!isMgr) return res.status(403).json({ success: false, message: 'Access denied' });
 
     const all = [];
-    // For manager: filter by reporting_manager_id; for HR: see all
+    // For scoped managers: filter by direct reports; for full-access: see all
     const managerFilter = isHR ? [] : [userId];
 
     const runQ = async (sql, params) => {
@@ -34,7 +37,7 @@ exports.getPendingApprovals = async (req, res) => {
        JOIN leave_types lt ON lt.id = lr.leave_type_id
        LEFT JOIN departments d ON d.id = e.department_id
        WHERE lr.status = 'pending'
-         ${isHR ? '' : 'AND e.reporting_manager_id = $1'}
+         ${isHR ? '' : 'AND (e.reporting_manager_id = $1 OR e.team_leader_id = $1)'}
        ORDER BY lr.created_at DESC LIMIT 200`, managerFilter));
 
     // 2. Regularization
@@ -49,7 +52,7 @@ exports.getPendingApprovals = async (req, res) => {
        JOIN employees e ON e.id = a.employee_id
        LEFT JOIN departments d ON d.id = e.department_id
        WHERE a.regularization_status = 'pending'
-         ${isHR ? '' : 'AND e.reporting_manager_id = $1'}
+         ${isHR ? '' : 'AND (e.reporting_manager_id = $1 OR e.team_leader_id = $1)'}
        ORDER BY a.updated_at DESC LIMIT 200`, managerFilter));
 
     // 3. OD
@@ -63,7 +66,7 @@ exports.getPendingApprovals = async (req, res) => {
        JOIN employees e ON e.id = o.employee_id
        LEFT JOIN departments d ON d.id = e.department_id
        WHERE o.status = 'pending'
-         ${isHR ? '' : 'AND e.reporting_manager_id = $1'}
+         ${isHR ? '' : 'AND (e.reporting_manager_id = $1 OR e.team_leader_id = $1)'}
        ORDER BY o.applied_at DESC LIMIT 200`, managerFilter));
 
     // 4. WFH
@@ -77,7 +80,7 @@ exports.getPendingApprovals = async (req, res) => {
        JOIN employees e ON e.id = w.employee_id
        LEFT JOIN departments d ON d.id = e.department_id
        WHERE w.status = 'pending'
-         ${isHR ? '' : 'AND e.reporting_manager_id = $1'}
+         ${isHR ? '' : 'AND (e.reporting_manager_id = $1 OR e.team_leader_id = $1)'}
        ORDER BY w.created_at DESC LIMIT 200`, managerFilter));
 
     // 5. Advance
@@ -93,7 +96,7 @@ exports.getPendingApprovals = async (req, res) => {
        JOIN employees e ON e.id = a.employee_id
        LEFT JOIN departments d ON d.id = e.department_id
        WHERE a.status = 'pending'
-         ${isHR ? '' : 'AND e.reporting_manager_id = $1'}
+         ${isHR ? '' : 'AND (e.reporting_manager_id = $1 OR e.team_leader_id = $1)'}
        ORDER BY a.created_at DESC LIMIT 200`, managerFilter));
 
     // 6. Reimbursement
@@ -109,7 +112,7 @@ exports.getPendingApprovals = async (req, res) => {
        JOIN employees e ON e.id = r.employee_id
        LEFT JOIN departments d ON d.id = e.department_id
        WHERE r.status = 'pending'
-         ${isHR ? '' : 'AND e.reporting_manager_id = $1'}
+         ${isHR ? '' : 'AND (e.reporting_manager_id = $1 OR e.team_leader_id = $1)'}
        ORDER BY r.created_at DESC LIMIT 200`, managerFilter));
 
     all.sort((a, b) => new Date(b.applied_at) - new Date(a.applied_at));

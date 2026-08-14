@@ -133,7 +133,7 @@ const CONFIG = {
   performanceDefaultWeight:  20,          // Default goal weightage %
   performanceReviewerRoles:  ['hr','admin','super_admin','manager','tl'],
   performanceSelfRoles:      ['employee','manager','tl','hr','accounts','admin','super_admin'],
-  performanceAdminRoles:     ['hr','admin','super_admin'],
+  performanceAdminRoles:     ['hr','super_admin','accounts'],
   performanceFinalRatings: [
     'Outstanding',
     'Exceeds Expectations',

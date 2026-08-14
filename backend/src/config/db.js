@@ -23,10 +23,16 @@ const baseConfig = {
   allowExitOnIdle: false,
 };
 
+// Managed Postgres (Neon/Render/Supabase) requires SSL. Enable it whenever a
+// DATABASE_URL is used or DB_SSL=true is set. `rejectUnauthorized:false` accepts
+// the provider's cert without needing a local CA bundle.
+const useSSL = !!process.env.DATABASE_URL || process.env.DB_SSL === 'true';
+const sslConfig = useSSL ? { rejectUnauthorized: false } : false;
+
 const poolConfig = process.env.DATABASE_URL
   ? {
       connectionString: process.env.DATABASE_URL,
-      ssl: false,
+      ssl: sslConfig,
       ...baseConfig,
     }
   : {
@@ -35,7 +41,7 @@ const poolConfig = process.env.DATABASE_URL
       database: process.env.DB_NAME     || 'hrms_db',
       user:     process.env.DB_USER     || 'postgres',
       password: process.env.DB_PASSWORD || '',
-      ssl: false,
+      ssl: sslConfig,
       ...baseConfig,
     };
 
