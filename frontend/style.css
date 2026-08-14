@@ -752,7 +752,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 
 .modal-title {
   font-family: var(--cfg-font, 'DM Sans', sans-serif);
-  font-size: 16px; font-weight: 800;
+  font-size: 22px; font-weight: 800;
   color: var(--text); letter-spacing: -.2px;
 }
 
@@ -824,7 +824,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 
 .cal-month-lbl {
   font-family: var(--cfg-font, 'DM Sans', sans-serif);
-  font-size: 16px; font-weight: 800;
+  font-size: 22px; font-weight: 800;
   min-width: 165px; text-align: center;
   color: var(--text);
 }
@@ -1010,7 +1010,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
    ═══════════════════════════════════════════════════════════════════ */
 .bal-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
   margin-bottom: 0;
   padding: 0 0 4px;
