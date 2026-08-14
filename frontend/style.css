@@ -164,9 +164,9 @@ body {
 .logo-text {
   font-family: var(--cfg-font, 'DM Sans', sans-serif);
   font-size: 22px; font-weight: 800;
-  letter-spacing: -.5px;
+  letter-spacing: -.3px;
   color: #fff;
-  line-height: 1;
+  line-height: 1.1;
 }
 
 .logo-text span { color: var(--cfg-light); }
