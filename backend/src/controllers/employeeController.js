@@ -370,7 +370,13 @@ exports.update = async (req, res) => {
       'probation_end_date','exit_date','notes',
       'is_active','is_wfh_permanent','level','saturday_policy',
       'separation_date','separation_type','separation_reason','employee_type',
-      'deactivation_remark'
+      'deactivation_remark',
+      // Master Information Report fields
+      'location','branch','branch_effective_date','division','nationality',
+      'father_name','spouse_name','no_of_children','place_of_birth',
+      'personal_mobile','personal_email','present_state_code',
+      'permanent_state','permanent_state_code',
+      'emergency_contact_name','emergency_contact_phone','pt_state'
     ];
 
     const INTEGER_FIELDS = new Set([

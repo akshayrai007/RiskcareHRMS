@@ -762,6 +762,24 @@ async function start() {
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS separation_date DATE DEFAULT NULL`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS separation_type VARCHAR(50) DEFAULT NULL`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS separation_reason TEXT DEFAULT NULL`);
+        // ── Master Information Report fields (HR master data import) ───────
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS location VARCHAR(80)`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS branch VARCHAR(80)`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS branch_effective_date DATE`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS division VARCHAR(100)`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS nationality VARCHAR(50) DEFAULT 'Indian'`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS father_name VARCHAR(150)`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS spouse_name VARCHAR(150)`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS no_of_children SMALLINT`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS place_of_birth VARCHAR(100)`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS personal_mobile VARCHAR(20)`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS personal_email VARCHAR(150)`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS present_state_code VARCHAR(5)`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS permanent_state VARCHAR(80)`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS permanent_state_code VARCHAR(5)`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS emergency_contact_name VARCHAR(150)`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(20)`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS pt_state VARCHAR(80)`);
         await offerCtrl.initTables();
         await itDeclCtrl.initTables();
         const docsCtrl = require('./controllers/documentsController');

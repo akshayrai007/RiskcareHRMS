@@ -585,6 +585,7 @@
             <div class="form-group" style="margin:0"><label class="form-label">City</label><input id="edit-city" class="form-control" type="text"></div>
             <div class="form-group" style="margin:0"><label class="form-label">State</label><input id="edit-state" class="form-control" type="text"></div>
             <div class="form-group" style="margin:0"><label class="form-label">Pincode</label><input id="edit-pincode" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Present State Code</label><input id="edit-present-state-code" class="form-control" type="text" placeholder="e.g. MH" maxlength="5"></div>
             <!-- Current Address -->
             <div class="form-group" style="margin:0;grid-column:1/-1">
               <label class="form-label">Current Address</label>
@@ -602,6 +603,42 @@
               <label class="form-label">Permanent Address</label>
               <textarea id="edit-permanent-address" class="form-control" rows="2" placeholder="House/Flat No., Street, Area, City, State, Pincode…"></textarea>
             </div>
+            <div class="form-group" style="margin:0"><label class="form-label">Permanent State</label><input id="edit-permanent-state" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Permanent State Code</label><input id="edit-permanent-state-code" class="form-control" type="text" placeholder="e.g. MH" maxlength="5"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">PT State</label><input id="edit-pt-state" class="form-control" type="text"></div>
+          </div>
+        </div>
+
+        <!-- Family & Emergency Contact Section -->
+        <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;margin-top:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+            <div style="width:28px;height:28px;background:var(--accent-l);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">👪</div>
+            <span style="font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.5px;text-transform:uppercase">Family &amp; Emergency Contact</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-group" style="margin:0"><label class="form-label">Father's Name</label><input id="edit-father-name" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Spouse Name</label><input id="edit-spouse-name" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">No. of Children</label><input id="edit-no-of-children" class="form-control" type="number" min="0"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Place of Birth</label><input id="edit-place-of-birth" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Nationality</label><input id="edit-nationality" class="form-control" type="text" placeholder="Indian"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Personal Mobile</label><input id="edit-personal-mobile" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Personal Email</label><input id="edit-personal-email" class="form-control" type="email"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Emergency Contact Name</label><input id="edit-emergency-name" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Emergency Mobile</label><input id="edit-emergency-phone" class="form-control" type="text"></div>
+          </div>
+        </div>
+
+        <!-- Location / Branch / Division Section -->
+        <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;margin-top:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+            <div style="width:28px;height:28px;background:var(--accent-l);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">🏢</div>
+            <span style="font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.5px;text-transform:uppercase">Location, Branch &amp; Division</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-group" style="margin:0"><label class="form-label">Location</label><input id="edit-location" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Branch</label><input id="edit-branch" class="form-control" type="text"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Branch Effective Date</label><input id="edit-branch-effective-date" class="form-control" type="date"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Division</label><input id="edit-division" class="form-control" type="text"></div>
           </div>
         </div>
 
@@ -1438,9 +1475,17 @@ async function showEmpDetail(id) {
               </tr>
               <tr style="border-bottom:1px solid #f0f7eb">
                 <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Location</td>
-                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.city||'—'}${e.state?', '+e.state:''}</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.location||e.city||'—'}${e.state?', '+e.state:''}</td>
               </tr>
-              <tr${e.employee_category==='provision'?` style="border-bottom:1px solid #f0f7eb"`:''}> 
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Branch</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.branch||'—'}${e.branch_effective_date?` <span style="color:#94a3b8;font-size:11px">(eff. ${fmt.date(e.branch_effective_date)})</span>`:''}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Division</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.division||'—'}</td>
+              </tr>
+              <tr${e.employee_category==='provision'?` style="border-bottom:1px solid #f0f7eb"`:''}>
                 <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Category</td>
                 <td style="padding:10px 16px;font-size:13px;font-weight:600">
                   ${e.employee_category==='provision'?`<span style="color:#92400e">⏳ Provision</span>`:e.employee_category==='contractual'?`<span style="color:#6d28d9">📋 Contractual</span>`:`<span style="color:#15803d">✅ Permanent</span>`}
@@ -1451,6 +1496,91 @@ async function showEmpDetail(id) {
                 <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Provision Ends</td>
                 <td style="padding:10px 16px;font-size:13px;color:#c2410c;font-weight:600">${fmt.date(e.provision_end_date)||'—'}</td>
               </tr>`:''}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Personal & Family Details -->
+        <div style="background:#fff;border:1.5px solid #e2eed8;border-radius:12px;overflow:hidden;margin-bottom:16px">
+          <div style="background:#f4faf0;padding:10px 16px;border-bottom:1.5px solid #e2eed8;display:flex;align-items:center;gap:8px">
+            <span style="font-size:13px">👪</span>
+            <span style="font-size:11px;font-weight:800;color:var(--accent);letter-spacing:.6px;text-transform:uppercase">Personal &amp; Family Details</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <tbody>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;width:38%;background:#fafcf8">Gender</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.gender||'—'}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Blood Group</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.blood_group||'—'}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Marital Status</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.marital_status||'—'}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Father's Name</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.father_name||'—'}</td>
+              </tr>
+              ${e.marital_status==='Married'?`
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Spouse Name</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.spouse_name||'—'}</td>
+              </tr>`:''}
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">No. of Children</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.no_of_children ?? '—'}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Place of Birth</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.place_of_birth||'—'}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Nationality</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.nationality||'—'}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Personal Mobile</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.personal_mobile||'—'}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Personal Email</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.personal_email||'—'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Address & Emergency Contact -->
+        <div style="background:#fff;border:1.5px solid #e2eed8;border-radius:12px;overflow:hidden;margin-bottom:16px">
+          <div style="background:#f4faf0;padding:10px 16px;border-bottom:1.5px solid #e2eed8;display:flex;align-items:center;gap:8px">
+            <span style="font-size:13px">📍</span>
+            <span style="font-size:11px;font-weight:800;color:var(--accent);letter-spacing:.6px;text-transform:uppercase">Address &amp; Emergency Contact</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <tbody>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;width:38%;background:#fafcf8">Present Address</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.address_line1||'—'}${e.state?`, ${e.state}${e.present_state_code?' ('+e.present_state_code+')':''}`:''}${e.pincode?' - '+e.pincode:''}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Permanent Address</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.permanent_address||'—'}${e.permanent_state?`, ${e.permanent_state}${e.permanent_state_code?' ('+e.permanent_state_code+')':''}`:''}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">PT State</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.pt_state||'—'}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Emergency Contact</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.emergency_contact_name||'—'}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Emergency Mobile</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.emergency_contact_phone||'—'}</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -2302,9 +2432,28 @@ async function openEditEmp(id) {
   document.getElementById('edit-pincode').value            = e.pincode     || '';
   document.getElementById('edit-address').value            = e.address_line1    || '';
   document.getElementById('edit-permanent-address').value  = e.permanent_address || e.address_line2 || '';
+  document.getElementById('edit-present-state-code').value = e.present_state_code || '';
+  document.getElementById('edit-permanent-state').value      = e.permanent_state      || '';
+  document.getElementById('edit-permanent-state-code').value = e.permanent_state_code || '';
+  document.getElementById('edit-pt-state').value              = e.pt_state             || '';
   // Tick same-address if both match
   const sameChk = document.getElementById('same-address-chk');
   if (sameChk) sameChk.checked = (e.address_line1 || '') === (e.permanent_address || e.address_line2 || '') && !!(e.address_line1);
+  // Family & Emergency Contact
+  document.getElementById('edit-father-name').value      = e.father_name       || '';
+  document.getElementById('edit-spouse-name').value      = e.spouse_name       || '';
+  document.getElementById('edit-no-of-children').value   = e.no_of_children ?? '';
+  document.getElementById('edit-place-of-birth').value   = e.place_of_birth    || '';
+  document.getElementById('edit-nationality').value      = e.nationality       || 'Indian';
+  document.getElementById('edit-personal-mobile').value  = e.personal_mobile   || '';
+  document.getElementById('edit-personal-email').value   = e.personal_email    || '';
+  document.getElementById('edit-emergency-name').value   = e.emergency_contact_name  || '';
+  document.getElementById('edit-emergency-phone').value  = e.emergency_contact_phone || '';
+  // Location / Branch / Division
+  document.getElementById('edit-location').value = e.location || '';
+  document.getElementById('edit-branch').value    = e.branch   || '';
+  document.getElementById('edit-branch-effective-date').value = e.branch_effective_date ? e.branch_effective_date.split('T')[0] : '';
+  document.getElementById('edit-division').value  = e.division || '';
   document.getElementById('edit-joining').value  = e.joining_date ? e.joining_date.split('T')[0] : '';
   document.getElementById('edit-emptype').value  = e.employment_type  || 'Full-Time';
   document.getElementById('edit-category').value = e.employee_category || 'permanent';
@@ -2479,6 +2628,23 @@ async function saveEmployeeEdit() {
     travel_allowance:    parseFloat(document.getElementById('edit-conveyance').value)   || 0,
     reporting_manager_id: document.getElementById('edit-manager').value ? parseInt(document.getElementById('edit-manager').value) : null,
     team_leader_id:       document.getElementById('edit-tl').value       ? parseInt(document.getElementById('edit-tl').value)      : null,
+    present_state_code:    document.getElementById('edit-present-state-code').value.trim()    || null,
+    permanent_state:       document.getElementById('edit-permanent-state').value.trim()        || null,
+    permanent_state_code:  document.getElementById('edit-permanent-state-code').value.trim()   || null,
+    pt_state:               document.getElementById('edit-pt-state').value.trim()               || null,
+    father_name:            document.getElementById('edit-father-name').value.trim()            || null,
+    spouse_name:            document.getElementById('edit-spouse-name').value.trim()            || null,
+    no_of_children:         document.getElementById('edit-no-of-children').value               || null,
+    place_of_birth:         document.getElementById('edit-place-of-birth').value.trim()         || null,
+    nationality:            document.getElementById('edit-nationality').value.trim()            || null,
+    personal_mobile:        document.getElementById('edit-personal-mobile').value.trim()        || null,
+    personal_email:         document.getElementById('edit-personal-email').value.trim()         || null,
+    emergency_contact_name: document.getElementById('edit-emergency-name').value.trim()         || null,
+    emergency_contact_phone:document.getElementById('edit-emergency-phone').value.trim()        || null,
+    location:                document.getElementById('edit-location').value.trim()              || null,
+    branch:                  document.getElementById('edit-branch').value.trim()                || null,
+    branch_effective_date:   document.getElementById('edit-branch-effective-date').value        || null,
+    division:                document.getElementById('edit-division').value.trim()              || null,
   };
 
   const empRes = await api('PATCH', `/employees/${_editEmpId}`, empBody);
