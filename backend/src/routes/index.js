@@ -52,6 +52,7 @@ router.get   ('/attendance/export-register',     authenticate, authorize('hr','a
 router.get   ('/employees/code-preview',  authenticate, authorize(...EMP_MGMT), empCtrl.previewNextCode);
 router.get   ('/employees/contacts',      authenticate,                          empCtrl.getContacts);
 router.get   ('/employees/:id',           authenticate,                          empCtrl.getOne);
+router.get   ('/employees/:id/designation-history', authenticate,                 empCtrl.getDesignationHistory);
 router.post  ('/employees',               authenticate, authorize(...EMP_MGMT),  empCtrl.create);
 router.put   ('/employees/:id',           authenticate, authorize(...EMP_MGMT),  empCtrl.update);
 router.patch ('/employees/:id',           authenticate, authorize(...EMP_MGMT),  empCtrl.update);

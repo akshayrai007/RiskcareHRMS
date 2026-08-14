@@ -686,6 +686,19 @@
             <div class="form-group" style="margin:0"><label class="form-label">Level</label><input id="edit-level" class="form-control" type="text" placeholder="L4, L5…"></div>
             <div class="form-group" style="margin:0"><label class="form-label">Probation End Date</label><input id="edit-probation" class="form-control" type="date"></div>
             <div class="form-group" style="margin:0">
+              <label class="form-label">Department</label>
+              <select id="edit-dept" class="form-control" onchange="loadEditDesig()"><option value="">Loading…</option></select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Designation</label>
+              <select id="edit-desig" class="form-control" onchange="onEditDesigChange()"><option value="">Select department first…</option></select>
+            </div>
+            <div class="form-group" style="margin:0;grid-column:1/-1" id="edit-desig-effective-wrap" style="display:none">
+              <label class="form-label">Designation Change Effective Date</label>
+              <input id="edit-desig-effective-date" class="form-control" type="date">
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">Recorded in the employee's Designation History when the designation is changed.</div>
+            </div>
+            <div class="form-group" style="margin:0">
               <label class="form-label">Reporting Manager</label>
               <select id="edit-manager" class="form-control"><option value="">Loading…</option></select>
             </div>
@@ -1271,13 +1284,38 @@ async function loadDepartments() {
   if (!data?.success) return;
   const sel1 = document.getElementById('dept-filter');
   const sel2 = document.getElementById('new-dept');
+  const sel3 = document.getElementById('edit-dept');
+  if (sel3) sel3.innerHTML = '<option value="">Select department…</option>';
   data.data.forEach(d => {
     sel1.innerHTML += `<option value="${d.id}">${d.name}</option>`;
     if (sel2) sel2.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+    if (sel3) sel3.innerHTML += `<option value="${d.id}">${d.name}</option>`;
   });
   const tabsEl = document.getElementById('dept-tabs');
   tabsEl.innerHTML = `<button class="dept-pill active" onclick="filterByDept('',this)">All</button>` +
     data.data.map(d => `<button class="dept-pill" onclick="filterByDept('${d.id}',this)">${d.name} <span id="dept-cnt-${d.id}" style="opacity:.65"></span></button>`).join('');
+}
+
+// ── Edit modal: Department → Designation cascade ──────────────────────────────
+let _editOrigDesigId = null; // designation_id when the edit modal was opened, to detect a real change
+async function loadEditDesig(preselectDesigId) {
+  const deptId = document.getElementById('edit-dept').value;
+  const sel = document.getElementById('edit-desig');
+  if (!deptId) { sel.innerHTML = '<option value="">Select department first…</option>'; return; }
+  const data = await api('GET', `/designations?department_id=${deptId}`);
+  sel.innerHTML = '<option value="">Select designation…</option>' +
+    (data?.data || []).map(d => `<option value="${d.id}">${d.title}</option>`).join('');
+  if (preselectDesigId) sel.value = preselectDesigId;
+  onEditDesigChange();
+}
+
+function onEditDesigChange() {
+  const sel = document.getElementById('edit-desig');
+  const wrap = document.getElementById('edit-desig-effective-wrap');
+  const changed = _editOrigDesigId !== null && sel.value && parseInt(sel.value) !== _editOrigDesigId;
+  wrap.style.display = changed ? '' : 'none';
+  if (changed && !document.getElementById('edit-desig-effective-date').value)
+    document.getElementById('edit-desig-effective-date').value = new Date().toISOString().split('T')[0];
 }
 
 // ── Employees ─────────────────────────────────────────────────────────────────
@@ -1416,9 +1454,10 @@ async function showEmpDetail(id) {
   const data = await api('GET', `/employees/${id}`);
   if (!data?.success) return;
   const e = data.data;
-  const [bal, att] = await Promise.all([
+  const [bal, att, desigHist] = await Promise.all([
     api('GET', `/leave/balance?employee_id=${id}`),
-    api('GET', `/attendance/summary?employee_id=${id}`)
+    api('GET', `/attendance/summary?employee_id=${id}`),
+    api('GET', `/employees/${id}/designation-history`).catch(() => null)
   ]);
   document.getElementById('emp-detail-title').textContent = `${e.first_name} ${e.last_name}`;
   document.getElementById('emp-detail-content').innerHTML = `
@@ -1498,6 +1537,34 @@ async function showEmpDetail(id) {
               </tr>`:''}
             </tbody>
           </table>
+        </div>
+
+        <!-- Designation History -->
+        <div style="background:#fff;border:1.5px solid #e2eed8;border-radius:12px;overflow:hidden;margin-bottom:16px">
+          <div style="background:#f4faf0;padding:10px 16px;border-bottom:1.5px solid #e2eed8;display:flex;align-items:center;gap:8px">
+            <span style="font-size:13px">📈</span>
+            <span style="font-size:11px;font-weight:800;color:var(--accent);letter-spacing:.6px;text-transform:uppercase">Designation History</span>
+          </div>
+          ${desigHist?.success && desigHist.data.length ? `
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:#f9fcf6;border-bottom:1px solid #e8f0e0">
+                <th style="padding:8px 16px;font-size:10px;font-weight:800;color:#64748b;letter-spacing:.5px;text-align:left">FROM</th>
+                <th style="padding:8px 16px;font-size:10px;font-weight:800;color:#64748b;letter-spacing:.5px;text-align:left">TO</th>
+                <th style="padding:8px 16px;font-size:10px;font-weight:800;color:#64748b;letter-spacing:.5px;text-align:left">EFFECTIVE DATE</th>
+                <th style="padding:8px 16px;font-size:10px;font-weight:800;color:#64748b;letter-spacing:.5px;text-align:left">CHANGED BY</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${desigHist.data.map((h,i) => `
+              <tr${i<desigHist.data.length-1?' style="border-bottom:1px solid #f0f7eb"':''}>
+                <td style="padding:10px 16px;font-size:13px;color:#64748b">${h.old_designation||'—'}</td>
+                <td style="padding:10px 16px;font-size:13px;color:#15803d;font-weight:700">${h.new_designation||'—'}</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b">${fmt.date(h.effective_date)}</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b">${h.changed_by_name?.trim()||'—'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>` : `<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">No designation changes recorded</div>`}
         </div>
 
         <!-- Personal & Family Details -->
@@ -2462,6 +2529,11 @@ async function openEditEmp(id) {
   document.getElementById('edit-level').value    = e.level      || '';
   document.getElementById('edit-probation').value = e.probation_end_date ? e.probation_end_date.split('T')[0] : '';
   document.getElementById('edit-notes').value    = e.notes      || '';
+  document.getElementById('edit-dept').value = e.department_id || '';
+  document.getElementById('edit-desig-effective-date').value = '';
+  document.getElementById('edit-desig-effective-wrap').style.display = 'none';
+  _editOrigDesigId = e.designation_id || null;
+  await loadEditDesig(e.designation_id);
 
   // Salary tab
   document.getElementById('edit-basic').value      = s.basic       || e.basic_salary || '';
@@ -2612,6 +2684,9 @@ async function saveEmployeeEdit() {
     level:               document.getElementById('edit-level').value.trim()      || null,
     probation_end_date:  document.getElementById('edit-probation').value         || null,
     notes:               document.getElementById('edit-notes').value.trim()      || null,
+    department_id:       document.getElementById('edit-dept').value || null,
+    designation_id:      document.getElementById('edit-desig').value || null,
+    designation_effective_date: document.getElementById('edit-desig-effective-date').value || null,
     bank_name:           document.getElementById('edit-bank-name').value.trim()  || null,
     bank_account:        document.getElementById('edit-bank-acc').value.trim()   || null,
     bank_ifsc:           document.getElementById('edit-bank-ifsc').value.trim()  || null,

@@ -780,6 +780,16 @@ async function start() {
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS emergency_contact_name VARCHAR(150)`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(20)`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS pt_state VARCHAR(80)`);
+        // ── Designation change history ──────────────────────────────────────
+        await db.query(`CREATE TABLE IF NOT EXISTS employee_designation_history (
+          id SERIAL PRIMARY KEY,
+          employee_id INT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+          old_designation_id INT REFERENCES designations(id),
+          new_designation_id INT REFERENCES designations(id),
+          changed_by INT REFERENCES employees(id),
+          effective_date DATE DEFAULT CURRENT_DATE,
+          changed_at TIMESTAMP DEFAULT NOW()
+        )`);
         await offerCtrl.initTables();
         await itDeclCtrl.initTables();
         const docsCtrl = require('./controllers/documentsController');

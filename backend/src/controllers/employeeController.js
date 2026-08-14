@@ -231,6 +231,46 @@ exports.getOne = async (req, res) => {
   }
 };
 
+// Get Designation History — old → new designation timeline for an employee
+exports.getDesignationHistory = async (req, res) => {
+  try {
+    const targetId = parseInt(req.params.id);
+    const role     = req.user.role;
+    const userId   = req.user.id;
+
+    if (!scope.hasFullAccess(role) && targetId !== userId) {
+      if (scope.isScopedManager(role)) {
+        const chk = await db.query(
+          `SELECT 1 FROM employees WHERE id=$1 AND (reporting_manager_id=$2 OR team_leader_id=$2)`,
+          [targetId, userId]
+        );
+        if (!chk.rows.length)
+          return res.status(403).json({ success: false, message: 'Access denied' });
+      } else {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
+
+    const result = await db.query(
+      `SELECT h.id, h.effective_date, h.changed_at,
+              old_d.title AS old_designation, new_d.title AS new_designation,
+              CONCAT(cb.first_name,' ',cb.last_name) AS changed_by_name
+       FROM employee_designation_history h
+       LEFT JOIN designations old_d ON old_d.id = h.old_designation_id
+       LEFT JOIN designations new_d ON new_d.id = h.new_designation_id
+       LEFT JOIN employees cb ON cb.id = h.changed_by
+       WHERE h.employee_id=$1
+       ORDER BY h.effective_date DESC, h.changed_at DESC`,
+      [targetId]
+    );
+
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error('[getDesignationHistory]', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // Create — Supports employee_category: permanent | provision | contractual
 exports.create = async (req, res) => {
   const client = await db.getClient();
@@ -407,6 +447,22 @@ exports.update = async (req, res) => {
     }
 
     if (!sets.length) return res.status(400).json({ success: false, message: 'Nothing to update' });
+
+    // Log designation changes before applying them, so the employee card can
+    // show a full "old designation → new designation" timeline.
+    if (req.body.designation_id !== undefined) {
+      const newDesigId = parseInt(req.body.designation_id) || null;
+      const cur = await db.query(`SELECT designation_id FROM employees WHERE id=$1`, [id]);
+      const oldDesigId = cur.rows[0]?.designation_id || null;
+      if (oldDesigId !== newDesigId) {
+        await db.query(
+          `INSERT INTO employee_designation_history
+             (employee_id, old_designation_id, new_designation_id, changed_by, effective_date)
+           VALUES ($1,$2,$3,$4, COALESCE($5, CURRENT_DATE))`,
+          [id, oldDesigId, newDesigId, req.user?.id || null, req.body.designation_effective_date || null]
+        );
+      }
+    }
 
     sets.push(`updated_at=NOW()`);
     params.push(id);
