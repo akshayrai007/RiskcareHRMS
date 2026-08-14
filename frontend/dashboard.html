@@ -102,15 +102,13 @@ document.querySelector("head").insertAdjacentHTML("beforeend",'<script src="http
   #team-scroll-wrap::-webkit-scrollbar { display: none; }
   /* Fade mask only applied when the list actually overflows and auto-scrolls
      (class added in JS). Without this guard the mask sat over the last rows
-     of short lists, washing out employee names in a white blur. */
-  #team-scroll-wrap.has-overflow::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 40px;
-    background: linear-gradient(transparent, var(--surface));
-    pointer-events: none;
-    border-radius: 0 0 8px 8px;
+     of short lists, washing out employee names in a white blur.
+     Uses mask-image (fades the row's own pixels) instead of a color-overlay
+     gradient — an overlay paints a solid wash on top of whatever row is
+     mid-scroll there, which is what caused the whitish/blurred name text. */
+  #team-scroll-wrap.has-fade {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 40px), transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 40px), transparent 100%);
   }
 
   /* ── Stats row 6-col ─────────────────────────────────────── */
@@ -1035,26 +1033,31 @@ async function loadTeamToday() {
     if (contentH <= 320) {
       // Not enough content to scroll — show static list with scrollbar, no fade mask
       wrap.style.overflowY = 'auto';
-      wrap.classList.remove('has-overflow');
+      wrap.classList.remove('has-fade');
       clone.style.display = 'none';
       return;
     }
 
-    // Content overflows — enable auto-scroll and the bottom fade mask
-    wrap.classList.add('has-overflow');
+    wrap.classList.add('has-fade');
 
-    // Seamless infinite scroll
-    let pos = 0;
-    const SPEED = 0.5; // px per frame
+    // Continuous smooth upward scroll. The mask-image fade (added above) is what
+    // keeps a mid-scroll row from ever looking blotchy/cut — it fades the row's
+    // actual pixels to transparent as it nears the bottom edge, rather than us
+    // needing to freeze motion on row boundaries.
     let paused = false;
-
     wrap.addEventListener('mouseenter', () => paused = true);
     wrap.addEventListener('mouseleave', () => paused = false);
+
+    let pos = 0;
+    const SPEED = 0.5; // px per frame
 
     function tick() {
       if (!paused) {
         pos += SPEED;
-        if (pos >= contentH) pos = 0;
+        // Reset instantly once a full contentH has scrolled into the clone —
+        // invisible since the clone is pixel-identical to the original, so this
+        // never produces a visible jump.
+        if (pos >= contentH) pos -= contentH;
         wrap.scrollTop = pos;
       }
       requestAnimationFrame(tick);
