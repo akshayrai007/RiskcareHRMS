@@ -93,9 +93,15 @@
         </div>
       </div>
       <div id="dept-tabs" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px"></div>
+      <style>
+        table.excel-grid { border-collapse: collapse; width: 100%; }
+        table.excel-grid th, table.excel-grid td { border: 1px solid var(--border); }
+        table.excel-grid thead th { background: var(--surface3); border-bottom: 2px solid var(--border2); font-weight: 700; }
+        table.excel-grid tbody tr:hover td { filter: brightness(0.97); }
+      </style>
       <div class="card" style="padding:0">
         <div class="table-wrap">
-          <table>
+          <table class="excel-grid">
             <thead><tr>
               <th>Employee</th><th>Code</th><th>Department</th><th>Designation</th>
               <th>Role</th><th>Category</th><th>Status</th><th>Reporting To</th><th>Joining Date</th><th>App Ver.</th><th></th>
