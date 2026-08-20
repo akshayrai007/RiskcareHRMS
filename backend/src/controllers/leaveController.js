@@ -115,6 +115,24 @@ exports.apply = async (req, res) => {
     if (!lt.rows.length) return res.status(400).json({ success: false, message: 'Invalid leave type' });
     const ltCode = lt.rows[0].code;
 
+    // Block ALL leave applications for the first 3 months from joining date —
+    // applies to every employee regardless of category. HR's "Apply on
+    // Behalf" (force_apply) bypasses this, since that's how things like
+    // Maternity Leave get logged for someone regardless of tenure.
+    const joinRes = await client.query(`SELECT joining_date FROM employees WHERE id=$1`, [empId]);
+    const joiningDate = joinRes.rows[0]?.joining_date ? new Date(joinRes.rows[0].joining_date) : null;
+    if (!isForceApply && joiningDate) {
+      const threeMonthMark = new Date(joiningDate);
+      threeMonthMark.setMonth(threeMonthMark.getMonth() + 3);
+      const now = new Date();
+      if (now < threeMonthMark) {
+        return res.status(400).json({
+          success: false,
+          message: `New joinees cannot apply for leave during their first 3 months. Leave applications open from ${threeMonthMark.toDateString()}.`
+        });
+      }
+    }
+
     // Block contractual employees under 6 months from applying EL/CL/SL
     // They are on provision and can only use PL
     const empCatRes = await client.query(
@@ -677,6 +695,13 @@ exports.getBalance = async (req, res) => {
                                (emp?.employee_category === 'provision' &&
                                 provisionEndDate && provisionEndDate > now);
 
+    // Blanket 3-month "no leave at all" window for every new joinee,
+    // regardless of category — takes priority over the provisional/PL-only
+    // messaging above when it applies.
+    const threeMonthMark = joiningDate ? new Date(joiningDate) : null;
+    if (threeMonthMark) threeMonthMark.setMonth(threeMonthMark.getMonth() + 3);
+    const isNewJoinee = threeMonthMark && now < threeMonthMark;
+
     // TYPE 2 (still provisional): show only PL
     // Contractual confirmed (>6 months): show EL, CL, SL same as permanent
     // TYPE 1 & 3 (permanent / confirmed): show EL, CL, SL, OD, LWP — never PL
@@ -712,6 +737,13 @@ exports.getBalance = async (req, res) => {
         ? contractualSixMonthMark.toISOString().split('T')[0]
         : provisionEndDate.toISOString().split('T')[0]
     } : { is_provisional: false };
+
+    if (isNewJoinee) {
+      extra.is_new_joinee = true;
+      extra.new_joinee_until = threeMonthMark.toISOString().split('T')[0];
+    } else {
+      extra.is_new_joinee = false;
+    }
 
     res.json({ success: true, data: result.rows, ...extra });
   } catch (err) {
