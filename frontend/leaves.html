@@ -445,19 +445,32 @@ async function loadBalance() {
     el.parentNode.insertBefore(banner, el);
   }
 
-  // Always show EL, SL, CL cards — look up values from API, default to 0
+  // Always show EL and combined CL/SL cards — look up values from API, default to 0
   const ALWAYS_SHOW = [
     { code: 'EL', name: 'Earned Leave' },
-    { code: 'SL', name: 'Sick Leave' },
-    { code: 'CL', name: 'Casual Leave' },
+    { code: 'CL/SL', name: 'Casual / Sick Leave' },
   ];
 
   // Index API data by code
   const byCode = {};
   balanceData.forEach(b => { byCode[b.code] = b; });
 
-  // Build from whichever codes the API returned, but guarantee EL/SL/CL
-  const apiCodes = balanceData.map(b => b.code);
+  // Merge CL + SL into a single combined entry
+  const cl = byCode['CL'] || { allocated:0, used:0, pending:0, carry_forward:0, available:0 };
+  const sl = byCode['SL'] || { allocated:0, used:0, pending:0, carry_forward:0, available:0 };
+  const clsl = {
+    code: 'CL/SL',
+    name: 'Casual / Sick Leave',
+    allocated:      parseFloat(cl.allocated||0)      + parseFloat(sl.allocated||0),
+    used:           parseFloat(cl.used||0)           + parseFloat(sl.used||0),
+    pending:        parseFloat(cl.pending||0)         + parseFloat(sl.pending||0),
+    carry_forward:  parseFloat(cl.carry_forward||0)   + parseFloat(sl.carry_forward||0),
+    available:      parseFloat(cl.available||0)       + parseFloat(sl.available||0),
+  };
+  byCode['CL/SL'] = clsl;
+
+  // Build from whichever codes the API returned (excluding raw CL/SL, replaced by the combined card)
+  const apiCodes = balanceData.map(b => b.code).filter(c => c !== 'CL' && c !== 'SL');
   const showCodes = [...new Set([...ALWAYS_SHOW.map(x => x.code), ...apiCodes])];
   const items = showCodes.map(code => {
     const api = byCode[code];
@@ -1131,7 +1144,7 @@ async function openForceLeaveModal() {
 
   const [emps, types] = await Promise.all([
     api('GET', '/employees?limit=500&is_active=true'),
-    api('GET', '/leave/types')
+    api('GET', '/leave-types/all')
   ]);
   empSel.innerHTML = '<option value="">Select employee…</option>' +
     (emps?.data||[]).map(e => `<option value="${e.id}">${e.first_name} ${e.last_name} (${e.employee_code})</option>`).join('');
