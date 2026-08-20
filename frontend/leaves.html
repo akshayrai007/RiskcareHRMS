@@ -36,7 +36,7 @@
       <div class="topbar-title">Leave Management</div>
     </div>
     <div class="topbar-right">
-      <button class="btn btn-primary btn-sm" onclick="openModal('apply-modal')">+ Apply Leave</button>
+      <button class="btn btn-primary btn-sm" id="apply-leave-btn" onclick="openModal('apply-modal')">+ Apply Leave</button>
       <span id="force-leave-btn" style="display:none"><button class="btn btn-outline btn-sm" onclick="openForceLeaveModal()">👤 Apply on Behalf</button></span>
 
       <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
@@ -437,8 +437,31 @@ async function loadBalance() {
   }
   balanceData = data.data || [];
 
+  // Show new-joinee lockout banner (takes priority over provisional banner)
+  // and disable the Apply Leave button entirely for the first 3 months.
+  const applyBtn = document.getElementById('apply-leave-btn');
+  if (data.is_new_joinee && data.new_joinee_until) {
+    const njBanner = document.createElement('div');
+    njBanner.style.cssText = 'grid-column:span 4;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px 16px;margin-bottom:8px;color:#991b1b;font-size:13px;';
+    njBanner.innerHTML = `🔒 <strong>New Joinee</strong> — Leave applications are locked for your first 3 months. You can apply for leave starting <strong>${data.new_joinee_until}</strong>.`;
+    el.parentNode.insertBefore(njBanner, el);
+    if (applyBtn) {
+      applyBtn.disabled = true;
+      applyBtn.style.opacity = '.5';
+      applyBtn.style.cursor = 'not-allowed';
+      applyBtn.title = `Leave applications open on ${data.new_joinee_until}`;
+      applyBtn.onclick = null;
+    }
+  } else if (applyBtn) {
+    applyBtn.disabled = false;
+    applyBtn.style.opacity = '';
+    applyBtn.style.cursor = '';
+    applyBtn.title = '';
+    applyBtn.onclick = () => openModal('apply-modal');
+  }
+
   // Show provisional banner
-  if (data.is_provisional && data.provision_ends) {
+  if (!data.is_new_joinee && data.is_provisional && data.provision_ends) {
     const banner = document.createElement('div');
     banner.style.cssText = 'grid-column:span 4;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:12px 16px;margin-bottom:8px;color:#795548;font-size:13px;';
     banner.innerHTML = `⏳ <strong>Provisional Period</strong> — PL only until <strong>${data.provision_ends}</strong>. EL, CL &amp; SL available after 6 months.`;
