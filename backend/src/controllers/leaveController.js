@@ -50,8 +50,19 @@ exports.apply = async (req, res) => {
   const client = await db.getClient();
   try {
     await client.query('BEGIN');
-    const empId = req.user.id;
-    const { leave_type_id, from_date, to_date, reason, is_half_day } = req.body;
+    const { leave_type_id, from_date, to_date, reason, is_half_day, employee_id, force_apply } = req.body;
+
+    // ── HR "Apply on Behalf" (force_apply) ─────────────────────────────────
+    // Only HR/admin/super_admin can log leave on someone else's behalf, and
+    // only they can pass a different employee_id. This is how Maternity
+    // Leave (ML) gets recorded — HR logs it directly, auto-approved, no
+    // employee self-service, no balance requirement.
+    const HR_ROLES = ['hr', 'admin', 'super_admin'];
+    const isForceApply = !!force_apply;
+    if (isForceApply && !HR_ROLES.includes(req.user.role))
+      return res.status(403).json({ success: false, message: 'Only HR/Admin can apply leave on behalf of an employee.' });
+
+    const empId = (isForceApply && employee_id) ? parseInt(employee_id) : req.user.id;
 
     if (!leave_type_id || !from_date || !to_date)
       return res.status(400).json({ success: false, message: 'leave_type_id, from_date, to_date required' });
@@ -110,7 +121,7 @@ exports.apply = async (req, res) => {
       `SELECT employee_category, joining_date FROM employees WHERE id=$1`, [empId]
     );
     const empCat = empCatRes.rows[0];
-    if (empCat?.employee_category === 'contractual') {
+    if (!isForceApply && empCat?.employee_category === 'contractual') {
       const joiningDate = new Date(empCat.joining_date);
       const sixMonthMark = new Date(joiningDate);
       sixMonthMark.setMonth(sixMonthMark.getMonth() + 6);
@@ -123,7 +134,11 @@ exports.apply = async (req, res) => {
       }
     }
 
-    if (!['OD','LWP'].includes(ltCode)) {
+    // Leave types like ML (Maternity) are HR-recorded only — no pre-allocated
+    // balance to check against, and no pending reservation to make.
+    const skipsBalance = ['OD', 'LWP', 'ML'].includes(ltCode);
+
+    if (!isForceApply && !skipsBalance) {
       const year = from.getFullYear();
       const bal = await client.query(
         `SELECT GREATEST(0, allocated + carry_forward - used - pending) AS available
@@ -141,21 +156,52 @@ exports.apply = async (req, res) => {
       );
     }
 
-    // Build approval chain
-    const chain = await getLeaveApprovalChain(empId);
+    // HR force-applied leave is auto-approved — no approval chain, and if it
+    // draws on a real balance (not ML/OD/LWP), mark it used immediately
+    // instead of going through the pending → approve flow.
+    let chain = [];
+    let status = 'pending';
+    let actionedFields = { actioned_by: null, actioned_at: null };
+
+    if (isForceApply) {
+      status = 'approved';
+      actionedFields = { actioned_by: req.user.employee_code, actioned_at: new Date() };
+      if (!skipsBalance) {
+        const year = from.getFullYear();
+        await client.query(
+          `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, pending, carry_forward)
+           VALUES ($1,$2,$3,0,$4,0,0)
+           ON CONFLICT(employee_id, leave_type_id, year)
+           DO UPDATE SET used = leave_balances.used + $4`,
+          [empId, leave_type_id, year, days]
+        );
+      }
+    } else {
+      chain = await getLeaveApprovalChain(empId);
+    }
 
     const result = await client.query(
       `INSERT INTO leave_requests
          (employee_id, leave_type_id, from_date, to_date, days_requested,
-          reason, is_half_day, approval_chain, current_approver_code, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending')
+          reason, is_half_day, approval_chain, current_approver_code, status,
+          actioned_by, actioned_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        RETURNING id`,
       [empId, leave_type_id, from_date, to_date, days, reason || null,
-       is_half_day || false, JSON.stringify(chain), chain[0] || null]
+       is_half_day || false, JSON.stringify(chain), chain[0] || null, status,
+       actionedFields.actioned_by, actionedFields.actioned_at]
     );
 
     await client.query('COMMIT');
     const leaveId = result.rows[0].id;
+
+    if (isForceApply) {
+      return res.status(201).json({
+        success: true,
+        message: `${ltCode} leave recorded for ${days} day(s) and auto-approved.`,
+        data: { id: leaveId, days_requested: days, status: 'approved' }
+      });
+    }
 
     // Send email notification (async)
     emailSvc.notifyLeaveApplied(leaveId).catch(console.error);
