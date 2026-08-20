@@ -161,14 +161,30 @@ router.get('/leave-types', authenticate, async (req, res) => {
       (emp?.employee_category === 'provision' && provisionEndDate && provisionEndDate > now);
 
     // Provisional employees: only PL. Confirmed employees: everything except PL.
+    // 'ML' (Maternity Leave) is never self-service — HR logs it directly via
+    // the "Apply on Behalf" flow, so it's excluded from the employee dropdown here.
     const codeFilter = isProvisional
       ? `AND code = 'PL'`
-      : `AND code != 'PL'`;
+      : `AND code NOT IN ('PL','ML')`;
 
     const r = await db.query(
       `SELECT id, name, code, days_allowed, monthly_accrual,
               carry_forward, max_carry_forward, is_paid, applicable_gender, is_active
        FROM leave_types WHERE is_active=true ${codeFilter} ORDER BY name`
+    );
+    res.json({ success: true, data: r.rows });
+  } catch(e) { res.status(500).json({ success: false, message: 'Server error' }); }
+});
+
+// HR-only: full, unfiltered leave type list (includes PL and ML) — used by the
+// "Apply on Behalf" (HR force-apply) flow so HR can log Maternity Leave records.
+router.get('/leave-types/all', authenticate, authorize(...HR_ADMIN), async (req, res) => {
+  try {
+    const db = require('../config/db');
+    const r = await db.query(
+      `SELECT id, name, code, days_allowed, monthly_accrual,
+              carry_forward, max_carry_forward, is_paid, applicable_gender, is_active
+       FROM leave_types WHERE is_active=true ORDER BY name`
     );
     res.json({ success: true, data: r.rows });
   } catch(e) { res.status(500).json({ success: false, message: 'Server error' }); }
