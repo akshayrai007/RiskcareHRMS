@@ -325,8 +325,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
       </div>
 
-      <!-- RIGHT: Birthdays + Holidays + GK Leaderboard -->
+      <!-- RIGHT: Leave Balance + Birthdays + Holidays + GK Leaderboard -->
       <div style="display:flex;flex-direction:column;gap:8px">
+        <!-- Leave Balance -->
+        <div class="card" style="margin-bottom:10px">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-title-icon">◫</span>
+              Leave Balance — <span id="bal-year"></span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="location.href='leaves.html'">Apply →</button>
+          </div>
+          <div id="balance-cards"><div class="loading">Loading...</div></div>
+        </div>
+
         <!-- Upcoming Birthdays -->
         <div style="border-radius:18px;overflow:hidden;border:0.5px solid rgba(46,125,50,0.2);background:var(--surface);">
           <div style="position:relative;background:linear-gradient(135deg,var(--cfg-primary),var(--cfg-accent),var(--cfg-light),color-mix(in srgb,var(--cfg-light) 70%,#fff));padding:16px 20px;overflow:hidden;">
@@ -559,6 +571,23 @@ async function loadFeed() {
       renderAnnouncements(annListData.data);
     }
   } catch(e) { console.error('announcements error', e); }
+
+  try {
+    const balRes  = await fetch(`${API}/leave/balance`, { headers });
+    const balData = await balRes.json();
+    document.getElementById('bal-year').textContent = new Date().getFullYear();
+    if (balData.success) renderBalance(balData.data);
+    else document.getElementById('balance-cards').innerHTML =
+      `<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center">
+        Could not load balances. <a href="javascript:loadFeed()" style="color:var(--accent)">Retry</a>
+      </div>`;
+  } catch(e) {
+    console.error('leave balance error', e);
+    document.getElementById('balance-cards').innerHTML =
+      `<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center">
+        Could not load balances. <a href="javascript:loadFeed()" style="color:var(--accent)">Retry</a>
+      </div>`;
+  }
 
   try {
     const bdRes  = await fetch(`${API}/birthdays/upcoming`, { headers });
@@ -1222,6 +1251,50 @@ function timeAgo(ts) {
     if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
     return `${Math.floor(diff/86400000)}d ago`;
   } catch(e) { return ''; }
+}
+
+function renderBalance(data) {
+  const el = document.getElementById('balance-cards');
+  if (!data?.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:20px"><p>No leave balances found.</p></div>';
+    return;
+  }
+  const ALWAYS_SHOW = [
+    { code: 'EL', name: 'Earned Leave' },
+    { code: 'CL/SL', name: 'Casual / Sick Leave' },
+  ];
+  const byCode = {};
+  (data||[]).forEach(b => { byCode[b.code] = b; });
+  const cl = byCode['CL'] || { allocated:0, used:0, pending:0, carry_forward:0, available:0 };
+  const sl = byCode['SL'] || { allocated:0, used:0, pending:0, carry_forward:0, available:0 };
+  byCode['CL/SL'] = {
+    code: 'CL/SL', name: 'Casual / Sick Leave',
+    allocated:     parseFloat(cl.allocated||0)     + parseFloat(sl.allocated||0),
+    used:          parseFloat(cl.used||0)          + parseFloat(sl.used||0),
+    pending:       parseFloat(cl.pending||0)        + parseFloat(sl.pending||0),
+    carry_forward: parseFloat(cl.carry_forward||0)  + parseFloat(sl.carry_forward||0),
+    available:     parseFloat(cl.available||0)      + parseFloat(sl.available||0),
+  };
+  const apiCodes = data.map(b => b.code).filter(c => c !== 'CL' && c !== 'SL');
+  const showCodes = [...new Set([...ALWAYS_SHOW.map(x => x.code), ...apiCodes])];
+  const items = showCodes.map(code => byCode[code] || {
+    code, name: ALWAYS_SHOW.find(x=>x.code===code)?.name || code,
+    allocated:0, used:0, pending:0, carry_forward:0, available:0
+  });
+  const cards = items.map(b => {
+    const avail = parseFloat(b.available||0);
+    const alloc = parseFloat(b.allocated||0) + parseFloat(b.carry_forward||0);
+    const used  = parseFloat(b.used||0);
+    const pct   = alloc > 0 ? Math.max(0, Math.min(100, (used/alloc)*100)) : 0;
+    return `<div class="bal-card">
+      <div class="bal-code">${b.code}</div>
+      <div class="bal-val" style="font-size:26px;margin:4px 0 2px">${fmt.num(avail)}</div>
+      <div class="bal-meta" style="font-size:11px">${b.name}</div>
+      <div class="bal-bar" style="margin:8px 0 5px"><div class="bal-fill" style="width:${pct}%"></div></div>
+      <div class="bal-meta" style="font-size:10px">Used ${fmt.num(used)} / ${fmt.num(alloc)}</div>
+    </div>`;
+  });
+  el.innerHTML = `<div class="bal-grid" style="padding:12px 16px;grid-template-columns:repeat(2,1fr)">${cards.join('')}</div>`;
 }
 
 function renderHolidays(holidays) {
