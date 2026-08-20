@@ -726,11 +726,21 @@ function renderBalance(data) {
     el.innerHTML = '<div class="empty-state" style="padding:20px"><p>No leave balances found.</p></div>';
     return;
   }
-  // Always show EL/SL/CL — use API data if present, default to 0
+  // Always show EL and a combined CL/SL card — use API data if present, default to 0
   const byCode = {};
   (data||[]).forEach(b => { byCode[b.code] = b; });
-  const items = ['EL','SL','CL'].map(code => byCode[code] || {
-    code, name: code==='EL'?'Earned Leave':code==='SL'?'Sick Leave':'Casual Leave',
+  const cl = byCode['CL'] || { allocated:0, used:0, pending:0, carry_forward:0, available:0 };
+  const sl = byCode['SL'] || { allocated:0, used:0, pending:0, carry_forward:0, available:0 };
+  byCode['CL/SL'] = {
+    code: 'CL/SL', name: 'Casual / Sick Leave',
+    allocated:     parseFloat(cl.allocated||0)     + parseFloat(sl.allocated||0),
+    used:          parseFloat(cl.used||0)          + parseFloat(sl.used||0),
+    pending:       parseFloat(cl.pending||0)        + parseFloat(sl.pending||0),
+    carry_forward: parseFloat(cl.carry_forward||0)  + parseFloat(sl.carry_forward||0),
+    available:     parseFloat(cl.available||0)      + parseFloat(sl.available||0),
+  };
+  const items = ['EL','CL/SL'].map(code => byCode[code] || {
+    code, name: code==='EL'?'Earned Leave':'Casual / Sick Leave',
     allocated:0, used:0, pending:0, carry_forward:0, available:0
   });
   const cards = items.map(b => {
