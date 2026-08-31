@@ -497,9 +497,10 @@ exports.getPayslip = async (req, res) => {
               e.first_name, e.last_name,
               CONCAT(e.first_name, ' ', e.last_name) AS employee_name,
               e.employee_code, e.email,
-              e.pan_number, e.uan_number, e.pf_number, e.bank_name, e.bank_account,
+              e.pan_number, e.uan_number, e.pf_number, e.esi_number,
+              e.bank_name, e.bank_account,
               e.bank_ifsc, e.date_of_birth, e.joining_date,
-              e.city, e.aadhar_number, e.employment_type,
+              e.city, e.state, e.location, e.gender, e.aadhar_number, e.employment_type,
               d.name AS department_name, des.title AS designation_title,
               CONCAT(m.first_name,' ',m.last_name) AS manager_name
        FROM payroll p
@@ -563,6 +564,19 @@ exports.getPayslip = async (req, res) => {
       [empId, parseInt(month), parseInt(year)]
     );
     ps.paid_leave = parseFloat(leaveCount.rows[0]?.leave_days || ps.paid_leave);
+
+    // Leave balances for the payslip leave table
+    const leaveBalRes = await db.query(
+      `SELECT lt.name, lt.code,
+              lb.allocated, lb.used, lb.carry_forward,
+              (lb.allocated + lb.carry_forward - lb.used - lb.pending) AS available
+       FROM leave_balances lb
+       JOIN leave_types lt ON lb.leave_type_id = lt.id
+       WHERE lb.employee_id = $1 AND lb.year = $2
+       ORDER BY lt.id`,
+      [empId, parseInt(year)]
+    );
+    ps.leave_balances = leaveBalRes.rows;
 
     res.json({ success: true, data: ps });
   } catch (err) {
