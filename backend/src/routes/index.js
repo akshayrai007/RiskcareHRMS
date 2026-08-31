@@ -78,6 +78,11 @@ router.post('/employees/import',
   empImportCtrl.uploadMiddleware,
   empImportCtrl.importEmployees
 );
+router.post('/employees/master-update',
+  authenticate, authorize(...EMP_MGMT),
+  empImportCtrl.uploadMiddleware,
+  empImportCtrl.masterUpdate
+);
 
 // ── Attendance ────────────────────────────────────────────────────────────────
 router.post('/attendance/punch-in',         authenticate, attCtrl.punchIn);

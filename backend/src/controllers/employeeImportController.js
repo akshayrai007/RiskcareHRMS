@@ -257,3 +257,172 @@ exports.importEmployees = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error: ' + err.message });
   } finally { client.release(); }
 };
+
+// ── Master Information Report update ─────────────────────────────────────────
+// Reads the "Master_Information_Report.xlsx" layout and bulk-updates existing
+// employees (matched by Employee ID / employee_code) with all the fields that
+// the standard import template doesn't carry.
+const MASTER_COL = {
+  employee_code: 0,  // "Employee ID"
+  employee_name: 1,  // "Employee Name" (split into first+last)
+  location:      2,
+  branch:        3,
+  branch_effective_date: 4,
+  designation:   5,
+  division:      6,
+  joining_date:  7,
+  date_of_birth: 8,
+  reporting_officer: 9,
+  department:   10,
+  email:        11,
+  phone:        12,
+  uan_number:   13,
+  pan_number:   14,
+  aadhar_number:15,
+  pf_number:    16,
+  status:       17,
+  gender:       18,
+  father_name:  19,
+  personal_mobile: 20,
+  personal_email:  21,
+  place_of_birth:  22,
+  nationality:     23,
+  marital_status:  24,
+  spouse_name:     25,
+  no_of_children:  26,
+  present_address: 27,
+  present_state:   28,
+  present_state_code: 29,
+  permanent_address:  30,
+  permanent_state:    31,
+  permanent_state_code: 32,
+  blood_group:     33,
+  emergency_contact_name:  34,
+  emergency_contact_phone: 35,
+  pt_state:        36,
+};
+
+exports.masterUpdate = async (req, res) => {
+  if (!req.file)
+    return res.status(400).json({ success: false, message: 'Excel file required' });
+
+  const client = await db.getClient();
+  try {
+    await client.query('BEGIN');
+
+    const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    const dataRows = rows.slice(1).filter(r => {
+      const code = clean(r[MASTER_COL.employee_code]);
+      return code && code.length > 0;
+    });
+
+    if (!dataRows.length)
+      return res.status(400).json({ success: false, message: 'No data rows found' });
+
+    const results = { updated: [], skipped: [], errors: [] };
+
+    for (let i = 0; i < dataRows.length; i++) {
+      const row = dataRows[i];
+      const rowNum = i + 2;
+      const empCode = clean(row[MASTER_COL.employee_code])?.toUpperCase();
+      if (!empCode) { results.skipped.push(`Row ${rowNum}: no employee code`); continue; }
+
+      try {
+        const existing = await client.query(
+          `SELECT id FROM employees WHERE UPPER(employee_code) = $1`, [empCode]
+        );
+        if (!existing.rows.length) {
+          results.skipped.push(`Row ${rowNum}: ${empCode} not found in system`);
+          continue;
+        }
+        const empId = existing.rows[0].id;
+
+        const nameParts = (clean(row[MASTER_COL.employee_name]) || '').split(/\s+/);
+        const firstName = nameParts[0] || null;
+        const lastName = nameParts.slice(1).join(' ') || null;
+
+        const updates = {
+          location:         clean(row[MASTER_COL.location]),
+          branch:           clean(row[MASTER_COL.branch]),
+          branch_effective_date: toDate(row[MASTER_COL.branch_effective_date]),
+          division:         clean(row[MASTER_COL.division]),
+          gender:           clean(row[MASTER_COL.gender]),
+          father_name:      clean(row[MASTER_COL.father_name]),
+          personal_mobile:  clean(row[MASTER_COL.personal_mobile]),
+          personal_email:   clean(row[MASTER_COL.personal_email]),
+          place_of_birth:   clean(row[MASTER_COL.place_of_birth]),
+          nationality:      clean(row[MASTER_COL.nationality]),
+          marital_status:   clean(row[MASTER_COL.marital_status]),
+          spouse_name:      clean(row[MASTER_COL.spouse_name]),
+          no_of_children:   parseInt(row[MASTER_COL.no_of_children]) || null,
+          address_line1:    clean(row[MASTER_COL.present_address]),
+          state:            clean(row[MASTER_COL.present_state]),
+          present_state_code: clean(row[MASTER_COL.present_state_code]),
+          permanent_address:    clean(row[MASTER_COL.permanent_address]),
+          permanent_state:      clean(row[MASTER_COL.permanent_state]),
+          permanent_state_code: clean(row[MASTER_COL.permanent_state_code]),
+          blood_group:      clean(row[MASTER_COL.blood_group]),
+          emergency_contact_name:  clean(row[MASTER_COL.emergency_contact_name]),
+          emergency_contact_phone: clean(row[MASTER_COL.emergency_contact_phone]),
+          pt_state:         clean(row[MASTER_COL.pt_state]),
+          uan_number:       clean(row[MASTER_COL.uan_number]),
+          pan_number:       clean(row[MASTER_COL.pan_number])?.toUpperCase(),
+          aadhar_number:    clean(row[MASTER_COL.aadhar_number]),
+          pf_number:        clean(row[MASTER_COL.pf_number]),
+          phone:            clean(row[MASTER_COL.phone]),
+          date_of_birth:    toDate(row[MASTER_COL.date_of_birth]),
+          joining_date:     toDate(row[MASTER_COL.joining_date]),
+        };
+
+        if (firstName) updates.first_name = firstName;
+        if (lastName) updates.last_name = lastName;
+
+        const sets = [], params = [];
+        let idx = 1;
+        for (const [key, val] of Object.entries(updates)) {
+          if (val !== null && val !== undefined) {
+            sets.push(`${key}=$${idx++}`);
+            params.push(val);
+          }
+        }
+
+        if (sets.length) {
+          sets.push(`updated_at=NOW()`);
+          params.push(empId);
+          await client.query(
+            `UPDATE employees SET ${sets.join(',')} WHERE id=$${idx}`, params
+          );
+          results.updated.push(`${empCode}`);
+        } else {
+          results.skipped.push(`Row ${rowNum}: ${empCode} — no data to update`);
+        }
+      } catch (rowErr) {
+        results.errors.push(`Row ${rowNum} (${empCode}): ${rowErr.message}`);
+      }
+    }
+
+    await client.query('COMMIT');
+    res.json({
+      success: true,
+      message: `Master update: ${results.updated.length} updated, ${results.skipped.length} skipped, ${results.errors.length} errors`,
+      data: {
+        updated: results.updated,
+        skipped: results.skipped,
+        errors: results.errors.slice(0, 50),
+        summary: {
+          total_rows: dataRows.length,
+          updated: results.updated.length,
+          skipped: results.skipped.length,
+          errors: results.errors.length
+        }
+      }
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+  } finally { client.release(); }
+};

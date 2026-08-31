@@ -1271,6 +1271,10 @@ if (Role.is('hr', 'accounts')) {
       ⬆ Import Excel
       <input type="file" id="import-file" accept=".xlsx,.xls" onchange="importExcel(this)" style="display:none">
     </label>
+    <label class="btn btn-outline btn-sm" style="cursor:pointer;margin-left:4px;background:#ede9fe;color:#6d28d9;border-color:#c4b5fd" title="Upload Master Information Report to fill missing fields for existing employees">
+      ⬆ Master Update
+      <input type="file" id="master-update-file" accept=".xlsx,.xls" onchange="masterUpdate(this)" style="display:none">
+    </label>
     <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openAddEmp()">+ Add Employee</button>`;
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2374,6 +2378,30 @@ async function importExcel(input) {
       loadEmployees();
     } else toast(data.message || 'Import failed', 'error');
   } catch(e) { toast('Import failed', 'error'); }
+  input.value = '';
+}
+
+async function masterUpdate(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (!confirm('This will update ALL existing employees from the Master Information Report.\n\nFields updated: Location, Branch, Division, Father Name, Spouse, Emergency Contact, Addresses, PF Number, Nationality, etc.\n\nContinue?')) {
+    input.value = ''; return;
+  }
+  const fd = new FormData();
+  fd.append('file', file);
+  toast('Updating employees from Master Report…');
+  try {
+    const res = await fetch(`${API_BASE}/employees/master-update`, { method: 'POST', headers: { Authorization: 'Bearer ' + Auth.getToken() }, body: fd });
+    const data = await res.json();
+    if (data.success) {
+      const s = data.data.summary;
+      let msg = `Updated: ${s.updated}, Skipped: ${s.skipped}`;
+      if (s.errors) msg += `, Errors: ${s.errors}`;
+      toast(msg, s.updated > 0 ? 'success' : 'error');
+      if (data.data.errors?.length) console.warn('Master update errors:', data.data.errors);
+      if (s.updated > 0) loadEmployees();
+    } else toast(data.message || 'Master update failed', 'error');
+  } catch(e) { toast('Master update failed', 'error'); }
   input.value = '';
 }
 

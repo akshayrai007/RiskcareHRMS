@@ -776,6 +776,7 @@ async function start() {
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS personal_mobile VARCHAR(20)`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS personal_email VARCHAR(150)`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS present_state_code VARCHAR(5)`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS permanent_address TEXT`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS permanent_state VARCHAR(80)`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS permanent_state_code VARCHAR(5)`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS emergency_contact_name VARCHAR(150)`);
