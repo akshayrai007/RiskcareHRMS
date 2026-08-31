@@ -2398,7 +2398,11 @@ async function masterUpdate(input) {
       let msg = `Updated: ${s.updated}, Skipped: ${s.skipped}`;
       if (s.errors) msg += `, Errors: ${s.errors}`;
       toast(msg, s.updated > 0 ? 'success' : 'error');
-      if (data.data.errors?.length) console.warn('Master update errors:', data.data.errors);
+      if (data.data.errors?.length) {
+        console.warn('Master update errors:', data.data.errors);
+        alert('Errors:\n' + data.data.errors.slice(0, 10).join('\n'));
+      }
+      if (data.data.skipped?.length) console.warn('Master update skipped:', data.data.skipped);
       if (s.updated > 0) loadEmployees();
     } else toast(data.message || 'Master update failed', 'error');
   } catch(e) { toast('Master update failed', 'error'); }

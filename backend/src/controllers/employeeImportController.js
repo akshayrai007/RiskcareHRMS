@@ -331,11 +331,14 @@ exports.masterUpdate = async (req, res) => {
       if (!empCode) { results.skipped.push(`Row ${rowNum}: no employee code`); continue; }
 
       try {
+        await client.query('SAVEPOINT master_row');
+
         const existing = await client.query(
           `SELECT id FROM employees WHERE UPPER(employee_code) = $1`, [empCode]
         );
         if (!existing.rows.length) {
-          results.skipped.push(`Row ${rowNum}: ${empCode} not found in system`);
+          results.skipped.push(`Row ${rowNum}: ${empCode} not found`);
+          await client.query('RELEASE SAVEPOINT master_row');
           continue;
         }
         const empId = existing.rows[0].id;
@@ -343,6 +346,10 @@ exports.masterUpdate = async (req, res) => {
         const nameParts = (clean(row[MASTER_COL.employee_name]) || '').split(/\s+/);
         const firstName = nameParts[0] || null;
         const lastName = nameParts.slice(1).join(' ') || null;
+
+        // Strip spaces from Aadhaar for DB storage
+        const rawAadhaar = clean(row[MASTER_COL.aadhar_number]);
+        const aadhaar = rawAadhaar ? rawAadhaar.replace(/\s+/g, '') : null;
 
         const updates = {
           location:         clean(row[MASTER_COL.location]),
@@ -357,7 +364,7 @@ exports.masterUpdate = async (req, res) => {
           nationality:      clean(row[MASTER_COL.nationality]),
           marital_status:   clean(row[MASTER_COL.marital_status]),
           spouse_name:      clean(row[MASTER_COL.spouse_name]),
-          no_of_children:   parseInt(row[MASTER_COL.no_of_children]) || null,
+          no_of_children:   row[MASTER_COL.no_of_children] !== '' ? parseInt(row[MASTER_COL.no_of_children]) : null,
           address_line1:    clean(row[MASTER_COL.present_address]),
           state:            clean(row[MASTER_COL.present_state]),
           present_state_code: clean(row[MASTER_COL.present_state_code]),
@@ -370,7 +377,7 @@ exports.masterUpdate = async (req, res) => {
           pt_state:         clean(row[MASTER_COL.pt_state]),
           uan_number:       clean(row[MASTER_COL.uan_number]),
           pan_number:       clean(row[MASTER_COL.pan_number])?.toUpperCase(),
-          aadhar_number:    clean(row[MASTER_COL.aadhar_number]),
+          aadhar_number:    aadhaar,
           pf_number:        clean(row[MASTER_COL.pf_number]),
           phone:            clean(row[MASTER_COL.phone]),
           date_of_birth:    toDate(row[MASTER_COL.date_of_birth]),
@@ -380,10 +387,11 @@ exports.masterUpdate = async (req, res) => {
         if (firstName) updates.first_name = firstName;
         if (lastName) updates.last_name = lastName;
 
+        // Filter out NaN values from parseInt
         const sets = [], params = [];
         let idx = 1;
         for (const [key, val] of Object.entries(updates)) {
-          if (val !== null && val !== undefined) {
+          if (val !== null && val !== undefined && !(typeof val === 'number' && isNaN(val))) {
             sets.push(`${key}=$${idx++}`);
             params.push(val);
           }
@@ -399,7 +407,10 @@ exports.masterUpdate = async (req, res) => {
         } else {
           results.skipped.push(`Row ${rowNum}: ${empCode} — no data to update`);
         }
+
+        await client.query('RELEASE SAVEPOINT master_row');
       } catch (rowErr) {
+        await client.query('ROLLBACK TO SAVEPOINT master_row');
         results.errors.push(`Row ${rowNum} (${empCode}): ${rowErr.message}`);
       }
     }
