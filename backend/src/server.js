@@ -783,6 +783,45 @@ async function start() {
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(50)`);
         await db.query(`ALTER TABLE employees ALTER COLUMN emergency_contact_phone TYPE VARCHAR(50)`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS pt_state VARCHAR(80)`);
+        // ── Dedup designations: merge duplicates, keep lowest ID ───────────
+        await db.query(`
+          UPDATE employees SET designation_id = sub.keep_id
+          FROM (
+            SELECT d.id AS dup_id, keeper.id AS keep_id
+            FROM designations d
+            JOIN (SELECT MIN(id) AS id, LOWER(TRIM(title)) AS t FROM designations GROUP BY LOWER(TRIM(title))) keeper
+              ON LOWER(TRIM(d.title)) = keeper.t AND d.id != keeper.id
+          ) sub
+          WHERE employees.designation_id = sub.dup_id
+        `);
+        await db.query(`
+          UPDATE employee_designation_history SET old_designation_id = sub.keep_id
+          FROM (
+            SELECT d.id AS dup_id, keeper.id AS keep_id
+            FROM designations d
+            JOIN (SELECT MIN(id) AS id, LOWER(TRIM(title)) AS t FROM designations GROUP BY LOWER(TRIM(title))) keeper
+              ON LOWER(TRIM(d.title)) = keeper.t AND d.id != keeper.id
+          ) sub
+          WHERE employee_designation_history.old_designation_id = sub.dup_id
+        `);
+        await db.query(`
+          UPDATE employee_designation_history SET new_designation_id = sub.keep_id
+          FROM (
+            SELECT d.id AS dup_id, keeper.id AS keep_id
+            FROM designations d
+            JOIN (SELECT MIN(id) AS id, LOWER(TRIM(title)) AS t FROM designations GROUP BY LOWER(TRIM(title))) keeper
+              ON LOWER(TRIM(d.title)) = keeper.t AND d.id != keeper.id
+          ) sub
+          WHERE employee_designation_history.new_designation_id = sub.dup_id
+        `);
+        await db.query(`
+          DELETE FROM designations WHERE id IN (
+            SELECT d.id FROM designations d
+            JOIN (SELECT MIN(id) AS id, LOWER(TRIM(title)) AS t FROM designations GROUP BY LOWER(TRIM(title))) keeper
+              ON LOWER(TRIM(d.title)) = keeper.t AND d.id != keeper.id
+          )
+        `);
+        await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_designations_title_unique ON designations (LOWER(TRIM(title)))`);
         // ── Designation change history ──────────────────────────────────────
         await db.query(`CREATE TABLE IF NOT EXISTS employee_designation_history (
           id SERIAL PRIMARY KEY,
