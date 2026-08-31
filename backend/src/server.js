@@ -780,7 +780,8 @@ async function start() {
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS permanent_state VARCHAR(80)`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS permanent_state_code VARCHAR(5)`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS emergency_contact_name VARCHAR(150)`);
-        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(20)`);
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(50)`);
+        await db.query(`ALTER TABLE employees ALTER COLUMN emergency_contact_phone TYPE VARCHAR(50)`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS pt_state VARCHAR(80)`);
         // ── Designation change history ──────────────────────────────────────
         await db.query(`CREATE TABLE IF NOT EXISTS employee_designation_history (
