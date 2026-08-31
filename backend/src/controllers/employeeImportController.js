@@ -220,6 +220,10 @@ exports.importEmployees = async (req, res) => {
           }
         }
 
+        // Seed onboarding tracker steps
+        const onboardCtrl = require('./onboardingController');
+        await onboardCtrl.seedForEmployee(newEmp.id, client);
+
         await client.query('RELEASE SAVEPOINT row_import');
 
       } catch (rowErr) {

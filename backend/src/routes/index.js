@@ -1055,8 +1055,10 @@ router.delete('/qualifications/:id',           authenticate, empDocsCtrl.deleteQ
 // ── Onboarding Tracker (HR only) ─────────────────────────────────────────────
 router.get ('/onboarding/steps',                    authenticate, authorize(...HR_ADMIN), onboardCtrl.getSteps);
 router.get ('/onboarding/dashboard',                authenticate, authorize(...HR_ADMIN), onboardCtrl.getDashboard);
+router.post('/onboarding/seed-all',                 authenticate, authorize(...HR_ADMIN), onboardCtrl.seedAll);
 router.get ('/onboarding',                          authenticate, authorize(...HR_ADMIN), onboardCtrl.getAll);
 router.get ('/onboarding/:employee_id',             authenticate, authorize(...HR_ADMIN), onboardCtrl.getEmployee);
+router.get ('/onboarding/:employee_id/history',     authenticate, authorize(...HR_ADMIN), onboardCtrl.getHistory);
 router.post('/onboarding/:employee_id/step',        authenticate, authorize(...HR_ADMIN), onboardCtrl.updateStep);
 router.post('/onboarding/:employee_id/bulk',        authenticate, authorize(...HR_ADMIN), onboardCtrl.bulkUpdate);
 

@@ -19,6 +19,7 @@ const ONBOARDING_STEPS = [
 
 exports.ONBOARDING_STEPS = ONBOARDING_STEPS;
 
+// ── DB Init ──────────────────────────────────────────────────────────────────
 exports.initTables = async () => {
   try {
     await db.query(`
@@ -37,16 +38,56 @@ exports.initTables = async () => {
       );
     `);
     await db.query(`CREATE INDEX IF NOT EXISTS idx_onboarding_emp ON onboarding_tracker(employee_id)`);
-    console.log('✅ Onboarding tracker table ready');
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS onboarding_history (
+        id             SERIAL PRIMARY KEY,
+        employee_id    INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+        step_key       VARCHAR(50) NOT NULL,
+        old_status     VARCHAR(20),
+        new_status     VARCHAR(20) NOT NULL,
+        changed_by     INTEGER REFERENCES employees(id),
+        remarks        TEXT,
+        changed_at     TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_onboarding_hist_emp ON onboarding_history(employee_id)`);
+
+    console.log('✅ Onboarding tracker + history tables ready');
   } catch (err) {
     console.error('❌ Onboarding tracker table init error:', err.message);
   }
 };
 
+// ── Auto-seed: insert all 13 steps as 'pending' for a new employee ───────────
+// Called from employeeController.create and employeeImportController.importEmployees
+// Accepts either a pg Client (inside a transaction) or falls back to pool
+exports.seedForEmployee = async (employeeId, clientOrNull) => {
+  const q = clientOrNull || db;
+  for (const step of ONBOARDING_STEPS) {
+    await q.query(`
+      INSERT INTO onboarding_tracker (employee_id, step_key, step_order, status)
+      VALUES ($1, $2, $3, 'pending')
+      ON CONFLICT (employee_id, step_key) DO NOTHING
+    `, [employeeId, step.key, step.order]);
+  }
+};
+
+// ── Audit helper: log every status change ────────────────────────────────────
+async function logHistory(empId, stepKey, oldStatus, newStatus, changedBy, remarks, clientOrNull) {
+  const q = clientOrNull || db;
+  await q.query(`
+    INSERT INTO onboarding_history (employee_id, step_key, old_status, new_status, changed_by, remarks)
+    VALUES ($1, $2, $3, $4, $5, $6)
+  `, [empId, stepKey, oldStatus, newStatus, changedBy, remarks || null]);
+}
+
+// ── GET /onboarding/steps ────────────────────────────────────────────────────
 exports.getSteps = (req, res) => {
   res.json({ success: true, data: ONBOARDING_STEPS });
 };
 
+// ── GET /onboarding ──────────────────────────────────────────────────────────
 exports.getAll = async (req, res) => {
   try {
     const { status, search } = req.query;
@@ -104,6 +145,7 @@ exports.getAll = async (req, res) => {
   }
 };
 
+// ── GET /onboarding/:employee_id ─────────────────────────────────────────────
 exports.getEmployee = async (req, res) => {
   try {
     const empId = parseInt(req.params.employee_id);
@@ -123,6 +165,14 @@ exports.getEmployee = async (req, res) => {
 
     if (!empRes.rows.length)
       return res.status(404).json({ success: false, message: 'Employee not found' });
+
+    // Auto-seed if this employee has no rows yet (first time viewing)
+    const countRes = await db.query(
+      `SELECT COUNT(*) FROM onboarding_tracker WHERE employee_id = $1`, [empId]
+    );
+    if (parseInt(countRes.rows[0].count) === 0) {
+      await exports.seedForEmployee(empId);
+    }
 
     const stepsRes = await db.query(`
       SELECT ot.*, CONCAT(cb.first_name,' ',cb.last_name) AS completed_by_name
@@ -155,6 +205,7 @@ exports.getEmployee = async (req, res) => {
   }
 };
 
+// ── POST /onboarding/:employee_id/step ───────────────────────────────────────
 exports.updateStep = async (req, res) => {
   try {
     const empId   = parseInt(req.params.employee_id);
@@ -171,6 +222,13 @@ exports.updateStep = async (req, res) => {
     if (!validStatuses.includes(status))
       return res.status(400).json({ success: false, message: 'Status must be pending, done, or na' });
 
+    // Get old status for audit
+    const oldRes = await db.query(
+      `SELECT status FROM onboarding_tracker WHERE employee_id = $1 AND step_key = $2`,
+      [empId, step_key]
+    );
+    const oldStatus = oldRes.rows[0]?.status || 'pending';
+
     const completedAt = status === 'done' ? new Date() : null;
     const completedBy = status === 'done' ? req.user.id : null;
 
@@ -183,6 +241,11 @@ exports.updateStep = async (req, res) => {
                     updated_at = NOW()
     `, [empId, step_key, stepDef.order, status, completedAt, completedBy, remarks || null]);
 
+    // Audit log
+    if (oldStatus !== status) {
+      await logHistory(empId, step_key, oldStatus, status, req.user.id, remarks);
+    }
+
     res.json({ success: true, message: `Step "${stepDef.label}" updated to ${status}` });
   } catch (err) {
     console.error('[onboarding.updateStep]', err.message);
@@ -190,6 +253,7 @@ exports.updateStep = async (req, res) => {
   }
 };
 
+// ── POST /onboarding/:employee_id/bulk ───────────────────────────────────────
 exports.bulkUpdate = async (req, res) => {
   try {
     const empId = parseInt(req.params.employee_id);
@@ -205,6 +269,12 @@ exports.bulkUpdate = async (req, res) => {
         const stepDef = ONBOARDING_STEPS.find(d => d.key === s.step_key);
         if (!stepDef) continue;
 
+        const oldRes = await client.query(
+          `SELECT status FROM onboarding_tracker WHERE employee_id = $1 AND step_key = $2`,
+          [empId, s.step_key]
+        );
+        const oldStatus = oldRes.rows[0]?.status || 'pending';
+
         const completedAt = s.status === 'done' ? new Date() : null;
         const completedBy = s.status === 'done' ? req.user.id : null;
 
@@ -216,6 +286,10 @@ exports.bulkUpdate = async (req, res) => {
                         remarks = COALESCE($7, onboarding_tracker.remarks),
                         updated_at = NOW()
         `, [empId, s.step_key, stepDef.order, s.status, completedAt, completedBy, s.remarks || null]);
+
+        if (oldStatus !== s.status) {
+          await logHistory(empId, s.step_key, oldStatus, s.status, req.user.id, s.remarks, client);
+        }
       }
       await client.query('COMMIT');
     } catch (e) {
@@ -232,6 +306,48 @@ exports.bulkUpdate = async (req, res) => {
   }
 };
 
+// ── POST /onboarding/seed-all — backfill existing employees ──────────────────
+exports.seedAll = async (req, res) => {
+  try {
+    const empRes = await db.query(`SELECT id FROM employees WHERE is_active = true`);
+    let seeded = 0;
+    for (const emp of empRes.rows) {
+      const existing = await db.query(
+        `SELECT COUNT(*) FROM onboarding_tracker WHERE employee_id = $1`, [emp.id]
+      );
+      if (parseInt(existing.rows[0].count) === 0) {
+        await exports.seedForEmployee(emp.id);
+        seeded++;
+      }
+    }
+    res.json({ success: true, message: `Seeded onboarding steps for ${seeded} employee(s)`, seeded });
+  } catch (err) {
+    console.error('[onboarding.seedAll]', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ── GET /onboarding/:employee_id/history — full audit trail ──────────────────
+exports.getHistory = async (req, res) => {
+  try {
+    const empId = parseInt(req.params.employee_id);
+    const result = await db.query(`
+      SELECT oh.*,
+             CONCAT(cb.first_name,' ',cb.last_name) AS changed_by_name
+      FROM onboarding_history oh
+      LEFT JOIN employees cb ON oh.changed_by = cb.id
+      WHERE oh.employee_id = $1
+      ORDER BY oh.changed_at DESC
+      LIMIT 100
+    `, [empId]);
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error('[onboarding.getHistory]', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ── GET /onboarding/dashboard ────────────────────────────────────────────────
 exports.getDashboard = async (req, res) => {
   try {
     const totalEmpRes = await db.query(`SELECT COUNT(*) FROM employees WHERE is_active = true`);

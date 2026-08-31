@@ -374,6 +374,10 @@ exports.create = async (req, res) => {
       }
     }
 
+    // Seed onboarding tracker steps for the new employee
+    const onboardCtrl = require('./onboardingController');
+    await onboardCtrl.seedForEmployee(newEmp.id, client);
+
     await client.query('COMMIT');
 
     // Send welcome email to new employee (async, don't block response)

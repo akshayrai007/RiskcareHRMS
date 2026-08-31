@@ -115,6 +115,38 @@
     /* ── Login access sub-items ── */
     .ob-sub-label { font-size:.72rem; color:var(--muted2); margin-top:3px; }
 
+    /* ── Seed All button ── */
+    .ob-seed-btn {
+      padding:8px 16px; border-radius:8px; border:1px solid var(--accent);
+      background:var(--accent-l); color:var(--accent); font-size:.78rem;
+      font-weight:700; cursor:pointer; transition:all .2s; white-space:nowrap;
+    }
+    .ob-seed-btn:hover { background:var(--accent); color:#fff; }
+
+    /* ── Detail tabs ── */
+    .ob-tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:16px; }
+    .ob-tab {
+      padding:10px 20px; font-size:.85rem; font-weight:700; cursor:pointer;
+      border-bottom:3px solid transparent; margin-bottom:-2px; color:var(--muted);
+      transition:all .2s; background:none; border-top:none; border-left:none; border-right:none;
+    }
+    .ob-tab:hover { color:var(--text); }
+    .ob-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+    /* ── History list ── */
+    .ob-history-item {
+      padding:10px 0; border-bottom:1px solid var(--surface3); display:flex; gap:12px; align-items:flex-start;
+    }
+    .ob-history-item:last-child { border-bottom:none; }
+    .ob-history-badge {
+      width:8px; height:8px; border-radius:50%; margin-top:6px; flex-shrink:0;
+    }
+    .ob-history-badge.done { background:var(--green); }
+    .ob-history-badge.pending { background:var(--yellow); }
+    .ob-history-badge.na { background:var(--muted2); }
+    .ob-history-text { font-size:.82rem; color:var(--text); }
+    .ob-history-meta { font-size:.72rem; color:var(--muted2); margin-top:2px; }
+
     /* ── Responsive ── */
     @media(max-width:900px) {
       .ob-layout { flex-direction:column; }
@@ -187,6 +219,7 @@
       <div class="ob-list-panel">
         <div class="ob-toolbar">
           <input type="text" class="ob-search" id="ob-search" placeholder="Search employee name or code...">
+          <button class="ob-seed-btn" onclick="seedAll()" title="Initialize onboarding steps for all existing employees">Seed All</button>
         </div>
         <div class="ob-emp-list" id="ob-emp-list">
           <div class="ob-empty"><div class="ob-empty-icon">⏳</div><div class="ob-empty-text">Loading...</div></div>
@@ -362,7 +395,12 @@ async function selectEmployee(empId) {
         </div>
       </div>
       <div class="ob-detail-body">
-        ${stepsHtml}
+        <div class="ob-tabs">
+          <button class="ob-tab active" onclick="showTab('checklist',this)">Checklist</button>
+          <button class="ob-tab" onclick="showTab('history',this);loadHistory(${empId})">History</button>
+        </div>
+        <div id="ob-tab-checklist">${stepsHtml}</div>
+        <div id="ob-tab-history" style="display:none;"><div class="ob-empty"><div class="ob-empty-text">Click to load history</div></div></div>
       </div>
     </div>
   `;
@@ -397,6 +435,51 @@ document.getElementById('ob-search').addEventListener('input', () => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(loadEmployees, 300);
 });
+
+function showTab(tab, btn) {
+  document.getElementById('ob-tab-checklist').style.display = tab === 'checklist' ? '' : 'none';
+  document.getElementById('ob-tab-history').style.display = tab === 'history' ? '' : 'none';
+  document.querySelectorAll('.ob-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function loadHistory(empId) {
+  const container = document.getElementById('ob-tab-history');
+  container.innerHTML = '<div class="ob-empty"><div class="ob-empty-icon">⏳</div><div class="ob-empty-text">Loading...</div></div>';
+
+  const res = await api('GET', '/onboarding/' + empId + '/history');
+  if (!res?.success || !res.data.length) {
+    container.innerHTML = '<div class="ob-empty"><div class="ob-empty-icon">📋</div><div class="ob-empty-text">No history yet</div></div>';
+    return;
+  }
+
+  container.innerHTML = res.data.map(h => {
+    const label = STEP_LABELS[h.step_key] || h.step_key;
+    const arrow = h.old_status + ' → ' + h.new_status;
+    const when = fmt.date(h.changed_at) + ' ' + new Date(h.changed_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    return `
+      <div class="ob-history-item">
+        <div class="ob-history-badge ${h.new_status}"></div>
+        <div>
+          <div class="ob-history-text"><strong>${label}</strong> — ${arrow}</div>
+          <div class="ob-history-meta">${when}${h.changed_by_name ? ' by ' + h.changed_by_name : ''}${h.remarks ? ' · ' + h.remarks : ''}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function seedAll() {
+  if (!confirm('This will initialize onboarding steps for all existing employees who don\'t have them yet. Continue?')) return;
+  const res = await api('POST', '/onboarding/seed-all');
+  if (res?.success) {
+    toast(res.message, 'success');
+    loadDashboard();
+    loadEmployees();
+  } else {
+    toast(res?.message || 'Failed to seed', 'error');
+  }
+}
 
 loadDashboard();
 loadEmployees();
