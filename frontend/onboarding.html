@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="page-title">Onboarding Tracker</title>
+  <script src="config.js"></script>
+  <link rel="icon" type="image/x-icon" href="Logo.png">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .ob-layout { display:flex; gap:20px; align-items:flex-start; }
+    .ob-list-panel { width:380px; flex-shrink:0; display:flex; flex-direction:column; gap:14px; }
+    .ob-detail-panel { flex:1; min-width:0; }
+
+    /* ── Dashboard summary cards ── */
+    .ob-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+    .ob-stat {
+      background:#fff; border-radius:12px; padding:16px; text-align:center;
+      border:1px solid var(--border); box-shadow:var(--shadow-xs);
+      transition:transform .15s, box-shadow .15s; cursor:pointer;
+    }
+    .ob-stat:hover { transform:translateY(-2px); box-shadow:var(--shadow-sm); }
+    .ob-stat.active { border-color:var(--accent); background:var(--accent-l); }
+    .ob-stat-num { font-size:1.8rem; font-weight:800; line-height:1; }
+    .ob-stat-label { font-size:.75rem; font-weight:600; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:.04em; }
+    .ob-stat.all .ob-stat-num { color:var(--accent); }
+    .ob-stat.done .ob-stat-num { color:var(--green); }
+    .ob-stat.wip .ob-stat-num { color:var(--yellow); }
+    .ob-stat.none .ob-stat-num { color:var(--muted2); }
+
+    /* ── Search & filter ── */
+    .ob-toolbar { display:flex; gap:10px; margin-bottom:14px; align-items:center; }
+    .ob-search {
+      flex:1; padding:9px 14px; border:1px solid var(--border); border-radius:10px;
+      font-size:.88rem; background:var(--surface); transition:border-color .2s;
+    }
+    .ob-search:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(192,39,45,.12); }
+
+    /* ── Employee list ── */
+    .ob-emp-list { display:flex; flex-direction:column; gap:8px; max-height:calc(100vh - 280px); overflow-y:auto; padding-right:4px; }
+    .ob-emp-card {
+      background:#fff; border:1px solid var(--border); border-radius:10px; padding:14px;
+      cursor:pointer; transition:all .2s; border-left:4px solid var(--border);
+    }
+    .ob-emp-card:hover { border-color:var(--accent); border-left-color:var(--accent); box-shadow:var(--shadow-xs); }
+    .ob-emp-card.active { border-color:var(--accent); border-left-color:var(--accent); background:var(--accent-l); }
+    .ob-emp-name { font-weight:700; font-size:.9rem; color:var(--text); }
+    .ob-emp-code { font-size:.78rem; color:var(--muted); }
+    .ob-emp-desig { font-size:.78rem; color:var(--muted2); margin-top:2px; }
+    .ob-emp-meta { display:flex; gap:8px; margin-top:8px; align-items:center; flex-wrap:wrap; }
+
+    /* ── Progress bar ── */
+    .ob-progress-wrap { flex:1; height:8px; background:var(--surface2); border-radius:99px; overflow:hidden; min-width:100px; }
+    .ob-progress-fill { height:100%; border-radius:99px; transition:width .3s; }
+    .ob-progress-fill.green { background:var(--green); }
+    .ob-progress-fill.yellow { background:var(--yellow); }
+    .ob-progress-fill.gray { background:var(--muted2); }
+    .ob-progress-text { font-size:.72rem; font-weight:700; color:var(--muted); white-space:nowrap; }
+
+    /* ── Detail panel ── */
+    .ob-detail-card {
+      background:#fff; border-radius:14px; box-shadow:var(--shadow-sm);
+      border:1px solid var(--border); overflow:hidden;
+    }
+    .ob-detail-header {
+      padding:20px 24px; display:flex; align-items:center; justify-content:space-between;
+      background:linear-gradient(135deg, var(--cfg-primary), var(--cfg-accent)); color:#fff;
+    }
+    .ob-detail-header h3 { margin:0; font-size:1.05rem; }
+    .ob-detail-sub { font-size:.8rem; opacity:.85; margin-top:2px; }
+    .ob-detail-body { padding:20px 24px; }
+
+    /* ── Onboarding checklist ── */
+    .ob-step {
+      display:flex; align-items:center; gap:14px; padding:14px 0;
+      border-bottom:1px solid var(--surface3); transition:background .15s;
+    }
+    .ob-step:last-child { border-bottom:none; }
+    .ob-step:hover { background:var(--surface2); margin:0 -24px; padding:14px 24px; border-radius:8px; }
+    .ob-step-num {
+      width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+      font-size:.78rem; font-weight:800; flex-shrink:0; border:2px solid var(--border);
+      color:var(--muted); background:var(--surface2);
+    }
+    .ob-step-num.done { background:var(--green); color:#fff; border-color:var(--green); }
+    .ob-step-num.na { background:var(--muted2); color:#fff; border-color:var(--muted2); }
+    .ob-step-info { flex:1; min-width:0; }
+    .ob-step-label { font-weight:600; font-size:.9rem; }
+    .ob-step-label.done { text-decoration:line-through; color:var(--muted); }
+    .ob-step-meta { font-size:.72rem; color:var(--muted2); margin-top:2px; }
+    .ob-step-actions { display:flex; gap:6px; align-items:center; flex-shrink:0; }
+
+    .ob-btn {
+      padding:5px 14px; border-radius:8px; border:none; cursor:pointer;
+      font-size:.78rem; font-weight:700; transition:all .2s;
+    }
+    .ob-btn-done { background:var(--green); color:#fff; }
+    .ob-btn-done:hover { background:var(--green-d); }
+    .ob-btn-undo { background:var(--surface2); color:var(--muted); border:1px solid var(--border); }
+    .ob-btn-undo:hover { background:var(--red-l); color:var(--red); border-color:var(--red); }
+    .ob-btn-na { background:var(--surface2); color:var(--muted2); border:1px solid var(--border); font-size:.7rem; }
+    .ob-btn-na:hover { background:var(--yellow-l); color:var(--yellow-d); }
+
+    .ob-remarks-input {
+      width:120px; padding:4px 8px; border:1px solid var(--border); border-radius:6px;
+      font-size:.78rem; background:var(--surface);
+    }
+    .ob-remarks-input:focus { outline:none; border-color:var(--accent); }
+
+    /* ── Empty state ── */
+    .ob-empty { text-align:center; padding:60px 20px; color:var(--muted2); }
+    .ob-empty-icon { font-size:3rem; margin-bottom:12px; }
+    .ob-empty-text { font-size:.95rem; }
+
+    /* ── Login access sub-items ── */
+    .ob-sub-label { font-size:.72rem; color:var(--muted2); margin-top:3px; }
+
+    /* ── Responsive ── */
+    @media(max-width:900px) {
+      .ob-layout { flex-direction:column; }
+      .ob-list-panel { width:100%; }
+      .ob-summary { grid-template-columns:repeat(2,1fr); }
+      .ob-emp-list { max-height:300px; }
+    }
+    @media(max-width:500px) {
+      .ob-summary { grid-template-columns:1fr 1fr; }
+      .ob-step { gap:10px; }
+      .ob-remarks-input { width:80px; }
+    }
+  </style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark"></div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div></div>
+      <div class="sidebar-company-short" id="sidebar-company-short"></div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">Onboarding Tracker</div>
+    </div>
+    <div class="topbar-right">
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+    <!-- Summary Cards -->
+    <div class="ob-summary">
+      <div class="ob-stat all active" onclick="filterByStatus('all')">
+        <div class="ob-stat-num" id="stat-all">-</div>
+        <div class="ob-stat-label">All Employees</div>
+      </div>
+      <div class="ob-stat done" onclick="filterByStatus('completed')">
+        <div class="ob-stat-num" id="stat-done">-</div>
+        <div class="ob-stat-label">Fully Completed</div>
+      </div>
+      <div class="ob-stat wip" onclick="filterByStatus('in_progress')">
+        <div class="ob-stat-num" id="stat-wip">-</div>
+        <div class="ob-stat-label">In Progress</div>
+      </div>
+      <div class="ob-stat none" onclick="filterByStatus('not_started')">
+        <div class="ob-stat-num" id="stat-none">-</div>
+        <div class="ob-stat-label">Not Started</div>
+      </div>
+    </div>
+
+    <div class="ob-layout">
+      <!-- ── LEFT: Employee List ── -->
+      <div class="ob-list-panel">
+        <div class="ob-toolbar">
+          <input type="text" class="ob-search" id="ob-search" placeholder="Search employee name or code...">
+        </div>
+        <div class="ob-emp-list" id="ob-emp-list">
+          <div class="ob-empty"><div class="ob-empty-icon">⏳</div><div class="ob-empty-text">Loading...</div></div>
+        </div>
+      </div>
+
+      <!-- ── RIGHT: Detail Panel ── -->
+      <div class="ob-detail-panel" id="ob-detail-panel">
+        <div class="ob-detail-card">
+          <div class="ob-empty">
+            <div class="ob-empty-icon">👈</div>
+            <div class="ob-empty-text">Select an employee to view their onboarding checklist</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+if (!Auth.guard()) throw 'Not authenticated';
+if (!Role.is('admin','super_admin','hr')) { window.location.href = 'attendance.html'; throw 'Unauthorized'; }
+buildSidebar('onboarding.html');
+
+const STEP_LABELS = {
+  offer_letter:       'Offer Letter',
+  joining_formalities:'Joining Formalities',
+  document_upload:    'Document Upload',
+  email_id:           'Email ID',
+  welcome_mail:       'Welcome Mail',
+  login_accesses:     'Login Accesses (Attendance, RCBS, Bimaraja)',
+  assets:             'Assets (Laptop, ID Card etc)',
+  add_to_gpa:         'Add to GPA',
+  add_to_gtl:         'Add to GTL',
+  appointment_letter: 'Appointment Letter',
+  confirmation_mail:  'Confirmation Mail (after 3 months)',
+  increment_letter:   'Increment Letter',
+  relieving_letter:   'Relieving Letter',
+};
+
+let allEmployees = [];
+let selectedEmpId = null;
+let currentFilter = 'all';
+let searchTimer = null;
+
+async function loadDashboard() {
+  const res = await api('GET', '/onboarding/dashboard');
+  if (!res?.success) return;
+  const d = res.data;
+  document.getElementById('stat-all').textContent = d.total_employees;
+  document.getElementById('stat-done').textContent = d.fully_completed;
+  document.getElementById('stat-wip').textContent = d.in_progress;
+  document.getElementById('stat-none').textContent = d.not_started;
+}
+
+async function loadEmployees() {
+  const search = document.getElementById('ob-search').value.trim();
+  let url = '/onboarding';
+  const params = [];
+  if (currentFilter !== 'all') params.push('status=' + currentFilter);
+  if (search) params.push('search=' + encodeURIComponent(search));
+  if (params.length) url += '?' + params.join('&');
+
+  const res = await api('GET', url);
+  if (!res?.success) return;
+  allEmployees = res.data;
+  renderEmployeeList();
+}
+
+function renderEmployeeList() {
+  const list = document.getElementById('ob-emp-list');
+  if (!allEmployees.length) {
+    list.innerHTML = '<div class="ob-empty"><div class="ob-empty-icon">📭</div><div class="ob-empty-text">No employees found</div></div>';
+    return;
+  }
+
+  list.innerHTML = allEmployees.map(e => {
+    const total = 13;
+    const done = parseInt(e.completed_steps) || 0;
+    const pct = Math.round((done / total) * 100);
+    const barClass = pct >= 100 ? 'green' : pct > 0 ? 'yellow' : 'gray';
+    const isActive = e.id === selectedEmpId ? 'active' : '';
+
+    return `
+      <div class="ob-emp-card ${isActive}" onclick="selectEmployee(${e.id})">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div class="ob-emp-name">${e.full_name}</div>
+            <div class="ob-emp-code">${e.employee_code}</div>
+          </div>
+          <div class="ob-progress-text">${done}/${total}</div>
+        </div>
+        <div class="ob-emp-desig">${e.designation_title || ''} ${e.department_name ? '· ' + e.department_name : ''}</div>
+        <div class="ob-emp-meta">
+          <div class="ob-progress-wrap"><div class="ob-progress-fill ${barClass}" style="width:${pct}%"></div></div>
+          <div class="ob-progress-text">${pct}%</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function selectEmployee(empId) {
+  selectedEmpId = empId;
+  renderEmployeeList();
+
+  const panel = document.getElementById('ob-detail-panel');
+  panel.innerHTML = '<div class="ob-detail-card"><div class="ob-empty"><div class="ob-empty-icon">⏳</div><div class="ob-empty-text">Loading...</div></div></div>';
+
+  const res = await api('GET', '/onboarding/' + empId);
+  if (!res?.success) {
+    panel.innerHTML = '<div class="ob-detail-card"><div class="ob-empty"><div class="ob-empty-icon">❌</div><div class="ob-empty-text">Failed to load</div></div></div>';
+    return;
+  }
+
+  const emp = res.employee;
+  const steps = res.steps;
+  const doneCount = steps.filter(s => s.status === 'done').length;
+  const pct = Math.round((doneCount / 13) * 100);
+
+  let stepsHtml = steps.map((s, i) => {
+    const isDone = s.status === 'done';
+    const isNA = s.status === 'na';
+    const numClass = isDone ? 'done' : isNA ? 'na' : '';
+    const labelClass = isDone ? 'done' : '';
+    const label = STEP_LABELS[s.step_key] || s.label;
+
+    let meta = '';
+    if (isDone && s.completed_at) {
+      meta = 'Completed ' + fmt.date(s.completed_at);
+      if (s.completed_by_name) meta += ' by ' + s.completed_by_name;
+    } else if (isNA) {
+      meta = 'Not Applicable';
+    }
+    if (s.remarks) meta += (meta ? ' · ' : '') + s.remarks;
+
+    let actions = '';
+    if (isDone) {
+      actions = `<button class="ob-btn ob-btn-undo" onclick="updateStep(${empId},'${s.step_key}','pending',event)">Undo</button>`;
+    } else if (isNA) {
+      actions = `<button class="ob-btn ob-btn-undo" onclick="updateStep(${empId},'${s.step_key}','pending',event)">Undo</button>`;
+    } else {
+      actions = `
+        <input type="text" class="ob-remarks-input" id="rem-${s.step_key}" placeholder="Remarks..." value="${s.remarks || ''}">
+        <button class="ob-btn ob-btn-done" onclick="updateStep(${empId},'${s.step_key}','done',event)">✓ Done</button>
+        <button class="ob-btn ob-btn-na" onclick="updateStep(${empId},'${s.step_key}','na',event)">N/A</button>
+      `;
+    }
+
+    return `
+      <div class="ob-step">
+        <div class="ob-step-num ${numClass}">${isDone ? '✓' : isNA ? '—' : (i + 1)}</div>
+        <div class="ob-step-info">
+          <div class="ob-step-label ${labelClass}">${label}</div>
+          ${meta ? '<div class="ob-step-meta">' + meta + '</div>' : ''}
+        </div>
+        <div class="ob-step-actions">${actions}</div>
+      </div>
+    `;
+  }).join('');
+
+  panel.innerHTML = `
+    <div class="ob-detail-card">
+      <div class="ob-detail-header">
+        <div>
+          <h3>${emp.full_name} (${emp.employee_code})</h3>
+          <div class="ob-detail-sub">${emp.designation_title || ''} ${emp.department_name ? '· ' + emp.department_name : ''} ${emp.joining_date ? '· Joined ' + fmt.date(emp.joining_date) : ''}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:1.6rem;font-weight:800;">${pct}%</div>
+          <div style="font-size:.75rem;opacity:.8;">${doneCount}/13 steps</div>
+        </div>
+      </div>
+      <div class="ob-detail-body">
+        ${stepsHtml}
+      </div>
+    </div>
+  `;
+}
+
+async function updateStep(empId, stepKey, status, event) {
+  if (event) event.stopPropagation();
+
+  const remarksEl = document.getElementById('rem-' + stepKey);
+  const remarks = remarksEl ? remarksEl.value.trim() : '';
+
+  const res = await api('POST', '/onboarding/' + empId + '/step', { step_key: stepKey, status, remarks: remarks || undefined });
+  if (res?.success) {
+    toast(res.message, 'success');
+    await selectEmployee(empId);
+    loadDashboard();
+    loadEmployees();
+  } else {
+    toast(res?.message || 'Failed to update', 'error');
+  }
+}
+
+function filterByStatus(status) {
+  currentFilter = status;
+  document.querySelectorAll('.ob-stat').forEach(el => el.classList.remove('active'));
+  const map = { all: 'all', completed: 'done', in_progress: 'wip', not_started: 'none' };
+  document.querySelector('.ob-stat.' + map[status])?.classList.add('active');
+  loadEmployees();
+}
+
+document.getElementById('ob-search').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(loadEmployees, 300);
+});
+
+loadDashboard();
+loadEmployees();
+</script>
+</body>
+</html>

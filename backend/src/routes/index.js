@@ -26,6 +26,7 @@ const itDeclCtrl     = require('../controllers/itDeclarationController');
 const docsCtrl        = require('../controllers/documentsController');
 const offerCtrl       = require('../controllers/offerLetterController');
 const relievingCtrl   = require('../controllers/relievingLetterController');
+const onboardCtrl     = require('../controllers/onboardingController');
 
 const ADMIN      = ['admin','super_admin'];
 const HR_ADMIN   = ['hr','admin','super_admin','accounts'];
@@ -1050,6 +1051,14 @@ router.delete('/prev-employment/:id',          authenticate, empDocsCtrl.deleteP
 router.get   ('/qualifications/:employee_id',  authenticate, empDocsCtrl.getQualifications);
 router.post  ('/qualifications',               authenticate, empDocsCtrl.upsertQualification);
 router.delete('/qualifications/:id',           authenticate, empDocsCtrl.deleteQualification);
+
+// ── Onboarding Tracker (HR only) ─────────────────────────────────────────────
+router.get ('/onboarding/steps',                    authenticate, authorize(...HR_ADMIN), onboardCtrl.getSteps);
+router.get ('/onboarding/dashboard',                authenticate, authorize(...HR_ADMIN), onboardCtrl.getDashboard);
+router.get ('/onboarding',                          authenticate, authorize(...HR_ADMIN), onboardCtrl.getAll);
+router.get ('/onboarding/:employee_id',             authenticate, authorize(...HR_ADMIN), onboardCtrl.getEmployee);
+router.post('/onboarding/:employee_id/step',        authenticate, authorize(...HR_ADMIN), onboardCtrl.updateStep);
+router.post('/onboarding/:employee_id/bulk',        authenticate, authorize(...HR_ADMIN), onboardCtrl.bulkUpdate);
 
 // ── Send Documents (HR → Employee ad-hoc document delivery) ──────────────────
 const sendDocsCtrl = require('../controllers/sendDocumentsController');

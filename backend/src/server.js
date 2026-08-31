@@ -16,6 +16,7 @@ const emailSvc = require('./config/emailService'); // for startup repair
 const offerCtrl      = require('./controllers/offerLetterController');
 const relievingCtrl  = require('./controllers/relievingLetterController');
 const itDeclCtrl = require('./controllers/itDeclarationController');
+const onboardCtrl = require('./controllers/onboardingController');
 
 const app    = express();
 const server = http.createServer(app);
@@ -798,6 +799,7 @@ async function start() {
         await sendDocsCtrl.initTables();
         const projCtrl = require('./controllers/projectController');
         await projCtrl.migrate();
+        await onboardCtrl.initTables();
         // ── Add deactivation_remark column if it doesn't exist ─────────────
         await db.query(`
           ALTER TABLE employees
