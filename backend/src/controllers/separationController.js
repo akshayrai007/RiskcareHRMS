@@ -757,6 +757,51 @@ exports.processLWD = async (req, res) => {
   }
 };
 
+// ── Download Bulk Separation Import Template ─────────────────────────────────
+exports.bulkSeparateTemplate = async (req, res) => {
+  try {
+    const XLSX = require('xlsx');
+    const empRes = await db.query(
+      `SELECT employee_code, first_name, last_name FROM employees WHERE is_active = true ORDER BY employee_code LIMIT 2`
+    );
+    const sample = empRes.rows[0];
+
+    const data = [
+      {
+        'Employee ID': sample ? sample.employee_code : 'E123',
+        'Separation Type': 'resignation',
+        'Separation Date': '2026-08-31',
+        'Reason': 'Personal reasons'
+      }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [{ wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 30 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Bulk Separation');
+
+    const legend = [
+      { 'Field': 'Employee ID', 'Instructions': 'Required. Must match an existing ACTIVE employee_code exactly (e.g. E066).' },
+      { 'Field': 'Separation Type', 'Instructions': 'One of: resignation, termination, retirement, absconding, end_of_contract, mutual-separation. Defaults to resignation if blank/invalid.' },
+      { 'Field': 'Separation Date', 'Instructions': 'Last working day, format YYYY-MM-DD. Defaults to today if blank.' },
+      { 'Field': 'Reason', 'Instructions': 'Free text. Optional — defaults to "Bulk import — resigned".' },
+      { 'Field': '', 'Instructions': '' },
+      { 'Field': '⚠ WARNING', 'Instructions': 'This IMMEDIATELY deactivates the employee login and marks them inactive. It skips the normal approval workflow — use only for backfilling employees who have already left.' },
+    ];
+    const wsLegend = XLSX.utils.json_to_sheet(legend);
+    wsLegend['!cols'] = [{ wch: 18 }, { wch: 90 }];
+    XLSX.utils.book_append_sheet(wb, wsLegend, 'Instructions');
+
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="Bulk_Separation_Template.xlsx"');
+    res.send(buf);
+  } catch (err) {
+    console.error('[bulkSeparateTemplate]', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // ── Bulk Resignation/Separation Import (Excel) ───────────────────────────────
 // Columns expected: Employee ID, Separation Type, Separation Date, Reason
 // Marks each matched employee is_active=false immediately (skips the 4-level

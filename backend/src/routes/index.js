@@ -505,6 +505,7 @@ router.get ('/separations/notice-period',        authenticate,                  
 router.post('/separations/resign',               authenticate,                                                        sepCtrl.submitResignation);
 router.post('/separations/process-lwd',          authenticate, authorize('super_admin','admin'),                      sepCtrl.processLWD);
 router.get ('/separations/my',                   authenticate,                                                        sepCtrl.getMySeparations);
+router.get ('/separations/bulk-template',        authenticate, authorize(...HR_ADMIN),                                sepCtrl.bulkSeparateTemplate);
 router.get ('/separations/:id',                  authenticate,                                                        sepCtrl.getOne);
 router.post('/separations/:id/withdraw',         authenticate,                                                        sepCtrl.withdraw);
 router.post('/separations/:id/manager-action',   authenticate, authorize('manager','tl','admin','super_admin'),       sepCtrl.managerAction);

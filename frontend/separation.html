@@ -112,6 +112,7 @@
             Show Resigned / Inactive Employees
           </label>
           <button class="btn btn-outline btn-sm" onclick="downloadResignedDocsZip()">⬇ Download All Resigned Docs (ZIP)</button>
+          <button class="btn btn-outline btn-sm" onclick="downloadBulkSeparateTemplate()">📄 Download Template</button>
           <label class="btn btn-sm" id="bulk-separate-btn" style="background:#dc2626;color:#fff;cursor:pointer;margin:0">⬆ Bulk Update Resigned <input type="file" accept=".xlsx,.xls" style="display:none" onchange="bulkSeparateImport(this)"></label>
         </div>
       </div>
@@ -356,6 +357,22 @@ async function loadPendingApprovals() {
     return;
   }
   el.innerHTML = mine.map(s => renderSepCard(s, true)).join('');
+}
+
+async function downloadBulkSeparateTemplate() {
+  try {
+    const res = await fetch(`${API_BASE}/separations/bulk-template`, {
+      headers: { Authorization: 'Bearer ' + Auth.getToken() }
+    });
+    if (!res.ok) { toast('Download failed','error'); return; }
+    const blob = await res.blob();
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: 'Bulk_Separation_Template.xlsx'
+    });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  } catch(e) { toast('Download failed: '+e.message,'error'); }
 }
 
 async function bulkSeparateImport(input) {
