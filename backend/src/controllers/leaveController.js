@@ -1485,7 +1485,7 @@ exports.importLeaveBalances = async (req, res) => {
   let updated = 0, skipped = 0;
   const errors = [];
 
-  const client = await db.connect();
+  const client = await db.getClient();
   try {
     await client.query('BEGIN');
 
