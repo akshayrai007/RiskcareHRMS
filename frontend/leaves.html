@@ -154,7 +154,7 @@
     <div id="tab-leave-summary" style="display:none">
       <div class="card">
         <div class="card-header" style="flex-wrap:wrap;gap:10px">
-          <div class="card-title"><span class="card-title-icon">📊</span>Leave Summary — EL / SL / CL</div>
+          <div class="card-title"><span class="card-title-icon">📊</span>Leave Summary — EL / CL-SL / ML</div>
           <div class="flex gap-2" style="flex-wrap:wrap;align-items:center">
             <input id="summary-search" class="form-control" style="width:220px" placeholder="Search or leave blank for all…" oninput="loadLeaveSummary()">
             <select id="summary-year" class="form-control" style="width:100px" onchange="loadLeaveSummary()">
@@ -495,7 +495,7 @@ async function loadBalance() {
   byCode['CL/SL'] = clsl;
 
   // Build from whichever codes the API returned (excluding raw CL/SL, replaced by the combined card)
-  const apiCodes = balanceData.map(b => b.code).filter(c => c !== 'CL' && c !== 'SL');
+  const apiCodes = balanceData.map(b => b.code).filter(c => c !== 'CL' && c !== 'SL' && c !== 'OD');
   const showCodes = [...new Set([...ALWAYS_SHOW.map(x => x.code), ...apiCodes])];
   const items = showCodes.map(code => {
     const api = byCode[code];
@@ -963,8 +963,8 @@ async function loadLeaveSummary() {
         <tr>
           <th colspan="4" style="${XLH};background:#e8eaf6;border:1px solid #9fa8da"></th>
           <th colspan="3" style="${XLH};background:#fce4ec;border:1px solid #f48fb1;color:#880e4f">📅 Earned Leave (EL)</th>
-          <th colspan="3" style="${XLH};background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20">🤒 Sick Leave (SL)</th>
-          <th colspan="3" style="${XLH};background:#fff8e1;border:1px solid #ffe082;color:#e65100">📋 Casual Leave (CL)</th>
+          <th colspan="3" style="${XLH};background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20">🤒 CL / SL</th>
+          <th colspan="3" style="${XLH};background:#f3e5f5;border:1px solid #ce93d8;color:#6a1b9a">🤰 Maternity Leave</th>
         </tr>
         <tr>
           <th style="${XLH}">Emp Code</th>
@@ -977,9 +977,9 @@ async function loadLeaveSummary() {
           <th style="${XLH};background:#e8f5e9">Allocated</th>
           <th style="${XLH};background:#e8f5e9">Used</th>
           <th style="${XLH};background:#e8f5e9">Available</th>
-          <th style="${XLH};background:#fff8e1">Allocated</th>
-          <th style="${XLH};background:#fff8e1">Used</th>
-          <th style="${XLH};background:#fff8e1">Available</th>
+          <th style="${XLH};background:#f3e5f5">Allocated</th>
+          <th style="${XLH};background:#f3e5f5">Used</th>
+          <th style="${XLH};background:#f3e5f5">Available</th>
         </tr>
       </thead>
       <tbody>
@@ -991,12 +991,12 @@ async function loadLeaveSummary() {
           <td style="${XLD};text-align:center">${fmt.num(r.el_allocated)}</td>
           <td style="${XLD};text-align:center;color:#c62828;font-weight:600">${fmt.num(r.el_used)}</td>
           <td style="${XLD};text-align:center;color:#2e7d32;font-weight:700">${fmt.num(r.el_available)}</td>
-          <td style="${XLD};text-align:center">${fmt.num(r.sl_allocated)}</td>
-          <td style="${XLD};text-align:center;color:#c62828;font-weight:600">${fmt.num(r.sl_used)}</td>
-          <td style="${XLD};text-align:center;color:#2e7d32;font-weight:700">${fmt.num(r.sl_available)}</td>
-          <td style="${XLD};text-align:center">${fmt.num(r.cl_allocated)}</td>
-          <td style="${XLD};text-align:center;color:#c62828;font-weight:600">${fmt.num(r.cl_used)}</td>
-          <td style="${XLD};text-align:center;color:#2e7d32;font-weight:700">${fmt.num(r.cl_available)}</td>
+          <td style="${XLD};text-align:center">${fmt.num(r.slcl_allocated)}</td>
+          <td style="${XLD};text-align:center;color:#c62828;font-weight:600">${fmt.num(r.slcl_used)}</td>
+          <td style="${XLD};text-align:center;color:#2e7d32;font-weight:700">${fmt.num(r.slcl_available)}</td>
+          <td style="${XLD};text-align:center">${fmt.num(r.ml_allocated)}</td>
+          <td style="${XLD};text-align:center;color:#c62828;font-weight:600">${fmt.num(r.ml_used)}</td>
+          <td style="${XLD};text-align:center;color:#2e7d32;font-weight:700">${fmt.num(r.ml_available)}</td>
         </tr>`).join('')}
       </tbody>
     </table>

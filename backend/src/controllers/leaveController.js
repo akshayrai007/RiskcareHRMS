@@ -707,7 +707,7 @@ exports.getBalance = async (req, res) => {
     // TYPE 1 & 3 (permanent / confirmed): show EL, CL, SL, OD, LWP — never PL
     const codeFilter = isStillProvisional
       ? `AND lt.code = 'PL'`
-      : `AND lt.code IN ('EL','CL','SL','OD','LWP')`;
+      : `AND lt.code IN ('EL','CL','SL','LWP','ML')`;
 
     const result = await db.query(
       `SELECT
@@ -1379,14 +1379,14 @@ exports.getLeaveSummary = async (req, res) => {
               SUM(CASE WHEN lt.code='EL' THEN lb.used ELSE 0 END) AS el_used,
               SUM(CASE WHEN lt.code='EL' THEN lb.pending ELSE 0 END) AS el_pending,
               SUM(CASE WHEN lt.code='EL' THEN GREATEST(0, lb.allocated + lb.carry_forward - lb.used - lb.pending) ELSE 0 END) AS el_available,
-              SUM(CASE WHEN lt.code='SL' THEN lb.allocated + lb.carry_forward ELSE 0 END) AS sl_allocated,
-              SUM(CASE WHEN lt.code='SL' THEN lb.used ELSE 0 END) AS sl_used,
-              SUM(CASE WHEN lt.code='SL' THEN lb.pending ELSE 0 END) AS sl_pending,
-              SUM(CASE WHEN lt.code='SL' THEN GREATEST(0, lb.allocated + lb.carry_forward - lb.used - lb.pending) ELSE 0 END) AS sl_available,
-              SUM(CASE WHEN lt.code='CL' THEN lb.allocated + lb.carry_forward ELSE 0 END) AS cl_allocated,
-              SUM(CASE WHEN lt.code='CL' THEN lb.used ELSE 0 END) AS cl_used,
-              SUM(CASE WHEN lt.code='CL' THEN lb.pending ELSE 0 END) AS cl_pending,
-              SUM(CASE WHEN lt.code='CL' THEN GREATEST(0, lb.allocated + lb.carry_forward - lb.used - lb.pending) ELSE 0 END) AS cl_available
+              SUM(CASE WHEN lt.code IN ('SL','CL') THEN lb.allocated + lb.carry_forward ELSE 0 END) AS slcl_allocated,
+              SUM(CASE WHEN lt.code IN ('SL','CL') THEN lb.used ELSE 0 END) AS slcl_used,
+              SUM(CASE WHEN lt.code IN ('SL','CL') THEN lb.pending ELSE 0 END) AS slcl_pending,
+              SUM(CASE WHEN lt.code IN ('SL','CL') THEN GREATEST(0, lb.allocated + lb.carry_forward - lb.used - lb.pending) ELSE 0 END) AS slcl_available,
+              SUM(CASE WHEN lt.code='ML' THEN lb.allocated + lb.carry_forward ELSE 0 END) AS ml_allocated,
+              SUM(CASE WHEN lt.code='ML' THEN lb.used ELSE 0 END) AS ml_used,
+              SUM(CASE WHEN lt.code='ML' THEN lb.pending ELSE 0 END) AS ml_pending,
+              SUM(CASE WHEN lt.code='ML' THEN GREATEST(0, lb.allocated + lb.carry_forward - lb.used - lb.pending) ELSE 0 END) AS ml_available
        FROM employees e
        LEFT JOIN departments d ON e.department_id = d.id
        LEFT JOIN designations des ON e.designation_id = des.id
@@ -1518,10 +1518,10 @@ exports.importLeaveBalances = async (req, res) => {
             updated++;
           } else if (/sick|casual/i.test(leaveType)) {
             const slId = ltMap['SL'], clId = ltMap['CL'];
-            if (slId && clId) {
-              const halfAlloc = Math.round(credited * 100 / 2) / 100;
-              const slUsed = Math.min(used, halfAlloc);
-              const clUsed = Math.max(0, used - slUsed);
+            const halfAlloc = Math.round(credited * 100 / 2) / 100;
+            const slUsed = Math.min(used, halfAlloc);
+            const clUsed = Math.max(0, used - slUsed);
+            if (slId) {
               await client.query(
                 `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, carry_forward, pending)
                  VALUES($1,$2,$3,$4,$5,0,0)
@@ -1529,26 +1529,20 @@ exports.importLeaveBalances = async (req, res) => {
                  DO UPDATE SET allocated=$4, used=$5, carry_forward=0, pending=0`,
                 [empId, slId, year, halfAlloc, slUsed]
               );
-              await client.query(
-                `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, carry_forward, pending)
-                 VALUES($1,$2,$3,$4,$5,0,0)
-                 ON CONFLICT(employee_id, leave_type_id, year)
-                 DO UPDATE SET allocated=$4, used=$5, carry_forward=0, pending=0`,
-                [empId, clId, year, halfAlloc, clUsed]
-              );
-              updated++;
-            } else {
-              const fallbackId = clId || slId;
-              if (!fallbackId) { skipped++; continue; }
-              await client.query(
-                `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, carry_forward, pending)
-                 VALUES($1,$2,$3,$4,$5,0,0)
-                 ON CONFLICT(employee_id, leave_type_id, year)
-                 DO UPDATE SET allocated=$4, used=$5, carry_forward=0, pending=0`,
-                [empId, fallbackId, year, credited, used]
-              );
-              updated++;
             }
+            if (clId) {
+              const clAlloc = slId ? halfAlloc : credited;
+              const clU = slId ? clUsed : used;
+              await client.query(
+                `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, carry_forward, pending)
+                 VALUES($1,$2,$3,$4,$5,0,0)
+                 ON CONFLICT(employee_id, leave_type_id, year)
+                 DO UPDATE SET allocated=$4, used=$5, carry_forward=0, pending=0`,
+                [empId, clId, year, clAlloc, clU]
+              );
+            }
+            if (!slId && !clId) { skipped++; continue; }
+            updated++;
           } else {
             skipped++; continue;
           }
