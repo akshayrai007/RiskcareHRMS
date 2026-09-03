@@ -160,6 +160,7 @@
             <select id="summary-year" class="form-control" style="width:100px" onchange="loadLeaveSummary()">
             </select>
             <button class="btn btn-outline btn-sm" onclick="downloadLeaveSummaryExcel()">⬇ Download Excel</button>
+            <label class="btn btn-sm" id="import-leave-btn" style="display:none;background:#7c3aed;color:#fff;cursor:pointer;margin:0">⬆ Import Leave <input type="file" accept=".xlsx,.xls" style="display:none" onchange="importLeaveBalances(this)"></label>
           </div>
         </div>
         <div id="leave-summary-content"><div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><p style="color:var(--muted)">Enter an employee name or ID to view their leave summary.</p></div></div>
@@ -398,6 +399,7 @@ if (Role.isAdminOrHR() || Role.is('accounts')) {
 if (Role.is('hr','super_admin')) {
   document.getElementById('summary-tab').style.display = '';
   document.getElementById('txn-tab').style.display = '';
+  document.getElementById('import-leave-btn').style.display = '';
   // Populate year dropdowns
   const curYr = new Date().getFullYear();
   ['summary-year','txn-year'].forEach(id => {
@@ -1113,6 +1115,28 @@ async function downloadLeaveSummaryExcel() {
     URL.revokeObjectURL(a.href);
     toast('✅ Colored Excel downloaded!','success');
   } catch(e) { toast('Download failed: '+e.message,'error'); }
+}
+
+async function importLeaveBalances(input) {
+  if (!input.files.length) return;
+  const file = input.files[0];
+  const yr = document.getElementById('summary-year')?.value || new Date().getFullYear();
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    toast('Importing leave balances…','info');
+    const res = await fetch(`${API_BASE}/leave/import-balances?year=${yr}`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + Auth.getToken() },
+      body: fd
+    });
+    const data = await res.json();
+    if (!data.success) { toast(data.message,'error'); return; }
+    toast(data.message, 'success');
+    if (data.errors?.length) alert('Errors:\n' + data.errors.join('\n'));
+    loadLeaveSummary();
+  } catch(e) { toast('Import failed: '+e.message,'error'); }
+  input.value = '';
 }
 
 function downloadLeaveTransactionsExcel() {

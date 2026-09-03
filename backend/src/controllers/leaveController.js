@@ -1462,3 +1462,106 @@ exports.getLeaveTransactions = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+// ── Import Leave Balances from Excel ─────────────────────────────────────────
+// Reads LeaveSummaryReport Excel (sheets EL + SLCL), matches by employee_code,
+// upserts into leave_balances for current financial year.
+exports.importLeaveBalances = async (req, res) => {
+  if (!req.file)
+    return res.status(400).json({ success: false, message: 'Excel file required' });
+
+  const XLSX = require('xlsx');
+  const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+  const year = parseInt(req.query.year) || new Date().getFullYear();
+
+  const ltRes = await db.query(`SELECT id, code FROM leave_types WHERE is_active=true`);
+  const ltMap = {};
+  ltRes.rows.forEach(r => { ltMap[r.code] = r.id; });
+
+  const empRes = await db.query(`SELECT id, employee_code FROM employees`);
+  const empMap = {};
+  empRes.rows.forEach(r => { empMap[(r.employee_code || '').toUpperCase()] = r.id; });
+
+  let updated = 0, skipped = 0;
+  const errors = [];
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    for (const sheetName of wb.SheetNames) {
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+      for (const row of rows) {
+        const empCode = String(row['Employee ID'] || '').trim().toUpperCase();
+        if (!empCode || !empMap[empCode]) { skipped++; continue; }
+
+        const empId = empMap[empCode];
+        const leaveType = String(row['Leave Type'] || '').trim();
+        const credited = parseFloat(row['Leaves Credited']) || 0;
+        const used = parseFloat(row['Leaves utilised'] || row['Leaves Utilised']) || 0;
+
+        let targetCodes = [];
+        if (/earned/i.test(leaveType)) {
+          targetCodes = ['EL'];
+        } else if (/sick|casual/i.test(leaveType)) {
+          targetCodes = ['SL', 'CL'];
+        }
+
+        if (!targetCodes.length) { skipped++; continue; }
+
+        await client.query(`SAVEPOINT sp_${empCode}_${sheetName.replace(/\W/g,'')}`);
+        try {
+          if (targetCodes.length === 1) {
+            const ltId = ltMap[targetCodes[0]];
+            if (!ltId) { skipped++; continue; }
+            await client.query(
+              `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used)
+               VALUES($1,$2,$3,$4,$5)
+               ON CONFLICT(employee_id, leave_type_id, year)
+               DO UPDATE SET allocated=$4, used=$5`,
+              [empId, ltId, year, credited, used]
+            );
+            updated++;
+          } else {
+            // Split SLCL between SL and CL
+            const slId = ltMap['SL'], clId = ltMap['CL'];
+            if (!slId || !clId) { skipped++; continue; }
+            const halfAlloc = Math.round(credited * 100 / 2) / 100;
+            const slUsed = Math.min(used, halfAlloc);
+            const clUsed = Math.max(0, used - slUsed);
+            await client.query(
+              `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used)
+               VALUES($1,$2,$3,$4,$5)
+               ON CONFLICT(employee_id, leave_type_id, year)
+               DO UPDATE SET allocated=$4, used=$5`,
+              [empId, slId, year, halfAlloc, slUsed]
+            );
+            await client.query(
+              `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used)
+               VALUES($1,$2,$3,$4,$5)
+               ON CONFLICT(employee_id, leave_type_id, year)
+               DO UPDATE SET allocated=$4, used=$5`,
+              [empId, clId, year, halfAlloc, clUsed]
+            );
+            updated++;
+          }
+          await client.query(`RELEASE SAVEPOINT sp_${empCode}_${sheetName.replace(/\W/g,'')}`);
+        } catch (rowErr) {
+          await client.query(`ROLLBACK TO SAVEPOINT sp_${empCode}_${sheetName.replace(/\W/g,'')}`);
+          errors.push(`${empCode}: ${rowErr.message}`);
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+    res.json({ success: true, message: `Leave balances imported: ${updated} updated, ${skipped} skipped, ${errors.length} errors`, errors: errors.slice(0, 20) });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[importLeaveBalances]', err);
+    res.status(500).json({ success: false, message: err.message });
+  } finally {
+    client.release();
+  }
+};

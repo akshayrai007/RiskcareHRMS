@@ -3,6 +3,7 @@ const CONFIG = require('../Main_file');
 const express  = require('express');
 const router   = express.Router();
 const multer   = require('multer');
+const xlsxUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const { authenticate, authorize } = require('../middleware/auth');
 
 // ── Controllers ───────────────────────────────────────────────────────────────
@@ -210,6 +211,7 @@ router.post('/leave/recalculate/:id',        authenticate, authorize(...HR_ADMIN
 router.get ('/leave/report',                 authenticate,                        leaveCtrl.getLeaveReport);
 router.get ('/leave/summary',                authenticate, authorize(...HR_ADMIN), leaveCtrl.getLeaveSummary);
 router.get ('/leave/transactions',           authenticate, authorize(...HR_ADMIN), leaveCtrl.getLeaveTransactions);
+router.post('/leave/import-balances',        authenticate, authorize(...HR_ADMIN), xlsxUpload.single('file'), leaveCtrl.importLeaveBalances);
 
 
 // ── Advance Salary ────────────────────────────────────────────────────────────
@@ -834,8 +836,6 @@ router.get('/anniversaries/upcoming', authenticate, async (req, res) => {
 });
 
 // ── Offer Letters ─────────────────────────────────────────────────────────────
-const xlsxUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-
 router.get   ('/offer-letters',              authenticate, authorize('hr'), offerCtrl.getAll);
 router.post  ('/offer-letters',              authenticate, authorize('hr'), offerCtrl.create);
 router.get   ('/offer-letters/:id/preview',  authenticate, authorize('hr', 'admin', 'super_admin'), offerCtrl.preview);
