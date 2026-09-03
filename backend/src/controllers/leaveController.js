@@ -1517,10 +1517,10 @@ exports.importLeaveBalances = async (req, res) => {
             const ltId = ltMap[targetCodes[0]];
             if (!ltId) { skipped++; continue; }
             await client.query(
-              `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used)
-               VALUES($1,$2,$3,$4,$5)
+              `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, carry_forward)
+               VALUES($1,$2,$3,$4,$5,0)
                ON CONFLICT(employee_id, leave_type_id, year)
-               DO UPDATE SET allocated=$4, used=$5`,
+               DO UPDATE SET allocated=$4, used=$5, carry_forward=0`,
               [empId, ltId, year, credited, used]
             );
             updated++;
@@ -1532,17 +1532,17 @@ exports.importLeaveBalances = async (req, res) => {
             const slUsed = Math.min(used, halfAlloc);
             const clUsed = Math.max(0, used - slUsed);
             await client.query(
-              `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used)
-               VALUES($1,$2,$3,$4,$5)
+              `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, carry_forward)
+               VALUES($1,$2,$3,$4,$5,0)
                ON CONFLICT(employee_id, leave_type_id, year)
-               DO UPDATE SET allocated=$4, used=$5`,
+               DO UPDATE SET allocated=$4, used=$5, carry_forward=0`,
               [empId, slId, year, halfAlloc, slUsed]
             );
             await client.query(
-              `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used)
-               VALUES($1,$2,$3,$4,$5)
+              `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, carry_forward)
+               VALUES($1,$2,$3,$4,$5,0)
                ON CONFLICT(employee_id, leave_type_id, year)
-               DO UPDATE SET allocated=$4, used=$5`,
+               DO UPDATE SET allocated=$4, used=$5, carry_forward=0`,
               [empId, clId, year, halfAlloc, clUsed]
             );
             updated++;
