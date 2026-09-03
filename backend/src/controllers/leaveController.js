@@ -1477,6 +1477,7 @@ exports.importLeaveBalances = async (req, res) => {
   const ltRes = await db.query(`SELECT id, code FROM leave_types WHERE is_active=true`);
   const ltMap = {};
   ltRes.rows.forEach(r => { ltMap[r.code] = r.id; });
+  console.log('[importLeaveBalances] Leave types found:', JSON.stringify(ltMap));
 
   const empRes = await db.query(`SELECT id, employee_code FROM employees`);
   const empMap = {};
@@ -1502,50 +1503,54 @@ exports.importLeaveBalances = async (req, res) => {
         const credited = parseFloat(row['Leaves Credited']) || 0;
         const used = parseFloat(row['Leaves utilised'] || row['Leaves Utilised']) || 0;
 
-        let targetCodes = [];
-        if (/earned/i.test(leaveType)) {
-          targetCodes = ['EL'];
-        } else if (/sick|casual/i.test(leaveType)) {
-          targetCodes = ['SL', 'CL'];
-        }
-
-        if (!targetCodes.length) { skipped++; continue; }
-
         await client.query(`SAVEPOINT sp_${empCode}_${sheetName.replace(/\W/g,'')}`);
         try {
-          if (targetCodes.length === 1) {
-            const ltId = ltMap[targetCodes[0]];
+          if (/earned/i.test(leaveType)) {
+            const ltId = ltMap['EL'];
             if (!ltId) { skipped++; continue; }
             await client.query(
-              `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, carry_forward)
-               VALUES($1,$2,$3,$4,$5,0)
+              `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, carry_forward, pending)
+               VALUES($1,$2,$3,$4,$5,0,0)
                ON CONFLICT(employee_id, leave_type_id, year)
-               DO UPDATE SET allocated=$4, used=$5, carry_forward=0`,
+               DO UPDATE SET allocated=$4, used=$5, carry_forward=0, pending=0`,
               [empId, ltId, year, credited, used]
             );
             updated++;
-          } else {
-            // Split SLCL between SL and CL
+          } else if (/sick|casual/i.test(leaveType)) {
             const slId = ltMap['SL'], clId = ltMap['CL'];
-            if (!slId || !clId) { skipped++; continue; }
-            const halfAlloc = Math.round(credited * 100 / 2) / 100;
-            const slUsed = Math.min(used, halfAlloc);
-            const clUsed = Math.max(0, used - slUsed);
-            await client.query(
-              `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, carry_forward)
-               VALUES($1,$2,$3,$4,$5,0)
-               ON CONFLICT(employee_id, leave_type_id, year)
-               DO UPDATE SET allocated=$4, used=$5, carry_forward=0`,
-              [empId, slId, year, halfAlloc, slUsed]
-            );
-            await client.query(
-              `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, carry_forward)
-               VALUES($1,$2,$3,$4,$5,0)
-               ON CONFLICT(employee_id, leave_type_id, year)
-               DO UPDATE SET allocated=$4, used=$5, carry_forward=0`,
-              [empId, clId, year, halfAlloc, clUsed]
-            );
-            updated++;
+            if (slId && clId) {
+              const halfAlloc = Math.round(credited * 100 / 2) / 100;
+              const slUsed = Math.min(used, halfAlloc);
+              const clUsed = Math.max(0, used - slUsed);
+              await client.query(
+                `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, carry_forward, pending)
+                 VALUES($1,$2,$3,$4,$5,0,0)
+                 ON CONFLICT(employee_id, leave_type_id, year)
+                 DO UPDATE SET allocated=$4, used=$5, carry_forward=0, pending=0`,
+                [empId, slId, year, halfAlloc, slUsed]
+              );
+              await client.query(
+                `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, carry_forward, pending)
+                 VALUES($1,$2,$3,$4,$5,0,0)
+                 ON CONFLICT(employee_id, leave_type_id, year)
+                 DO UPDATE SET allocated=$4, used=$5, carry_forward=0, pending=0`,
+                [empId, clId, year, halfAlloc, clUsed]
+              );
+              updated++;
+            } else {
+              const fallbackId = clId || slId;
+              if (!fallbackId) { skipped++; continue; }
+              await client.query(
+                `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, carry_forward, pending)
+                 VALUES($1,$2,$3,$4,$5,0,0)
+                 ON CONFLICT(employee_id, leave_type_id, year)
+                 DO UPDATE SET allocated=$4, used=$5, carry_forward=0, pending=0`,
+                [empId, fallbackId, year, credited, used]
+              );
+              updated++;
+            }
+          } else {
+            skipped++; continue;
           }
           await client.query(`RELEASE SAVEPOINT sp_${empCode}_${sheetName.replace(/\W/g,'')}`);
         } catch (rowErr) {
