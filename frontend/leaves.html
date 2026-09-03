@@ -1134,6 +1134,7 @@ async function importLeaveBalances(input) {
     if (!data.success) { toast(data.message,'error'); return; }
     toast(data.message, 'success');
     if (data.errors?.length) alert('Errors:\n' + data.errors.join('\n'));
+    loadBalance();
     loadLeaveSummary();
   } catch(e) { toast('Import failed: '+e.message,'error'); }
   input.value = '';
