@@ -514,6 +514,7 @@ router.post('/separations/:id/admin-action',     authenticate, authorize('admin'
 // Generic routes last
 router.get ('/separations',                      authenticate, authorize(...HR_ADMIN),                                sepCtrl.getAll);
 router.post('/separations',                      authenticate, authorize(...HR_ADMIN),                                sepCtrl.initiate);
+router.post('/separations/bulk-import',          authenticate, authorize(...HR_ADMIN), xlsxUpload.single('file'),     sepCtrl.bulkSeparateImport);
 
 // ── Notifications ─────────────────────────────────────────────────────────────
 router.get('/notifications', authenticate, async (req, res) => {
@@ -911,6 +912,7 @@ router.post  ('/it-declaration/proof/:id/review',   authenticate, authorize('hr'
 router.get   ('/documents/checklist',     authenticate,                    docsCtrl.getChecklistDefs);
 router.get   ('/documents/employees',     authenticate, authorize('hr','admin','super_admin'), docsCtrl.getEmployeesForPicker);
 router.get   ('/documents/download-zip/:employee_id', authenticate,        docsCtrl.downloadZip);
+router.get   ('/documents/bulk-download-zip',          authenticate,        docsCtrl.bulkDownloadZip);
 router.get   ('/documents',                authenticate,                    docsCtrl.getDocuments);
 router.post  ('/documents/upload',         authenticate, docsCtrl.uploadMiddleware, docsCtrl.uploadDocument);
 router.post  ('/documents/upload-multi',   authenticate, (req, res, next) => {

@@ -111,6 +111,8 @@
             <input type="checkbox" id="show-inactive" onchange="loadAll()" style="width:16px;height:16px;cursor:pointer">
             Show Resigned / Inactive Employees
           </label>
+          <button class="btn btn-outline btn-sm" onclick="downloadResignedDocsZip()">⬇ Download All Resigned Docs (ZIP)</button>
+          <label class="btn btn-sm" id="bulk-separate-btn" style="background:#dc2626;color:#fff;cursor:pointer;margin:0">⬆ Bulk Update Resigned <input type="file" accept=".xlsx,.xls" style="display:none" onchange="bulkSeparateImport(this)"></label>
         </div>
       </div>
       <div id="all-sep-list"><div class="loader"><div class="spinner"></div></div></div>
@@ -354,6 +356,50 @@ async function loadPendingApprovals() {
     return;
   }
   el.innerHTML = mine.map(s => renderSepCard(s, true)).join('');
+}
+
+async function bulkSeparateImport(input) {
+  if (!input.files.length) return;
+  const file = input.files[0];
+  if (!confirm(`This will mark all matched employees as RESIGNED/INACTIVE and deactivate their login. Continue?`)) { input.value=''; return; }
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    toast('Processing bulk separation…','info');
+    const res = await fetch(`${API_BASE}/separations/bulk-import`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + Auth.getToken() },
+      body: fd
+    });
+    const data = await res.json();
+    if (!data.success) { toast(data.message,'error'); return; }
+    toast(data.message, 'success');
+    if (data.errors?.length) alert('Details:\n' + data.errors.join('\n'));
+    loadAll();
+  } catch(e) { toast('Import failed: '+e.message,'error'); }
+  input.value = '';
+}
+
+async function downloadResignedDocsZip() {
+  try {
+    toast('Preparing ZIP…','info');
+    const res = await fetch(`${API_BASE}/documents/bulk-download-zip`, {
+      headers: { Authorization: 'Bearer ' + Auth.getToken() }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(()=>({message:'Download failed'}));
+      toast(err.message || 'Download failed','error');
+      return;
+    }
+    const blob = await res.blob();
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: `Resigned_Employees_Documents_${new Date().toISOString().split('T')[0]}.zip`
+    });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    toast('✅ ZIP downloaded!','success');
+  } catch(e) { toast('Download failed: '+e.message,'error'); }
 }
 
 async function loadAll() {

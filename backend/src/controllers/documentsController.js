@@ -407,3 +407,71 @@ exports.downloadZip = async (req, res) => {
     if (!res.headersSent) res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+// ── GET /documents/bulk-download-zip?resigned_only=true — one zip, per-employee folders ─
+// HR/Accounts only. Query params:
+//   resigned_only=true          → all inactive/separated employees
+//   employee_ids=1,2,3          → specific employee IDs (active or not)
+exports.bulkDownloadZip = async (req, res) => {
+  try {
+    if (!HR_ROLES.includes(req.user.role) && !['admin','super_admin'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    let empRows;
+    if (req.query.employee_ids) {
+      const ids = req.query.employee_ids.split(',').map(x => parseInt(x)).filter(Boolean);
+      const r = await db.query(
+        `SELECT id, employee_code, first_name, last_name FROM employees WHERE id = ANY($1::int[])`, [ids]
+      );
+      empRows = r.rows;
+    } else {
+      const r = await db.query(
+        `SELECT id, employee_code, first_name, last_name FROM employees WHERE is_active = false ORDER BY separation_date DESC NULLS LAST`
+      );
+      empRows = r.rows;
+    }
+
+    if (!empRows.length) {
+      return res.status(404).json({ success: false, message: 'No matching employees found' });
+    }
+
+    const archiver = require('archiver');
+    const archive  = archiver('zip', { zlib: { level: 6 } });
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="Resigned_Employees_Documents_${new Date().toISOString().split('T')[0]}.zip"`);
+    archive.pipe(res);
+
+    for (const emp of empRows) {
+      const folderName = `${emp.employee_code}_${emp.first_name}_${emp.last_name}`.replace(/[^a-zA-Z0-9_]/g, '_');
+
+      const docsRes = await db.query(
+        `SELECT doc_key, original_name, file_data FROM employee_doc_checklist WHERE employee_id=$1`,
+        [emp.id]
+      );
+
+      const keyCount = {};
+      for (const doc of docsRes.rows) {
+        if (!doc.file_data) continue;
+        const buf = Buffer.from(doc.file_data, 'base64');
+        const defLabel = (DOCUMENT_DEFS.find(d => d.key === doc.doc_key)?.label || doc.doc_key)
+          .replace(/[/\\:*?"<>|]/g, '_');
+        keyCount[doc.doc_key] = (keyCount[doc.doc_key] || 0) + 1;
+        const count = keyCount[doc.doc_key];
+        const ext   = doc.original_name.includes('.') ? doc.original_name.split('.').pop() : 'bin';
+        const fname = count > 1 ? `${defLabel}_${count}.${ext}` : `${defLabel}.${ext}`;
+        archive.append(buf, { name: `${folderName}/${fname}` });
+      }
+
+      if (!docsRes.rows.length) {
+        archive.append(Buffer.from('No documents uploaded for this employee.'), { name: `${folderName}/README.txt` });
+      }
+    }
+
+    archive.finalize();
+  } catch (err) {
+    console.error('[bulkDownloadZip]', err.message);
+    if (!res.headersSent) res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

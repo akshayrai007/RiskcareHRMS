@@ -756,3 +756,87 @@ exports.processLWD = async (req, res) => {
     if (res) res.status(500).json({ success: false, message: 'Server error: ' + err.message });
   }
 };
+
+// ── Bulk Resignation/Separation Import (Excel) ───────────────────────────────
+// Columns expected: Employee ID, Separation Type, Separation Date, Reason
+// Marks each matched employee is_active=false immediately (skips the 4-level
+// workflow — for backfilling employees who already left before this system
+// existed). Deactivates login by scrambling password_hash, same as processLWD.
+const VALID_TYPES = ['resignation','termination','retirement','absconding','end_of_contract','mutual-separation'];
+
+exports.bulkSeparateImport = async (req, res) => {
+  if (!req.file)
+    return res.status(400).json({ success: false, message: 'Excel file required' });
+
+  const XLSX = require('xlsx');
+  let wb, rows;
+  try {
+    wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+    rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: 'Failed to parse Excel: ' + err.message });
+  }
+
+  const empRes = await db.query(`SELECT id, employee_code FROM employees WHERE is_active = true`);
+  const empMap = {};
+  empRes.rows.forEach(r => { empMap[(r.employee_code || '').toUpperCase()] = r.id; });
+
+  let updated = 0, skipped = 0;
+  const errors = [];
+  const client = await db.getClient();
+
+  try {
+    await client.query('BEGIN');
+
+    for (const row of rows) {
+      const empCode = String(row['Employee ID'] || row['Employee Code'] || '').trim().toUpperCase();
+      if (!empCode) { skipped++; continue; }
+      const empId = empMap[empCode];
+      if (!empId) { skipped++; errors.push(`${empCode}: not found or already inactive`); continue; }
+
+      let sepType = String(row['Separation Type'] || row['Type'] || 'resignation').trim().toLowerCase();
+      if (!VALID_TYPES.includes(sepType)) sepType = 'resignation';
+
+      const rawDate = row['Separation Date'] || row['Last Working Day'] || row['LWD'];
+      let sepDate = null;
+      if (rawDate) {
+        const d = (rawDate instanceof Date) ? rawDate : new Date(rawDate);
+        if (!isNaN(d.getTime())) sepDate = d.toISOString().split('T')[0];
+      }
+      if (!sepDate) sepDate = new Date().toISOString().split('T')[0];
+
+      const reason = String(row['Reason'] || row['Separation Reason'] || 'Bulk import — resigned').trim();
+
+      const sp = `sp_${empCode.replace(/\W/g,'')}`;
+      await client.query(`SAVEPOINT ${sp}`);
+      try {
+        await client.query(
+          `UPDATE employees SET is_active=false, separation_date=$1,
+               separation_type=$2, separation_reason=$3,
+               password_hash='DEACTIVATED_' || gen_random_uuid(), updated_at=NOW()
+           WHERE id=$4`,
+          [sepDate, sepType, reason, empId]
+        );
+        await client.query(`RELEASE SAVEPOINT ${sp}`);
+        updated++;
+      } catch (rowErr) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${sp}`);
+        errors.push(`${empCode}: ${rowErr.message}`);
+        skipped++;
+      }
+    }
+
+    await client.query('COMMIT');
+    res.json({
+      success: true,
+      message: `Bulk separation: ${updated} deactivated, ${skipped} skipped, ${errors.length} errors`,
+      errors: errors.slice(0, 30)
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[bulkSeparateImport]', err);
+    res.status(500).json({ success: false, message: err.message });
+  } finally {
+    client.release();
+  }
+};
