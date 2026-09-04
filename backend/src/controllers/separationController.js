@@ -945,10 +945,10 @@ exports.bulkSeparateImport = async (req, res) => {
 
         await client.query(
           `INSERT INTO separations
-             (employee_id, type, reason, notice_date, last_working_date, status,
-              initiated_by, l1_status, l2_status, l3_status, l4_status)
-           VALUES ($1,$2,$3,$4,$4,'completed',$5,'approved','approved','approved','approved')`,
-          [empId, sepType, reason, sepDate, req.user.id]
+             (employee_id, type, reason, notice_date, last_working_date,
+              notice_period_days, status, initiated_by, initiated_by_role, original_lwd)
+           VALUES ($1,$2,$3,$4,$4,0,'completed',$5,$6,$4)`,
+          [empId, sepType, reason, sepDate, req.user.id, req.user.role]
         );
         await client.query(
           `UPDATE employees SET is_active=false, separation_date=$1,
