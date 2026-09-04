@@ -8,6 +8,29 @@ const db = require('../config/db');
 const scope = require('../utils/scope');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+// Handles: real JS Date objects, 'YYYY-MM-DD' strings, other parseable date
+// strings, AND raw Excel serial date numbers (e.g. 45900) — which XLSX
+// sometimes hands back as plain numbers when a cell is formatted as a date
+// but read without cellDates:true. Treating a serial number as milliseconds
+// (new Date(45900)) silently produces a date near 1970-01-01.
+function parseExcelDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? null : val.toISOString().split('T')[0];
+  }
+  if (typeof val === 'number' || /^\d+(\.\d+)?$/.test(String(val).trim())) {
+    const serial = parseFloat(val);
+    if (serial > 20000 && serial < 90000) { // plausible Excel date-serial range (~1954–2146)
+      const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+      return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+    }
+  }
+  const s = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+}
+
 function getNoticePeriod(role) {
   if (['super_admin','admin','hr','accounts'].includes(role)) return 90;
   if (['manager'].includes(role)) return 45;
@@ -812,6 +835,42 @@ exports.bulkSeparateTemplate = async (req, res) => {
   }
 };
 
+// ── One-off backfill: fix approval pills on already-completed separations ───
+// Earlier bulk imports set status='completed' but left manager/hr/accounts/
+// admin action columns unset, so the UI showed "L1 Mgr: waiting" even though
+// the record was already fully approved. Idempotent — safe to call anytime.
+exports.backfillApprovals = async (req, res) => {
+  try {
+    const result = await db.query(
+      `UPDATE separations SET
+         manager_action  = COALESCE(manager_action,  'approved'),
+         manager_actioned_by = COALESCE(manager_actioned_by, initiated_by),
+         manager_actioned_at = COALESCE(manager_actioned_at, created_at),
+         manager_remarks = COALESCE(manager_remarks, 'Bulk import — legacy record'),
+         hr_action       = COALESCE(hr_action,       'approved'),
+         hr_actioned_by  = COALESCE(hr_actioned_by,  initiated_by),
+         hr_actioned_at  = COALESCE(hr_actioned_at,  created_at),
+         hr_remarks      = COALESCE(hr_remarks,      'Bulk import — legacy record'),
+         accounts_action = COALESCE(accounts_action, 'approved'),
+         accounts_actioned_by = COALESCE(accounts_actioned_by, initiated_by),
+         accounts_actioned_at = COALESCE(accounts_actioned_at, created_at),
+         accounts_remarks = COALESCE(accounts_remarks, 'Bulk import — legacy record'),
+         admin_action    = COALESCE(admin_action,    'approved'),
+         admin_actioned_by = COALESCE(admin_actioned_by, initiated_by),
+         admin_actioned_at = COALESCE(admin_actioned_at, created_at),
+         admin_remarks   = COALESCE(admin_remarks,   'Bulk import — legacy record'),
+         updated_at = NOW()
+       WHERE status = 'completed'
+         AND (manager_action IS NULL OR hr_action IS NULL OR accounts_action IS NULL OR admin_action IS NULL)
+       RETURNING id`
+    );
+    res.json({ success: true, message: `Fixed ${result.rows.length} separation record(s)`, count: result.rows.length });
+  } catch (err) {
+    console.error('[backfillApprovals]', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 // ── Bulk Resignation/Separation Import (Excel) ───────────────────────────────
 // Columns expected: Employee ID, Employee Name, Branch, Last Working Day,
 // Department, Official Email ID, Official Mobile Number. Only "Employee ID"
@@ -885,12 +944,7 @@ exports.bulkSeparateImport = async (req, res) => {
       if (!VALID_TYPES.includes(sepType)) sepType = 'resignation';
 
       const rawDate = row['Last Working Day'] || row['Separation Date'] || row['LWD'];
-      let sepDate = null;
-      if (rawDate) {
-        const d = (rawDate instanceof Date) ? rawDate : new Date(rawDate);
-        if (!isNaN(d.getTime())) sepDate = d.toISOString().split('T')[0];
-      }
-      if (!sepDate) sepDate = new Date().toISOString().split('T')[0];
+      const sepDate = parseExcelDate(rawDate) || new Date().toISOString().split('T')[0];
 
       const reason = String(row['Reason'] || row['Separation Reason'] || 'Bulk import — resigned (legacy HRMS record)').trim();
 
@@ -946,8 +1000,16 @@ exports.bulkSeparateImport = async (req, res) => {
         await client.query(
           `INSERT INTO separations
              (employee_id, type, reason, notice_date, last_working_date,
-              notice_period_days, status, initiated_by, initiated_by_role, original_lwd)
-           VALUES ($1,$2,$3,$4,$4,0,'completed',$5,$6,$4)`,
+              notice_period_days, status, initiated_by, initiated_by_role, original_lwd,
+              manager_action, manager_actioned_by, manager_actioned_at, manager_remarks,
+              hr_action,      hr_actioned_by,      hr_actioned_at,      hr_remarks,
+              accounts_action, accounts_actioned_by, accounts_actioned_at, accounts_remarks,
+              admin_action,   admin_actioned_by,   admin_actioned_at,   admin_remarks)
+           VALUES ($1,$2,$3,$4,$4,0,'completed',$5,$6,$4,
+                   'approved',$5,NOW(),'Bulk import — legacy record',
+                   'approved',$5,NOW(),'Bulk import — legacy record',
+                   'approved',$5,NOW(),'Bulk import — legacy record',
+                   'approved',$5,NOW(),'Bulk import — legacy record')`,
           [empId, sepType, reason, sepDate, req.user.id, req.user.role]
         );
         await client.query(

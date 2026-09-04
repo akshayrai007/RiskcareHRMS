@@ -114,6 +114,7 @@
           <button class="btn btn-outline btn-sm" onclick="downloadResignedDocsZip()">⬇ Download All Resigned Docs (ZIP)</button>
           <button class="btn btn-outline btn-sm" onclick="downloadBulkSeparateTemplate()">📄 Download Template</button>
           <label class="btn btn-sm" id="bulk-separate-btn" style="background:#dc2626;color:#fff;cursor:pointer;margin:0">⬆ Bulk Update Resigned <input type="file" accept=".xlsx,.xls" style="display:none" onchange="bulkSeparateImport(this)"></label>
+          <button class="btn btn-outline btn-sm" onclick="fixApprovalPills()" title="Fixes 'L1 Mgr: waiting' shown on already-completed bulk imports">🔧 Fix Approval Status</button>
         </div>
       </div>
       <div id="all-sep-list"><div class="loader"><div class="spinner"></div></div></div>
@@ -359,6 +360,16 @@ async function loadPendingApprovals() {
   el.innerHTML = mine.map(s => renderSepCard(s, true)).join('');
 }
 
+async function fixApprovalPills() {
+  try {
+    toast('Fixing approval status…','info');
+    const data = await api('POST', '/separations/backfill-approvals');
+    if (!data?.success) { toast(data?.message||'Failed','error'); return; }
+    toast(data.message, 'success');
+    loadAll();
+  } catch(e) { toast('Failed: '+e.message,'error'); }
+}
+
 async function downloadBulkSeparateTemplate() {
   try {
     const res = await fetch(`${API_BASE}/separations/bulk-template`, {
@@ -438,7 +449,62 @@ function filterAll() {
     el.innerHTML = '<div class="empty-state"><div class="empty-icon">📂</div><p>No separations found.</p></div>';
     return;
   }
-  el.innerHTML = allData.map(s => renderSepCard(s, Role.isAdminOrHR())).join('');
+  const canApprove = Role.isAdminOrHR();
+  const XLH = 'padding:8px 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);text-align:left;white-space:nowrap;border-bottom:2px solid var(--border)';
+  const XLD = 'padding:9px 10px;font-size:13px;border-bottom:1px solid var(--border);white-space:nowrap';
+
+  const statusColor = { pending:'#f59e0b', manager_approved:'#3b82f6', hr_approved:'#8b5cf6', accounts_approved:'#06b6d4', completed:'#10b981', rejected:'#ef4444', withdrawn:'#64748b' };
+
+  el.innerHTML = `
+  <div style="overflow-x:auto">
+  <table style="border-collapse:collapse;width:100%;min-width:1100px">
+    <thead>
+      <tr>
+        <th style="${XLH}">Employee</th>
+        <th style="${XLH}">Code</th>
+        <th style="${XLH}">Department</th>
+        <th style="${XLH}">Type</th>
+        <th style="${XLH}">Notice Date</th>
+        <th style="${XLH}">Last Working Day</th>
+        <th style="${XLH}">Status</th>
+        <th style="${XLH}">L1 Mgr</th>
+        <th style="${XLH}">L2 HR</th>
+        <th style="${XLH}">L3 Acc</th>
+        <th style="${XLH}">L4 Admin</th>
+        <th style="${XLH}">Applied</th>
+        <th style="${XLH}"></th>
+      </tr>
+    </thead>
+    <tbody>
+      ${allData.map((s,i) => {
+        const inactiveBadge = !s.is_active
+          ? `<span style="background:rgba(239,68,68,.12);color:#ef4444;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:800;margin-left:5px">RESIGNED</span>` : '';
+        const l1 = s.manager_action  || (s.status==='pending' ? 'pending' : 'waiting');
+        const l2 = s.hr_action       || (s.status==='manager_approved' ? 'pending' : ['hr_approved','accounts_approved','completed'].includes(s.status) ? 'approved' : 'waiting');
+        const l3 = s.accounts_action || (s.status==='hr_approved' ? 'pending' : ['accounts_approved','completed'].includes(s.status) ? 'approved' : 'waiting');
+        const l4 = s.admin_action    || (s.status==='accounts_approved' ? 'pending' : s.status==='completed' ? 'approved' : 'waiting');
+        const pillTd = st => {
+          const c = st==='approved' ? '#10b981' : st==='rejected' ? '#ef4444' : st==='pending' ? '#f59e0b' : '#94a3b8';
+          return `<td style="${XLD}"><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:${c}1f;color:${c}">${st}</span></td>`;
+        };
+        return `<tr style="background:${i%2===0?'transparent':'var(--surface2)'};cursor:pointer" onclick="openReview(${s.id})">
+          <td style="${XLD};font-weight:700">${s.employee_name}${inactiveBadge}</td>
+          <td style="${XLD};color:var(--muted)">${s.employee_code||'—'}</td>
+          <td style="${XLD};color:var(--muted)">${s.department_name||'—'}</td>
+          <td style="${XLD}">${s.type}</td>
+          <td style="${XLD};color:var(--muted)">${fmt.date(s.notice_date)}</td>
+          <td style="${XLD};color:var(--muted)">${fmt.date(s.last_working_date)}</td>
+          <td style="${XLD}"><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:${statusColor[s.status]||'#94a3b8'}1f;color:${statusColor[s.status]||'#94a3b8'}">${s.status}</span></td>
+          ${pillTd(l1)}${pillTd(l2)}${pillTd(l3)}${pillTd(l4)}
+          <td style="${XLD};color:var(--muted)">${fmt.ago(s.created_at)}</td>
+          <td style="${XLD}" onclick="event.stopPropagation()">
+            ${canApprove && isMyTurn(s) && s.status==='pending' ? `<button class="btn btn-success btn-sm" onclick="quickAction(${s.id},'approve')">✓</button> <button class="btn btn-danger btn-sm" onclick="openReject(${s.id})">✗</button>` : ''}
+          </td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>
+  </div>`;
 }
 
 function renderSepCard(s, canApprove) {
