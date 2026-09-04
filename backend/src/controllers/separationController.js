@@ -929,7 +929,7 @@ exports.bulkSeparateImport = async (req, res) => {
     return r.rows[0].id;
   }
 
-  let updated = 0, created = 0, skipped = 0;
+  let updated = 0, created = 0, repaired = 0, skipped = 0;
   const errors = [];
   const client = await db.getClient();
 
@@ -954,14 +954,33 @@ exports.bulkSeparateImport = async (req, res) => {
         let empId = empMap[empCode];
         let isNewRecord = false;
 
-        if (!empId) {
-          if (allCodesMap[empCode]) {
-            // Exists but already inactive — nothing to do, not an error.
-            errors.push(`${empCode}: already inactive/resigned — skipped`);
-            await client.query(`RELEASE SAVEPOINT ${sp}`);
-            skipped++;
-            continue;
+        if (!empId && allCodesMap[empCode]) {
+          // Already inactive/resigned — instead of skipping, repair the
+          // dates on their existing separation record. Useful when a
+          // previous import wrote wrong dates (e.g. the 1970 serial-date
+          // bug) and the same sheet is re-uploaded to fix them.
+          const existingEmpId = allCodesMap[empCode].id;
+          const sepRow = await client.query(
+            `SELECT id FROM separations WHERE employee_id=$1 ORDER BY created_at DESC LIMIT 1`,
+            [existingEmpId]
+          );
+          if (sepRow.rows.length) {
+            await client.query(
+              `UPDATE separations SET notice_date=$1, last_working_date=$1, original_lwd=$1, updated_at=NOW()
+               WHERE id=$2`,
+              [sepDate, sepRow.rows[0].id]
+            );
           }
+          await client.query(
+            `UPDATE employees SET separation_date=$1, updated_at=NOW() WHERE id=$2`,
+            [sepDate, existingEmpId]
+          );
+          await client.query(`RELEASE SAVEPOINT ${sp}`);
+          repaired++;
+          continue;
+        }
+
+        if (!empId) {
           if (!createMissing) {
             errors.push(`${empCode}: no employee with this code exists in the system`);
             await client.query(`RELEASE SAVEPOINT ${sp}`);
@@ -1031,7 +1050,7 @@ exports.bulkSeparateImport = async (req, res) => {
     await client.query('COMMIT');
     res.json({
       success: true,
-      message: `Bulk separation: ${updated} existing deactivated, ${created} new legacy records created & deactivated, ${skipped} skipped, ${errors.length} errors`,
+      message: `Bulk separation: ${updated} existing deactivated, ${created} new legacy records created & deactivated, ${repaired} already-resigned records had their dates repaired, ${skipped} skipped, ${errors.length} errors`,
       errors: errors.slice(0, 30)
     });
   } catch (err) {
