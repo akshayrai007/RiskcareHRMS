@@ -838,9 +838,14 @@ exports.bulkSeparateImport = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Failed to parse Excel: ' + err.message });
   }
 
-  const empRes = await db.query(`SELECT id, employee_code FROM employees WHERE is_active = true`);
-  const empMap = {};
-  empRes.rows.forEach(r => { empMap[(r.employee_code || '').toUpperCase()] = r.id; });
+  const empRes = await db.query(`SELECT id, employee_code, is_active FROM employees`);
+  const empMap = {};       // active employees only — eligible for separation
+  const allCodesMap = {};  // every employee regardless of status — for diagnosing skips
+  empRes.rows.forEach(r => {
+    const code = (r.employee_code || '').trim().toUpperCase();
+    allCodesMap[code] = r;
+    if (r.is_active) empMap[code] = r.id;
+  });
 
   let updated = 0, skipped = 0;
   const errors = [];
@@ -853,7 +858,12 @@ exports.bulkSeparateImport = async (req, res) => {
       const empCode = String(row['Employee ID'] || row['Employee Code'] || '').trim().toUpperCase();
       if (!empCode) { skipped++; continue; }
       const empId = empMap[empCode];
-      if (!empId) { skipped++; errors.push(`${empCode}: not found or already inactive`); continue; }
+      if (!empId) {
+        skipped++;
+        if (!allCodesMap[empCode]) errors.push(`${empCode}: no employee with this code exists in the system`);
+        else errors.push(`${empCode}: already inactive/resigned — skipped`);
+        continue;
+      }
 
       let sepType = String(row['Separation Type'] || row['Type'] || 'resignation').trim().toLowerCase();
       if (!VALID_TYPES.includes(sepType)) sepType = 'resignation';
