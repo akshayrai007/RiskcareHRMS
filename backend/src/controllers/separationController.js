@@ -829,7 +829,14 @@ exports.bulkSeparateImport = async (req, res) => {
   if (!req.file)
     return res.status(400).json({ success: false, message: 'Excel file required' });
 
-  const XLSX = require('xlsx');
+  const XLSX   = require('xlsx');
+  const bcrypt = require('bcryptjs');
+  // create_missing=true (default): employees not found in the system are
+  // created fresh as historical resigned records (for data migrated from an
+  // old HRMS that was never entered here). Pass create_missing=false to only
+  // update existing employees and skip unknown codes instead.
+  const createMissing = req.query.create_missing !== 'false';
+
   let wb, rows;
   try {
     wb = XLSX.read(req.file.buffer, { type: 'buffer' });
@@ -847,7 +854,23 @@ exports.bulkSeparateImport = async (req, res) => {
     if (r.is_active) empMap[code] = r.id;
   });
 
-  let updated = 0, skipped = 0;
+  const deptRes = await db.query(`SELECT id, name FROM departments`);
+  const deptMap = {};
+  deptRes.rows.forEach(d => { deptMap[d.name.trim().toLowerCase()] = d.id; });
+
+  async function findOrCreateDept(client, name) {
+    if (!name) return null;
+    const key = name.trim().toLowerCase();
+    if (deptMap[key]) return deptMap[key];
+    const r = await client.query(
+      `INSERT INTO departments(name) VALUES($1) ON CONFLICT(name) DO UPDATE SET name=EXCLUDED.name RETURNING id`,
+      [name.trim()]
+    );
+    deptMap[key] = r.rows[0].id;
+    return r.rows[0].id;
+  }
+
+  let updated = 0, created = 0, skipped = 0;
   const errors = [];
   const client = await db.getClient();
 
@@ -857,13 +880,6 @@ exports.bulkSeparateImport = async (req, res) => {
     for (const row of rows) {
       const empCode = String(row['Employee ID'] || row['Employee Code'] || '').trim().toUpperCase();
       if (!empCode) { skipped++; continue; }
-      const empId = empMap[empCode];
-      if (!empId) {
-        skipped++;
-        if (!allCodesMap[empCode]) errors.push(`${empCode}: no employee with this code exists in the system`);
-        else errors.push(`${empCode}: already inactive/resigned — skipped`);
-        continue;
-      }
 
       let sepType = String(row['Separation Type'] || row['Type'] || 'resignation').trim().toLowerCase();
       if (!VALID_TYPES.includes(sepType)) sepType = 'resignation';
@@ -876,11 +892,57 @@ exports.bulkSeparateImport = async (req, res) => {
       }
       if (!sepDate) sepDate = new Date().toISOString().split('T')[0];
 
-      const reason = String(row['Reason'] || row['Separation Reason'] || 'Bulk import — resigned').trim();
+      const reason = String(row['Reason'] || row['Separation Reason'] || 'Bulk import — resigned (legacy HRMS record)').trim();
 
       const sp = `sp_${empCode.replace(/\W/g,'')}`;
       await client.query(`SAVEPOINT ${sp}`);
       try {
+        let empId = empMap[empCode];
+        let isNewRecord = false;
+
+        if (!empId) {
+          if (allCodesMap[empCode]) {
+            // Exists but already inactive — nothing to do, not an error.
+            errors.push(`${empCode}: already inactive/resigned — skipped`);
+            await client.query(`RELEASE SAVEPOINT ${sp}`);
+            skipped++;
+            continue;
+          }
+          if (!createMissing) {
+            errors.push(`${empCode}: no employee with this code exists in the system`);
+            await client.query(`RELEASE SAVEPOINT ${sp}`);
+            skipped++;
+            continue;
+          }
+
+          // Auto-create a historical resigned record from the sheet's
+          // reference columns — for employees who left before this
+          // portal existed and were never entered here.
+          const fullName = String(row['Employee Name'] || '').trim() || empCode;
+          const nameParts = fullName.split(/\s+/);
+          const firstName = nameParts[0] || empCode;
+          const lastName  = nameParts.slice(1).join(' ') || '';
+          const email     = String(row['Official Email ID'] || '').trim().toLowerCase()
+                             || `${empCode.toLowerCase()}.resigned@legacy.local`;
+          const phone     = String(row['Official Mobile Number'] || '').trim() || null;
+          const branch    = String(row['Branch'] || '').trim() || null;
+          const deptId    = await findOrCreateDept(client, String(row['Department'] || '').trim());
+          const randomPw  = 'DEACTIVATED_' + require('crypto').randomUUID();
+          const pwHash    = await bcrypt.hash(randomPw, 10);
+
+          const insRes = await client.query(
+            `INSERT INTO employees
+               (employee_code, first_name, last_name, email, phone, branch,
+                department_id, joining_date, role, password_hash, is_active)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'employee',$9,true)
+             RETURNING id`,
+            [empCode, firstName, lastName, email, phone, branch, deptId, sepDate, pwHash]
+          );
+          empId = insRes.rows[0].id;
+          allCodesMap[empCode] = { id: empId, is_active: true };
+          isNewRecord = true;
+        }
+
         await client.query(
           `INSERT INTO separations
              (employee_id, type, reason, notice_date, last_working_date, status,
@@ -896,7 +958,7 @@ exports.bulkSeparateImport = async (req, res) => {
           [sepDate, sepType, reason, empId]
         );
         await client.query(`RELEASE SAVEPOINT ${sp}`);
-        updated++;
+        if (isNewRecord) created++; else updated++;
       } catch (rowErr) {
         await client.query(`ROLLBACK TO SAVEPOINT ${sp}`);
         errors.push(`${empCode}: ${rowErr.message}`);
@@ -907,7 +969,7 @@ exports.bulkSeparateImport = async (req, res) => {
     await client.query('COMMIT');
     res.json({
       success: true,
-      message: `Bulk separation: ${updated} deactivated, ${skipped} skipped, ${errors.length} errors`,
+      message: `Bulk separation: ${updated} existing deactivated, ${created} new legacy records created & deactivated, ${skipped} skipped, ${errors.length} errors`,
       errors: errors.slice(0, 30)
     });
   } catch (err) {

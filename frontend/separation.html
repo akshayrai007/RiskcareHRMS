@@ -378,12 +378,12 @@ async function downloadBulkSeparateTemplate() {
 async function bulkSeparateImport(input) {
   if (!input.files.length) return;
   const file = input.files[0];
-  if (!confirm(`This will mark all matched employees as RESIGNED/INACTIVE and deactivate their login. Continue?`)) { input.value=''; return; }
+  if (!confirm(`This will mark all matched employees as RESIGNED/INACTIVE and deactivate their login.\n\nAny Employee ID in the sheet that doesn't already exist in the system will be CREATED as a new historical record (from old HRMS) and immediately marked resigned. Continue?`)) { input.value=''; return; }
   const fd = new FormData();
   fd.append('file', file);
   try {
     toast('Processing bulk separation…','info');
-    const res = await fetch(`${API_BASE}/separations/bulk-import`, {
+    const res = await fetch(`${API_BASE}/separations/bulk-import?create_missing=true`, {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + Auth.getToken() },
       body: fd
