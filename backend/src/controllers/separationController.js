@@ -762,34 +762,44 @@ exports.bulkSeparateTemplate = async (req, res) => {
   try {
     const XLSX = require('xlsx');
     const empRes = await db.query(
-      `SELECT employee_code, first_name, last_name FROM employees WHERE is_active = true ORDER BY employee_code LIMIT 2`
+      `SELECT e.employee_code, e.first_name, e.last_name, e.email, e.phone,
+              e.branch, d.name AS department_name
+       FROM employees e
+       LEFT JOIN departments d ON e.department_id = d.id
+       WHERE e.is_active = true ORDER BY e.employee_code LIMIT 1`
     );
     const sample = empRes.rows[0];
 
     const data = [
       {
-        'Employee ID': sample ? sample.employee_code : 'E123',
-        'Separation Type': 'resignation',
-        'Separation Date': '2026-08-31',
-        'Reason': 'Personal reasons'
+        'Employee ID':             sample ? sample.employee_code : 'E123',
+        'Employee Name':           sample ? `${sample.first_name} ${sample.last_name}` : 'John Doe',
+        'Branch':                  sample?.branch || 'Mumbai',
+        'Last Working Day':        '2026-08-31',
+        'Department':              sample?.department_name || 'Operations',
+        'Official Email ID':       sample?.email || 'john.doe@riskcare.co.in',
+        'Official Mobile Number':  sample?.phone || '9876543210'
       }
     ];
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(data);
-    ws['!cols'] = [{ wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 30 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Bulk Separation');
+    ws['!cols'] = [{ wch: 14 }, { wch: 24 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 28 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Resigned Employees');
 
     const legend = [
-      { 'Field': 'Employee ID', 'Instructions': 'Required. Must match an existing ACTIVE employee_code exactly (e.g. E066).' },
-      { 'Field': 'Separation Type', 'Instructions': 'One of: resignation, termination, retirement, absconding, end_of_contract, mutual-separation. Defaults to resignation if blank/invalid.' },
-      { 'Field': 'Separation Date', 'Instructions': 'Last working day, format YYYY-MM-DD. Defaults to today if blank.' },
-      { 'Field': 'Reason', 'Instructions': 'Free text. Optional — defaults to "Bulk import — resigned".' },
+      { 'Field': 'Employee ID', 'Instructions': 'Required. Must match an existing ACTIVE employee_code exactly (e.g. E066). This is the only column used to find the employee.' },
+      { 'Field': 'Employee Name', 'Instructions': 'For your reference only, to confirm you picked the right row. Not used by the system.' },
+      { 'Field': 'Branch', 'Instructions': 'For your reference only. Not used by the system.' },
+      { 'Field': 'Last Working Day', 'Instructions': 'Required. Format YYYY-MM-DD. This becomes the separation date. Defaults to today if blank.' },
+      { 'Field': 'Department', 'Instructions': 'For your reference only. Not used by the system.' },
+      { 'Field': 'Official Email ID', 'Instructions': 'For your reference only. Not used by the system.' },
+      { 'Field': 'Official Mobile Number', 'Instructions': 'For your reference only. Not used by the system.' },
       { 'Field': '', 'Instructions': '' },
-      { 'Field': '⚠ WARNING', 'Instructions': 'This IMMEDIATELY deactivates the employee login and marks them inactive. It skips the normal approval workflow — use only for backfilling employees who have already left.' },
+      { 'Field': '⚠ WARNING', 'Instructions': 'This IMMEDIATELY deactivates the employee login and marks them Resigned/Inactive. It skips the normal 4-level approval workflow — use only for backfilling employees who have already left.' },
     ];
     const wsLegend = XLSX.utils.json_to_sheet(legend);
-    wsLegend['!cols'] = [{ wch: 18 }, { wch: 90 }];
+    wsLegend['!cols'] = [{ wch: 20 }, { wch: 95 }];
     XLSX.utils.book_append_sheet(wb, wsLegend, 'Instructions');
 
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -803,11 +813,17 @@ exports.bulkSeparateTemplate = async (req, res) => {
 };
 
 // ── Bulk Resignation/Separation Import (Excel) ───────────────────────────────
-// Columns expected: Employee ID, Separation Type, Separation Date, Reason
-// Marks each matched employee is_active=false immediately (skips the 4-level
-// workflow — for backfilling employees who already left before this system
-// existed). Deactivates login by scrambling password_hash, same as processLWD.
-const VALID_TYPES = ['resignation','termination','retirement','absconding','end_of_contract','mutual-separation'];
+// Columns expected: Employee ID, Employee Name, Branch, Last Working Day,
+// Department, Official Email ID, Official Mobile Number. Only "Employee ID"
+// and "Last Working Day" are actually used — the rest are for the HR user's
+// own reference/verification while filling the sheet.
+// Marks each matched employee is_active=false immediately AND inserts a
+// completed separations record (so it shows up in the All Separations list),
+// skipping the 4-level workflow — for backfilling employees who already
+// left before this system existed. Deactivates login by scrambling
+// password_hash, same as processLWD.
+// Note: the separations.type CHECK constraint only allows these 5 values.
+const VALID_TYPES = ['resignation','termination','retirement','absconding','mutual-separation'];
 
 exports.bulkSeparateImport = async (req, res) => {
   if (!req.file)
@@ -842,7 +858,7 @@ exports.bulkSeparateImport = async (req, res) => {
       let sepType = String(row['Separation Type'] || row['Type'] || 'resignation').trim().toLowerCase();
       if (!VALID_TYPES.includes(sepType)) sepType = 'resignation';
 
-      const rawDate = row['Separation Date'] || row['Last Working Day'] || row['LWD'];
+      const rawDate = row['Last Working Day'] || row['Separation Date'] || row['LWD'];
       let sepDate = null;
       if (rawDate) {
         const d = (rawDate instanceof Date) ? rawDate : new Date(rawDate);
@@ -855,6 +871,13 @@ exports.bulkSeparateImport = async (req, res) => {
       const sp = `sp_${empCode.replace(/\W/g,'')}`;
       await client.query(`SAVEPOINT ${sp}`);
       try {
+        await client.query(
+          `INSERT INTO separations
+             (employee_id, type, reason, notice_date, last_working_date, status,
+              initiated_by, l1_status, l2_status, l3_status, l4_status)
+           VALUES ($1,$2,$3,$4,$4,'completed',$5,'approved','approved','approved','approved')`,
+          [empId, sepType, reason, sepDate, req.user.id]
+        );
         await client.query(
           `UPDATE employees SET is_active=false, separation_date=$1,
                separation_type=$2, separation_reason=$3,
