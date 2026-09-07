@@ -792,6 +792,11 @@
                 <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">EMPLOYER (₹)</div>
                   <input id="edit-pf-emr-amt" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"></div>
               </div>
+              <div style="margin-top:8px"><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">PF BASIS</div>
+                <select id="edit-pf-basis" class="form-control" style="padding:6px 10px;font-size:12px">
+                  <option value="capped">Capped (min Basic, ₹15,000)</option>
+                  <option value="actual">Actual (full Basic, uncapped)</option>
+                </select></div>
             </div>
             <!-- ESI -->
             <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
@@ -2626,6 +2631,7 @@ async function openEditEmp(id) {
   document.getElementById('edit-pt').checked          = !!s.pt_applicable;
   document.getElementById('edit-lwf').checked         = !!s.lwf_applicable;
   document.getElementById('edit-tds').checked         = !!s.tds_applicable;
+  document.getElementById('edit-pf-basis').value      = s.pf_wage_basis === 'actual' ? 'actual' : 'capped';
   document.getElementById('edit-pf-emp-amt').value    = s.pf_employee  || '';
   document.getElementById('edit-pf-emr-amt').value    = s.pf_employer  || '';
   document.getElementById('edit-esi-emp-amt').value   = s.esi_employee || '';
@@ -2819,6 +2825,7 @@ async function saveEmployeeEdit() {
       conveyance: parseFloat(document.getElementById('edit-conveyance').value) || 0,
       special_allowance: parseFloat(document.getElementById('edit-special').value) || 0,
       gratuity:   parseFloat(document.getElementById('edit-gratuity').value)   || 0,
+      pf_wage_basis:  document.getElementById('edit-pf-basis').value || 'capped',
       pf_applicable:  document.getElementById('edit-pf').checked,
       esi_applicable: document.getElementById('edit-esi').checked,
       pt_applicable:  document.getElementById('edit-pt').checked,
