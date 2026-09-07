@@ -72,7 +72,8 @@ exports.upsertSalaryStructure = async (req, res) => {
     const {
       employee_id, basic = 0, hra = 0, conveyance = 0, special_allowance = 0,
       gratuity = 0, pf_applicable = true, esi_applicable = true,
-      pt_applicable = true, lwf_applicable = true, tds_applicable = false, notes
+      pt_applicable = true, lwf_applicable = true, tds_applicable = false, notes,
+      pf_wage_basis = 'capped' // 'capped' = PF on min(basic,15000); 'actual' = PF on full basic
     } = req.body;
 
     if (!employee_id)
@@ -80,7 +81,7 @@ exports.upsertSalaryStructure = async (req, res) => {
 
     // Auto-calculate statutory amounts
     const gross        = parseFloat(basic) + parseFloat(hra) + parseFloat(conveyance) + parseFloat(special_allowance) + parseFloat(gratuity);
-    const pfBase       = Math.min(parseFloat(basic), 15000);
+    const pfBase       = pf_wage_basis === 'actual' ? parseFloat(basic) : Math.min(parseFloat(basic), 15000);
     const pf_employee  = pf_applicable  ? Math.round(pfBase * 0.12)  : 0;
     const pf_employer  = pf_applicable  ? Math.round(pfBase * 0.12)  : 0;
     const pf_admin     = pf_applicable  ? 150 : 0;  // Fixed ₹150 (EPFO minimum admin charge)
@@ -102,20 +103,20 @@ exports.upsertSalaryStructure = async (req, res) => {
           pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
           pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
           professional_tax, lwf, total_employer_cost,
-          total_deductions, net_salary, ctc_monthly, ctc_annual, notes, updated_by, updated_at)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,NOW())
+          total_deductions, net_salary, ctc_monthly, ctc_annual, notes, pf_wage_basis, updated_by, updated_at)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,NOW())
        ON CONFLICT(employee_id) DO UPDATE SET
          basic=$2, hra=$3, conveyance=$4, special_allowance=$5, gratuity=$6, gross_salary=$7,
          pf_applicable=$8, esi_applicable=$9, pt_applicable=$10, lwf_applicable=$11, tds_applicable=$12,
          pf_employee=$13, pf_employer=$14, pf_admin=$15, esi_employee=$16, esi_employer=$17,
          professional_tax=$18, lwf=$19, total_employer_cost=$20,
-         total_deductions=$21, net_salary=$22, ctc_monthly=$23, ctc_annual=$24, notes=$25,
-         updated_by=$26, updated_at=NOW()`,
+         total_deductions=$21, net_salary=$22, ctc_monthly=$23, ctc_annual=$24, notes=$25, pf_wage_basis=$26,
+         updated_by=$27, updated_at=NOW()`,
       [employee_id, basic, hra, conveyance, special_allowance, gratuity, gross,
        pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
        pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
        pt, lwf, total_employer_cost,
-       total_ded, net, ctc_monthly, ctc_annual, notes || null, req.user.id]
+       total_ded, net, ctc_monthly, ctc_annual, notes || null, pf_wage_basis, req.user.id]
     );
 
     res.json({ success: true, message: 'Salary structure saved', data: { gross, net, ctc: ctc_monthly } });
@@ -226,7 +227,7 @@ exports.uploadPayroll = async (req, res) => {
     const iBasic      = col('basic');
     const iHRA        = col('hra');
     const iConveyance = col('conveyance') !== -1 ? col('conveyance') : col('travel');
-    const iOtherAllow = col('other');
+    const iOtherAllow = col('defray') !== -1 ? col('defray') : col('other');
     const iGratuity   = col('gratuity');
     const iGross      = col('gross');
     const iPFEmp      = col('pf');
@@ -335,12 +336,15 @@ exports.uploadPayroll = async (req, res) => {
       // (not prorated) as long as the earned gross still crosses the
       // applicable threshold, matching how the salary structure defines them.
       const structRes = await client.query(
-        `SELECT pf_applicable, esi_applicable, pt_applicable, lwf_applicable
+        `SELECT pf_applicable, esi_applicable, pt_applicable, lwf_applicable, pf_wage_basis
          FROM employee_salary_structure WHERE employee_id=$1`, [empId]
       );
-      const struct = structRes.rows[0] || { pf_applicable: true, esi_applicable: false, pt_applicable: true, lwf_applicable: false };
+      const struct = structRes.rows[0] || { pf_applicable: true, esi_applicable: false, pt_applicable: true, lwf_applicable: false, pf_wage_basis: 'capped' };
 
-      const pfBase   = Math.min(earnedBasic, 15000);
+      // PF ceiling (₹15,000) applies unless this employee opted for PF on
+      // actual basic — either way, applied to the EARNED (prorated) basic
+      // for this pay cycle, not the full monthly figure.
+      const pfBase   = struct.pf_wage_basis === 'actual' ? earnedBasic : Math.min(earnedBasic, 15000);
       const pfEmp    = struct.pf_applicable  ? Math.round(pfBase * 0.12) : 0;
       const esiEmp   = struct.esi_applicable && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
       const pt       = struct.pt_applicable  && gross >= 10000 ? 200 : 0;
@@ -681,7 +685,8 @@ exports.getAllSalaryStructures = async (req, res) => {
          COALESCE(ess.total_deductions,0)  AS total_deductions,
          COALESCE(ess.net_salary,0)        AS net_salary,
          COALESCE(ess.ctc_monthly,0)       AS ctc_monthly,
-         COALESCE(ess.ctc_annual,0)        AS ctc_annual
+         COALESCE(ess.ctc_annual,0)        AS ctc_annual,
+         COALESCE(ess.pf_wage_basis,'capped') AS pf_wage_basis
        FROM employees e
        LEFT JOIN employee_salary_structure ess ON ess.employee_id = e.id
        LEFT JOIN departments d   ON e.department_id = d.id
@@ -946,7 +951,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
     const HEADERS = [
       'Emp Code', 'Full Name', 'Department', 'Designation', 'Category',
       'Working Days', 'Present Days', 'LOP Days', 'Paid Days',
-      'Basic', 'HRA', 'Conveyance', 'Other Allowance', 'Gratuity', 'Gross Salary',
+      'Basic', 'HRA', 'Conveyance', 'Defray Allowance', 'Gratuity', 'Gross Salary',
       'PF (Employee)', 'ESI (Employee)', 'Prof Tax', 'LWF', 'TDS',
       'Loan/EMI Deduction (Active EMI)', 'EMI Progress', 'Total Deductions',
       'Net Pay', 'Payment Status', 'Remarks'
@@ -1095,7 +1100,8 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
              COALESCE(s.esi_applicable,false) AS esi_applicable,
              COALESCE(s.pt_applicable,true)  AS pt_applicable,
              COALESCE(s.lwf_applicable,false) AS lwf_applicable,
-             COALESCE(s.tds_applicable,false) AS tds_applicable
+             COALESCE(s.tds_applicable,false) AS tds_applicable,
+             COALESCE(s.pf_wage_basis,'capped') AS pf_wage_basis
       FROM employees e
       LEFT JOIN departments  d   ON e.department_id  = d.id
       LEFT JOIN designations des ON e.designation_id = des.id
@@ -1105,22 +1111,24 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
 
     const HEADERS = [
       'Emp Code', 'Full Name', 'Department', 'Designation',
-      'Basic', 'HRA', 'Conveyance', 'Other Allowance', 'Gratuity',
-      'PF Applicable (Y/N)', 'ESI Applicable (Y/N)', 'PT Applicable (Y/N)',
+      'Basic', 'HRA', 'Conveyance', 'Defray Allowance', 'Gratuity',
+      'PF Applicable (Y/N)', 'PF Basis (Capped/Actual)',
+      'ESI Applicable (Y/N)', 'PT Applicable (Y/N)',
       'LWF Applicable (Y/N)', 'TDS Applicable (Y/N)'
     ];
     const yn = v => v ? 'Y' : 'N';
 
     const rows = [
       ['HRMS — Salary Structure Bulk Upload Template'],
-      ['⚠️  Fill Basic, HRA, Conveyance, Other Allowance, Gratuity (monthly ₹ amounts). PF/ESI/PT/LWF/TDS are auto-calculated by the system based on the Y/N applicability columns — just mark Y or N.'],
+      ['⚠️  Fill Basic, HRA, Conveyance, Defray Allowance, Gratuity (monthly ₹ amounts). PF/ESI/PT/LWF/TDS are auto-calculated by the system based on the Y/N applicability columns — just mark Y or N.'],
       [],
       HEADERS,
       ...empResult.rows.map(e => [
         e.employee_code, e.full_name, e.department || '', e.designation || '',
         parseFloat(e.basic) || 0, parseFloat(e.hra) || 0, parseFloat(e.conveyance) || 0,
         parseFloat(e.special_allowance) || 0, parseFloat(e.gratuity) || 0,
-        yn(e.pf_applicable), yn(e.esi_applicable), yn(e.pt_applicable),
+        yn(e.pf_applicable), e.pf_wage_basis === 'actual' ? 'Actual' : 'Capped',
+        yn(e.esi_applicable), yn(e.pt_applicable),
         yn(e.lwf_applicable), yn(e.tds_applicable)
       ])
     ];
@@ -1145,9 +1153,10 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
       ['Basic',            'Monthly basic salary in ₹'],
       ['HRA',              'Monthly House Rent Allowance in ₹'],
       ['Conveyance',       'Monthly conveyance/travel allowance in ₹'],
-      ['Other Allowance',  'Any other fixed monthly allowance in ₹'],
+      ['Defray Allowance', 'Any other fixed monthly allowance in ₹'],
       ['Gratuity',         'Monthly gratuity component in ₹ (usually 0 unless applicable)'],
       ['PF Applicable',    'Y if Provident Fund applies to this employee, else N'],
+      ['PF Basis',         'Capped = PF calculated on min(Basic, ₹15,000), the statutory PF wage ceiling (default). Actual = PF calculated on the FULL Basic, uncapped — for employees who opted out of the ceiling.'],
       ['ESI Applicable',   'Y if ESI applies (only relevant when gross ≤ ₹21,000), else N'],
       ['PT Applicable',    'Y if Professional Tax applies, else N'],
       ['LWF Applicable',   'Y if Labour Welfare Fund applies, else N'],
@@ -1223,16 +1232,17 @@ exports.bulkUploadSalaryStructure = async (req, res) => {
       const basic             = parseFloat(row['Basic']) || 0;
       const hra               = parseFloat(row['HRA']) || 0;
       const conveyance         = parseFloat(row['Conveyance']) || 0;
-      const special_allowance  = parseFloat(row['Other Allowance']) || 0;
+      const special_allowance  = parseFloat(row['Defray Allowance'] ?? row['Other Allowance']) || 0;
       const gratuity           = parseFloat(row['Gratuity']) || 0;
       const pf_applicable      = isYes(row['PF Applicable (Y/N)']);
       const esi_applicable     = isYes(row['ESI Applicable (Y/N)']);
       const pt_applicable      = isYes(row['PT Applicable (Y/N)']);
       const lwf_applicable     = isYes(row['LWF Applicable (Y/N)']);
       const tds_applicable     = isYes(row['TDS Applicable (Y/N)']);
+      const pf_wage_basis      = /actual/i.test(String(row['PF Basis (Capped/Actual)'] || '')) ? 'actual' : 'capped';
 
       const gross        = basic + hra + conveyance + special_allowance + gratuity;
-      const pfBase        = Math.min(basic, 15000);
+      const pfBase        = pf_wage_basis === 'actual' ? basic : Math.min(basic, 15000);
       const pf_employee    = pf_applicable  ? Math.round(pfBase * 0.12) : 0;
       const pf_employer    = pf_applicable  ? Math.round(pfBase * 0.12) : 0;
       const pf_admin       = pf_applicable  ? 150 : 0;
@@ -1255,19 +1265,19 @@ exports.bulkUploadSalaryStructure = async (req, res) => {
               pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
               pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
               professional_tax, lwf, total_employer_cost,
-              total_deductions, net_salary, ctc_monthly, ctc_annual, updated_by, updated_at)
-           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,NOW())
+              total_deductions, net_salary, ctc_monthly, ctc_annual, pf_wage_basis, updated_by, updated_at)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,NOW())
            ON CONFLICT(employee_id) DO UPDATE SET
              basic=$2, hra=$3, conveyance=$4, special_allowance=$5, gratuity=$6, gross_salary=$7,
              pf_applicable=$8, esi_applicable=$9, pt_applicable=$10, lwf_applicable=$11, tds_applicable=$12,
              pf_employee=$13, pf_employer=$14, pf_admin=$15, esi_employee=$16, esi_employer=$17,
              professional_tax=$18, lwf=$19, total_employer_cost=$20,
-             total_deductions=$21, net_salary=$22, ctc_monthly=$23, ctc_annual=$24,
-             updated_by=$25, updated_at=NOW()`,
+             total_deductions=$21, net_salary=$22, ctc_monthly=$23, ctc_annual=$24, pf_wage_basis=$25,
+             updated_by=$26, updated_at=NOW()`,
           [empId, basic, hra, conveyance, special_allowance, gratuity, gross,
            pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
            pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
-           pt, lwf, total_employer_cost, total_ded, net, ctc_monthly, ctc_annual, req.user.id]
+           pt, lwf, total_employer_cost, total_ded, net, ctc_monthly, ctc_annual, pf_wage_basis, req.user.id]
         );
         await client.query(`RELEASE SAVEPOINT ${sp}`);
         updated++;

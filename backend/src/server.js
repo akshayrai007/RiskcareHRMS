@@ -760,6 +760,10 @@ async function start() {
     setTimeout(async () => {
       try {
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS employee_type VARCHAR(20) DEFAULT 'onsite'`);
+        // ── PF wage basis — per employee choice: 'capped' (PF calculated on
+        // min(basic,15000), the statutory ceiling) or 'actual' (PF on full
+        // basic, uncapped, for employees who opted out of the ceiling) ─────
+        await db.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS pf_wage_basis VARCHAR(10) DEFAULT 'capped' CHECK (pf_wage_basis IN ('capped','actual'))`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS separation_date DATE DEFAULT NULL`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS separation_type VARCHAR(50) DEFAULT NULL`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS separation_reason TEXT DEFAULT NULL`);

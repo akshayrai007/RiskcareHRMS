@@ -144,7 +144,7 @@
           <div style="font-weight:700;color:#d97706;margin-bottom:6px">⚠ Processing Info</div>
           <p style="color:var(--text2);font-size:13px;line-height:1.7">
             Processing calculates salaries for all active employees based on their attendance.<br>
-            Includes: <b>Basic, HRA, Special Allowance, PF (12%), ESI (0.75%), TDS</b>, and LOP deductions.
+            Includes: <b>Basic, HRA, Defray Allowance, PF (12%), ESI (0.75%), TDS</b>, and LOP deductions.
           </p>
         </div>
         <div class="flex gap-3 flex-wrap" style="align-items:flex-end">
@@ -445,7 +445,7 @@ function renderPayslipHTML(p) {
   const earningRows = [
     ['Basic Salary', p.basic],
     ['HRA', p.hra],
-    ['Special Allowance', p.special_allowance],
+    ['Defray Allowance', p.special_allowance],
     ['Travel Allowance', p.travel_allowance],
     ['Other Allowance', p.other_allowance],
     ['Bonus', p.bonus],
@@ -986,6 +986,7 @@ async function openSalaryEdit(empId) {
   document.getElementById('se-pf-emp').value   = r.pf_employee || 0;
   document.getElementById('se-pf-emr').value   = r.pf_employer || 0;
   document.getElementById('se-pf-admin').value = r.pf_admin || 150;
+  document.getElementById('se-pf-basis').value = r.pf_wage_basis === 'actual' ? 'actual' : 'capped';
   document.getElementById('se-esi-emp').value  = r.esi_employee || 0;
   document.getElementById('se-esi-emr').value  = r.esi_employer || 0;
   document.getElementById('se-pt').value       = r.professional_tax || r.pt_amount || 0;
@@ -1042,6 +1043,7 @@ async function saveSalaryStructure() {
     lwf_amount:       v('se-lwf'),
     tds_monthly:      v('se-tds'),
     loan_emi_recovery:v('se-emi'),
+    pf_wage_basis:    document.getElementById('se-pf-basis')?.value || 'capped',
     pf_applicable:    v('se-pf-emp') > 0,
     esi_applicable:   v('se-esi-emp') > 0,
     pt_applicable:    v('se-pt') > 0,
@@ -1082,7 +1084,7 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
       <div><label class="form-label">Basic Salary *</label><input id="se-basic" type="number" class="form-control" placeholder="0"></div>
       <div><label class="form-label">HRA</label><input id="se-hra" type="number" class="form-control" placeholder="0"></div>
       <div><label class="form-label">Conveyance</label><input id="se-conveyance" type="number" class="form-control" placeholder="0"></div>
-      <div><label class="form-label">Special Allowance</label><input id="se-special" type="number" class="form-control" placeholder="0"></div>
+      <div><label class="form-label">Defray Allowance</label><input id="se-special" type="number" class="form-control" placeholder="0"></div>
       <div><label class="form-label">Gratuity</label><input id="se-gratuity" type="number" class="form-control" placeholder="0"></div>
       <div><label class="form-label">Other Allowance</label><input id="se-other" type="number" class="form-control" placeholder="0"></div>
     </div>
@@ -1092,6 +1094,7 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
       <div><label class="form-label">PF Employee</label><input id="se-pf-emp" type="number" class="form-control" placeholder="0"></div>
       <div><label class="form-label">PF Employer</label><input id="se-pf-emr" type="number" class="form-control" placeholder="0"></div>
       <div><label class="form-label">PF Admin</label><input id="se-pf-admin" type="number" class="form-control" placeholder="150"></div>
+      <div><label class="form-label">PF Basis</label><select id="se-pf-basis" class="form-control"><option value="capped">Capped (min Basic, ₹15,000)</option><option value="actual">Actual (full Basic, uncapped)</option></select></div>
       <div><label class="form-label">ESI Employee</label><input id="se-esi-emp" type="number" class="form-control" placeholder="0"></div>
       <div><label class="form-label">ESI Employer</label><input id="se-esi-emr" type="number" class="form-control" placeholder="0"></div>
       <div><label class="form-label">Professional Tax (PT)</label><input id="se-pt" type="number" class="form-control" placeholder="0"></div>

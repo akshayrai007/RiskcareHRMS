@@ -344,7 +344,7 @@ function buildOfferLetterHTML(ol) {
       <tr><td class="col-sr">1</td><td class="col-part">Fixed Basic</td><td class="col-num">${fmtV(basic)}</td><td class="col-num">${fmtV(basic * 12)}</td></tr>
       <tr><td class="col-sr">2</td><td class="col-part">HRA</td><td class="col-num">${fmtV(hra)}</td><td class="col-num">${fmtV(hra * 12)}</td></tr>
       ${convRow}
-      <tr><td class="col-sr">3</td><td class="col-part">Other Allowances</td><td class="col-num">${fmtV(other)}</td><td class="col-num">${fmtV(other * 12)}</td></tr>
+      <tr><td class="col-sr">3</td><td class="col-part">Defray Allowance</td><td class="col-num">${fmtV(other)}</td><td class="col-num">${fmtV(other * 12)}</td></tr>
       <tr><td class="col-sr">4</td><td class="col-part">Gratuity</td><td class="col-num">${fmtV(gratuity)}</td><td class="col-num">${fmtV(gratuity * 12)}</td></tr>
       <tr class="highlight"><td class="col-sr">5</td><td class="col-part">Gross Pay</td><td class="col-num">${fmtV(gross)}</td><td class="col-num">${fmtV(gross * 12)}</td></tr>
       <tr><td class="col-sr">6</td><td class="col-part">Provident Fund</td><td class="col-num">${pfEmp > 0 ? fmtV(pfEmp) : ''}</td><td class="col-num">${pfEmp > 0 ? fmtV(pfEmp * 12) : ''}</td></tr>
@@ -625,7 +625,7 @@ exports.bulkSend = async (req, res) => {
         const basic      = parseFloat(String(row['Basic Monthly']      || row['basic_monthly']      || 0).replace(/,/g, '')) || 0;
         const hra        = parseFloat(String(row['HRA Monthly']        || row['hra_monthly']        || 0).replace(/,/g, '')) || 0;
         const conveyance = parseFloat(String(row['Conveyance Monthly'] || row['conveyance_monthly'] || 0).replace(/,/g, '')) || 0;
-        const otherAllow = parseFloat(String(row['Other Allowance']    || row['other_allowance_monthly'] || 0).replace(/,/g, '')) || 0;
+        const otherAllow = parseFloat(String(row['Defray Allowance']   || row['Other Allowance'] || row['other_allowance_monthly'] || 0).replace(/,/g, '')) || 0;
         const gratuity   = parseFloat(String(row['Gratuity Monthly']   || row['gratuity_monthly']   || 0).replace(/,/g, '')) || 0;
         const pfEmployee = parseFloat(String(row['PF Employee']        || row['pf_employee_monthly'] || 0).replace(/,/g, '')) || 0;
         const pfEmployer = parseFloat(String(row['PF Employer']        || row['pf_employer_monthly'] || 0).replace(/,/g, '')) || 0;
