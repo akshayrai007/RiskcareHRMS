@@ -1035,3 +1035,218 @@ exports.downloadPayrollTemplate = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+// ── Download Salary Structure Bulk Upload Template (HR/Admin) ──────────────
+// One-time setup sheet — Basic/HRA/etc per employee, not tied to a month.
+// Different from /payroll/template (which is the monthly attendance run).
+exports.downloadSalaryStructureTemplate = async (req, res) => {
+  try {
+    const XLSX = require('xlsx');
+    const empResult = await db.query(`
+      SELECT e.employee_code, CONCAT(e.first_name,' ',e.last_name) AS full_name,
+             d.name AS department, des.title AS designation,
+             COALESCE(s.basic,0) AS basic, COALESCE(s.hra,0) AS hra,
+             COALESCE(s.conveyance,0) AS conveyance,
+             COALESCE(s.special_allowance,0) AS special_allowance,
+             COALESCE(s.gratuity,0) AS gratuity,
+             COALESCE(s.pf_applicable,true)  AS pf_applicable,
+             COALESCE(s.esi_applicable,false) AS esi_applicable,
+             COALESCE(s.pt_applicable,true)  AS pt_applicable,
+             COALESCE(s.lwf_applicable,false) AS lwf_applicable,
+             COALESCE(s.tds_applicable,false) AS tds_applicable
+      FROM employees e
+      LEFT JOIN departments  d   ON e.department_id  = d.id
+      LEFT JOIN designations des ON e.designation_id = des.id
+      LEFT JOIN employee_salary_structure s ON s.employee_id = e.id
+      WHERE e.is_active = true
+      ORDER BY d.name, e.first_name`);
+
+    const HEADERS = [
+      'Emp Code', 'Full Name', 'Department', 'Designation',
+      'Basic', 'HRA', 'Conveyance', 'Other Allowance', 'Gratuity',
+      'PF Applicable (Y/N)', 'ESI Applicable (Y/N)', 'PT Applicable (Y/N)',
+      'LWF Applicable (Y/N)', 'TDS Applicable (Y/N)'
+    ];
+    const yn = v => v ? 'Y' : 'N';
+
+    const rows = [
+      ['HRMS — Salary Structure Bulk Upload Template'],
+      ['⚠️  Fill Basic, HRA, Conveyance, Other Allowance, Gratuity (monthly ₹ amounts). PF/ESI/PT/LWF/TDS are auto-calculated by the system based on the Y/N applicability columns — just mark Y or N.'],
+      [],
+      HEADERS,
+      ...empResult.rows.map(e => [
+        e.employee_code, e.full_name, e.department || '', e.designation || '',
+        parseFloat(e.basic) || 0, parseFloat(e.hra) || 0, parseFloat(e.conveyance) || 0,
+        parseFloat(e.special_allowance) || 0, parseFloat(e.gratuity) || 0,
+        yn(e.pf_applicable), yn(e.esi_applicable), yn(e.pt_applicable),
+        yn(e.lwf_applicable), yn(e.tds_applicable)
+      ])
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = HEADERS.map((h,i) => ({ wch: i<4 ? 20 : 14 }));
+    ws['!merges'] = [
+      { s:{r:0,c:0}, e:{r:0,c:HEADERS.length-1} },
+      { s:{r:1,c:0}, e:{r:1,c:HEADERS.length-1} },
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, 'Salary Structure');
+
+    const instrRows = [
+      ['HRMS Salary Structure — How to Fill'],
+      [''],
+      ['This is a ONE-TIME setup sheet — sets each employee\'s recurring monthly'],
+      ['salary structure (Basic/HRA/etc). It is NOT the monthly attendance run —'],
+      ['use Payroll → Upload Payroll Excel for that, every month.'],
+      [''],
+      ['Column', 'What to Enter'],
+      ['Basic',            'Monthly basic salary in ₹'],
+      ['HRA',              'Monthly House Rent Allowance in ₹'],
+      ['Conveyance',       'Monthly conveyance/travel allowance in ₹'],
+      ['Other Allowance',  'Any other fixed monthly allowance in ₹'],
+      ['Gratuity',         'Monthly gratuity component in ₹ (usually 0 unless applicable)'],
+      ['PF Applicable',    'Y if Provident Fund applies to this employee, else N'],
+      ['ESI Applicable',   'Y if ESI applies (only relevant when gross ≤ ₹21,000), else N'],
+      ['PT Applicable',    'Y if Professional Tax applies, else N'],
+      ['LWF Applicable',   'Y if Labour Welfare Fund applies, else N'],
+      ['TDS Applicable',   'Y if TDS should be deducted, else N (TDS amount itself is entered separately during monthly payroll)'],
+      [''],
+      ['UPLOAD RULES:'],
+      ['• Emp Code must match exactly (e.g. E066)'],
+      ['• Do not add/remove columns or rename the sheet'],
+      ['• PF/ESI/PT/LWF amounts are auto-calculated — do not add columns for them'],
+      ['• Save as .xlsx before uploading'],
+      ['• Upload via Employees page → Upload Salary'],
+    ];
+    const ws2 = XLSX.utils.aoa_to_sheet(instrRows);
+    ws2['!cols'] = [{wch:22},{wch:70}];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Instructions');
+
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Disposition', 'attachment; filename="HRMS_Salary_Structure_Template.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buf);
+  } catch (err) {
+    console.error('[downloadSalaryStructureTemplate]', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ── Bulk Upload Salary Structure (HR/Admin) ─────────────────────────────────
+exports.bulkUploadSalaryStructure = async (req, res) => {
+  if (!req.file)
+    return res.status(400).json({ success: false, message: 'Excel file required' });
+
+  const XLSX = require('xlsx');
+  let wb, rows;
+  try {
+    wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const ws = wb.Sheets['Salary Structure'] || wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    // Row 0 = title, row 1 = instructions, row 2 = spacer, row 3 = headers, row 4+ = data
+    const headerIdx = raw.findIndex(r => String(r[0] || '').trim() === 'Emp Code');
+    if (headerIdx === -1)
+      return res.status(400).json({ success: false, message: 'Could not find header row ("Emp Code") — use the downloaded template' });
+    const headers = raw[headerIdx];
+    rows = raw.slice(headerIdx + 1)
+      .filter(r => String(r[0] || '').trim())
+      .map(r => {
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = r[i]; });
+        return obj;
+      });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: 'Failed to parse Excel: ' + err.message });
+  }
+
+  const empRes = await db.query(`SELECT id, employee_code FROM employees WHERE is_active = true`);
+  const empMap = {};
+  empRes.rows.forEach(r => { empMap[(r.employee_code || '').trim().toUpperCase()] = r.id; });
+
+  const isYes = v => /^y/i.test(String(v || '').trim());
+
+  let updated = 0, skipped = 0;
+  const errors = [];
+  const client = await db.getClient();
+
+  try {
+    await client.query('BEGIN');
+
+    for (const row of rows) {
+      const empCode = String(row['Emp Code'] || '').trim().toUpperCase();
+      if (!empCode) { skipped++; continue; }
+      const empId = empMap[empCode];
+      if (!empId) { skipped++; errors.push(`${empCode}: not found or inactive`); continue; }
+
+      const basic             = parseFloat(row['Basic']) || 0;
+      const hra               = parseFloat(row['HRA']) || 0;
+      const conveyance         = parseFloat(row['Conveyance']) || 0;
+      const special_allowance  = parseFloat(row['Other Allowance']) || 0;
+      const gratuity           = parseFloat(row['Gratuity']) || 0;
+      const pf_applicable      = isYes(row['PF Applicable (Y/N)']);
+      const esi_applicable     = isYes(row['ESI Applicable (Y/N)']);
+      const pt_applicable      = isYes(row['PT Applicable (Y/N)']);
+      const lwf_applicable     = isYes(row['LWF Applicable (Y/N)']);
+      const tds_applicable     = isYes(row['TDS Applicable (Y/N)']);
+
+      const gross        = basic + hra + conveyance + special_allowance + gratuity;
+      const pfBase        = Math.min(basic, 15000);
+      const pf_employee    = pf_applicable  ? Math.round(pfBase * 0.12) : 0;
+      const pf_employer    = pf_applicable  ? Math.round(pfBase * 0.12) : 0;
+      const pf_admin       = pf_applicable  ? 150 : 0;
+      const esi_employee   = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
+      const esi_employer   = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
+      const pt             = pt_applicable  && gross >= 10000 ? 200 : 0;
+      const lwf            = lwf_applicable ? 6 : 0;
+      const total_ded      = pf_employee + esi_employee + pt + lwf;
+      const net            = gross - total_ded;
+      const total_employer_cost = pf_employer + esi_employer + pf_admin;
+      const ctc_monthly    = gross + total_employer_cost;
+      const ctc_annual     = ctc_monthly * 12;
+
+      const sp = `sp_${empCode.replace(/\W/g,'')}`;
+      await client.query(`SAVEPOINT ${sp}`);
+      try {
+        await client.query(
+          `INSERT INTO employee_salary_structure
+             (employee_id, basic, hra, conveyance, special_allowance, gratuity, gross_salary,
+              pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
+              pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
+              professional_tax, lwf, total_employer_cost,
+              total_deductions, net_salary, ctc_monthly, ctc_annual, updated_by, updated_at)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,NOW())
+           ON CONFLICT(employee_id) DO UPDATE SET
+             basic=$2, hra=$3, conveyance=$4, special_allowance=$5, gratuity=$6, gross_salary=$7,
+             pf_applicable=$8, esi_applicable=$9, pt_applicable=$10, lwf_applicable=$11, tds_applicable=$12,
+             pf_employee=$13, pf_employer=$14, pf_admin=$15, esi_employee=$16, esi_employer=$17,
+             professional_tax=$18, lwf=$19, total_employer_cost=$20,
+             total_deductions=$21, net_salary=$22, ctc_monthly=$23, ctc_annual=$24,
+             updated_by=$25, updated_at=NOW()`,
+          [empId, basic, hra, conveyance, special_allowance, gratuity, gross,
+           pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
+           pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
+           pt, lwf, total_employer_cost, total_ded, net, ctc_monthly, ctc_annual, req.user.id]
+        );
+        await client.query(`RELEASE SAVEPOINT ${sp}`);
+        updated++;
+      } catch (rowErr) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${sp}`);
+        errors.push(`${empCode}: ${rowErr.message}`);
+        skipped++;
+      }
+    }
+
+    await client.query('COMMIT');
+    res.json({
+      success: true,
+      message: `Salary structure imported: ${updated} updated, ${skipped} skipped, ${errors.length} errors`,
+      errors: errors.slice(0, 30)
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[bulkUploadSalaryStructure]', err);
+    res.status(500).json({ success: false, message: err.message });
+  } finally {
+    client.release();
+  }
+};

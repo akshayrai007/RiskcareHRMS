@@ -1275,6 +1275,11 @@ if (Role.is('hr', 'accounts')) {
       ⬆ Master Update
       <input type="file" id="master-update-file" accept=".xlsx,.xls" onchange="masterUpdate(this)" style="display:none">
     </label>
+    <button class="btn btn-outline btn-sm" style="margin-left:4px;background:#dcfce7;color:#15803d;border-color:#86efac" onclick="downloadSalaryTemplate()" title="Download a template pre-filled with every employee's current salary">📥 Salary Template</button>
+    <label class="btn btn-outline btn-sm" style="cursor:pointer;margin-left:4px;background:#dcfce7;color:#15803d;border-color:#86efac" title="Upload the filled salary template to set/update every employee's salary structure">
+      ⬆ Upload Salary
+      <input type="file" id="salary-upload-file" accept=".xlsx,.xls" onchange="uploadSalaryStructure(this)" style="display:none">
+    </label>
     <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openAddEmp()">+ Add Employee</button>`;
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2406,6 +2411,44 @@ async function masterUpdate(input) {
       if (s.updated > 0) loadEmployees();
     } else toast(data.message || 'Master update failed', 'error');
   } catch(e) { toast('Master update failed', 'error'); }
+  input.value = '';
+}
+
+async function downloadSalaryTemplate() {
+  try {
+    toast('Preparing salary template…');
+    const res = await fetch(`${API_BASE}/payroll/salary-structure-template`, {
+      headers: { Authorization: 'Bearer ' + Auth.getToken() }
+    });
+    if (!res.ok) { toast('Download failed', 'error'); return; }
+    const blob = await res.blob();
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: 'HRMS_Salary_Structure_Template.xlsx'
+    });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  } catch(e) { toast('Download failed: ' + e.message, 'error'); }
+}
+
+async function uploadSalaryStructure(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (!confirm('This will set/update the salary structure (Basic, HRA, Conveyance, etc.) for every matched employee. PF/ESI/PT/LWF are recalculated automatically. Continue?')) {
+    input.value = ''; return;
+  }
+  const fd = new FormData();
+  fd.append('file', file);
+  toast('Uploading salary structure…');
+  try {
+    const res = await fetch(`${API_BASE}/payroll/salary-structure-bulk`, { method: 'POST', headers: { Authorization: 'Bearer ' + Auth.getToken() }, body: fd });
+    const data = await res.json();
+    if (data.success) {
+      toast(data.message, 'success');
+      if (data.errors?.length) alert('Errors:\n' + data.errors.join('\n'));
+      loadEmployees();
+    } else toast(data.message || 'Salary upload failed', 'error');
+  } catch(e) { toast('Salary upload failed: ' + e.message, 'error'); }
   input.value = '';
 }
 
