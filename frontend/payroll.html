@@ -64,11 +64,20 @@
         <div style="background:var(--cfg-pale);border:1px solid var(--cfg-border);border-radius:8px;padding:16px;margin-bottom:20px">
           <div style="font-weight:700;color:var(--cfg-primary);margin-bottom:10px;font-size:14px">✅ How This Works</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;font-size:13px;color:var(--cfg-dark)">
-            <div>📋 <b>Step 1:</b> Fill the monthly Excel sheet (Present Days per employee)</div>
-            <div>📤 <b>Step 2:</b> Upload it here — system auto-reads all salary data</div>
+            <div>📋 <b>Step 1:</b> Download the template below (pre-filled with every active employee's salary structure)</div>
+            <div>✍️ <b>Step 2:</b> Fill in Working Days, Present Days, LOP Days, Payment Status per employee</div>
+            <div>📤 <b>Step 3:</b> Upload it here — system auto-reads all salary data</div>
             <div>🔔 <b>Step 3:</b> Every employee gets notified instantly on their app</div>
             <div>💰 <b>Step 4:</b> Employee opens the app → sees payslip automatically</div>
           </div>
+        </div>
+
+        <!-- Template download -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:14px 16px;margin-bottom:20px;flex-wrap:wrap">
+          <div style="font-size:13px;color:#166534">
+            <b>📥 Get the template first</b> — pre-filled with every active employee's Emp Code, Name, Department and salary structure (Basic/HRA/PF/ESI/etc). You only fill in the attendance columns.
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="downloadPayrollTemplateExcel()" style="white-space:nowrap;background:#fff">⬇ Download Template</button>
         </div>
 
         <!-- Upload form -->
@@ -307,6 +316,27 @@ function handleDrop(e) {
   document.getElementById('drop-zone').style.background = window.CFG.uploadBgColor;
   if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
 }
+async function downloadPayrollTemplateExcel() {
+  const month = document.getElementById('upload-month')?.value || (new Date().getMonth()+1);
+  const year  = document.getElementById('upload-year')?.value  || new Date().getFullYear();
+  try {
+    toast('Preparing template…','info');
+    const token = localStorage.getItem(window.CFG.tokenKey);
+    const res = await fetch(`${API_BASE}/payroll/template?month=${month}&year=${year}`, {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (!res.ok) { toast('Download failed','error'); return; }
+    const blob = await res.blob();
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: `Payroll_Template_${month}_${year}.xlsx`
+    });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    toast('✅ Template downloaded!','success');
+  } catch(e) { toast('Download failed: '+e.message,'error'); }
+}
+
 function setFile(file) {
   if (!file.name.match(/\.xlsx?$/i)) {
     toast('Please upload an .xlsx file only', 'error'); return;
