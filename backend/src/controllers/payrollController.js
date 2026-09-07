@@ -44,8 +44,8 @@ exports.getSalaryStructure = async (req, res) => {
     const empId = req.params.employee_id || req.query.employee_id || req.user.id;
     const role  = req.user.role;
 
-    // Only admin/hr/accounts or the employee themselves
-    if (!['super_admin','accounts','hr'].includes(role) && parseInt(empId) !== req.user.id)
+    // Only HR can view another employee's salary — everyone can view their own.
+    if (role !== 'hr' && parseInt(empId) !== req.user.id)
       return res.status(403).json({ success: false, message: 'Access denied' });
 
     const result = await db.query(

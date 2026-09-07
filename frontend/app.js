@@ -109,8 +109,8 @@ const fmt = {
 const Role = {
   is:            (...r) => r.includes(Auth.getUser()?.role),
   isAdminOrHR: () => Role.is('admin','super_admin','hr','accounts'),          // super_admin EXCLUDED — view only
-  // Only HR, Accounts, COO (cooEmployeeCode), and Super Admin can view salary/compensation
-  canViewSalary: () => Role.is('super_admin','hr','accounts') || Auth.getUser()?.employee_code === window.CFG.cooEmployeeCode,
+  // Only HR can view salary/compensation for other employees
+  canViewSalary: () => Role.is('hr'),
   isAdminOnly:   ()     => Role.is('admin','super_admin'),
   isManagerUp:   ()     => Role.is('admin','super_admin','hr','accounts','manager'),
   isDashboard:   ()     => Role.is('admin','super_admin','hr','accounts','manager','tl'),

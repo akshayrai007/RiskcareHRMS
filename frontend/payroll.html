@@ -288,20 +288,18 @@ if (user && user.role === 'hr') {
   switchTab('list');
 }
 
-// Accounts: Full access — Upload + Process + List
+// Accounts: Full access — Upload + Process + List (Salary Structures is HR-only)
 if (user && user.role === 'accounts') {
   document.getElementById('upload-tab').style.display = '';
   document.getElementById('process-tab').style.display = '';
   document.getElementById('list-tab').style.display = '';
-  document.getElementById('struct-tab').style.display = '';
 }
 
-// Super Admin: List only — payroll upload is accounts' job
+// Super Admin: List only — payroll upload is accounts' job (Salary Structures is HR-only)
 if (user && user.role === 'super_admin') {
   document.getElementById('upload-tab').style.display = 'none';
   document.getElementById('process-tab').style.display = 'none';
   document.getElementById('list-tab').style.display = '';
-  document.getElementById('struct-tab').style.display = '';
   switchTab('list');
 }
 
