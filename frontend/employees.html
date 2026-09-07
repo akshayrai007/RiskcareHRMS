@@ -1264,6 +1264,15 @@ if (Role.is('admin', 'super_admin')) {
 
 // Block 3: Add / Export / Import BUTTONS — HR + Accounts only
 if (Role.is('hr', 'accounts')) {
+  // Salary Template / Upload Salary are HR-only — accounts and every other
+  // role must not see or reach these, even though they can see the rest.
+  const salaryButtonsHtml = Role.is('hr') ? `
+    <button class="btn btn-outline btn-sm" style="margin-left:4px;background:#dcfce7;color:#15803d;border-color:#86efac" onclick="downloadSalaryTemplate()" title="Download a template pre-filled with every employee's current salary">📥 Salary Template</button>
+    <label class="btn btn-outline btn-sm" style="cursor:pointer;margin-left:4px;background:#dcfce7;color:#15803d;border-color:#86efac" title="Upload the filled salary template to set/update every employee's salary structure">
+      ⬆ Upload Salary
+      <input type="file" id="salary-upload-file" accept=".xlsx,.xls" onchange="uploadSalaryStructure(this)" style="display:none">
+    </label>` : '';
+
   document.getElementById('add-emp-btn').innerHTML = `
     <button class="btn btn-outline btn-sm" onclick="downloadMasterExcel()">⬇ Export Excel</button>
     <button class="btn btn-outline btn-sm" style="background:var(--accent);color:#fff;border-color:var(--accent)" onclick="openMasterExport()">📊 Master Excel</button>
@@ -1275,11 +1284,7 @@ if (Role.is('hr', 'accounts')) {
       ⬆ Master Update
       <input type="file" id="master-update-file" accept=".xlsx,.xls" onchange="masterUpdate(this)" style="display:none">
     </label>
-    <button class="btn btn-outline btn-sm" style="margin-left:4px;background:#dcfce7;color:#15803d;border-color:#86efac" onclick="downloadSalaryTemplate()" title="Download a template pre-filled with every employee's current salary">📥 Salary Template</button>
-    <label class="btn btn-outline btn-sm" style="cursor:pointer;margin-left:4px;background:#dcfce7;color:#15803d;border-color:#86efac" title="Upload the filled salary template to set/update every employee's salary structure">
-      ⬆ Upload Salary
-      <input type="file" id="salary-upload-file" accept=".xlsx,.xls" onchange="uploadSalaryStructure(this)" style="display:none">
-    </label>
+    ${salaryButtonsHtml}
     <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openAddEmp()">+ Add Employee</button>`;
 }
 // ─────────────────────────────────────────────────────────────────────────────

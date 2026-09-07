@@ -268,8 +268,8 @@ router.get ('/payroll/salary-structure/:employee_id', authenticate,             
 router.post('/payroll/salary-structure',          authenticate, authorize(...HR_ADMIN), payCtrl.upsertSalaryStructure);
 router.post('/payroll/upload',                    authenticate, authorize('accounts'), payCtrl.uploadMiddleware, payCtrl.uploadPayroll);
 router.get ('/payroll/template',                  authenticate, authorize('accounts','hr','super_admin'), payCtrl.downloadPayrollTemplate);
-router.get ('/payroll/salary-structure-template',  authenticate, authorize(...HR_ADMIN),                   payCtrl.downloadSalaryStructureTemplate);
-router.post('/payroll/salary-structure-bulk',      authenticate, authorize(...HR_ADMIN), xlsxUpload.single('file'), payCtrl.bulkUploadSalaryStructure);
+router.get ('/payroll/salary-structure-template',  authenticate, authorize('hr'),                   payCtrl.downloadSalaryStructureTemplate);
+router.post('/payroll/salary-structure-bulk',      authenticate, authorize('hr'), xlsxUpload.single('file'), payCtrl.bulkUploadSalaryStructure);
 router.get ('/payroll/form16/years',              authenticate,                        payCtrl.getForm16Years);
 router.get ('/payroll/form16',                    authenticate,                        payCtrl.getForm16);
 
