@@ -668,6 +668,88 @@ exports.downloadAttendanceReport = async (req, res) => {
 
     XLSX.utils.book_append_sheet(wb, wsPunch, `Punch Register ${mon}-${yr}`);
 
+    // ── Sheet: Salary Calculation (moved here from Master Excel — Master now
+    // carries only static Employee Directory data; anything month-specific
+    // (attendance, punches, salary calc) lives in this Attendance download) ─
+    const empIdsForSalary = employees.rows.map(e => e.id);
+    let salStructMap = {};
+    if (empIdsForSalary.length) {
+      const salStructRes = await db.query(
+        `SELECT employee_id, basic, hra, conveyance, special_allowance, gratuity,
+                gross_salary, pf_employee, esi_employee, professional_tax, tds,
+                pf_employer, esi_employer, pf_admin, total_deductions
+         FROM employee_salary_structure WHERE employee_id = ANY($1::int[])`,
+        [empIdsForSalary]
+      );
+      salStructRes.rows.forEach(r => { salStructMap[r.employee_id] = r; });
+    }
+    const advRes = await db.query(
+      `SELECT employee_id, SUM(monthly_emi) AS total_emi
+       FROM advance_salary
+       WHERE status = 'approved' AND auto_deduct = TRUE
+         AND ((emi_start_year < $2) OR (emi_start_year = $2 AND emi_start_month <= $1))
+         AND ((emi_end_year > $2) OR (emi_end_year = $2 AND emi_end_month >= $1) OR (emi_end_year IS NULL))
+         AND balance_remaining > 0
+       GROUP BY employee_id`,
+      [mon, yr]
+    );
+    const emiMapSal = {};
+    advRes.rows.forEach(r => { emiMapSal[r.employee_id] = parseFloat(r.total_emi) || 0; });
+
+    const salaryHeaders = [
+      'Emp Code', 'Name', 'Department', 'Designation',
+      'Basic', 'HRA', 'Conveyance', 'Special Allow', 'Gratuity', 'Gross Salary',
+      'PF (Emp)', 'ESI (Emp)', 'Prof Tax', 'TDS', 'Advance EMI', 'Total Deductions',
+      'Working Days', 'Effective Days', 'Earned Gross', 'Earned Net', 'Net Payable'
+    ];
+    const salaryRows = employees.rows.map((emp, i) => {
+      const s = salStructMap[emp.id] || {};
+      const rr = reportRows[i]; // same order as employees.rows
+      const basic      = parseFloat(s.basic)             || 0;
+      const hra        = parseFloat(s.hra)               || 0;
+      const conveyance = parseFloat(s.conveyance)        || 0;
+      const special    = parseFloat(s.special_allowance) || 0;
+      const gratuity    = parseFloat(s.gratuity)          || 0;
+      const gross       = parseFloat(s.gross_salary)      || 0;
+      const pfEmp       = parseFloat(s.pf_employee)       || 0;
+      const esiEmp      = parseFloat(s.esi_employee)      || 0;
+      const pt          = parseFloat(s.professional_tax)  || 0;
+      const tds         = parseFloat(s.tds)               || 0;
+      const emi         = emiMapSal[emp.id] || 0;
+      const totalDed    = (parseFloat(s.total_deductions) || 0);
+      const netFull     = gross - totalDed;
+      const workingDays = rr?.working_days || 0;
+      const effDays     = rr?.effective_days || 0;
+      const earnedGross = workingDays > 0 ? Math.round((gross   * effDays) / workingDays) : 0;
+      const earnedNet   = workingDays > 0 ? Math.round((netFull * effDays) / workingDays) : 0;
+      const netPayable  = Math.max(0, earnedNet - emi);
+      return [
+        emp.employee_code, emp.name, emp.department || '—', emp.designation || '—',
+        basic, hra, conveyance, special, gratuity, gross,
+        pfEmp, esiEmp, pt, tds, emi, totalDed,
+        workingDays, effDays, earnedGross, earnedNet, netPayable
+      ];
+    });
+    const salaryData = [
+      [`HRMS — Salary Calculation | ${monthName} ${yr}`],
+      [`Earned Gross/Net prorated by Effective Days ÷ Working Days for the month. Advance EMI deducted from Net to give Net Payable.`],
+      [],
+      salaryHeaders,
+      ...salaryRows,
+    ];
+    const wsSalary = XLSX.utils.aoa_to_sheet(salaryData);
+    wsSalary['!cols'] = [
+      {wch:10},{wch:22},{wch:16},{wch:18},
+      {wch:11},{wch:9},{wch:11},{wch:12},{wch:9},{wch:12},
+      {wch:9},{wch:9},{wch:9},{wch:9},{wch:11},{wch:13},
+      {wch:11},{wch:12},{wch:12},{wch:12},{wch:12},
+    ];
+    wsSalary['!merges'] = [
+      { s:{r:0,c:0}, e:{r:0,c:20} },
+      { s:{r:1,c:0}, e:{r:1,c:20} },
+    ];
+    XLSX.utils.book_append_sheet(wb, wsSalary, `Salary Calc ${mon}-${yr}`);
+
     // ── Sheet 4: Leave Details (dates, reason, remaining EL/SL/CL) ───────
     const leaveEmpIds = employees.rows.map(e => e.id);
     const leaveYear   = yr;
