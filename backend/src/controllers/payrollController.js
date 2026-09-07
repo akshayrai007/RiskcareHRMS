@@ -24,6 +24,20 @@ exports.uploadMiddleware = upload.single('file');
 const MONTH_NAMES = ['January','February','March','April','May','June',
                      'July','August','September','October','November','December'];
 
+// ── Present-day-based salary proration ───────────────────────────────────────
+// Uses the ACTUAL number of days in the cycle (28/29/30/31) as the divisor —
+// never a fixed 30. A fully-present employee always earns 100% of their
+// monthly salary regardless of the month's length; missing days cost more
+// (per-day) in shorter months than in longer ones.
+//   Per-Day Rate  = Monthly Amount ÷ Total Days in Cycle
+//   Earned Amount = MIN(Present Days, Total Days in Cycle) × Per-Day Rate
+function proratedAmount(monthlyAmount, presentDays, totalDaysInMonth) {
+  if (!totalDaysInMonth) return 0;
+  const perDayRate   = monthlyAmount / totalDaysInMonth;
+  const effectiveDays = Math.min(presentDays, totalDaysInMonth);
+  return perDayRate * effectiveDays;
+}
+
 // ── Get Salary Structure ──────────────────────────────────────────────────────
 exports.getSalaryStructure = async (req, res) => {
   try {
@@ -298,17 +312,42 @@ exports.uploadPayroll = async (req, res) => {
       const conveyance  = n(row[iConveyance]);
       const otherAllow  = n(row[iOtherAllow]);
       const gratuity    = n(row[iGratuity]);
-      const gross       = n(row[iGross]);
-      const pfEmp       = n(row[iPFEmp]);
       const tds         = iTDS >= 0 ? n(row[iTDS]) : 0;
-      const esiEmp      = n(row[iESIEmp]);
-      const pt          = n(row[iPT]);
-      const lwf         = n(row[iLWF]);
-      const totalDed    = n(row[iTotalDed]);
       const loanEmi     = iLoanEMI >= 0 ? n(row[iLoanEMI]) : 0;
-      const netPay      = n(row[iNetPay]);
       const statusRaw   = String(row[iStatus] || 'paid').toLowerCase().trim();
       const status      = statusRaw === 'paid' ? 'paid' : 'pending';
+
+      // ── Present-day-based proration ────────────────────────────────────
+      // Basic/HRA/Conveyance/Other Allowance/Gratuity in the sheet are the
+      // FULL monthly amounts (from salary structure). The system — not the
+      // Excel's Gross/Net columns — computes the actual earned salary using
+      // the real day-count of this month as the divisor.
+      const totalDaysInMonth = new Date(yearNum, monthNum, 0).getDate();
+      const earnedBasic      = proratedAmount(basic,      presentDays, totalDaysInMonth);
+      const earnedHRA        = proratedAmount(hra,         presentDays, totalDaysInMonth);
+      const earnedConveyance = proratedAmount(conveyance,  presentDays, totalDaysInMonth);
+      const earnedOtherAllow = proratedAmount(otherAllow,  presentDays, totalDaysInMonth);
+      const earnedGratuity   = proratedAmount(gratuity,    presentDays, totalDaysInMonth);
+      const gross = Math.round((earnedBasic + earnedHRA + earnedConveyance + earnedOtherAllow + earnedGratuity) * 100) / 100;
+
+      // Statutory deductions recomputed on the EARNED (prorated) figures —
+      // PF/ESI scale with actual earned wage; PT/LWF are flat monthly slabs
+      // (not prorated) as long as the earned gross still crosses the
+      // applicable threshold, matching how the salary structure defines them.
+      const structRes = await client.query(
+        `SELECT pf_applicable, esi_applicable, pt_applicable, lwf_applicable
+         FROM employee_salary_structure WHERE employee_id=$1`, [empId]
+      );
+      const struct = structRes.rows[0] || { pf_applicable: true, esi_applicable: false, pt_applicable: true, lwf_applicable: false };
+
+      const pfBase   = Math.min(earnedBasic, 15000);
+      const pfEmp    = struct.pf_applicable  ? Math.round(pfBase * 0.12) : 0;
+      const esiEmp   = struct.esi_applicable && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
+      const pt       = struct.pt_applicable  && gross >= 10000 ? 200 : 0;
+      const lwf      = struct.lwf_applicable ? 6 : 0;
+
+      const totalDed = pfEmp + esiEmp + pt + lwf + tds + loanEmi;
+      const netPay   = Math.round((gross - totalDed) * 100) / 100;
 
       // Upsert payroll record
       await client.query(
@@ -324,7 +363,7 @@ exports.uploadPayroll = async (req, res) => {
            pf_employee=$14, esi_employee=$15, professional_tax=$16, lwf=$17, loan_emi_recovery=$18,
            tds=$19, total_deductions=$20, net_salary=$21, status=$22, payment_date=$23, upload_id=$24`,
         [empId, monthNum, yearNum, workDays, presentDays, lopDays, paidDays,
-         basic, hra, conveyance, otherAllow, gratuity, gross,
+         earnedBasic, earnedHRA, earnedConveyance, earnedOtherAllow, earnedGratuity, gross,
          pfEmp, esiEmp, pt, lwf, loanEmi, tds,
          totalDed, netPay, status,
          status === 'paid' ? `${yearNum}-${String(monthNum).padStart(2,'0')}-28` : null,
@@ -502,12 +541,15 @@ exports.getPayslip = async (req, res) => {
               e.bank_ifsc, e.date_of_birth, e.joining_date,
               e.city, e.state, e.location, e.gender, e.aadhar_number, e.employment_type,
               d.name AS department_name, des.title AS designation_title,
-              CONCAT(m.first_name,' ',m.last_name) AS manager_name
+              CONCAT(m.first_name,' ',m.last_name) AS manager_name,
+              s.basic AS fixed_basic, s.hra AS fixed_hra, s.conveyance AS fixed_conveyance,
+              s.special_allowance AS fixed_special_allowance, s.gratuity AS fixed_gratuity
        FROM payroll p
        JOIN employees e ON p.employee_id = e.id
        LEFT JOIN departments d ON e.department_id = d.id
        LEFT JOIN designations des ON e.designation_id = des.id
        LEFT JOIN employees m ON e.reporting_manager_id = m.id
+       LEFT JOIN employee_salary_structure s ON s.employee_id = p.employee_id
        WHERE p.employee_id=$1 AND p.month=$2 AND p.year=$3`,
       [empId, parseInt(month), parseInt(year)]
     );

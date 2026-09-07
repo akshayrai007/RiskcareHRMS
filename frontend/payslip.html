@@ -169,18 +169,25 @@ function renderPayslip(p) {
   const Rs = v => { const n = parseFloat(v); return n > 0 ? n.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) : ''; };
   const C = window.CFG;
 
-  // Earning rows: Fixed Amount = full month, Earning Amount = prorated
-  const basic = parseFloat(p.basic || 0);
-  const hra = parseFloat(p.hra || 0);
-  const gratuity = parseFloat(p.gratuity || 0);
-  const special = parseFloat(p.special_allowance || p.conveyance || 0);
-  const conveyance = parseFloat(p.conveyance || 0);
+  // Earning rows: Fixed Amount = full monthly salary structure,
+  // Earning Amount = actual present-day-prorated amount for this payroll run.
+  // p.basic/hra/etc are already the earned (prorated) figures computed at
+  // payroll upload time; p.fixed_basic/etc come from employee_salary_structure.
+  const basic       = parseFloat(p.basic || 0);
+  const hra         = parseFloat(p.hra || 0);
+  const gratuity    = parseFloat(p.gratuity || 0);
+  const special     = parseFloat(p.special_allowance || p.conveyance || 0);
+  const conveyance  = parseFloat(p.conveyance || 0);
+  const fixedBasic    = parseFloat(p.fixed_basic ?? basic);
+  const fixedHRA      = parseFloat(p.fixed_hra ?? hra);
+  const fixedGratuity = parseFloat(p.fixed_gratuity ?? gratuity);
+  const fixedSpecial  = parseFloat(p.fixed_special_allowance ?? p.fixed_conveyance ?? special);
 
   const earningItems = [
-    { label: 'Basic', fixed: basic, earned: basic },
-    { label: 'House Rent Allowance', fixed: hra, earned: hra },
-    { label: 'Fixed Gratuity', fixed: gratuity, earned: gratuity },
-    { label: 'Defray Allowance', fixed: special, earned: special },
+    { label: 'Basic', fixed: fixedBasic, earned: basic },
+    { label: 'House Rent Allowance', fixed: fixedHRA, earned: hra },
+    { label: 'Fixed Gratuity', fixed: fixedGratuity, earned: gratuity },
+    { label: 'Defray Allowance', fixed: fixedSpecial, earned: special },
   ].filter(r => r.fixed > 0);
 
   // If conveyance is separate from special_allowance
