@@ -118,6 +118,7 @@ router.get ('/leave/summary/excel',                 authenticate, authorize('hr'
 // ── Attendance Bulk Import (Excel) — kept here for reference (defined above) ──
 
 router.get ('/attendance/monthly-report',   authenticate, authorize('hr','accounts'), attImportCtrl.downloadAttendanceReport);
+router.get ('/attendance/import/template',  authenticate, authorize('hr','accounts','super_admin'), attImportCtrl.downloadImportTemplate);
 
 // ── OD / WFH apply (all employees) ───────────────────────────────────────────
 router.post('/attendance/od',              authenticate, attCtrl.applyOD);

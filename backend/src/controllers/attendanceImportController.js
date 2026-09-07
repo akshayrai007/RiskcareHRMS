@@ -80,7 +80,7 @@ exports.importAttendance = async (req, res) => {
     for (let ri = 2; ri < rows.length; ri++) {
       const row = rows[ri];
       const empCode = String(row[0] || '').trim().toUpperCase();
-      if (!empCode || empCode === 'EMP CODE' || empCode.startsWith('🏖') || empCode.startsWith('CODES:') || !empCode.match(/^KC\d+/i)) continue;
+      if (!empCode || empCode === 'EMP CODE' || empCode.startsWith('🏖') || empCode.startsWith('CODES:') || !empCode.match(/^[A-Z]+\d+$/i)) continue;
 
       const empResult = await client.query(
         `SELECT id, first_name, last_name, employment_type, provision_end_date
@@ -839,6 +839,214 @@ exports.downloadAttendanceReport = async (req, res) => {
 
   } catch (err) {
     console.error('[downloadAttendanceReport]', err);
+    res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FILLABLE ATTENDANCE IMPORT TEMPLATE — one day-code cell per employee per
+// day, pre-filled with whatever is currently saved (blank if nothing), with
+// live COUNTIF-based Total P/A/WO/HOL formulas that recalculate in Excel
+// immediately when a cell is edited (no re-download needed to preview).
+// GET /attendance/import/template?month=&year=
+// ═══════════════════════════════════════════════════════════════════════════
+const DAY_OF_WEEK_NAMES_T = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const HEADER_FILL_ATT   = 'FF1B5E20';
+const PRESENT_FILL_ATT  = 'FFC8E6C9';
+const ABSENT_FILL_ATT   = 'FFFFCDD2';
+const WEEKEND_FILL_ATT  = 'FFE0E0E0';
+const NOT_EMPLOYED_FILL_ATT = 'FFF5F5F5';
+const ALT_ROW_FILL_ATT  = 'FFF9FBE7';
+
+function colLetterT(n) {
+  let s = '';
+  while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+  return s;
+}
+
+// Status code shown in a day cell, reflecting whatever is currently saved —
+// same resolution rule as attendanceCalc.js (half-day + remarks → H-EL etc).
+function prefillCodeT(emp, dateStr, holidaySet, attMap) {
+  const joined = emp.joining_date;
+  const lwd    = emp.separation_date;
+  if ((joined && dateStr < joined) || (lwd && dateStr > lwd)) return 'N/A';
+
+  const rec = (attMap[emp.id] || {})[dateStr];
+  if (rec) {
+    if (rec.status === 'half-day') {
+      const rmk = (rec.remarks || '').toUpperCase();
+      if (rmk.includes('SL'))       return 'H-SL';
+      if (rmk.includes('EL'))       return 'H-EL';
+      if (rmk.includes('CL'))       return 'H-CL';
+      if (rmk.includes('LWP'))      return 'H-LWP';
+      if (rmk.includes('WFH'))      return 'H-WFH';
+      return 'H';
+    }
+    const REV_MAP = { present: 'P', absent: 'A', 'on-leave': 'EL', lwp: 'LWP', od: 'OD' };
+    if (rec.status === 'present' && (rec.punch_in_location || '').toLowerCase().includes('work from home')) return 'WFH';
+    return REV_MAP[rec.status] || '';
+  }
+
+  const dow = new Date(dateStr + 'T00:00:00').getDay();
+  if (holidaySet.has(dateStr)) return 'HO';
+  if (dow === 0) return 'WO';
+  if (dow === 6 && (emp.saturday_policy || '2nd_4th_off') === '2nd_4th_off') {
+    const satOfMonth = Math.ceil(new Date(dateStr + 'T00:00:00').getDate() / 7);
+    if (satOfMonth === 2 || satOfMonth === 4) return 'WO';
+  }
+  return '';
+}
+
+exports.downloadImportTemplate = async (req, res) => {
+  try {
+    if (!['hr', 'accounts', 'super_admin'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    const month = parseInt(req.query.month);
+    const year  = parseInt(req.query.year);
+    if (!month || !year)
+      return res.status(400).json({ success: false, message: 'month and year required' });
+
+    const numDays = new Date(year, month, 0).getDate();
+    const cycleDates = [];
+    for (let d = 1; d <= numDays; d++) cycleDates.push(`${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
+    const monthLabel = `${MONTH_NAMES[month-1]} ${year}`;
+
+    const empRes = await db.query(
+      `SELECT e.id, e.employee_code, CONCAT(e.first_name,' ',e.last_name) AS name,
+              d.name AS department, des.title AS designation,
+              TO_CHAR(e.joining_date,'YYYY-MM-DD') AS joining_date,
+              COALESCE(e.saturday_policy,'2nd_4th_off') AS saturday_policy,
+              e.is_active, TO_CHAR(e.separation_date,'YYYY-MM-DD') AS separation_date,
+              e.deactivation_remark
+       FROM employees e
+       LEFT JOIN departments d  ON d.id = e.department_id
+       LEFT JOIN designations des ON des.id = e.designation_id
+       WHERE (e.is_active = true OR COALESCE(e.separation_date, e.updated_at::date) >= $1)
+       ORDER BY d.name, e.first_name`,
+      [cycleDates[0]]
+    );
+    const employees = empRes.rows;
+
+    const holRes = await db.query(
+      `SELECT TO_CHAR(date,'YYYY-MM-DD') AS date_str FROM holidays WHERE date BETWEEN $1 AND $2`,
+      [cycleDates[0], cycleDates[cycleDates.length-1]]
+    );
+    const holidaySet = new Set(holRes.rows.map(r => r.date_str));
+
+    const attMap = {};
+    if (employees.length) {
+      const attRes = await db.query(
+        `SELECT employee_id, TO_CHAR(date,'YYYY-MM-DD') AS date_str, status, remarks, punch_in_location
+         FROM attendance WHERE employee_id = ANY($1::int[]) AND date BETWEEN $2 AND $3`,
+        [employees.map(e => e.id), cycleDates[0], cycleDates[cycleDates.length-1]]
+      );
+      for (const rec of attRes.rows) {
+        if (!attMap[rec.employee_id]) attMap[rec.employee_id] = {};
+        attMap[rec.employee_id][rec.date_str] = rec;
+      }
+    }
+
+    const ExcelJS = require('exceljs');
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'RiskcareHRMS';
+    wb.calcProperties = { fullCalcOnLoad: true };
+
+    const ws = wb.addWorksheet('Attendance');
+    const infoHeaders = ['Emp Code', 'Name', 'Department', 'Designation', 'Joining Date', 'Remark'];
+    const infoCount = infoHeaders.length;
+    const TOTAL_COLS = ['Total P', 'Total A', 'Total WO', 'Total HOL'];
+    const cols = infoCount + cycleDates.length + TOTAL_COLS.length;
+    const dayColStart = infoCount + 1;
+    const dayColEnd   = infoCount + cycleDates.length;
+
+    ws.mergeCells(1, 1, 1, cols);
+    const title = ws.getCell(1, 1);
+    title.value = `Attendance Import Template — ${monthLabel}`;
+    title.font  = { bold: true, size: 13, color: { argb: 'FFFFFFFF' } };
+    title.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_FILL_ATT } };
+    title.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getRow(1).height = 22;
+
+    const header = [...infoHeaders];
+    cycleDates.forEach(ds => {
+      const d = new Date(ds + 'T00:00:00');
+      header.push(`${d.getDate()}-${DAY_OF_WEEK_NAMES_T[d.getDay()]}`);
+    });
+    header.push(...TOTAL_COLS);
+    header.forEach((h, i) => {
+      const cell = ws.getCell(2, i + 1);
+      cell.value = h;
+      cell.font  = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+      const isTotalCol = i >= infoCount + cycleDates.length;
+      const isSunday = !isTotalCol && i >= infoCount && new Date(cycleDates[i-infoCount] + 'T00:00:00').getDay() === 0;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isTotalCol ? 'FF424242' : (isSunday ? 'FFC2185B' : HEADER_FILL_ATT) } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = { right: { style: 'hair' }, bottom: { style: 'thin' } };
+    });
+    ws.getRow(2).height = 26;
+
+    employees.forEach((e, ri) => {
+      const row = ri + 3;
+      const isAlt = ri % 2 === 1;
+      const dayCodes = cycleDates.map(ds => prefillCodeT(e, ds, holidaySet, attMap));
+      const dayRange = `${colLetterT(dayColStart)}${row}:${colLetterT(dayColEnd)}${row}`;
+
+      const totalFormulas = [
+        { formula: `COUNTIF(${dayRange},"P")+COUNTIF(${dayRange},"WFH")+COUNTIF(${dayRange},"OD")+COUNTIF(${dayRange},"EL")+COUNTIF(${dayRange},"SL")+COUNTIF(${dayRange},"CL")+0.5*(COUNTIF(${dayRange},"H")+COUNTIF(${dayRange},"H-LWP")+COUNTIF(${dayRange},"H-WFH"))+COUNTIF(${dayRange},"H-EL")+COUNTIF(${dayRange},"H-SL")+COUNTIF(${dayRange},"H-CL")` },
+        { formula: `COUNTIF(${dayRange},"A")+0.5*(COUNTIF(${dayRange},"H")+COUNTIF(${dayRange},"H-LWP")+COUNTIF(${dayRange},"H-WFH"))` },
+        { formula: `COUNTIF(${dayRange},"WO")` },
+        { formula: `COUNTIF(${dayRange},"HO")` },
+      ];
+
+      const vals = [
+        e.employee_code, e.name, e.department || '', e.designation || '',
+        e.joining_date || '', e.deactivation_remark || (e.is_active ? '' : 'Resigned/Inactive'),
+        ...dayCodes, ...totalFormulas
+      ];
+      vals.forEach((v, ci) => {
+        const cell = ws.getCell(row, ci + 1);
+        cell.value = v;
+        const isDayCol = ci >= infoCount && ci < infoCount + cycleDates.length;
+        const isTotalCol = ci >= infoCount + cycleDates.length;
+        const isOff = isDayCol && (v === 'WO' || v === 'HO');
+        const isNA  = isDayCol && v === 'N/A';
+        const isP   = isDayCol && v === 'P';
+        const isA   = isDayCol && v === 'A';
+        let fill = isAlt ? ALT_ROW_FILL_ATT : 'FFFFFFFF';
+        if (isTotalCol)   fill = 'FFFFF9C4';
+        else if (isNA)    fill = NOT_EMPLOYED_FILL_ATT;
+        else if (isOff)   fill = WEEKEND_FILL_ATT;
+        else if (isP)     fill = PRESENT_FILL_ATT;
+        else if (isA)     fill = ABSENT_FILL_ATT;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
+        cell.font = { size: 9, bold: isTotalCol, italic: isOff || isNA, color: { argb: (isOff || isNA) ? 'FF9E9E9E' : 'FF000000' } };
+        cell.alignment = { horizontal: (isDayCol || isTotalCol) ? 'center' : 'left', vertical: 'middle' };
+        cell.border = { right: { style: 'hair' }, bottom: { style: 'hair' } };
+      });
+    });
+
+    const legendRow = employees.length + 4;
+    ws.mergeCells(legendRow, 1, legendRow, cols);
+    const legendCell = ws.getCell(legendRow, 1);
+    legendCell.value = 'CODES:  P=Present  A=Absent  H=HalfDay  EL/SL/CL=Leave  H-EL/H-SL/H-CL=HalfDayLeave  OD=OutdoorDuty  WFH=WorkFromHome  H-WFH=HalfDayWFH  LWP=LossOfPay  H-LWP=HalfLWP  WO=WeeklyOff(pre-filled, skip)  HO=Holiday(pre-filled, skip)  N/A=Before joining / after leaving(pre-filled, skip)  —  Cells already showing a code reflect what is currently saved; edit any cell and re-upload (with Overwrite) to correct it.';
+    legendCell.font = { italic: true, size: 8, color: { argb: 'FF37474F' } };
+    legendCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECEFF1' } };
+    legendCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+    ws.getRow(legendRow).height = 30;
+
+    ws.getColumn(1).width = 12; ws.getColumn(2).width = 22;
+    for (let i = 2; i < infoCount; i++) ws.getColumn(i + 1).width = 16;
+    for (let i = 0; i < cycleDates.length; i++) ws.getColumn(infoCount + 1 + i).width = 8;
+    for (let i = 0; i < TOTAL_COLS.length; i++) ws.getColumn(infoCount + cycleDates.length + 1 + i).width = 11;
+
+    const buf = Buffer.from(await wb.xlsx.writeBuffer());
+    const filename = `Attendance_Import_Template_${MONTH_NAMES[month-1]}_${year}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buf);
+  } catch (err) {
+    console.error('[downloadImportTemplate]', err);
     res.status(500).json({ success: false, message: 'Server error: ' + err.message });
   }
 };

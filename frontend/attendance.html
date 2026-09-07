@@ -2806,56 +2806,28 @@ function initImportTab() {
   }
 }
 
-function downloadImportTemplate() {
+async function downloadImportTemplate() {
   const month = parseInt(document.getElementById('imp-month').value);
   const year  = parseInt(document.getElementById('imp-year').value);
   if (!month || !year) { toast('Please select month and year first', 'error'); return; }
-
   const monthName = MONTHS_IMP[month - 1];
-  const numDays   = new Date(year, month, 0).getDate();
-
-  // Build CSV content
-  // Row 1: Title
-  // Row 2: Headers  — Emp Code | Name | Department | Day1 … DayN
-  // Row 3+: Data rows (blank for HR to fill)
-
-  const dayHeaders = [];
-  const dayOfWeek  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  for (let d = 1; d <= numDays; d++) {
-    const dow = dayOfWeek[new Date(year, month-1, d).getDay()];
-    dayHeaders.push(`${d}-${dow}`);
-  }
-
-  const titleRow   = [`Attendance Template — ${monthName} ${year}`, '', '', ...Array(numDays).fill('')];
-  const headerRow  = ['Emp Code', 'Name', 'Department', ...dayHeaders];
-  const codeRow    = ['// CODES:', 'P=Present  A=Absent  H=HalfDay', 'EL/SL/CL=FullDayLeave  H-EL/H-SL/H-CL=HalfDayLeave', ...['OD=OutdoorDuty','WFH=WorkFromHome','H-WFH=HalfDayWFH','LWP=LossOfPay','H-LWP=HalfLWP','WO=WeeklyOff(skip)','HO=Holiday(skip)'].concat(Array(numDays).fill(''))];
-  const blankRow   = ['', '', '', ...Array(numDays).fill('')];
-
-  // Generate 5 sample blank data rows
-  const dataRows = Array.from({length:5}, () => ['', '', '', ...Array(numDays).fill('')]);
-
-  const allRows = [titleRow, headerRow, codeRow, blankRow, ...dataRows];
-
-  // Convert to CSV
-  const csv = allRows.map(row =>
-    row.map(cell => {
-      const s = String(cell);
-      return s.includes(',') || s.includes('"') || s.includes('\n')
-        ? `"${s.replace(/"/g,'""')}"` : s;
-    }).join(',')
-  ).join('\r\n');
-
-  // Download as .csv (HR can open in Excel)
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `Attendance_Template_${monthName}_${year}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  toast(`Template downloaded for ${monthName} ${year}`);
+  try {
+    toast('Preparing template…');
+    const token = localStorage.getItem(window.CFG.tokenKey);
+    const res = await fetch(`${API_BASE}/attendance/import/template?month=${month}&year=${year}`, {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (!res.ok) { toast('Download failed', 'error'); return; }
+    const blob = await res.blob();
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: `Attendance_Import_Template_${monthName}_${year}.xlsx`
+    });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    toast(`Template downloaded for ${monthName} ${year} — pre-filled with current attendance`, 'success');
+  } catch(e) { toast('Download failed: ' + e.message, 'error'); }
 }
-
 let impSelectedFile = null;
 
 const MONTH_NAME_MAP = {
