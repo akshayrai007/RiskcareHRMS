@@ -71,6 +71,32 @@
 
 .empty-state { text-align:center;padding:40px 20px;color:var(--muted) }
 .oc-no-reports { text-align:center; color:var(--muted); font-size:12.5px; padding:18px 0 4px; }
+
+/* details popup */
+.oc-modal-overlay {
+  display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:100;
+  align-items:center; justify-content:center; padding:20px;
+}
+.oc-modal-overlay.oc-open { display:flex; }
+.oc-modal {
+  background:#fff; border-radius:16px; width:100%; max-width:360px; padding:24px;
+  box-shadow:0 20px 60px rgba(15,23,42,.25); position:relative;
+}
+.oc-modal-close {
+  position:absolute; top:14px; right:14px; width:26px; height:26px; border-radius:50%;
+  border:none; background:var(--accent-l,#f1f3f9); color:var(--muted); font-size:14px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.oc-modal-close:hover { background:var(--border); }
+.oc-modal-head { display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+.oc-modal-head .oc-avatar { width:48px; height:48px; font-size:17px; }
+.oc-modal-head-name { font-size:16px; font-weight:800; color:var(--text); }
+.oc-modal-head-desig { font-size:12px; color:var(--muted); margin-top:2px; }
+.oc-modal-rows { display:flex; flex-direction:column; gap:0; }
+.oc-modal-row { display:flex; justify-content:space-between; gap:14px; padding:9px 0; border-bottom:1px solid var(--border); font-size:12.5px; }
+.oc-modal-row:last-child { border-bottom:none; }
+.oc-modal-label { color:var(--muted); font-weight:600; flex-shrink:0; }
+.oc-modal-value { color:var(--text); text-align:right; word-break:break-word; }
 </style>
 </head>
 <body>
@@ -115,6 +141,20 @@
         <div class="empty-state">Loading org chart…</div>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="oc-modal-overlay" id="oc-modal-overlay" onclick="if(event.target===this) closeDetailsPopup()">
+  <div class="oc-modal">
+    <button class="oc-modal-close" onclick="closeDetailsPopup()">✕</button>
+    <div class="oc-modal-head">
+      <span class="oc-avatar" id="oc-modal-avatar"></span>
+      <div>
+        <div class="oc-modal-head-name" id="oc-modal-name"></div>
+        <div class="oc-modal-head-desig" id="oc-modal-desig"></div>
+      </div>
+    </div>
+    <div class="oc-modal-rows" id="oc-modal-rows"></div>
   </div>
 </div>
 
@@ -220,7 +260,7 @@ function renderView() {
           <div class="oc-focus-info">
             <div class="oc-focus-name">${nodeName(focus)}</div>
             <div class="oc-focus-desig">${focus.designation_title || focus.role} · ${focus.department_name || '—'}</div>
-            <a class="oc-focus-link" href="employees.html?id=${focus.id}">View full profile →</a>
+            <a class="oc-focus-link" href="javascript:void(0)" onclick="event.stopPropagation();openDetailsPopup('${focus.id}')">View details →</a>
           </div>
         </div>
       </div>
@@ -230,6 +270,47 @@ function renderView() {
 
   wrap.innerHTML = `<div class="oc-crumbs">${crumbsHtml}</div><div class="oc-stage" id="oc-stage">${bodyHtml}</div>`;
 }
+
+function formatDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (isNaN(dt)) return '—';
+  return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function openDetailsPopup(id) {
+  const n = __ocById[id];
+  if (!n) return;
+  document.getElementById('oc-modal-avatar').innerHTML = n.profile_photo
+    ? `<img src="${n.profile_photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`
+    : `${(n.first_name?.[0] || '')}${(n.last_name?.[0] || '')}`;
+  document.getElementById('oc-modal-name').textContent = nodeName(n);
+  document.getElementById('oc-modal-desig').textContent = `${n.designation_title || n.role} · ${n.department_name || '—'}`;
+
+  const rows = [
+    ['Name', nodeName(n)],
+    ['Employee ID', n.employee_code || '—'],
+    ['Date of Birth', formatDate(n.date_of_birth)],
+    ['Email', n.email || '—'],
+    ['Contact', n.phone || '—'],
+    ['Designation', n.designation_title || n.role || '—'],
+    ['Blood Group', n.blood_group || '—'],
+    ['Branch', n.city || '—'],
+  ];
+  document.getElementById('oc-modal-rows').innerHTML = rows.map(([label, value]) =>
+    `<div class="oc-modal-row"><span class="oc-modal-label">${label}</span><span class="oc-modal-value">${value}</span></div>`
+  ).join('');
+
+  document.getElementById('oc-modal-overlay').classList.add('oc-open');
+}
+
+function closeDetailsPopup() {
+  document.getElementById('oc-modal-overlay').classList.remove('oc-open');
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeDetailsPopup();
+});
 
 function goToNode(id, evt) {
   if (id === __ocFocus) return;
