@@ -38,6 +38,17 @@ function getNoticePeriod(role) {
   return 30;
 }
 
+// The org recognizes these standard notice periods (30/45/60/90 days).
+// Employees pick one that matches their actual employment terms; if what
+// comes in isn't one of these (missing, tampered, non-numeric), we fall back
+// to the role-based default instead of trusting the client blindly.
+const VALID_NOTICE_PERIODS = [30, 45, 60, 90];
+function resolveNoticePeriod(role, requestedDays) {
+  const parsed = parseInt(requestedDays, 10);
+  if (VALID_NOTICE_PERIODS.includes(parsed)) return parsed;
+  return getNoticePeriod(role);
+}
+
 function calcLWD(resignDate, noticeDays) {
   const d = new Date(resignDate);
   d.setDate(d.getDate() + noticeDays);
@@ -138,7 +149,7 @@ exports.submitResignation = async (req, res) => {
     const empId   = req.user.id;
     const empRole = req.user.role;
     const {
-      reason, notice_date, suggested_lwd,
+      reason, notice_date, suggested_lwd, notice_period_days,
       resignation_reason_category, comments, personal_email, contact_number
     } = req.body;
     let { type } = req.body;
@@ -169,7 +180,7 @@ exports.submitResignation = async (req, res) => {
       });
 
     const resignDate = notice_date || new Date().toISOString().split('T')[0];
-    const noticeDays = getNoticePeriod(empRole);
+    const noticeDays = resolveNoticePeriod(empRole, notice_period_days);
     const autoLwd    = calcLWD(resignDate, noticeDays);
     // Employee may suggest an earlier LWD — only accept if it's >= auto-calculated LWD
     let lwd = autoLwd;
