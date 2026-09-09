@@ -1279,7 +1279,6 @@ if (Role.is('hr', 'accounts')) {
     </label>` : '';
 
   document.getElementById('add-emp-btn').innerHTML = `
-    <button class="btn btn-outline btn-sm" onclick="downloadMasterExcel()">⬇ Export Excel</button>
     <button class="btn btn-outline btn-sm" style="background:var(--accent);color:#fff;border-color:var(--accent)" onclick="openMasterExport()">📊 Master Excel</button>
     <label class="btn btn-outline btn-sm" style="cursor:pointer;margin-left:8px">
       ⬆ Import Excel
@@ -2336,18 +2335,6 @@ async function saveChangeManager() {
 }
 
 // ── Excel Export / Import ─────────────────────────────────────────────────────
-async function downloadMasterExcel() {
-  toast('Preparing Excel…');
-  const token = Auth.getToken();
-  const res = await fetch(`${API_BASE}/employees/export`, { headers: { Authorization: 'Bearer ' + token } });
-  if (!res.ok) { toast('Export failed', 'error'); return; }
-  const blob = await res.blob();
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: (window.CFG?.clientName||'HRMS') + '_Employees_' + new Date().toISOString().split('T')[0] + '.xlsx' });
-  a.click();
-  URL.revokeObjectURL(a.href);
-  toast('✅ Excel downloaded');
-}
-
 function openMasterExport() {
   const now = new Date();
   const month = prompt(`Master Excel — Enter month (1-12):`, now.getMonth() + 1);
