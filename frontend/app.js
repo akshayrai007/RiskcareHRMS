@@ -166,13 +166,6 @@ const NAV_GROUPS = [
     ]
   },
   {
-    label: 'People',
-    items: [
-      { href:'employees.html',         icon: ICONS.employees,    label:'Employees',          roles:['admin','super_admin','hr','accounts','manager','tl'] },
-      { href:'org-chart.html',         icon: ICONS.orgchart,     label:'Org Chart',          always:true },
-    ]
-  },
-  {
     label: 'Employee Lifecycle',
     items: [
       { href:'onboarding.html',        icon: '🚀',               label:'Onboarding Tracker',  roles:['admin','super_admin','hr'] },
@@ -199,6 +192,13 @@ const NAV_GROUPS = [
       { href:'reimbursement.html',  icon: ICONS.reimbursement,  label:'Reimbursement',    always:true },
       { href:'provision.html',      icon: ICONS.provision,    label:'Provision',        roles:['admin','super_admin','hr','manager','tl'] },
       { href:'employee-history.html',  icon: ICONS.history,      label:'Salary & Promotions', roles:['admin','super_admin','hr','hr admin','accounts','accounts admin'] },
+    ]
+  },
+  {
+    label: 'People',
+    items: [
+      { href:'employees.html',         icon: ICONS.employees,    label:'Employees',          roles:['admin','super_admin','hr','accounts','manager','tl'] },
+      { href:'org-chart.html',         icon: ICONS.orgchart,     label:'Org Chart',          always:true },
     ]
   },
   {
