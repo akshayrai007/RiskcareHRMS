@@ -665,11 +665,17 @@ exports.initiate = async (req, res) => {
   } finally { client.release(); }
 };
 
+// Strip the (potentially large) base64 attachment payload from list responses —
+// list views only need to know an attachment exists (attachment_name is enough
+// to show a paperclip icon); the full file is only needed on the single-record
+// view (getOne) where the approver actually opens/downloads it.
+const stripAttachmentData = rows => rows.map(({ attachment_data, ...rest }) => rest);
+
 // ── 8. Employee views own separations ────────────────────────────────────────
 exports.getMySeparations = async (req, res) => {
   try {
     const result = await db.query(SEP_SELECT + ` WHERE s.employee_id=$1 ORDER BY s.created_at DESC`, [req.user.id]);
-    res.json({ success: true, data: result.rows, total: result.rows.length });
+    res.json({ success: true, data: stripAttachmentData(result.rows), total: result.rows.length });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Server error: ' + err.message });
@@ -691,6 +697,33 @@ exports.getOne = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized' });
 
     res.json({ success: true, data: sep });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+  }
+};
+
+// ── 9b. Download resignation attachment ──────────────────────────────────────
+exports.downloadAttachment = async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT employee_id, manager_id, attachment_name, attachment_mime, attachment_data
+       FROM separations WHERE id=$1`, [req.params.id]
+    );
+    if (!result.rows.length || !result.rows[0].attachment_data)
+      return res.status(404).json({ success: false, message: 'No attachment found' });
+
+    const sep = result.rows[0];
+    const isOwn     = sep.employee_id === req.user.id;
+    const isManager = sep.manager_id  === req.user.id;
+    const isHRAdmin = scope.hasFullAccess(req.user.role);
+    if (!isOwn && !isManager && !isHRAdmin)
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+
+    const buffer = Buffer.from(sep.attachment_data, 'base64');
+    res.setHeader('Content-Type', sep.attachment_mime || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${sep.attachment_name || 'attachment'}"`);
+    res.send(buffer);
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Server error: ' + err.message });
@@ -736,7 +769,7 @@ exports.getAll = async (req, res) => {
       params
     );
     // Attach deactivation info for inactive employees
-    const data = result.rows.map(r => ({
+    const data = result.rows.map(({ attachment_data, ...r }) => ({
       ...r,
       is_active:           r.is_active ?? true,
       separation_date:     r.separation_date     || null,
