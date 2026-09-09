@@ -383,9 +383,19 @@ async function runAllMigrations() {
       l3_approver_id INT REFERENCES employees(id), l3_status VARCHAR(20) DEFAULT 'pending',
       l3_remarks TEXT, l3_action_at TIMESTAMP, l3_actioned_by INT REFERENCES employees(id),
       l4_approver_id INT REFERENCES employees(id), l4_status VARCHAR(20) DEFAULT 'pending',
-      l4_remarks TEXT, l4_action_at TIMESTAMP, l4_actioned_by INT REFERENCES employees(id),
       created_at TIMESTAMP DEFAULT NOW()
     )`);
+
+    // ── Additional resignation-form fields (added later — safe/additive) ─────
+    // These use ADD COLUMN IF NOT EXISTS so they apply cleanly regardless of
+    // whatever the live `separations` table already looks like.
+    await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS resignation_reason_category VARCHAR(50)`);
+    await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS comments TEXT`);
+    await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS personal_email VARCHAR(150)`);
+    await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS contact_number VARCHAR(20)`);
+    await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
+    await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS attachment_mime VARCHAR(100)`);
+    await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS attachment_data TEXT`);
 
     await client.query(`CREATE TABLE IF NOT EXISTS advance_salary (
       id SERIAL PRIMARY KEY,
