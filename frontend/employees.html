@@ -1280,14 +1280,6 @@ if (Role.is('hr', 'accounts')) {
 
   document.getElementById('add-emp-btn').innerHTML = `
     <button class="btn btn-outline btn-sm" style="background:var(--accent);color:#fff;border-color:var(--accent)" onclick="openMasterExport()">📊 Master Excel</button>
-    <label class="btn btn-outline btn-sm" style="cursor:pointer;margin-left:8px">
-      ⬆ Import Excel
-      <input type="file" id="import-file" accept=".xlsx,.xls" onchange="importExcel(this)" style="display:none">
-    </label>
-    <label class="btn btn-outline btn-sm" style="cursor:pointer;margin-left:4px;background:#ede9fe;color:#6d28d9;border-color:#c4b5fd" title="Upload Master Information Report to fill missing fields for existing employees">
-      ⬆ Master Update
-      <input type="file" id="master-update-file" accept=".xlsx,.xls" onchange="masterUpdate(this)" style="display:none">
-    </label>
     ${salaryButtonsHtml}
     <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openAddEmp()">+ Add Employee</button>`;
 }
@@ -2360,55 +2352,6 @@ async function downloadMasterReport(month, year) {
   a.click();
   URL.revokeObjectURL(a.href);
   toast('✅ Master Excel downloaded!');
-}
-
-async function importExcel(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const fd = new FormData();
-  fd.append('file', file);
-  toast('Importing employees…');
-  try {
-    const res = await fetch(`${API_BASE}/employees/import`, { method: 'POST', headers: { Authorization: 'Bearer ' + Auth.getToken() }, body: fd });
-    const data = await res.json();
-    if (data.success) {
-      const s = data.data.summary;
-      let msg = `Imported: ${s.imported}, Skipped: ${s.skipped}`;
-      if (s.errors) msg += `, Errors: ${s.errors}`;
-      toast(msg, s.imported > 0 ? 'success' : 'error');
-      if (data.data.errors?.length) console.warn('Import errors:', data.data.errors);
-      loadEmployees();
-    } else toast(data.message || 'Import failed', 'error');
-  } catch(e) { toast('Import failed', 'error'); }
-  input.value = '';
-}
-
-async function masterUpdate(input) {
-  const file = input.files[0];
-  if (!file) return;
-  if (!confirm('This will update ALL existing employees from the Master Information Report.\n\nFields updated: Location, Branch, Division, Father Name, Spouse, Emergency Contact, Addresses, PF Number, Nationality, etc.\n\nContinue?')) {
-    input.value = ''; return;
-  }
-  const fd = new FormData();
-  fd.append('file', file);
-  toast('Updating employees from Master Report…');
-  try {
-    const res = await fetch(`${API_BASE}/employees/master-update`, { method: 'POST', headers: { Authorization: 'Bearer ' + Auth.getToken() }, body: fd });
-    const data = await res.json();
-    if (data.success) {
-      const s = data.data.summary;
-      let msg = `Updated: ${s.updated}, Skipped: ${s.skipped}`;
-      if (s.errors) msg += `, Errors: ${s.errors}`;
-      toast(msg, s.updated > 0 ? 'success' : 'error');
-      if (data.data.errors?.length) {
-        console.warn('Master update errors:', data.data.errors);
-        alert('Errors:\n' + data.data.errors.slice(0, 10).join('\n'));
-      }
-      if (data.data.skipped?.length) console.warn('Master update skipped:', data.data.skipped);
-      if (s.updated > 0) loadEmployees();
-    } else toast(data.message || 'Master update failed', 'error');
-  } catch(e) { toast('Master update failed', 'error'); }
-  input.value = '';
 }
 
 async function downloadSalaryTemplate() {
