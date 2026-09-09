@@ -946,6 +946,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
              CONCAT(e.first_name,' ',e.last_name) AS full_name,
              d.name AS department, des.title AS designation,
              e.employee_category, e.employment_type,
+             e.bank_name, e.bank_account, e.bank_ifsc, e.bank_branch,
              COALESCE(s.basic,           e.basic_salary,       0) AS basic,
              COALESCE(s.hra,             e.hra,                0) AS hra,
              COALESCE(s.conveyance,      e.conveyance,         0) AS conveyance,
@@ -974,6 +975,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // ── Sheet 1: Payroll Input Template ───────────────────────────────────
     const HEADERS = [
       'Emp Code', 'Full Name', 'Department', 'Designation', 'Category',
+      'Bank Name', 'Account Number', 'IFSC Code', 'Bank Branch',
       'Working Days', 'Present Days', 'LOP Days', 'Paid Days',
       'Basic', 'HRA', 'Conveyance', 'Defray Allowance', 'Gratuity', 'Gross Salary',
       'PF (Employee)', 'ESI (Employee)', 'Prof Tax', 'LWF', 'TDS',
@@ -1013,6 +1015,10 @@ exports.downloadPayrollTemplate = async (req, res) => {
           e.department  || '',
           e.designation || '',
           e.employee_category || '',
+          e.bank_name    || '',
+          e.bank_account || '',
+          e.bank_ifsc    || '',
+          e.bank_branch  || '',
           daysInMonth,       // Working Days — pre-filled, accounts can adjust
           '',                // Present Days — FILL THIS
           '',                // LOP Days — FILL THIS
@@ -1045,6 +1051,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // Column widths
     ws1['!cols'] = [
       {wch:10},{wch:24},{wch:16},{wch:22},{wch:12},
+      {wch:16},{wch:18},{wch:12},{wch:16},
       {wch:11},{wch:11},{wch:9},{wch:9},
       {wch:10},{wch:8},{wch:10},{wch:14},{wch:9},{wch:12},
       {wch:12},{wch:12},{wch:9},{wch:6},{wch:8},
@@ -1078,6 +1085,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       [''],
       ['COLUMNS PRE-FILLED (do not change unless needed):'],
       ['Column', 'Source'],
+      ['Bank Name, Account Number, IFSC, Bank Branch', 'From employee bank details in system — reference only, for salary transfer'],
       ['Basic, HRA, Conveyance, etc.', 'From employee salary structure in system'],
       ['Gross Salary',      'Sum of all earnings'],
       ['PF, ESI, PT, TDS',  'From salary structure'],
