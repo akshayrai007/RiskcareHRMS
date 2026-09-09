@@ -452,19 +452,68 @@ exports.update = async (req, res) => {
 
     if (!sets.length) return res.status(400).json({ success: false, message: 'Nothing to update' });
 
-    // Log designation changes before applying them, so the employee card can
-    // show a full "old designation → new designation" timeline.
-    if (req.body.designation_id !== undefined) {
-      const newDesigId = parseInt(req.body.designation_id) || null;
-      const cur = await db.query(`SELECT designation_id FROM employees WHERE id=$1`, [id]);
+    // Log designation/level changes before applying them, so the employee card
+    // and the Salary & Promotions view can show a full "old → new" timeline.
+    // A promotion may touch designation, level, or both in one save — capture
+    // it as a single row when either changes.
+    if (req.body.designation_id !== undefined || req.body.level !== undefined) {
+      const cur = await db.query(`SELECT designation_id, level FROM employees WHERE id=$1`, [id]);
       const oldDesigId = cur.rows[0]?.designation_id || null;
-      if (oldDesigId !== newDesigId) {
+      const oldLevel   = cur.rows[0]?.level || null;
+
+      const newDesigId = req.body.designation_id !== undefined
+        ? (parseInt(req.body.designation_id) || null) : oldDesigId;
+      const newLevel   = req.body.level !== undefined
+        ? (req.body.level || null) : oldLevel;
+
+      if (oldDesigId !== newDesigId || oldLevel !== newLevel) {
         await db.query(
           `INSERT INTO employee_designation_history
-             (employee_id, old_designation_id, new_designation_id, changed_by, effective_date)
-           VALUES ($1,$2,$3,$4, COALESCE($5, CURRENT_DATE))`,
-          [id, oldDesigId, newDesigId, req.user?.id || null, req.body.designation_effective_date || null]
+             (employee_id, old_designation_id, new_designation_id, old_level, new_level, changed_by, effective_date, remarks)
+           VALUES ($1,$2,$3,$4,$5,$6, COALESCE($7, CURRENT_DATE), $8)`,
+          [id, oldDesigId, newDesigId, oldLevel, newLevel, req.user?.id || null,
+           req.body.designation_effective_date || null, req.body.promotion_remarks || null]
         );
+      }
+    }
+
+    // Log salary revisions — capture every changed component in one event row
+    // so Accounts/HR can see the full compensation timeline per employee.
+    {
+      const salaryFields = ['ctc', 'basic_salary', 'hra', 'special_allowance', 'travel_allowance'];
+      const touched = salaryFields.filter(f => req.body[f] !== undefined);
+      if (touched.length) {
+        const cur = await db.query(
+          `SELECT ctc, basic_salary, hra, special_allowance, travel_allowance FROM employees WHERE id=$1`,
+          [id]
+        );
+        const oldRow = cur.rows[0] || {};
+        const num = v => (v === '' || v === null || v === undefined) ? null : parseFloat(v);
+        let changed = false;
+        const cols = { old: {}, new: {} };
+        for (const f of salaryFields) {
+          const oldVal = num(oldRow[f]);
+          const newVal = touched.includes(f) ? num(req.body[f]) : oldVal;
+          cols.old[f] = oldVal;
+          cols.new[f] = newVal;
+          if (touched.includes(f) && Number(oldVal || 0) !== Number(newVal || 0)) changed = true;
+        }
+        if (changed) {
+          await db.query(
+            `INSERT INTO employee_salary_history
+               (employee_id, old_ctc, new_ctc, old_basic_salary, new_basic_salary,
+                old_hra, new_hra, old_special_allowance, new_special_allowance,
+                old_travel_allowance, new_travel_allowance, changed_by, effective_date, remarks)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, COALESCE($13, CURRENT_DATE), $14)`,
+            [id,
+             cols.old.ctc, cols.new.ctc,
+             cols.old.basic_salary, cols.new.basic_salary,
+             cols.old.hra, cols.new.hra,
+             cols.old.special_allowance, cols.new.special_allowance,
+             cols.old.travel_allowance, cols.new.travel_allowance,
+             req.user?.id || null, req.body.salary_effective_date || null, req.body.salary_remarks || null]
+          );
+        }
       }
     }
 
