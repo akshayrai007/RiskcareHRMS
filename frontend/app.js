@@ -150,7 +150,6 @@ const NAV_GROUPS = [
     label: null,
     items: [
       { href:'dashboard.html',      icon: ICONS.dashboard,    label:'Dashboard',        roles:['admin','super_admin','hr','accounts','manager','tl'] },
-      { href:'announcements.html',  icon: ICONS.announcements,label:'Announcements',    roles:['employee'] },
     ]
   },
   {
@@ -158,6 +157,7 @@ const NAV_GROUPS = [
     items: [
       { href:'attendance.html',     icon: ICONS.attendance,   label:'Attendance',       always:true },
       { href:'leaves.html',         icon: ICONS.leaves,       label:'Leaves',           always:true },
+      { href:'announcements.html',  icon: ICONS.announcements,label:'Home',    roles:['employee'] },
       { href:'performance.html',    icon: ICONS.performance,  label:'Performance',      always:true },
       { href:'chat.html',           icon: ICONS.chat,         label:'Chat & Meetings',  always:true }
     ]
