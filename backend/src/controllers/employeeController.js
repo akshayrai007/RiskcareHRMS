@@ -1046,7 +1046,7 @@ exports.exportMasterExcel = async (req, res) => {
 
     try { ws3.mergeCells(1, 1, 1, 20); } catch(_) {}
     const dirTitle = ws3.getCell(1, 1);
-    dirTitle.value = `HRMS — Employee Directory | Generated ${new Date().toLocaleDateString('' + (CONFIG.currencyLocale||'en-IN') + "'")}`;
+    dirTitle.value = `HRMS — Employee Directory | Generated ${new Date().toLocaleDateString(CONFIG.currencyLocale || 'en-IN')}`;
     dirTitle.font = { bold: true, size: 13, color: { argb: 'FFFFFFFF' } };
     dirTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4E342E' } };
     dirTitle.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1516,10 +1516,24 @@ exports.exportAttendanceRegister = async (req, res) => {
     let salStructMap = {};
     if (salEmpIds.length) {
       const salStructRes = await db.query(
-        `SELECT employee_id, basic, hra, conveyance, special_allowance, gratuity,
-                gross_salary, pf_employee, esi_employee, professional_tax, tds,
-                pf_employer, esi_employer, pf_admin, total_deductions
-         FROM employee_salary_structure WHERE employee_id = ANY($1::int[])`,
+        `SELECT e.id AS employee_id,
+                COALESCE(s.basic,e.basic_salary,0)             AS basic,
+                COALESCE(s.hra,e.hra,0)                         AS hra,
+                COALESCE(s.conveyance,e.conveyance,0)           AS conveyance,
+                COALESCE(s.special_allowance,e.special_allowance,0) AS special_allowance,
+                COALESCE(s.gratuity,0)                          AS gratuity,
+                COALESCE(s.gross_salary,0)                      AS gross_salary,
+                COALESCE(s.pf_employee,0)                       AS pf_employee,
+                COALESCE(s.esi_employee,0)                      AS esi_employee,
+                COALESCE(s.professional_tax,0)                  AS professional_tax,
+                COALESCE(s.tds,0)                               AS tds,
+                COALESCE(s.pf_employer,0)                       AS pf_employer,
+                COALESCE(s.esi_employer,0)                      AS esi_employer,
+                COALESCE(s.pf_admin,0)                          AS pf_admin,
+                COALESCE(s.total_deductions,0)                  AS total_deductions
+         FROM employees e
+         LEFT JOIN employee_salary_structure s ON s.employee_id = e.id
+         WHERE e.id = ANY($1::int[])`,
         [salEmpIds]
       );
       salStructRes.rows.forEach(r => { salStructMap[r.employee_id] = r; });
