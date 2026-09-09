@@ -138,9 +138,14 @@ exports.submitResignation = async (req, res) => {
     const empId   = req.user.id;
     const empRole = req.user.role;
     const { reason, notice_date, suggested_lwd } = req.body;
+    let { type } = req.body;
 
     if (!reason || !reason.trim())
       return res.status(400).json({ success: false, message: 'Reason is required' });
+
+    // Self-service employees may only pick from these types; anything else defaults to resignation
+    const SELF_SERVICE_TYPES = ['resignation', 'mutual-separation', 'retirement'];
+    if (!SELF_SERVICE_TYPES.includes(type)) type = 'resignation';
 
     const existing = await client.query(
       `SELECT id, status FROM separations
@@ -174,9 +179,9 @@ exports.submitResignation = async (req, res) => {
          (employee_id, type, reason, notice_date, last_working_date,
           notice_period_days, status, initiated_by, initiated_by_role,
           manager_id, original_lwd)
-       VALUES($1,'resignation',$2,$3,$4,$5,'pending',$1,$6,$7,$4)
+       VALUES($1,$2,$3,$4,$5,$6,'pending',$1,$7,$8,$5)
        RETURNING *`,
-      [empId, reason.trim(), resignDate, lwd, noticeDays, empRole,
+      [empId, type, reason.trim(), resignDate, lwd, noticeDays, empRole,
        emp.reporting_manager_id || null]
     );
 
@@ -735,11 +740,16 @@ exports.getAll = async (req, res) => {
 
 // ── 11. Get notice period ─────────────────────────────────────────────────────
 exports.getNoticePeriod = async (req, res) => {
-  const days  = getNoticePeriod(req.user.role);
+  // HR/Admin/Manager may check the notice period for another employee's role
+  // by passing ?role=... (used by the Initiate Separation flow); everyone else
+  // always gets their own role's notice period regardless of any query param.
+  const HR_ADMIN_ROLES = ['hr','admin','super_admin','accounts','manager','tl'];
+  const role = (req.query.role && HR_ADMIN_ROLES.includes(req.user.role)) ? req.query.role : req.user.role;
+  const days  = getNoticePeriod(role);
   const today = new Date().toISOString().split('T')[0];
   res.json({
     success: true,
-    data: { role: req.user.role, notice_period_days: days,
+    data: { role, notice_period_days: days,
             if_resigned_today: { notice_date: today, last_working_date: calcLWD(today, days) } }
   });
 };
