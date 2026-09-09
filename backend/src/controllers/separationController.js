@@ -137,11 +137,21 @@ exports.submitResignation = async (req, res) => {
     await client.query('BEGIN');
     const empId   = req.user.id;
     const empRole = req.user.role;
-    const { reason, notice_date, suggested_lwd } = req.body;
+    const {
+      reason, notice_date, suggested_lwd,
+      resignation_reason_category, comments, personal_email, contact_number
+    } = req.body;
     let { type } = req.body;
+    const file = req.file; // optional attachment, via multer memory storage
 
     if (!reason || !reason.trim())
       return res.status(400).json({ success: false, message: 'Reason is required' });
+    if (!resignation_reason_category)
+      return res.status(400).json({ success: false, message: 'Resignation reason category is required' });
+    if (!personal_email || !personal_email.trim())
+      return res.status(400).json({ success: false, message: 'Personal email is required' });
+    if (!contact_number || !contact_number.trim())
+      return res.status(400).json({ success: false, message: 'Contact number is required' });
 
     // Self-service employees may only pick from these types; anything else defaults to resignation
     const SELF_SERVICE_TYPES = ['resignation', 'mutual-separation', 'retirement'];
@@ -174,15 +184,21 @@ exports.submitResignation = async (req, res) => {
     const emp = empInfo.rows[0];
     if (!emp) return res.status(404).json({ success: false, message: 'Employee not found' });
 
+    const attachmentBase64 = file ? file.buffer.toString('base64') : null;
+
     const result = await client.query(
       `INSERT INTO separations
          (employee_id, type, reason, notice_date, last_working_date,
           notice_period_days, status, initiated_by, initiated_by_role,
-          manager_id, original_lwd)
-       VALUES($1,$2,$3,$4,$5,$6,'pending',$1,$7,$8,$5)
+          manager_id, original_lwd,
+          resignation_reason_category, comments, personal_email, contact_number,
+          attachment_name, attachment_mime, attachment_data)
+       VALUES($1,$2,$3,$4,$5,$6,'pending',$1,$7,$8,$5,$9,$10,$11,$12,$13,$14,$15)
        RETURNING *`,
       [empId, type, reason.trim(), resignDate, lwd, noticeDays, empRole,
-       emp.reporting_manager_id || null]
+       emp.reporting_manager_id || null,
+       resignation_reason_category, comments || null, personal_email.trim(), contact_number.trim(),
+       file ? file.originalname : null, file ? file.mimetype : null, attachmentBase64]
     );
 
     if (emp.reporting_manager_id) {
@@ -747,10 +763,32 @@ exports.getNoticePeriod = async (req, res) => {
   const role = (req.query.role && HR_ADMIN_ROLES.includes(req.user.role)) ? req.query.role : req.user.role;
   const days  = getNoticePeriod(role);
   const today = new Date().toISOString().split('T')[0];
+
+  // Auto-fill data for the self-resignation form: the employee's own name/code
+  // and their reporting manager's name (shown as "Approver").
+  let selfInfo = null;
+  if (!req.query.role) {
+    const meRes = await db.query(
+      `SELECT e.first_name, e.last_name, e.employee_code,
+              CONCAT(m.first_name,' ',m.last_name) AS manager_name
+       FROM employees e LEFT JOIN employees m ON e.reporting_manager_id = m.id
+       WHERE e.id=$1`, [req.user.id]
+    );
+    if (meRes.rows.length) {
+      const me = meRes.rows[0];
+      selfInfo = {
+        employee_name: `${me.first_name} ${me.last_name}`,
+        employee_code: me.employee_code,
+        approver_name: me.manager_name || '— No Manager —'
+      };
+    }
+  }
+
   res.json({
     success: true,
     data: { role, notice_period_days: days,
-            if_resigned_today: { notice_date: today, last_working_date: calcLWD(today, days) } }
+            if_resigned_today: { notice_date: today, last_working_date: calcLWD(today, days) },
+            self: selfInfo }
   });
 };
 
