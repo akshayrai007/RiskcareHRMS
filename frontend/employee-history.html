@@ -185,31 +185,44 @@ async function openEmployeeHistory(empId) {
   body.innerHTML = '<div class="empty-state">Loading history…</div>';
   openModal('hist-detail-modal');
 
-  const res = await api('GET', `/history/employees/${empId}`);
-  if (!res || !res.success) {
-    body.innerHTML = '<div class="empty-state">Could not load history.</div>';
+  let res;
+  try {
+    res = await api('GET', `/history/employees/${empId}`);
+  } catch (e) {
+    res = { success: false, message: 'Unexpected error while loading history' };
+  }
+
+  if (!res || !res.success || !res.data || !res.data.employee) {
+    title.textContent = 'Employee History';
+    body.innerHTML = `
+      <div class="empty-state">
+        ${res?.message || 'Could not load history.'}<br>
+        <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="openEmployeeHistory(${empId})">🔄 Retry</button>
+      </div>`;
     return;
   }
+
   const { employee: e, timeline } = res.data;
   const name = `${e.first_name||''} ${e.last_name||''}`.trim();
   title.textContent = `${name} — ${e.employee_code||''}`;
 
-  const header = `
-    <div style="padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface2)">
-      <div style="display:flex;flex-wrap:wrap;gap:18px;font-size:12px;color:var(--muted)">
-        <div><b style="color:var(--text)">Department:</b> ${e.department_name||'—'}</div>
-        <div><b style="color:var(--text)">Designation:</b> ${e.designation_title||'—'}</div>
-        <div><b style="color:var(--text)">Level:</b> ${e.level||'—'}</div>
-        <div><b style="color:var(--text)">Current CTC:</b> <span class="ccy-sym"></span>${fmt.money(e.ctc)}</div>
-      </div>
-    </div>`;
+  try {
+    const header = `
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface2)">
+        <div style="display:flex;flex-wrap:wrap;gap:18px;font-size:12px;color:var(--muted)">
+          <div><b style="color:var(--text)">Department:</b> ${e.department_name||'—'}</div>
+          <div><b style="color:var(--text)">Designation:</b> ${e.designation_title||'—'}</div>
+          <div><b style="color:var(--text)">Level:</b> ${e.level||'—'}</div>
+          <div><b style="color:var(--text)">Current CTC:</b> <span class="ccy-sym"></span>${fmt.money(e.ctc)}</div>
+        </div>
+      </div>`;
 
-  if (!timeline.length) {
-    body.innerHTML = header + '<div class="empty-state">No salary changes or promotions recorded yet.</div>';
-    return;
-  }
+    if (!timeline || !timeline.length) {
+      body.innerHTML = header + '<div class="empty-state">No salary changes or promotions recorded yet.</div>';
+      return;
+    }
 
-  const items = timeline.map(item => {
+    const items = timeline.map(item => {
     if (item.type === 'salary') {
       const chips = [];
       const pairs = [
@@ -255,6 +268,14 @@ async function openEmployeeHistory(empId) {
   }).join('');
 
   body.innerHTML = header + `<div style="padding:16px 20px">${items}</div>`;
+  } catch (renderErr) {
+    console.error('[openEmployeeHistory render]', renderErr);
+    body.innerHTML = `
+      <div class="empty-state">
+        Something went wrong displaying this employee's history.<br>
+        <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="openEmployeeHistory(${empId})">🔄 Retry</button>
+      </div>`;
+  }
 }
 
 loadEmployeeHistoryList();
