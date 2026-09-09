@@ -149,7 +149,7 @@ exports.submitResignation = async (req, res) => {
     const empId   = req.user.id;
     const empRole = req.user.role;
     const {
-      reason, notice_date, suggested_lwd, notice_period_days,
+      reason, notice_date, suggested_lwd, notice_period_days, notice_applicable,
       resignation_reason_category, comments, personal_email, contact_number
     } = req.body;
     let { type } = req.body;
@@ -180,12 +180,25 @@ exports.submitResignation = async (req, res) => {
       });
 
     const resignDate = notice_date || new Date().toISOString().split('T')[0];
-    const noticeDays = resolveNoticePeriod(empRole, notice_period_days);
-    const autoLwd    = calcLWD(resignDate, noticeDays);
-    // Employee may suggest an earlier LWD — only accept if it's >= auto-calculated LWD
-    let lwd = autoLwd;
-    if (suggested_lwd && new Date(suggested_lwd) >= new Date(autoLwd)) {
-      lwd = suggested_lwd;
+    const isWaiver   = String(notice_applicable).toLowerCase() === 'no';
+
+    let noticeDays, lwd;
+    if (isWaiver) {
+      // Notice-period waiver requested — no minimum notice enforced, so the
+      // employee's suggested date is honored as long as it isn't in the past.
+      // (Still goes through manager/HR approval like any other separation.)
+      noticeDays = 0;
+      lwd = (suggested_lwd && new Date(suggested_lwd) >= new Date(resignDate))
+        ? suggested_lwd
+        : resignDate;
+    } else {
+      noticeDays = resolveNoticePeriod(empRole, notice_period_days);
+      const autoLwd = calcLWD(resignDate, noticeDays);
+      // Employee may suggest a later LWD — only accept if it's >= auto-calculated LWD
+      lwd = autoLwd;
+      if (suggested_lwd && new Date(suggested_lwd) >= new Date(autoLwd)) {
+        lwd = suggested_lwd;
+      }
     }
 
     const empInfo = await client.query(
