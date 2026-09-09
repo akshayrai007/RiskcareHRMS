@@ -175,7 +175,7 @@ const NAV_GROUPS = [
     ]
   },
   {
-    label: 'Payroll & Compensation',
+    label: 'Finance',
     items: [
       { href:'payroll.html',        icon: ICONS.payroll,      label:'Payroll',          roles:['super_admin','hr','accounts'] },
       { href:'payslip.html',        icon: ICONS.payslip,      label:'My Payslip',       always:true },
@@ -202,7 +202,7 @@ const NAV_GROUPS = [
     ]
   },
   {
-    label: 'Administration',
+    label: 'System',
     items: [
       { href:'geofence.html', icon: ICONS.geofence, label:'Geofence', roles:['admin','super_admin','hr'] },
       { href:'ai-voice.html',       icon: ICONS.aivoice,      label:'Voice Assistant',  always:true },
