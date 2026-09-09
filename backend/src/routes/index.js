@@ -55,6 +55,15 @@ router.get   ('/employees/code-preview',  authenticate, authorize(...EMP_MGMT), 
 router.get   ('/employees/contacts',      authenticate,                          empCtrl.getContacts);
 router.get   ('/employees/:id',           authenticate,                          empCtrl.getOne);
 router.get   ('/employees/:id/designation-history', authenticate,                 empCtrl.getDesignationHistory);
+
+// ── Salary & Promotions history view (Accounts / HR / Admin / Super Admin) ──
+const historyCtrl = require('../controllers/historyController');
+const HISTORY_ROLES = ['hr','hr admin','accounts','accounts admin','admin','super_admin'];
+router.get('/history/employees',      authenticate, authorize(...HISTORY_ROLES), historyCtrl.listEmployees);
+router.get('/history/employees/:id',  authenticate, authorize(...HISTORY_ROLES), historyCtrl.getEmployeeHistory);
+
+// ── Org chart — visible to everyone once logged in ──────────────────────────
+router.get('/org-chart', authenticate, historyCtrl.getOrgChart);
 router.post  ('/employees',               authenticate, authorize(...EMP_MGMT),  empCtrl.create);
 router.put   ('/employees/:id',           authenticate, authorize(...EMP_MGMT),  empCtrl.update);
 router.patch ('/employees/:id',           authenticate, authorize(...EMP_MGMT),  empCtrl.update);
