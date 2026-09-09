@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Org Chart</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+.oc-wrap { overflow:auto;padding:30px 20px 60px }
+.oc-tree, .oc-tree ul { padding-top:24px;position:relative;display:flex;justify-content:center }
+.oc-tree ul { padding-top:24px }
+.oc-tree li { list-style:none;position:relative;padding:24px 12px 0;display:flex;flex-direction:column;align-items:center;text-align:center }
+
+/* connecting lines */
+.oc-tree li::before, .oc-tree li::after {
+  content:''; position:absolute; top:0; width:50%; height:24px; border-top:2px solid #c7cfdb;
+}
+.oc-tree li::before { right:50%; border-right:2px solid #c7cfdb; }
+.oc-tree li::after  { left:50%; border-left:2px solid #c7cfdb; }
+.oc-tree li:only-child::before, .oc-tree li:only-child::after { display:none; }
+.oc-tree li:only-child { padding-top:0; }
+.oc-tree li:first-child::before, .oc-tree li:last-child::after { border:0 none; }
+.oc-tree li:last-child::before { border-right:2px solid #c7cfdb; border-radius:0 0 0 0; }
+.oc-tree li:first-child::after { border-radius:0; }
+.oc-tree > li { padding-top:0 }
+.oc-tree > li::before, .oc-tree > li::after { display:none }
+.oc-tree ul::before {
+  content:''; position:absolute; top:0; left:50%; width:0; height:24px; border-left:2px solid #c7cfdb;
+}
+.oc-tree li ul { position:relative; }
+
+.oc-card {
+  display:inline-flex; flex-direction:column; align-items:center; gap:4px;
+  background:#fff; border:1.5px solid var(--border); border-radius:14px;
+  padding:12px 16px; min-width:160px; box-shadow:0 2px 8px rgba(15,23,42,.06);
+  cursor:pointer; transition:.15s; position:relative; z-index:2;
+}
+.oc-card:hover { border-color:var(--accent); box-shadow:0 6px 18px rgba(67,97,238,.18); transform:translateY(-2px); }
+.oc-avatar { width:44px;height:44px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;object-fit:cover }
+.oc-name { font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap }
+.oc-desig { font-size:10.5px;color:var(--muted);white-space:nowrap }
+.oc-badge { font-size:9px;font-weight:700;padding:1px 8px;border-radius:8px;color:#fff;margin-top:2px }
+.oc-toggle {
+  position:absolute; bottom:-10px; left:50%; transform:translateX(-50%);
+  width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;
+  font-size:11px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;
+  cursor:pointer; z-index:3;
+}
+.oc-collapsed > ul { display:none; }
+.oc-search-bar { display:flex;gap:10px;align-items:center;margin-bottom:8px }
+.oc-search-bar input { flex:1;max-width:320px;padding:9px 14px;border-radius:10px;border:1.5px solid var(--border);font-size:13px }
+.empty-state { text-align:center;padding:40px 20px;color:var(--muted) }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div><div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div></div></div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+      <div class="topbar-title">🧭 Organisation Chart</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-outline btn-sm" onclick="loadOrgChart()">🔄 Refresh</button>
+      <button class="btn btn-outline btn-sm" onclick="expandAll()">⤢ Expand All</button>
+      <button class="btn btn-outline btn-sm" onclick="collapseAll()">⤡ Collapse All</button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+    <div class="card">
+      <div class="oc-search-bar">
+        <input type="text" id="oc-search" placeholder="Find a person…" oninput="highlightSearch()">
+        <span style="font-size:12px;color:var(--muted)" id="oc-count"></span>
+      </div>
+      <div class="oc-wrap" id="oc-wrap">
+        <div class="empty-state">Loading org chart…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+if (!Auth.guard()) { }
+buildSidebar('org-chart.html');
+
+let __ocPeople = [];
+let __ocRoleColor = { super_admin:'#7c3aed', admin:'#ef4444', hr:'#10b981', 'hr admin':'#10b981', accounts:'#f59e0b', 'accounts admin':'#f59e0b', manager:'#4361ee', tl:'#f59e0b', employee:'#6b7280' };
+
+async function loadOrgChart() {
+  const wrap = document.getElementById('oc-wrap');
+  wrap.innerHTML = '<div class="empty-state">Loading org chart…</div>';
+  const res = await api('GET', '/org-chart');
+  if (!res || !res.success) {
+    wrap.innerHTML = '<div class="empty-state">Could not load org chart.</div>';
+    return;
+  }
+  __ocPeople = res.data || [];
+  document.getElementById('oc-count').textContent = __ocPeople.length + ' people';
+  renderOrgChart();
+}
+
+function renderOrgChart() {
+  const wrap = document.getElementById('oc-wrap');
+  if (!__ocPeople.length) { wrap.innerHTML = '<div class="empty-state">No employees found.</div>'; return; }
+
+  const byId = {}; __ocPeople.forEach(p => byId[p.id] = { ...p, children: [] });
+  const roots = [];
+  __ocPeople.forEach(p => {
+    const node = byId[p.id];
+    if (p.reporting_manager_id && byId[p.reporting_manager_id]) {
+      byId[p.reporting_manager_id].children.push(node);
+    } else {
+      roots.push(node);
+    }
+  });
+
+  function renderNode(node) {
+    const initials = (node.first_name?.[0]||'') + (node.last_name?.[0]||'');
+    const name = `${node.first_name||''} ${node.last_name||''}`.trim();
+    const color = __ocRoleColor[node.role] || '#6b7280';
+    const hasKids = node.children && node.children.length > 0;
+    const avatar = node.profile_photo
+      ? `<img class="oc-avatar" src="${node.profile_photo}">`
+      : `<span class="oc-avatar">${initials}</span>`;
+    return `
+      <li data-person-id="${node.id}" data-name="${name.toLowerCase()}">
+        <div class="oc-card" onclick="window.location.href='employees.html?id=${node.id}'">
+          ${avatar}
+          <div class="oc-name">${name}</div>
+          <div class="oc-desig">${node.designation_title || node.role} · ${node.department_name||'—'}</div>
+          <span class="oc-badge" style="background:${color}">${(node.role||'').toUpperCase()}</span>
+          ${hasKids ? `<div class="oc-toggle" onclick="event.stopPropagation();toggleNode(this)">−</div>` : ''}
+        </div>
+        ${hasKids ? `<ul>${node.children.map(renderNode).join('')}</ul>` : ''}
+      </li>`;
+  }
+
+  wrap.innerHTML = `<ul class="oc-tree">${roots.map(renderNode).join('')}</ul>`;
+}
+
+function toggleNode(btn) {
+  const li = btn.closest('li');
+  li.classList.toggle('oc-collapsed');
+  btn.textContent = li.classList.contains('oc-collapsed') ? '+' : '−';
+}
+
+function expandAll() {
+  document.querySelectorAll('.oc-collapsed').forEach(li => li.classList.remove('oc-collapsed'));
+  document.querySelectorAll('.oc-toggle').forEach(b => b.textContent = '−');
+}
+function collapseAll() {
+  document.querySelectorAll('#oc-wrap li ul').forEach(ul => {
+    const li = ul.closest('li');
+    if (li) li.classList.add('oc-collapsed');
+  });
+  document.querySelectorAll('.oc-toggle').forEach(b => b.textContent = '+');
+}
+
+function highlightSearch() {
+  const q = document.getElementById('oc-search').value.trim().toLowerCase();
+  document.querySelectorAll('#oc-wrap .oc-card').forEach(c => c.style.outline = '');
+  if (!q) return;
+  document.querySelectorAll('#oc-wrap li[data-name]').forEach(li => {
+    if (li.dataset.name.includes(q)) {
+      const card = li.querySelector(':scope > .oc-card');
+      if (card) card.style.outline = '3px solid #f59e0b';
+      // expand ancestors so the match is visible
+      let p = li.parentElement;
+      while (p) {
+        if (p.tagName === 'LI') { p.classList.remove('oc-collapsed'); const t=p.querySelector(':scope > .oc-card > .oc-toggle'); if(t) t.textContent='−'; }
+        p = p.parentElement;
+      }
+    }
+  });
+}
+
+loadOrgChart();
+</script>
+</body>
+</html>

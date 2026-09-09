@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Salary &amp; Promotions</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+.hist-table { width:100%;border-collapse:collapse;min-width:900px }
+.hist-table th { border:1px solid #9ca3af;background:#1e293b;color:#fff;font-size:11px;font-weight:700;padding:10px 12px;text-align:center;white-space:nowrap }
+.hist-table td { border:1px solid #e5e7eb;padding:9px 12px;font-size:12px;vertical-align:middle;text-align:center }
+.hist-table tr:nth-child(even) td { background:#f9fafb }
+.hist-table tr:hover td { background:#f0f4ff;cursor:pointer }
+.hist-avatar { width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;object-fit:cover }
+.count-pill { display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700 }
+.pill-salary { background:#dcfce7;color:#166534 }
+.pill-promo  { background:#e0e7ff;color:#3730a3 }
+.pill-zero   { background:#f1f5f9;color:#94a3b8 }
+.search-bar { display:flex;gap:10px;align-items:center;margin-bottom:16px }
+.search-bar input { flex:1;max-width:340px;padding:9px 14px;border-radius:10px;border:1.5px solid var(--border);font-size:13px }
+/* Timeline inside popup */
+.tl-item { display:flex;gap:12px;padding:14px 0;border-bottom:1px dashed var(--border) }
+.tl-item:last-child { border-bottom:none }
+.tl-dot { width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0 }
+.tl-dot.salary { background:#dcfce7 }
+.tl-dot.promotion { background:#e0e7ff }
+.tl-body { flex:1 }
+.tl-title { font-size:13px;font-weight:700;color:var(--text) }
+.tl-date { font-size:11px;color:var(--muted);margin-top:1px }
+.tl-diff { margin-top:8px;display:flex;flex-wrap:wrap;gap:8px }
+.tl-chip { background:var(--surface2);border-radius:8px;padding:5px 10px;font-size:11.5px }
+.tl-chip .lbl { color:var(--muted);margin-right:4px }
+.tl-chip .old { text-decoration:line-through;color:#ef4444;opacity:.7 }
+.tl-chip .new { color:#166534;font-weight:700 }
+.tl-remarks { margin-top:6px;font-size:11.5px;color:var(--muted);font-style:italic }
+.tl-by { margin-top:6px;font-size:11px;color:var(--muted) }
+.empty-state { text-align:center;padding:40px 20px;color:var(--muted) }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div><div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div></div></div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+      <div class="topbar-title">📈 Salary &amp; Promotions</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-outline btn-sm" onclick="loadEmployeeHistoryList()">🔄 Refresh</button>
+      <a class="topbar-icon-btn" href="org-chart.html" title="Org Chart">🧭</a>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+    <div class="card">
+      <div class="search-bar">
+        <input type="text" id="hist-search" placeholder="Search by name, code or email..." oninput="debounceSearch()">
+        <span style="font-size:12px;color:var(--muted)" id="hist-count"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="hist-table">
+          <thead>
+            <tr>
+              <th style="text-align:left">Employee</th>
+              <th>Department</th>
+              <th>Designation</th>
+              <th>Level</th>
+              <th>Salary Changes</th>
+              <th>Last Salary Change</th>
+              <th>Promotions</th>
+              <th>Last Promotion</th>
+            </tr>
+          </thead>
+          <tbody id="hist-tbody">
+            <tr><td colspan="8" class="empty-state">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Popup: full history for one employee -->
+<div class="modal-backdrop" id="hist-detail-modal">
+  <div class="modal modal-lg" style="max-height:88vh">
+    <div class="modal-header">
+      <div class="modal-title" id="hist-detail-title">Employee History</div>
+      <button class="modal-close" onclick="closeModal('hist-detail-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="hist-detail-body" style="overflow-y:auto;max-height:72vh"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+if (!Auth.guard()) { }
+buildSidebar('employee-history.html');
+
+// Restrict this page to Accounts / HR / Admin / Super Admin
+(function guardRole(){
+  const role = Auth.getUser()?.role;
+  const allowed = ['hr','hr admin','accounts','accounts admin','admin','super_admin'];
+  if (!allowed.includes(role)) { window.location.href = 'dashboard.html'; }
+})();
+
+let __histRows = [];
+let __searchTimer = null;
+
+function debounceSearch(){
+  clearTimeout(__searchTimer);
+  __searchTimer = setTimeout(loadEmployeeHistoryList, 300);
+}
+
+async function loadEmployeeHistoryList() {
+  const tbody = document.getElementById('hist-tbody');
+  tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Loading…</td></tr>';
+  const q = document.getElementById('hist-search').value.trim();
+  const res = await api('GET', '/history/employees' + (q ? ('?search=' + encodeURIComponent(q)) : ''));
+  if (!res || !res.success) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Could not load data.</td></tr>';
+    return;
+  }
+  __histRows = res.data || [];
+  document.getElementById('hist-count').textContent = __histRows.length + ' employee(s)';
+  if (!__histRows.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No employees found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = __histRows.map(r => {
+    const initials = (r.first_name?.[0]||'') + (r.last_name?.[0]||'');
+    const name = `${r.first_name||''} ${r.last_name||''}`.trim();
+    const salPill = r.salary_change_count > 0
+      ? `<span class="count-pill pill-salary">💰 ${r.salary_change_count}</span>`
+      : `<span class="count-pill pill-zero">—</span>`;
+    const promoPill = r.promotion_count > 0
+      ? `<span class="count-pill pill-promo">⭐ ${r.promotion_count}</span>`
+      : `<span class="count-pill pill-zero">—</span>`;
+    return `
+      <tr onclick="openEmployeeHistory(${r.id})">
+        <td style="text-align:left">
+          <div style="display:flex;align-items:center;gap:10px">
+            ${r.profile_photo
+              ? `<img class="hist-avatar" src="${r.profile_photo}">`
+              : `<span class="hist-avatar">${initials}</span>`}
+            <div>
+              <div style="font-weight:700;font-size:12.5px">${name}</div>
+              <div style="font-size:10.5px;color:var(--muted)">${r.employee_code||''}</div>
+            </div>
+          </div>
+        </td>
+        <td>${r.department_name||'—'}</td>
+        <td>${r.designation_title||'—'}</td>
+        <td>${r.level||'—'}</td>
+        <td>${salPill}</td>
+        <td>${fmt.date(r.last_salary_change)}</td>
+        <td>${promoPill}</td>
+        <td>${fmt.date(r.last_promotion)}</td>
+      </tr>`;
+  }).join('');
+}
+
+async function openEmployeeHistory(empId) {
+  const body = document.getElementById('hist-detail-body');
+  const title = document.getElementById('hist-detail-title');
+  title.textContent = 'Loading…';
+  body.innerHTML = '<div class="empty-state">Loading history…</div>';
+  openModal('hist-detail-modal');
+
+  const res = await api('GET', `/history/employees/${empId}`);
+  if (!res || !res.success) {
+    body.innerHTML = '<div class="empty-state">Could not load history.</div>';
+    return;
+  }
+  const { employee: e, timeline } = res.data;
+  const name = `${e.first_name||''} ${e.last_name||''}`.trim();
+  title.textContent = `${name} — ${e.employee_code||''}`;
+
+  const header = `
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface2)">
+      <div style="display:flex;flex-wrap:wrap;gap:18px;font-size:12px;color:var(--muted)">
+        <div><b style="color:var(--text)">Department:</b> ${e.department_name||'—'}</div>
+        <div><b style="color:var(--text)">Designation:</b> ${e.designation_title||'—'}</div>
+        <div><b style="color:var(--text)">Level:</b> ${e.level||'—'}</div>
+        <div><b style="color:var(--text)">Current CTC:</b> <span class="ccy-sym"></span>${fmt.money(e.ctc)}</div>
+      </div>
+    </div>`;
+
+  if (!timeline.length) {
+    body.innerHTML = header + '<div class="empty-state">No salary changes or promotions recorded yet.</div>';
+    return;
+  }
+
+  const items = timeline.map(item => {
+    if (item.type === 'salary') {
+      const chips = [];
+      const pairs = [
+        ['CTC', item.old_ctc, item.new_ctc],
+        ['Basic', item.old_basic_salary, item.new_basic_salary],
+        ['HRA', item.old_hra, item.new_hra],
+        ['Special Allowance', item.old_special_allowance, item.new_special_allowance],
+        ['Travel Allowance', item.old_travel_allowance, item.new_travel_allowance],
+      ];
+      pairs.forEach(([label, oldV, newV]) => {
+        if (oldV === newV) return;
+        chips.push(`<span class="tl-chip"><span class="lbl">${label}:</span> <span class="old">${fmt.money(oldV)}</span> → <span class="new">${fmt.money(newV)}</span></span>`);
+      });
+      return `
+        <div class="tl-item">
+          <div class="tl-dot salary">💰</div>
+          <div class="tl-body">
+            <div class="tl-title">Salary Revised</div>
+            <div class="tl-date">${fmt.date(item.effective_date)}</div>
+            <div class="tl-diff">${chips.join('') || '<span class="tl-chip">No numeric change recorded</span>'}</div>
+            ${item.remarks ? `<div class="tl-remarks">"${item.remarks}"</div>` : ''}
+            <div class="tl-by">Updated by ${item.changed_by_name?.trim() || 'System'}</div>
+          </div>
+        </div>`;
+    } else {
+      const desigChanged = item.old_designation !== item.new_designation;
+      const levelChanged = item.old_level !== item.new_level;
+      const chips = [];
+      if (desigChanged) chips.push(`<span class="tl-chip"><span class="lbl">Designation:</span> <span class="old">${item.old_designation||'—'}</span> → <span class="new">${item.new_designation||'—'}</span></span>`);
+      if (levelChanged) chips.push(`<span class="tl-chip"><span class="lbl">Level:</span> <span class="old">${item.old_level||'—'}</span> → <span class="new">${item.new_level||'—'}</span></span>`);
+      return `
+        <div class="tl-item">
+          <div class="tl-dot promotion">⭐</div>
+          <div class="tl-body">
+            <div class="tl-title">Promotion / Role Change</div>
+            <div class="tl-date">${fmt.date(item.effective_date)}</div>
+            <div class="tl-diff">${chips.join('')}</div>
+            ${item.remarks ? `<div class="tl-remarks">"${item.remarks}"</div>` : ''}
+            <div class="tl-by">Updated by ${item.changed_by_name?.trim() || 'System'}</div>
+          </div>
+        </div>`;
+    }
+  }).join('');
+
+  body.innerHTML = header + `<div style="padding:16px 20px">${items}</div>`;
+}
+
+loadEmployeeHistoryList();
+</script>
+</body>
+</html>
