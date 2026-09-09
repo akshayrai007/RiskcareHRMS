@@ -168,8 +168,13 @@
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Notice Period <span style="color:var(--muted);font-weight:400">(auto, based on your role)</span></label>
-          <input id="sep-notice-period" class="form-control" disabled placeholder="—">
+          <label class="form-label">Notice Period <span style="color:var(--muted);font-weight:400">(select as per your terms)</span></label>
+          <select id="sep-notice-period" class="form-control" onchange="sepRecalcLwd()">
+            <option value="30">30 days</option>
+            <option value="45">45 days</option>
+            <option value="60">60 days</option>
+            <option value="90">90 days</option>
+          </select>
         </div>
         <div class="form-group">
           <label class="form-label">Tentative Relieving Date <span style="color:var(--muted);font-weight:400">(auto)</span></label>
@@ -399,7 +404,12 @@ let _sepNoticeDays = 0; // cached from server, used by sepRecalcLwd()
   const np = await api('GET', '/separations/notice-period');
   if (np?.success) {
     _sepNoticeDays = np.data.notice_period_days;
-    document.getElementById('sep-notice-period').value = `${_sepNoticeDays} days`;
+    // Pre-select the notice period that matches the employee's role/terms; the
+    // employee can still change it to any of the org's standard notice periods.
+    const periodSel = document.getElementById('sep-notice-period');
+    if ([...periodSel.options].some(o => o.value === String(_sepNoticeDays))) {
+      periodSel.value = String(_sepNoticeDays);
+    }
     if (np.data.self) {
       document.getElementById('sep-emp-name').value = `${np.data.self.employee_name} (${np.data.self.employee_code})`;
       document.getElementById('sep-approver').value = np.data.self.approver_name;
@@ -413,13 +423,16 @@ let _sepNoticeDays = 0; // cached from server, used by sepRecalcLwd()
 function sepRecalcLwd() {
   const noticeDate  = document.getElementById('sep-notice').value;
   const applicable  = document.getElementById('sep-notice-applicable').value;
+  const periodEl    = document.getElementById('sep-notice-period');
   const lwdEl       = document.getElementById('sep-lwd');
   const noteEl      = document.getElementById('sep-lwd-note');
   if (!noticeDate) return;
 
   if (applicable === 'no') {
-    // Employee is requesting a notice-period waiver — Last Working Date becomes
-    // freely editable (subject to manager/HR approval), no minimum enforced here.
+    // Employee is requesting a notice-period waiver — Notice Period selector is
+    // irrelevant, and Last Working Date becomes freely editable (subject to
+    // manager/HR approval), no minimum enforced here.
+    periodEl.disabled = true;
     lwdEl.min = '';
     if (!lwdEl.value) lwdEl.value = noticeDate;
     document.getElementById('sep-tentative-lwd').value = noticeDate;
@@ -427,8 +440,13 @@ function sepRecalcLwd() {
     return;
   }
 
+  // Notice period applicable — employee picks their notice period (30/45/60/90
+  // days, per their employment terms) and the Tentative/Actual Relieving Date
+  // is calculated from it.
+  periodEl.disabled = false;
+  const noticeDays = parseInt(periodEl.value, 10) || _sepNoticeDays;
   const d = new Date(noticeDate);
-  d.setDate(d.getDate() + _sepNoticeDays);
+  d.setDate(d.getDate() + noticeDays);
   const autoLwd = d.toISOString().split('T')[0];
   lwdEl.value = autoLwd;
   lwdEl.min   = autoLwd; // cannot pick earlier than notice period
@@ -938,6 +956,8 @@ async function saveExitDetails() {
 async function submitResignation() {
   const type                     = document.getElementById('sep-type').value;
   const notice_date              = document.getElementById('sep-notice').value;
+  const notice_applicable        = document.getElementById('sep-notice-applicable').value;
+  const notice_period_days       = document.getElementById('sep-notice-period').value;
   const reason                   = document.getElementById('sep-reason').value.trim();
   const suggested_lwd            = document.getElementById('sep-lwd').value;
   const resignation_reason_category = document.getElementById('sep-reason-category').value;
@@ -953,6 +973,9 @@ async function submitResignation() {
   const fd = new FormData();
   fd.append('type', type);
   fd.append('notice_date', notice_date);
+  // Only send the chosen notice period when it actually applies; a waiver
+  // request leaves this to the backend's role-based fallback.
+  if (notice_applicable !== 'no') fd.append('notice_period_days', notice_period_days);
   fd.append('reason', reason);
   fd.append('suggested_lwd', suggested_lwd);
   fd.append('resignation_reason_category', resignation_reason_category);
