@@ -143,6 +143,8 @@ const ICONS = {
   aivoice:      `🤖`,
   requests:     `📋`,
   chat:         `💬`,
+  history:      `📈`,
+  orgchart:     `🧭`,
 };
 
 const NAV_GROUPS = [
@@ -176,6 +178,8 @@ const NAV_GROUPS = [
     label: 'Organisation',
     items: [
       { href:'employees.html',         icon: ICONS.employees,    label:'Employees',          roles:['admin','super_admin','hr','accounts','manager','tl'] },
+      { href:'employee-history.html',  icon: ICONS.history,      label:'Salary & Promotions', roles:['admin','super_admin','hr','hr admin','accounts','accounts admin'] },
+      { href:'org-chart.html',         icon: ICONS.orgchart,     label:'Org Chart',          always:true },
       { href:'separation.html',        icon: ICONS.separation,   label:'Separation',         always:true },
       { href:'offer-letter.html',      icon: '📄',               label:'Offer Letters',       roles:['admin','super_admin','hr'] },
       { href:'relieving-letter.html',  icon: '📋',               label:'Relieving Letters',   roles:['admin','super_admin','hr'] },
