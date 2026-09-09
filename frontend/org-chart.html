@@ -7,50 +7,70 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
-.oc-wrap { overflow:auto;padding:30px 20px 60px }
-.oc-tree, .oc-tree ul { padding-top:24px;position:relative;display:flex;justify-content:center }
-.oc-tree ul { padding-top:24px }
-.oc-tree li { list-style:none;position:relative;padding:24px 12px 0;display:flex;flex-direction:column;align-items:center;text-align:center }
+.oc-wrap { overflow:hidden; padding:30px 20px 60px; }
 
-/* connecting lines */
-.oc-tree li::before, .oc-tree li::after {
-  content:''; position:absolute; top:0; width:50%; height:24px; border-top:2px solid #c7cfdb;
-}
-.oc-tree li::before { right:50%; border-right:2px solid #c7cfdb; }
-.oc-tree li::after  { left:50%; border-left:2px solid #c7cfdb; }
-.oc-tree li:only-child::before, .oc-tree li:only-child::after { display:none; }
-.oc-tree li:only-child { padding-top:0; }
-.oc-tree li:first-child::before, .oc-tree li:last-child::after { border:0 none; }
-.oc-tree li:last-child::before { border-right:2px solid #c7cfdb; border-radius:0 0 0 0; }
-.oc-tree li:first-child::after { border-radius:0; }
-.oc-tree > li { padding-top:0 }
-.oc-tree > li::before, .oc-tree > li::after { display:none }
-.oc-tree ul::before {
-  content:''; position:absolute; top:0; left:50%; width:0; height:24px; border-left:2px solid #c7cfdb;
-}
-.oc-tree li ul { position:relative; }
+/* breadcrumb */
+.oc-crumbs { display:flex; align-items:center; flex-wrap:wrap; gap:4px; margin-bottom:22px; font-size:13px; }
+.oc-crumb { display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border-radius:8px; color:var(--muted); cursor:pointer; border:none; background:none; font:inherit; }
+.oc-crumb:hover:not(.oc-crumb-current) { background:var(--accent-l,#eef1ff); color:var(--accent); }
+.oc-crumb-current { color:var(--text); font-weight:700; cursor:default; }
+.oc-crumb-sep { color:var(--muted2,#c7cfdb); font-size:11px; }
 
+/* stage that gets animated on navigation */
+.oc-stage { transform-origin: var(--ox,50%) var(--oy,50%); }
+.oc-stage.oc-shrink { transform:scale(.9); opacity:0; }
+.oc-stage.oc-grow   { transform:scale(1.08); opacity:0; }
+.oc-stage.oc-anim   { transition: transform .22s cubic-bezier(.4,0,.2,1), opacity .22s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .oc-stage.oc-anim, .oc-stage.oc-shrink, .oc-stage.oc-grow { transition:none !important; transform:none !important; opacity:1 !important; }
+}
+
+/* focus card = the person currently being drilled into */
+.oc-focus-row { display:flex; justify-content:center; margin-bottom:8px; }
+.oc-focus-card {
+  display:flex; align-items:center; gap:14px; background:#fff; border:1.5px solid var(--accent);
+  border-radius:16px; padding:16px 22px; box-shadow:0 6px 20px rgba(67,97,238,.14); min-width:260px;
+}
+.oc-focus-card .oc-avatar { width:56px;height:56px;font-size:19px; }
+.oc-focus-info { text-align:left; }
+.oc-focus-name { font-size:16px;font-weight:800;color:var(--text); }
+.oc-focus-desig { font-size:12.5px;color:var(--muted);margin-top:2px; }
+.oc-focus-link { font-size:11.5px;color:var(--accent);text-decoration:none;font-weight:700;margin-top:6px;display:inline-block; }
+.oc-focus-link:hover { text-decoration:underline; }
+.oc-connector { width:2px; height:26px; background:var(--border); margin:0 auto; }
+.oc-reports-label { text-align:center; font-size:12px; color:var(--muted); margin-bottom:16px; font-weight:600; letter-spacing:.2px; }
+
+/* grid of report cards */
+.oc-grid { display:flex; flex-wrap:wrap; justify-content:center; gap:16px; max-width:1100px; margin:0 auto; }
 .oc-card {
-  display:inline-flex; flex-direction:column; align-items:center; gap:4px;
+  display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center;
   background:#fff; border:1.5px solid var(--border); border-radius:14px;
-  padding:12px 16px; min-width:160px; box-shadow:0 2px 8px rgba(15,23,42,.06);
-  cursor:pointer; transition:.15s; position:relative; z-index:2;
+  padding:14px 18px; width:168px; box-shadow:0 2px 8px rgba(15,23,42,.06);
+  cursor:pointer; transition:.15s; position:relative;
 }
-.oc-card:hover { border-color:var(--accent); box-shadow:0 6px 18px rgba(67,97,238,.18); transform:translateY(-2px); }
-.oc-avatar { width:44px;height:44px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;object-fit:cover }
-.oc-name { font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap }
-.oc-desig { font-size:10.5px;color:var(--muted);white-space:nowrap }
-.oc-badge { font-size:9px;font-weight:700;padding:1px 8px;border-radius:8px;color:#fff;margin-top:2px }
-.oc-toggle {
-  position:absolute; bottom:-10px; left:50%; transform:translateX(-50%);
-  width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;
-  font-size:11px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;
-  cursor:pointer; z-index:3;
+.oc-card:hover { border-color:var(--accent); box-shadow:0 8px 20px rgba(67,97,238,.18); transform:translateY(-3px); }
+.oc-avatar { width:44px;height:44px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;object-fit:cover;flex-shrink:0; }
+.oc-name { font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%; }
+.oc-desig { font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%; }
+.oc-badge { font-size:9px;font-weight:700;padding:1px 8px;border-radius:8px;color:#fff;margin-top:2px; }
+.oc-count-pill { font-size:9.5px;color:var(--muted);margin-top:3px; }
+.oc-card.oc-highlight { outline:3px solid #f59e0b; }
+
+.oc-search-bar { display:flex;gap:10px;align-items:center;margin-bottom:8px;position:relative; }
+.oc-search-bar input { flex:1;max-width:320px;padding:9px 14px;border-radius:10px;border:1.5px solid var(--border);font-size:13px; }
+.oc-search-results {
+  position:absolute; top:calc(100% + 4px); left:0; width:320px; max-height:280px; overflow:auto;
+  background:#fff; border:1.5px solid var(--border); border-radius:10px; box-shadow:0 8px 24px rgba(15,23,42,.12);
+  z-index:10; display:none;
 }
-.oc-collapsed > ul { display:none; }
-.oc-search-bar { display:flex;gap:10px;align-items:center;margin-bottom:8px }
-.oc-search-bar input { flex:1;max-width:320px;padding:9px 14px;border-radius:10px;border:1.5px solid var(--border);font-size:13px }
+.oc-search-results.oc-open { display:block; }
+.oc-search-result { display:flex; align-items:center; gap:10px; padding:8px 12px; cursor:pointer; font-size:12.5px; }
+.oc-search-result:hover { background:var(--accent-l,#f4f6ff); }
+.oc-search-result .oc-name { font-weight:700; }
+.oc-search-empty { padding:12px; font-size:12px; color:var(--muted); text-align:center; }
+
 .empty-state { text-align:center;padding:40px 20px;color:var(--muted) }
+.oc-no-reports { text-align:center; color:var(--muted); font-size:12.5px; padding:18px 0 4px; }
 </style>
 </head>
 <body>
@@ -80,8 +100,6 @@
     </div>
     <div class="topbar-right">
       <button class="btn btn-outline btn-sm" onclick="loadOrgChart()">🔄 Refresh</button>
-      <button class="btn btn-outline btn-sm" onclick="expandAll()">⤢ Expand All</button>
-      <button class="btn btn-outline btn-sm" onclick="collapseAll()">⤡ Collapse All</button>
       <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
     </div>
   </div>
@@ -89,8 +107,9 @@
   <div class="content fade-in">
     <div class="card">
       <div class="oc-search-bar">
-        <input type="text" id="oc-search" placeholder="Find a person…" oninput="highlightSearch()">
+        <input type="text" id="oc-search" placeholder="Find a person…" oninput="onSearchInput()" onfocus="onSearchInput()">
         <span style="font-size:12px;color:var(--muted)" id="oc-count"></span>
+        <div class="oc-search-results" id="oc-search-results"></div>
       </div>
       <div class="oc-wrap" id="oc-wrap">
         <div class="empty-state">Loading org chart…</div>
@@ -104,7 +123,10 @@
 if (!Auth.guard()) { }
 buildSidebar('org-chart.html');
 
+const ROOT_ID = '__org_root__';
 let __ocPeople = [];
+let __ocById = {};
+let __ocFocus = ROOT_ID;
 let __ocRoleColor = { super_admin:'#7c3aed', admin:'#ef4444', hr:'#10b981', 'hr admin':'#10b981', accounts:'#f59e0b', 'accounts admin':'#f59e0b', manager:'#4361ee', tl:'#f59e0b', employee:'#6b7280' };
 
 async function loadOrgChart() {
@@ -117,83 +139,162 @@ async function loadOrgChart() {
   }
   __ocPeople = res.data || [];
   document.getElementById('oc-count').textContent = __ocPeople.length + ' people';
-  renderOrgChart();
-}
 
-function renderOrgChart() {
-  const wrap = document.getElementById('oc-wrap');
-  if (!__ocPeople.length) { wrap.innerHTML = '<div class="empty-state">No employees found.</div>'; return; }
-
-  const byId = {}; __ocPeople.forEach(p => byId[p.id] = { ...p, children: [] });
+  __ocById = {};
+  __ocPeople.forEach(p => __ocById[p.id] = { ...p, children: [] });
   const roots = [];
   __ocPeople.forEach(p => {
-    const node = byId[p.id];
-    if (p.reporting_manager_id && byId[p.reporting_manager_id]) {
-      byId[p.reporting_manager_id].children.push(node);
+    const node = __ocById[p.id];
+    if (p.reporting_manager_id && __ocById[p.reporting_manager_id]) {
+      __ocById[p.reporting_manager_id].children.push(node);
     } else {
       roots.push(node);
     }
   });
+  __ocById[ROOT_ID] = { id: ROOT_ID, virtual: true, children: roots };
 
-  function renderNode(node) {
-    const initials = (node.first_name?.[0]||'') + (node.last_name?.[0]||'');
-    const name = `${node.first_name||''} ${node.last_name||''}`.trim();
-    const color = __ocRoleColor[node.role] || '#6b7280';
-    const hasKids = node.children && node.children.length > 0;
-    const avatar = node.profile_photo
-      ? `<img class="oc-avatar" src="${node.profile_photo}">`
-      : `<span class="oc-avatar">${initials}</span>`;
-    return `
-      <li data-person-id="${node.id}" data-name="${name.toLowerCase()}">
-        <div class="oc-card" onclick="window.location.href='employees.html?id=${node.id}'">
-          ${avatar}
-          <div class="oc-name">${name}</div>
-          <div class="oc-desig">${node.designation_title || node.role} · ${node.department_name||'—'}</div>
-          <span class="oc-badge" style="background:${color}">${(node.role||'').toUpperCase()}</span>
-          ${hasKids ? `<div class="oc-toggle" onclick="event.stopPropagation();toggleNode(this)">−</div>` : ''}
+  __ocFocus = ROOT_ID;
+  renderView();
+}
+
+function nodeName(node) {
+  return `${node.first_name || ''} ${node.last_name || ''}`.trim();
+}
+
+function pathToNode(id) {
+  // ancestor chain from ROOT_ID down to (and including) id
+  const chain = [];
+  let cur = __ocById[id];
+  while (cur && cur.id !== ROOT_ID) {
+    chain.unshift(cur.id);
+    cur = cur.reporting_manager_id ? __ocById[cur.reporting_manager_id] : null;
+  }
+  chain.unshift(ROOT_ID);
+  return chain;
+}
+
+function cardHtml(node, extraClass) {
+  const initials = (node.first_name?.[0] || '') + (node.last_name?.[0] || '');
+  const name = nodeName(node);
+  const color = __ocRoleColor[node.role] || '#6b7280';
+  const kidCount = node.children ? node.children.length : 0;
+  const avatar = node.profile_photo
+    ? `<img class="oc-avatar" src="${node.profile_photo}">`
+    : `<span class="oc-avatar">${initials}</span>`;
+  return `
+    <div class="oc-card ${extraClass || ''}" data-person-id="${node.id}" data-name="${name.toLowerCase()}" onclick="goToNode('${node.id}', event)">
+      ${avatar}
+      <div class="oc-name">${name}</div>
+      <div class="oc-desig">${node.designation_title || node.role} · ${node.department_name || '—'}</div>
+      <span class="oc-badge" style="background:${color}">${(node.role || '').toUpperCase()}</span>
+      ${kidCount ? `<span class="oc-count-pill">${kidCount} report${kidCount > 1 ? 's' : ''}</span>` : ''}
+    </div>`;
+}
+
+function renderView() {
+  const wrap = document.getElementById('oc-wrap');
+  if (!__ocPeople.length) { wrap.innerHTML = '<div class="empty-state">No employees found.</div>'; return; }
+
+  const focus = __ocById[__ocFocus];
+  const path = pathToNode(__ocFocus);
+
+  // breadcrumb
+  const crumbsHtml = path.map((id, i) => {
+    const n = __ocById[id];
+    const label = n.virtual ? '🏢 Organisation' : nodeName(n);
+    const isLast = i === path.length - 1;
+    const sep = i > 0 ? '<span class="oc-crumb-sep">›</span>' : '';
+    return `${sep}<button class="oc-crumb ${isLast ? 'oc-crumb-current' : ''}" ${isLast ? '' : `onclick="goToNode('${id}', event)"`}>${label}</button>`;
+  }).join('');
+
+  let bodyHtml;
+  if (focus.virtual) {
+    // top level: show the root(s) directly as a grid, no focus header
+    bodyHtml = `<div class="oc-grid">${focus.children.map(c => cardHtml(c)).join('')}</div>`;
+  } else {
+    const kids = focus.children || [];
+    bodyHtml = `
+      <div class="oc-focus-row">
+        <div class="oc-focus-card">
+          ${focus.profile_photo ? `<img class="oc-avatar" src="${focus.profile_photo}">` : `<span class="oc-avatar">${(focus.first_name?.[0]||'')}${(focus.last_name?.[0]||'')}</span>`}
+          <div class="oc-focus-info">
+            <div class="oc-focus-name">${nodeName(focus)}</div>
+            <div class="oc-focus-desig">${focus.designation_title || focus.role} · ${focus.department_name || '—'}</div>
+            <a class="oc-focus-link" href="employees.html?id=${focus.id}">View full profile →</a>
+          </div>
         </div>
-        ${hasKids ? `<ul>${node.children.map(renderNode).join('')}</ul>` : ''}
-      </li>`;
+      </div>
+      ${kids.length ? `<div class="oc-connector"></div><div class="oc-reports-label">${kids.length} direct report${kids.length > 1 ? 's' : ''}</div><div class="oc-grid">${kids.map(c => cardHtml(c)).join('')}</div>` : `<div class="oc-no-reports">No direct reports.</div>`}
+    `;
   }
 
-  wrap.innerHTML = `<ul class="oc-tree">${roots.map(renderNode).join('')}</ul>`;
+  wrap.innerHTML = `<div class="oc-crumbs">${crumbsHtml}</div><div class="oc-stage" id="oc-stage">${bodyHtml}</div>`;
 }
 
-function toggleNode(btn) {
-  const li = btn.closest('li');
-  li.classList.toggle('oc-collapsed');
-  btn.textContent = li.classList.contains('oc-collapsed') ? '+' : '−';
+function goToNode(id, evt) {
+  if (id === __ocFocus) return;
+  const path = pathToNode(__ocFocus);
+  const goingBack = path.includes(id);
+
+  const wrap = document.getElementById('oc-wrap');
+  const stage = document.getElementById('oc-stage');
+  const wrapRect = wrap.getBoundingClientRect();
+  let ox = 50, oy = 50;
+  if (evt && evt.currentTarget) {
+    const r = evt.currentTarget.getBoundingClientRect();
+    ox = ((r.left + r.width / 2 - wrapRect.left) / wrapRect.width) * 100;
+    oy = ((r.top + r.height / 2 - wrapRect.top) / wrapRect.height) * 100;
+  }
+
+  if (!stage) { __ocFocus = id; renderView(); return; }
+
+  stage.style.setProperty('--ox', ox + '%');
+  stage.style.setProperty('--oy', oy + '%');
+  stage.classList.add('oc-anim', goingBack ? 'oc-shrink' : 'oc-grow');
+
+  setTimeout(() => {
+    __ocFocus = id;
+    renderView();
+    const newStage = document.getElementById('oc-stage');
+    newStage.style.setProperty('--ox', ox + '%');
+    newStage.style.setProperty('--oy', oy + '%');
+    newStage.classList.add('oc-anim', goingBack ? 'oc-grow' : 'oc-shrink');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        newStage.classList.remove('oc-grow', 'oc-shrink');
+      });
+    });
+  }, 190);
 }
 
-function expandAll() {
-  document.querySelectorAll('.oc-collapsed').forEach(li => li.classList.remove('oc-collapsed'));
-  document.querySelectorAll('.oc-toggle').forEach(b => b.textContent = '−');
-}
-function collapseAll() {
-  document.querySelectorAll('#oc-wrap li ul').forEach(ul => {
-    const li = ul.closest('li');
-    if (li) li.classList.add('oc-collapsed');
-  });
-  document.querySelectorAll('.oc-toggle').forEach(b => b.textContent = '+');
-}
-
-function highlightSearch() {
+function onSearchInput() {
   const q = document.getElementById('oc-search').value.trim().toLowerCase();
-  document.querySelectorAll('#oc-wrap .oc-card').forEach(c => c.style.outline = '');
-  if (!q) return;
-  document.querySelectorAll('#oc-wrap li[data-name]').forEach(li => {
-    if (li.dataset.name.includes(q)) {
-      const card = li.querySelector(':scope > .oc-card');
-      if (card) card.style.outline = '3px solid #f59e0b';
-      // expand ancestors so the match is visible
-      let p = li.parentElement;
-      while (p) {
-        if (p.tagName === 'LI') { p.classList.remove('oc-collapsed'); const t=p.querySelector(':scope > .oc-card > .oc-toggle'); if(t) t.textContent='−'; }
-        p = p.parentElement;
-      }
-    }
-  });
+  const box = document.getElementById('oc-search-results');
+  if (!q) { box.classList.remove('oc-open'); box.innerHTML = ''; return; }
+
+  const matches = __ocPeople.filter(p => nodeName(__ocById[p.id]).toLowerCase().includes(q)).slice(0, 8);
+  box.innerHTML = matches.length
+    ? matches.map(p => {
+        const n = __ocById[p.id];
+        return `<div class="oc-search-result" onclick="selectSearchResult('${n.id}')">
+          <span class="oc-avatar" style="width:28px;height:28px;font-size:11px">${(n.first_name?.[0]||'')}${(n.last_name?.[0]||'')}</span>
+          <span><span class="oc-name">${nodeName(n)}</span> — <span class="oc-desig">${n.designation_title || n.role}</span></span>
+        </div>`;
+      }).join('')
+    : `<div class="oc-search-empty">No matches</div>`;
+  box.classList.add('oc-open');
 }
+
+function selectSearchResult(id) {
+  document.getElementById('oc-search-results').classList.remove('oc-open');
+  document.getElementById('oc-search').value = '';
+  goToNode(id);
+}
+
+document.addEventListener('click', (e) => {
+  const bar = document.querySelector('.oc-search-bar');
+  if (bar && !bar.contains(e.target)) document.getElementById('oc-search-results').classList.remove('oc-open');
+});
 
 loadOrgChart();
 </script>
