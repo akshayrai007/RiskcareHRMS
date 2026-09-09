@@ -116,6 +116,7 @@ exports.getOrgChart = async (req, res) => {
     const result = await db.query(
       `SELECT e.id, e.first_name, e.last_name, e.employee_code, e.role, e.level,
               e.profile_photo, e.reporting_manager_id,
+              e.date_of_birth, e.email, e.phone, e.blood_group, e.city,
               d.name AS department_name, des.title AS designation_title
        FROM employees e
        LEFT JOIN departments d ON e.department_id = d.id
