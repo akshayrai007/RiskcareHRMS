@@ -19,7 +19,7 @@
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;-webkit-font-smoothing:antialiased}
 
 /* ── Sidebar ── */
-.sidebar{width:var(--sidebar);background:var(--green);min-height:100vh;display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;transition:.3s}
+.sidebar{width:var(--sidebar);background:linear-gradient(180deg, color-mix(in srgb, var(--cfg-darker) 100%, #000) 0%, var(--cfg-dark) 50%, color-mix(in srgb, var(--cfg-darker) 85%, #000) 100%);min-height:100vh;display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;transition:.3s}
 .sidebar-logo{padding:20px 18px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.12)}
 .sidebar-logo img{width:34px;border-radius:8px}
 .sidebar-logo-text{font-family:'DM Serif Display',serif;font-size:16px;font-weight:800;color:#fff;line-height:1.1}
@@ -198,8 +198,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="content">
     <!-- Feed Grid: 50% Left | 50% Right -->
     <div class="feed-grid">
-      <!-- LEFT: Thought + GK Question + Announcements -->
+      <!-- LEFT: Punch In/Out + Thought + GK Question + Announcements -->
       <div>
+        <!-- Punch In / Out quick status -->
+        <div class="card" id="ann-punch-card" style="margin-bottom:18px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Today's Attendance</div>
+            <div id="ann-punch-status" style="font-size:14px;font-weight:600;color:var(--text)">Loading…</div>
+          </div>
+          <button id="ann-punch-btn" class="btn" style="background:linear-gradient(135deg,var(--cfg-primary),var(--cfg-accent));color:#fff;display:none" onclick="location.href='attendance.html'"></button>
+        </div>
+
         <!-- Thought of Day -->
         <div class="thought-card card" style="margin-bottom:18px" id="thought-card">
           <div class="thought-label">💡 Thought of the Day</div>
@@ -1663,6 +1672,48 @@ function closeModal(id) {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
 });
+
+// ── Punch In/Out quick status ────────────────────────────────────────────────
+// Read-only status card. Actual punching (with GPS/geofence verification)
+// happens on attendance.html — this just shows today's state and links there,
+// so we don't duplicate the geolocation/map logic in two places.
+async function loadPunchStatus() {
+  const statusEl = document.getElementById('ann-punch-status');
+  const btnEl    = document.getElementById('ann-punch-btn');
+  try {
+    const now = new Date().toLocaleString('en-US', { timeZone: window.CFG.timezone });
+    const d = new Date(now);
+    const month = d.getMonth() + 1, year = d.getFullYear();
+    const todayStr = `${year}-${String(month).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+    const data = await api('GET', `/attendance?month=${month}&year=${year}`);
+    const records = data?.data || [];
+    const today = records.find(r => (r.date_str || r.date?.toString().split('T')[0]) === todayStr);
+
+    if (today?.punch_in && today?.punch_out) {
+      statusEl.textContent = `✅ Punched in at ${fmtTime(today.punch_in)} · out at ${fmtTime(today.punch_out)}`;
+      btnEl.style.display = 'none';
+    } else if (today?.punch_in) {
+      statusEl.textContent = `🟢 Punched in at ${fmtTime(today.punch_in)} — still working`;
+      btnEl.textContent = '🔓 Punch Out';
+      btnEl.style.display = 'inline-flex';
+    } else {
+      statusEl.textContent = "You haven't punched in yet today";
+      btnEl.textContent = '🟢 Punch In';
+      btnEl.style.display = 'inline-flex';
+    }
+  } catch (e) {
+    statusEl.textContent = 'Go to Attendance to punch in/out';
+    btnEl.textContent = 'Go to Attendance';
+    btnEl.style.display = 'inline-flex';
+  }
+}
+function fmtTime(t) {
+  if (!t) return '';
+  try { return new Date(t).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: window.CFG.timezone }); }
+  catch { return t; }
+}
+loadPunchStatus();
 
 loadFeed();
 </script>
