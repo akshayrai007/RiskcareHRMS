@@ -9,7 +9,27 @@ const multer   = require('multer');
 const path     = require('path');
 const fs       = require('fs');
 
-// ── Multer setup (memory storage — parse in-memory) ───────────────────────────
+// ── Professional Tax — state-wise slabs ───────────────────────────────────────
+// Add more states here as needed. Falls back to Maharashtra's existing flat
+// ₹200 (gross >= 10,000) rule if the employee's state isn't listed, so nothing
+// changes for existing employees without this data filled in.
+function calcPT(gross, state) {
+  const s = (state || '').trim().toLowerCase();
+
+  if (s === 'west bengal') {
+    if (gross <= 8500)  return 0;
+    if (gross <= 10000) return 0;
+    if (gross <= 15000) return 110;
+    if (gross <= 25000) return 130;
+    if (gross <= 40000) return 150;
+    return 200; // above 40,000
+  }
+
+  // Maharashtra / default — existing behaviour, unchanged
+  return gross >= 10000 ? 200 : 0;
+}
+
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
@@ -79,6 +99,9 @@ exports.upsertSalaryStructure = async (req, res) => {
     if (!employee_id)
       return res.status(400).json({ success: false, message: 'employee_id required' });
 
+    const empStateRes = await db.query(`SELECT state FROM employees WHERE id=$1`, [employee_id]);
+    const empState = empStateRes.rows[0]?.state;
+
     // Auto-calculate statutory amounts
     const gross        = parseFloat(basic) + parseFloat(hra) + parseFloat(conveyance) + parseFloat(special_allowance) + parseFloat(gratuity);
     const pfBase       = pf_wage_basis === 'actual' ? parseFloat(basic) : Math.min(parseFloat(basic), 15000);
@@ -87,7 +110,7 @@ exports.upsertSalaryStructure = async (req, res) => {
     const pf_admin     = pf_applicable  ? 150 : 0;  // Fixed ₹150 (EPFO minimum admin charge)
     const esi_employee = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
     const esi_employer = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
-    const pt           = pt_applicable  && gross >= 10000 ? 200 : 0;
+    const pt           = pt_applicable  ? calcPT(gross, empState) : 0;
     const lwf          = lwf_applicable ? 6 : 0;
     const total_ded    = pf_employee + esi_employee + pt + lwf;
     const net          = gross - total_ded;
@@ -277,7 +300,7 @@ exports.uploadPayroll = async (req, res) => {
       let emp;
       if (empCodeOrName.startsWith('KC')) {
         emp = await client.query(
-          `SELECT id FROM employees WHERE employee_code=$1 AND is_active=true`, 
+          `SELECT id, state FROM employees WHERE employee_code=$1 AND is_active=true`, 
           [empCodeOrName]
         );
       } else {
@@ -286,7 +309,7 @@ exports.uploadPayroll = async (req, res) => {
         const firstName = parts[0];
         const lastName  = parts.slice(1).join(' ');
         emp = await client.query(
-          `SELECT id FROM employees
+          `SELECT id, state FROM employees
            WHERE is_active=true
              AND (LOWER(CONCAT(first_name,' ',last_name)) = LOWER($1)
                OR (LOWER(first_name)=LOWER($2) AND LOWER(last_name)=LOWER($3)))`,
@@ -302,6 +325,7 @@ exports.uploadPayroll = async (req, res) => {
       }
 
       const empId = emp.rows[0].id;
+      const empState = emp.rows[0].state;
 
       const n = (v) => parseFloat(v) || 0;
       const workDays    = n(row[iWorkDays])   || 26;
@@ -347,7 +371,7 @@ exports.uploadPayroll = async (req, res) => {
       const pfBase   = struct.pf_wage_basis === 'actual' ? earnedBasic : Math.min(earnedBasic, 15000);
       const pfEmp    = struct.pf_applicable  ? Math.round(pfBase * 0.12) : 0;
       const esiEmp   = struct.esi_applicable && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
-      const pt       = struct.pt_applicable  && gross >= 10000 ? 200 : 0;
+      const pt       = struct.pt_applicable  ? calcPT(gross, empState) : 0;
       const lwf      = struct.lwf_applicable ? 6 : 0;
 
       const totalDed = pfEmp + esiEmp + pt + lwf + tds + loanEmi;
@@ -573,7 +597,7 @@ exports.getPayslip = async (req, res) => {
       if (!parseFloat(ps.pf_admin))    ps.pf_admin    = Math.round(pfEmp * 0.005 / 0.12);
     }
     const gross = parseFloat(ps.gross_salary || 0);
-    if (!parseFloat(ps.professional_tax) && gross >= 10000) ps.professional_tax = 200;
+    if (!parseFloat(ps.professional_tax)) ps.professional_tax = calcPT(gross, ps.state);
     if (gross > 21000) { ps.esi_employee = 0; ps.esi_employer = 0; }
 
     // Recompute totals for display
@@ -1210,9 +1234,14 @@ exports.bulkUploadSalaryStructure = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Failed to parse Excel: ' + err.message });
   }
 
-  const empRes = await db.query(`SELECT id, employee_code FROM employees WHERE is_active = true`);
+  const empRes = await db.query(`SELECT id, employee_code, state FROM employees WHERE is_active = true`);
   const empMap = {};
-  empRes.rows.forEach(r => { empMap[(r.employee_code || '').trim().toUpperCase()] = r.id; });
+  const empStateMap = {};
+  empRes.rows.forEach(r => {
+    const code = (r.employee_code || '').trim().toUpperCase();
+    empMap[code] = r.id;
+    empStateMap[code] = r.state;
+  });
 
   const isYes = v => /^y/i.test(String(v || '').trim());
 
@@ -1248,7 +1277,7 @@ exports.bulkUploadSalaryStructure = async (req, res) => {
       const pf_admin       = pf_applicable  ? 150 : 0;
       const esi_employee   = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
       const esi_employer   = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
-      const pt             = pt_applicable  && gross >= 10000 ? 200 : 0;
+      const pt             = pt_applicable  ? calcPT(gross, empStateMap[empCode]) : 0;
       const lwf            = lwf_applicable ? 6 : 0;
       const total_ded      = pf_employee + esi_employee + pt + lwf;
       const net            = gross - total_ded;
