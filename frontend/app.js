@@ -156,12 +156,29 @@ const NAV_GROUPS = [
     ]
   },
   {
-    label: 'Workspace',
+    label: 'Work',
     items: [
       { href:'attendance.html',     icon: ICONS.attendance,   label:'Attendance',       always:true },
       { href:'leaves.html',         icon: ICONS.leaves,       label:'Leaves',           always:true },
       { href:'performance.html',    icon: ICONS.performance,  label:'Performance',      always:true },
+      { href:'projects.html',       icon: ICONS.projects,     label:'Projects',         roles:['admin','super_admin','accounts'] },
       { href:'chat.html',           icon: ICONS.chat,         label:'Chat & Meetings',  always:true }
+    ]
+  },
+  {
+    label: 'People',
+    items: [
+      { href:'employees.html',         icon: ICONS.employees,    label:'Employees',          roles:['admin','super_admin','hr','accounts','manager','tl'] },
+      { href:'org-chart.html',         icon: ICONS.orgchart,     label:'Org Chart',          always:true },
+    ]
+  },
+  {
+    label: 'Employee Lifecycle',
+    items: [
+      { href:'onboarding.html',        icon: '🚀',               label:'Onboarding Tracker',  roles:['admin','super_admin','hr'] },
+      { href:'offer-letter.html',      icon: '📄',               label:'Offer Letters',       roles:['admin','super_admin','hr'] },
+      { href:'relieving-letter.html',  icon: '📋',               label:'Relieving Letters',   roles:['admin','super_admin','hr'] },
+      { href:'separation.html',        icon: ICONS.separation,   label:'Separation',         always:true },
     ]
   },
   {
@@ -171,33 +188,21 @@ const NAV_GROUPS = [
       { href:'send-documents.html', icon: '📤',               label:'Send Documents',    always:true },
       { href:'form16.html',         icon: ICONS.form16,       label:'Form 16',          always:true },
       { href:'it-declaration.html', icon: ICONS.itdecl,       label:'IT Declaration',   always:true },
-      { href:'payslip.html',        icon: ICONS.payslip,      label:'My Payslip',       always:true },
     ]
   },
   {
-    label: 'Organisation',
-    items: [
-      { href:'employees.html',         icon: ICONS.employees,    label:'Employees',          roles:['admin','super_admin','hr','accounts','manager','tl'] },
-      { href:'employee-history.html',  icon: ICONS.history,      label:'Salary & Promotions', roles:['admin','super_admin','hr','hr admin','accounts','accounts admin'] },
-      { href:'org-chart.html',         icon: ICONS.orgchart,     label:'Org Chart',          always:true },
-      { href:'separation.html',        icon: ICONS.separation,   label:'Separation',         always:true },
-      { href:'offer-letter.html',      icon: '📄',               label:'Offer Letters',       roles:['admin','super_admin','hr'] },
-      { href:'relieving-letter.html',  icon: '📋',               label:'Relieving Letters',   roles:['admin','super_admin','hr'] },
-      { href:'onboarding.html',        icon: '🚀',               label:'Onboarding Tracker',  roles:['admin','super_admin','hr'] },
-    ]
-  },
-  {
-    label: 'Finance',
+    label: 'Payroll & Compensation',
     items: [
       { href:'payroll.html',        icon: ICONS.payroll,      label:'Payroll',          roles:['super_admin','hr','accounts'] },
+      { href:'payslip.html',        icon: ICONS.payslip,      label:'My Payslip',       always:true },
       { href:'advance.html',        icon: ICONS.advance,        label:'Advance Salary',   always:true },
       { href:'reimbursement.html',  icon: ICONS.reimbursement,  label:'Reimbursement',    always:true },
       { href:'provision.html',      icon: ICONS.provision,    label:'Provision',        roles:['admin','super_admin','hr','manager','tl'] },
-      { href:'projects.html',       icon: ICONS.projects,     label:'Projects',         roles:['admin','super_admin','accounts'] },
+      { href:'employee-history.html',  icon: ICONS.history,      label:'Salary & Promotions', roles:['admin','super_admin','hr','hr admin','accounts','accounts admin'] },
     ]
   },
   {
-    label: 'System',
+    label: 'Administration',
     items: [
       { href:'geofence.html', icon: ICONS.geofence, label:'Geofence', roles:['admin','super_admin','hr'] },
       { href:'ai-voice.html',       icon: ICONS.aivoice,      label:'Voice Assistant',  always:true },
