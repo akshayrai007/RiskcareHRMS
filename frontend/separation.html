@@ -159,20 +159,27 @@
           <input id="sep-notice" class="form-control" type="date">
         </div>
         <div class="form-group">
-          <label class="form-label">Notice Period <span style="color:var(--muted);font-weight:400">(auto)</span></label>
-          <input id="sep-notice-period" class="form-control" disabled placeholder="—">
+          <label class="form-label">Notice Period Applicable? *</label>
+          <select id="sep-notice-applicable" class="form-control" onchange="sepRecalcLwd()">
+            <option value="yes">Yes</option>
+            <option value="no">No — requesting waiver</option>
+          </select>
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
+          <label class="form-label">Notice Period <span style="color:var(--muted);font-weight:400">(auto, based on your role)</span></label>
+          <input id="sep-notice-period" class="form-control" disabled placeholder="—">
+        </div>
+        <div class="form-group">
           <label class="form-label">Tentative Relieving Date <span style="color:var(--muted);font-weight:400">(auto)</span></label>
           <input id="sep-tentative-lwd" class="form-control" disabled>
         </div>
-        <div class="form-group">
-          <label class="form-label">Actual Relieving Date <span style="color:var(--muted);font-weight:400">(editable)</span></label>
-          <input id="sep-lwd" class="form-control" type="date" placeholder="Auto-calculated">
-          <div style="font-size:11px;color:var(--muted);margin-top:4px">💡 You can suggest a later date; earlier than notice period is not allowed.</div>
-        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Actual / Requested Last Working Date *</label>
+        <input id="sep-lwd" class="form-control" type="date" placeholder="Auto-calculated">
+        <div id="sep-lwd-note" style="font-size:11px;color:var(--muted);margin-top:4px">💡 You can suggest a later date; earlier than notice period is not allowed.</div>
       </div>
       <div class="form-group">
         <label class="form-label">Approver <span style="color:var(--muted);font-weight:400">(auto — your reporting manager)</span></label>
@@ -384,37 +391,52 @@ const today = new Date().toISOString().split('T')[0];
 document.getElementById('sep-notice').value = today;
 document.getElementById('sep-applied-date').value = today;
 
+let _sepNoticeDays = 0; // cached from server, used by sepRecalcLwd()
+
 // Fetch notice period from server and show auto-calculated fields (Notice Period,
 // Tentative/Actual Relieving Date, Employee name, Approver name)
 (async () => {
   const np = await api('GET', '/separations/notice-period');
   if (np?.success) {
-    const lwd = np.data.if_resigned_today.last_working_date;
-    const lwdEl = document.getElementById('sep-lwd');
-    lwdEl.value = lwd;
-    lwdEl.min   = lwd; // cannot pick earlier than notice period
-    document.getElementById('sep-tentative-lwd').value = lwd;
-    document.getElementById('sep-notice-period').value = `${np.data.notice_period_days} days`;
+    _sepNoticeDays = np.data.notice_period_days;
+    document.getElementById('sep-notice-period').value = `${_sepNoticeDays} days`;
     if (np.data.self) {
       document.getElementById('sep-emp-name').value = `${np.data.self.employee_name} (${np.data.self.employee_code})`;
       document.getElementById('sep-approver').value = np.data.self.approver_name;
     }
+    sepRecalcLwd();
   }
 })();
 
-// Update LWD preview when notice date changes
-document.getElementById('sep-notice').addEventListener('change', async function() {
-  const np = await api('GET', '/separations/notice-period');
-  if (np?.success) {
-    const d = new Date(this.value);
-    d.setDate(d.getDate() + np.data.notice_period_days);
-    const autoLwd = d.toISOString().split('T')[0];
-    const lwdEl   = document.getElementById('sep-lwd');
-    lwdEl.value   = autoLwd;
-    lwdEl.min     = autoLwd;
-    document.getElementById('sep-tentative-lwd').value = autoLwd;
+// Recalculate Tentative/Actual Relieving Date whenever Notice Date or the
+// Notice Period Applicable (Yes/No) toggle changes.
+function sepRecalcLwd() {
+  const noticeDate  = document.getElementById('sep-notice').value;
+  const applicable  = document.getElementById('sep-notice-applicable').value;
+  const lwdEl       = document.getElementById('sep-lwd');
+  const noteEl      = document.getElementById('sep-lwd-note');
+  if (!noticeDate) return;
+
+  if (applicable === 'no') {
+    // Employee is requesting a notice-period waiver — Last Working Date becomes
+    // freely editable (subject to manager/HR approval), no minimum enforced here.
+    lwdEl.min = '';
+    if (!lwdEl.value) lwdEl.value = noticeDate;
+    document.getElementById('sep-tentative-lwd').value = noticeDate;
+    noteEl.textContent = '⚠ You are requesting a notice period waiver — this is subject to your manager/HR approval.';
+    return;
   }
-});
+
+  const d = new Date(noticeDate);
+  d.setDate(d.getDate() + _sepNoticeDays);
+  const autoLwd = d.toISOString().split('T')[0];
+  lwdEl.value = autoLwd;
+  lwdEl.min   = autoLwd; // cannot pick earlier than notice period
+  document.getElementById('sep-tentative-lwd').value = autoLwd;
+  noteEl.textContent = '💡 You can suggest a later date; earlier than notice period is not allowed.';
+}
+document.getElementById('sep-notice').addEventListener('change', sepRecalcLwd);
+
 
 // Show relevant tabs based on role
 if (Role.isAdminOrHR()) {
@@ -755,6 +777,22 @@ async function openReview(id) {
       <div style="background:var(--surface2);border-radius:10px;padding:14px;font-size:13px;line-height:1.7;font-style:italic">"${s.reason}"</div>
     </div>
 
+    <!-- Additional resignation form fields -->
+    <div class="form-row" style="margin-bottom:14px">
+      <div><div class="form-label">Resignation Reason (Category)</div>${s.resignation_reason_category || '—'}</div>
+      <div><div class="form-label">Personal Email</div>${s.personal_email || '—'}</div>
+      <div><div class="form-label">Contact Number</div>${s.contact_number || '—'}</div>
+    </div>
+    ${s.comments ? `
+    <div style="margin-bottom:18px">
+      <div class="form-label">Comments</div>
+      <div style="background:var(--surface2);border-radius:10px;padding:14px;font-size:13px;line-height:1.7">${s.comments}</div>
+    </div>` : ''}
+    ${s.attachment_name ? `
+    <div style="margin-bottom:18px">
+      <div class="form-label">Attachment</div>
+      <a href="#" onclick="downloadSepAttachment(${s.id});return false" style="font-size:13px;color:var(--accent);font-weight:600">📎 ${s.attachment_name}</a>
+    </div>` : ''}
     <!-- Approval Timeline -->
     <div class="form-label" style="margin-bottom:12px">Approval Chain</div>
     <div class="timeline">
@@ -1045,6 +1083,25 @@ async function submitInitiateSeparation() {
     closeModal('initiate-modal');
     loadAll();
   } else toast(data?.message || 'Failed', 'error');
+}
+
+async function downloadSepAttachment(id) {
+  try {
+    const r = await fetch(`${API_BASE}/separations/${id}/attachment`,
+      { headers: { Authorization: 'Bearer ' + Auth.getToken() } });
+    if (!r.ok) { toast('Could not download attachment', 'error'); return; }
+    const blob = await r.blob();
+    const disposition = r.headers.get('content-disposition') || '';
+    const match = disposition.match(/filename="(.+)"/);
+    const filename = match ? match[1] : 'attachment';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    toast('Could not download attachment', 'error');
+  }
 }
 
 function switchTab(name) {
