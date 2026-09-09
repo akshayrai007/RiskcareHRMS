@@ -166,15 +166,6 @@ const NAV_GROUPS = [
     ]
   },
   {
-    label: 'Employee Lifecycle',
-    items: [
-      { href:'onboarding.html',        icon: '🚀',               label:'Onboarding Tracker',  roles:['admin','super_admin','hr'] },
-      { href:'offer-letter.html',      icon: '📄',               label:'Offer Letters',       roles:['admin','super_admin','hr'] },
-      { href:'relieving-letter.html',  icon: '📋',               label:'Relieving Letters',   roles:['admin','super_admin','hr'] },
-      { href:'separation.html',        icon: ICONS.separation,   label:'Separation',         always:true },
-    ]
-  },
-  {
     label: 'Documents',
     items: [
       { href:'documents.html',      icon: ICONS.mydocs,       label:'My Documents',     always:true },
@@ -192,6 +183,15 @@ const NAV_GROUPS = [
       { href:'reimbursement.html',  icon: ICONS.reimbursement,  label:'Reimbursement',    always:true },
       { href:'provision.html',      icon: ICONS.provision,    label:'Provision',        roles:['admin','super_admin','hr','manager','tl'] },
       { href:'employee-history.html',  icon: ICONS.history,      label:'Salary & Promotions', roles:['admin','super_admin','hr','hr admin','accounts','accounts admin'] },
+    ]
+  },
+  {
+    label: 'Employee Lifecycle',
+    items: [
+      { href:'onboarding.html',        icon: '🚀',               label:'Onboarding Tracker',  roles:['admin','super_admin','hr'] },
+      { href:'offer-letter.html',      icon: '📄',               label:'Offer Letters',       roles:['admin','super_admin','hr'] },
+      { href:'relieving-letter.html',  icon: '📋',               label:'Relieving Letters',   roles:['admin','super_admin','hr'] },
+      { href:'separation.html',        icon: ICONS.separation,   label:'Separation',         always:true },
     ]
   },
   {
