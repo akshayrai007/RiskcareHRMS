@@ -510,6 +510,7 @@ router.post('/separations/process-lwd',          authenticate, authorize('super_
 router.get ('/separations/my',                   authenticate,                                                        sepCtrl.getMySeparations);
 router.get ('/separations/bulk-template',        authenticate, authorize(...HR_ADMIN),                                sepCtrl.bulkSeparateTemplate);
 router.get ('/separations/:id',                  authenticate,                                                        sepCtrl.getOne);
+router.get ('/separations/:id/attachment',        authenticate,                                                        sepCtrl.downloadAttachment);
 router.post('/separations/:id/withdraw',         authenticate,                                                        sepCtrl.withdraw);
 router.post('/separations/:id/manager-action',   authenticate, authorize('manager','tl','admin','super_admin'),       sepCtrl.managerAction);
 router.post('/separations/:id/hr-action',        authenticate, authorize('hr','admin','super_admin'),                 sepCtrl.hrAction);
