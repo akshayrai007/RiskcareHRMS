@@ -836,6 +836,28 @@ async function start() {
           effective_date DATE DEFAULT CURRENT_DATE,
           changed_at TIMESTAMP DEFAULT NOW()
         )`);
+        // ── Promotion tracking: level change alongside (or instead of) designation ──
+        await db.query(`ALTER TABLE employee_designation_history ADD COLUMN IF NOT EXISTS old_level VARCHAR(10)`);
+        await db.query(`ALTER TABLE employee_designation_history ADD COLUMN IF NOT EXISTS new_level VARCHAR(10)`);
+        await db.query(`ALTER TABLE employee_designation_history ADD COLUMN IF NOT EXISTS remarks TEXT`);
+        // ── Salary revision history — one row per update event, all changed
+        // components captured together so the HR/Accounts view can show a
+        // clean "old → new" timeline per employee ─────────────────────────
+        await db.query(`CREATE TABLE IF NOT EXISTS employee_salary_history (
+          id SERIAL PRIMARY KEY,
+          employee_id INT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+          old_ctc NUMERIC(12,2), new_ctc NUMERIC(12,2),
+          old_basic_salary NUMERIC(12,2), new_basic_salary NUMERIC(12,2),
+          old_hra NUMERIC(12,2), new_hra NUMERIC(12,2),
+          old_special_allowance NUMERIC(12,2), new_special_allowance NUMERIC(12,2),
+          old_travel_allowance NUMERIC(12,2), new_travel_allowance NUMERIC(12,2),
+          changed_by INT REFERENCES employees(id),
+          effective_date DATE DEFAULT CURRENT_DATE,
+          changed_at TIMESTAMP DEFAULT NOW(),
+          remarks TEXT
+        )`);
+        await db.query(`CREATE INDEX IF NOT EXISTS idx_salary_history_emp ON employee_salary_history(employee_id)`);
+        await db.query(`CREATE INDEX IF NOT EXISTS idx_desig_history_emp ON employee_designation_history(employee_id)`);
         await offerCtrl.initTables();
         await itDeclCtrl.initTables();
         const docsCtrl = require('./controllers/documentsController');
@@ -1084,4 +1106,3 @@ setInterval(async () => {
     console.warn('[DB Keep-Alive] ⚠️ DB ping failed:', err.message);
   }
 }, DB_PING_INTERVAL);
-
