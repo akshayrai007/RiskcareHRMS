@@ -126,7 +126,7 @@
 
 <!-- RESIGN MODAL -->
 <div class="modal-backdrop" id="resign-modal">
-  <div class="modal" style="width:560px">
+  <div class="modal" style="width:600px;max-height:90vh;overflow-y:auto">
     <div class="modal-header">
       <div class="modal-title">Submit Resignation</div>
       <button class="modal-close" onclick="closeModal('resign-modal')">✕</button>
@@ -134,6 +134,16 @@
     <div class="modal-body">
       <div style="background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:14px;margin-bottom:18px;font-size:13px;color:var(--muted)">
         ⚠ Once submitted, your resignation will be sent to your manager for approval. You can withdraw it while it's still pending at Level 1.
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Employee</label>
+          <input id="sep-emp-name" class="form-control" disabled>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Applied Date</label>
+          <input id="sep-applied-date" class="form-control" disabled>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">Type of Separation *</label>
@@ -149,14 +159,54 @@
           <input id="sep-notice" class="form-control" type="date">
         </div>
         <div class="form-group">
-          <label class="form-label">Last Working Day <span style="color:var(--muted);font-weight:400">(suggested — min: auto-calculated)</span></label>
+          <label class="form-label">Notice Period <span style="color:var(--muted);font-weight:400">(auto)</span></label>
+          <input id="sep-notice-period" class="form-control" disabled placeholder="—">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Tentative Relieving Date <span style="color:var(--muted);font-weight:400">(auto)</span></label>
+          <input id="sep-tentative-lwd" class="form-control" disabled>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Actual Relieving Date <span style="color:var(--muted);font-weight:400">(editable)</span></label>
           <input id="sep-lwd" class="form-control" type="date" placeholder="Auto-calculated">
           <div style="font-size:11px;color:var(--muted);margin-top:4px">💡 You can suggest a later date; earlier than notice period is not allowed.</div>
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Reason for Resignation *</label>
-        <textarea id="sep-reason" class="form-control" rows="4" placeholder="Please explain your reason for leaving. This will be reviewed by your manager and HR."></textarea>
+        <label class="form-label">Approver <span style="color:var(--muted);font-weight:400">(auto — your reporting manager)</span></label>
+        <input id="sep-approver" class="form-control" disabled placeholder="—">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Resignation Reason *</label>
+        <select id="sep-reason-category" class="form-control">
+          <option value="">-- Select --</option>
+          <option value="Better Prospects">Better Prospects</option>
+          <option value="Higher Education">Higher Education</option>
+          <option value="Medical">Medical</option>
+          <option value="Personal">Personal</option>
+          <option value="Relocation">Relocation</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Comments *</label>
+        <textarea id="sep-reason" class="form-control" rows="3" placeholder="Please explain your reason for leaving. This will be reviewed by your manager and HR."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Personal Email Id *</label>
+          <input id="sep-personal-email" class="form-control" type="email" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contact Number *</label>
+          <input id="sep-contact-number" class="form-control" type="tel" placeholder="10-digit mobile number">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Attach Document <span style="color:var(--muted);font-weight:400">(optional — resignation letter, etc.)</span></label>
+        <input id="sep-attachment" class="form-control" type="file">
       </div>
     </div>
     <div class="modal-footer">
@@ -332,8 +382,10 @@ let allData = [];
 // Set default notice date to today
 const today = new Date().toISOString().split('T')[0];
 document.getElementById('sep-notice').value = today;
+document.getElementById('sep-applied-date').value = today;
 
-// Fetch notice period from server and show auto-calculated LWD
+// Fetch notice period from server and show auto-calculated fields (Notice Period,
+// Tentative/Actual Relieving Date, Employee name, Approver name)
 (async () => {
   const np = await api('GET', '/separations/notice-period');
   if (np?.success) {
@@ -341,7 +393,12 @@ document.getElementById('sep-notice').value = today;
     const lwdEl = document.getElementById('sep-lwd');
     lwdEl.value = lwd;
     lwdEl.min   = lwd; // cannot pick earlier than notice period
-    document.getElementById('sep-lwd').placeholder = `${np.data.notice_period_days} days notice (auto)`;
+    document.getElementById('sep-tentative-lwd').value = lwd;
+    document.getElementById('sep-notice-period').value = `${np.data.notice_period_days} days`;
+    if (np.data.self) {
+      document.getElementById('sep-emp-name').value = `${np.data.self.employee_name} (${np.data.self.employee_code})`;
+      document.getElementById('sep-approver').value = np.data.self.approver_name;
+    }
   }
 })();
 
@@ -355,6 +412,7 @@ document.getElementById('sep-notice').addEventListener('change', async function(
     const lwdEl   = document.getElementById('sep-lwd');
     lwdEl.value   = autoLwd;
     lwdEl.min     = autoLwd;
+    document.getElementById('sep-tentative-lwd').value = autoLwd;
   }
 });
 
@@ -840,13 +898,43 @@ async function saveExitDetails() {
 }
 
 async function submitResignation() {
-  const type           = document.getElementById('sep-type').value;
-  const notice_date    = document.getElementById('sep-notice').value;
-  const reason         = document.getElementById('sep-reason').value.trim();
-  const suggested_lwd  = document.getElementById('sep-lwd').value;
-  if (!notice_date || !reason) { toast('All fields are required', 'error'); return; }
+  const type                     = document.getElementById('sep-type').value;
+  const notice_date              = document.getElementById('sep-notice').value;
+  const reason                   = document.getElementById('sep-reason').value.trim();
+  const suggested_lwd            = document.getElementById('sep-lwd').value;
+  const resignation_reason_category = document.getElementById('sep-reason-category').value;
+  const personal_email           = document.getElementById('sep-personal-email').value.trim();
+  const contact_number           = document.getElementById('sep-contact-number').value.trim();
+  const fileInput                = document.getElementById('sep-attachment');
 
-  const data = await api('POST', '/separations/resign', { type, reason, notice_date, suggested_lwd });
+  if (!notice_date || !reason)              { toast('All fields are required', 'error'); return; }
+  if (!resignation_reason_category)         { toast('Please select a Resignation Reason', 'error'); return; }
+  if (!personal_email)                      { toast('Personal Email Id is required', 'error'); return; }
+  if (!contact_number)                      { toast('Contact Number is required', 'error'); return; }
+
+  const fd = new FormData();
+  fd.append('type', type);
+  fd.append('notice_date', notice_date);
+  fd.append('reason', reason);
+  fd.append('suggested_lwd', suggested_lwd);
+  fd.append('resignation_reason_category', resignation_reason_category);
+  fd.append('personal_email', personal_email);
+  fd.append('contact_number', contact_number);
+  if (fileInput.files[0]) fd.append('attachment', fileInput.files[0]);
+
+  let data;
+  try {
+    const r = await fetch(API_BASE + '/separations/resign', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + Auth.getToken() },
+      body: fd
+    });
+    data = await r.json();
+  } catch (e) {
+    toast('Cannot connect to server', 'error');
+    return;
+  }
+
   if (data?.success) {
     toast(data.message,'success');
     closeModal('resign-modal');
