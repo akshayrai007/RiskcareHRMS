@@ -505,7 +505,7 @@ router.delete('/geofence/buffer-rules/:employee_id',          authenticate, auth
 // NOTE: Specific/static routes MUST come before generic routes (POST /separations,
 //       GET /separations) to avoid Express matching them against the HR_ADMIN guard.
 router.get ('/separations/notice-period',        authenticate,                                                        sepCtrl.getNoticePeriod);
-router.post('/separations/resign',               authenticate,                                                        sepCtrl.submitResignation);
+router.post('/separations/resign',               authenticate, xlsxUpload.single('attachment'),                       sepCtrl.submitResignation);
 router.post('/separations/process-lwd',          authenticate, authorize('super_admin','admin'),                      sepCtrl.processLWD);
 router.get ('/separations/my',                   authenticate,                                                        sepCtrl.getMySeparations);
 router.get ('/separations/bulk-template',        authenticate, authorize(...HR_ADMIN),                                sepCtrl.bulkSeparateTemplate);
