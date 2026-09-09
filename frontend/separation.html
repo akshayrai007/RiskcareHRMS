@@ -111,6 +111,7 @@
             <input type="checkbox" id="show-inactive" checked onchange="loadAll()" style="width:16px;height:16px;cursor:pointer">
             Show Resigned / Inactive Employees
           </label>
+          <button class="btn btn-danger btn-sm" onclick="openInitiateModal()">➕ Initiate Separation (Termination / Absconding)</button>
           <button class="btn btn-outline btn-sm" onclick="downloadResignedDocsZip()">⬇ Download All Resigned Docs (ZIP)</button>
           <button class="btn btn-outline btn-sm" onclick="downloadBulkSeparateTemplate()">📄 Download Template</button>
           <label class="btn btn-sm" id="bulk-separate-btn" style="background:#dc2626;color:#fff;cursor:pointer;margin:0">⬆ Bulk Update Resigned <input type="file" accept=".xlsx,.xls" style="display:none" onchange="bulkSeparateImport(this)"></label>
@@ -161,6 +162,69 @@
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('resign-modal')">Cancel</button>
       <button class="btn btn-danger" onclick="submitResignation()">📝 Submit Resignation</button>
+    </div>
+  </div>
+</div>
+
+<!-- INITIATE SEPARATION MODAL (HR/Admin) -->
+<div class="modal-backdrop" id="initiate-modal">
+  <div class="modal" style="width:560px">
+    <div class="modal-header">
+      <div class="modal-title">Initiate Separation</div>
+      <button class="modal-close" onclick="closeModal('initiate-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Employee *</label>
+        <input class="form-control" id="init-emp-search" placeholder="Type name or code…"
+          oninput="initFilterEmps(this.value)" autocomplete="off" style="margin-bottom:4px">
+        <div id="init-emp-dropdown" style="display:none;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);max-height:200px;overflow-y:auto;position:relative;z-index:10"></div>
+        <input type="hidden" id="init-emp-id">
+        <div id="init-emp-selected" style="display:none;margin-top:6px;padding:8px 10px;background:var(--accent-l);border-radius:var(--radius-sm);align-items:center;justify-content:space-between">
+          <span id="init-emp-selected-name" style="font-size:13px;font-weight:600;color:var(--accent)"></span>
+          <button onclick="initClearEmp()" style="border:none;background:none;cursor:pointer;color:var(--muted);font-size:14px">✕</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Type of Separation *</label>
+        <select id="init-type" class="form-control" onchange="initRecalcLwd()">
+          <option value="resignation">Resignation</option>
+          <option value="termination">Termination</option>
+          <option value="absconding">Absconded</option>
+          <option value="retirement">Retirement</option>
+          <option value="end_of_contract">End of Contract</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Resignation / Effective Date *</label>
+          <input id="init-notice" class="form-control" type="date" onchange="initRecalcLwd()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notice Period Applicable? *</label>
+          <select id="init-notice-applicable" class="form-control" onchange="initRecalcLwd()">
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Last Working Date *</label>
+        <input id="init-lwd" class="form-control" type="date">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px" id="init-notice-days-note"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Approver <span style="color:var(--muted);font-weight:400">(auto-filled — employee's reporting manager)</span></label>
+        <input id="init-approver" class="form-control" disabled placeholder="Select an employee first">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason / Comments *</label>
+        <textarea id="init-reason" class="form-control" rows="3" placeholder="Reason for this separation…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('initiate-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="submitInitiateSeparation()">📝 Initiate Separation</button>
     </div>
   </div>
 </div>
@@ -776,12 +840,13 @@ async function saveExitDetails() {
 }
 
 async function submitResignation() {
+  const type           = document.getElementById('sep-type').value;
   const notice_date    = document.getElementById('sep-notice').value;
   const reason         = document.getElementById('sep-reason').value.trim();
   const suggested_lwd  = document.getElementById('sep-lwd').value;
   if (!notice_date || !reason) { toast('All fields are required', 'error'); return; }
 
-  const data = await api('POST', '/separations/resign', { reason, notice_date, suggested_lwd });
+  const data = await api('POST', '/separations/resign', { type, reason, notice_date, suggested_lwd });
   if (data?.success) {
     toast(data.message,'success');
     closeModal('resign-modal');
@@ -789,6 +854,109 @@ async function submitResignation() {
     document.getElementById('emp-banner').style.display = 'none';
     loadMySeparation();
   } else toast(data?.message||'Failed','error');
+}
+
+// ── Initiate Separation (HR/Admin) — employee search + autofill ─────────────
+let initAllEmps = [];
+let initSelectedEmp = null;
+
+function openInitiateModal() {
+  document.getElementById('init-emp-search').value = '';
+  document.getElementById('init-emp-id').value = '';
+  document.getElementById('init-emp-selected').style.display = 'none';
+  document.getElementById('init-emp-search').style.display = '';
+  document.getElementById('init-approver').value = '';
+  document.getElementById('init-reason').value = '';
+  document.getElementById('init-notice').value = new Date().toISOString().split('T')[0];
+  document.getElementById('init-notice-applicable').value = 'yes';
+  document.getElementById('init-lwd').value = '';
+  document.getElementById('init-lwd').disabled = false;
+  document.getElementById('init-notice-days-note').textContent = '';
+  initSelectedEmp = null;
+  openModal('initiate-modal');
+}
+
+async function initFilterEmps(q) {
+  const dd = document.getElementById('init-emp-dropdown');
+  if (!q || q.trim().length < 2) { dd.style.display = 'none'; return; }
+  if (!initAllEmps.length) {
+    const data = await api('GET', '/employees?is_active=true');
+    initAllEmps = data?.data || data || [];
+  }
+  const term = q.trim().toLowerCase();
+  const matches = initAllEmps.filter(e =>
+    `${e.first_name} ${e.last_name}`.toLowerCase().includes(term) ||
+    (e.employee_code || '').toLowerCase().includes(term)
+  ).slice(0, 20);
+  dd.innerHTML = matches.map(e =>
+    `<div style="padding:8px 10px;cursor:pointer;font-size:13px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''" onclick='initSelectEmp(${JSON.stringify(e).replace(/'/g,"&apos;")})'>${e.first_name} ${e.last_name} (${e.employee_code}) — ${e.role}</div>`
+  ).join('') || '<div style="padding:8px 10px;font-size:13px;color:var(--muted)">No matches</div>';
+  dd.style.display = '';
+}
+
+async function initSelectEmp(e) {
+  initSelectedEmp = e;
+  document.getElementById('init-emp-id').value = e.id;
+  document.getElementById('init-emp-search').style.display = 'none';
+  document.getElementById('init-emp-dropdown').style.display = 'none';
+  document.getElementById('init-emp-selected').style.display = 'flex';
+  document.getElementById('init-emp-selected-name').textContent = `${e.first_name} ${e.last_name} (${e.employee_code})`;
+  document.getElementById('init-approver').value = e.manager_name || '— No Manager —';
+  initRecalcLwd();
+}
+
+function initClearEmp() {
+  initSelectedEmp = null;
+  document.getElementById('init-emp-id').value = '';
+  document.getElementById('init-emp-search').value = '';
+  document.getElementById('init-emp-search').style.display = '';
+  document.getElementById('init-emp-selected').style.display = 'none';
+  document.getElementById('init-approver').value = '';
+}
+
+async function initRecalcLwd() {
+  if (!initSelectedEmp) return;
+  const noticeDate = document.getElementById('init-notice').value;
+  if (!noticeDate) return;
+  const applicable = document.getElementById('init-notice-applicable').value;
+  const lwdEl = document.getElementById('init-lwd');
+
+  if (applicable === 'no') {
+    // No notice period — Last Working Date is entered manually (e.g. absconding/termination
+    // with immediate effect). Default it to the resignation date but leave it fully editable.
+    lwdEl.disabled = false;
+    if (!lwdEl.value) lwdEl.value = noticeDate;
+    document.getElementById('init-notice-days-note').textContent = 'No notice period — please enter the Last Working Date manually.';
+    return;
+  }
+
+  // Notice period applicable — auto-calculate LWD from the employee's role, but still
+  // leave the field editable in case HR needs to adjust it.
+  lwdEl.disabled = false;
+  const np = await api('GET', `/separations/notice-period?role=${encodeURIComponent(initSelectedEmp.role)}`);
+  const days = np?.data?.notice_period_days ?? 30;
+  const d = new Date(noticeDate);
+  d.setDate(d.getDate() + days);
+  lwdEl.value = d.toISOString().split('T')[0];
+  document.getElementById('init-notice-days-note').textContent = `${days} days notice period for this role (auto-calculated, editable)`;
+}
+
+async function submitInitiateSeparation() {
+  const employee_id = document.getElementById('init-emp-id').value;
+  const type = document.getElementById('init-type').value;
+  const notice_date = document.getElementById('init-notice').value;
+  const last_working_date = document.getElementById('init-lwd').value;
+  const reason = document.getElementById('init-reason').value.trim();
+  if (!employee_id) { toast('Please select an employee', 'error'); return; }
+  if (!notice_date || !reason) { toast('All fields are required', 'error'); return; }
+  if (!last_working_date) { toast('Last Working Date is required', 'error'); return; }
+
+  const data = await api('POST', '/separations', { employee_id, type, reason, notice_date, last_working_date });
+  if (data?.success) {
+    toast(data.message || 'Separation initiated', 'success');
+    closeModal('initiate-modal');
+    loadAll();
+  } else toast(data?.message || 'Failed', 'error');
 }
 
 function switchTab(name) {
