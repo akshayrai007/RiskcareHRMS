@@ -946,7 +946,6 @@ exports.downloadPayrollTemplate = async (req, res) => {
              CONCAT(e.first_name,' ',e.last_name) AS full_name,
              d.name AS department, des.title AS designation,
              e.employee_category, e.employment_type,
-             e.bank_name, e.bank_account, e.bank_ifsc, e.bank_branch,
              COALESCE(s.basic,           e.basic_salary,       0) AS basic,
              COALESCE(s.hra,             e.hra,                0) AS hra,
              COALESCE(s.conveyance,      e.conveyance,         0) AS conveyance,
@@ -975,7 +974,6 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // ── Sheet 1: Payroll Input Template ───────────────────────────────────
     const HEADERS = [
       'Emp Code', 'Full Name', 'Department', 'Designation', 'Category',
-      'Bank Name', 'Account Number', 'IFSC Code', 'Bank Branch',
       'Working Days', 'Present Days', 'LOP Days', 'Paid Days',
       'Basic', 'HRA', 'Conveyance', 'Defray Allowance', 'Gratuity', 'Gross Salary',
       'PF (Employee)', 'ESI (Employee)', 'Prof Tax', 'LWF', 'TDS',
@@ -1015,10 +1013,6 @@ exports.downloadPayrollTemplate = async (req, res) => {
           e.department  || '',
           e.designation || '',
           e.employee_category || '',
-          e.bank_name    || '',
-          e.bank_account || '',
-          e.bank_ifsc    || '',
-          e.bank_branch  || '',
           daysInMonth,       // Working Days — pre-filled, accounts can adjust
           '',                // Present Days — FILL THIS
           '',                // LOP Days — FILL THIS
@@ -1051,7 +1045,6 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // Column widths
     ws1['!cols'] = [
       {wch:10},{wch:24},{wch:16},{wch:22},{wch:12},
-      {wch:16},{wch:18},{wch:12},{wch:16},
       {wch:11},{wch:11},{wch:9},{wch:9},
       {wch:10},{wch:8},{wch:10},{wch:14},{wch:9},{wch:12},
       {wch:12},{wch:12},{wch:9},{wch:6},{wch:8},
@@ -1085,7 +1078,6 @@ exports.downloadPayrollTemplate = async (req, res) => {
       [''],
       ['COLUMNS PRE-FILLED (do not change unless needed):'],
       ['Column', 'Source'],
-      ['Bank Name, Account Number, IFSC, Bank Branch', 'From employee bank details in system — reference only, for salary transfer'],
       ['Basic, HRA, Conveyance, etc.', 'From employee salary structure in system'],
       ['Gross Salary',      'Sum of all earnings'],
       ['PF, ESI, PT, TDS',  'From salary structure'],
@@ -1124,6 +1116,7 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
     const empResult = await db.query(`
       SELECT e.employee_code, CONCAT(e.first_name,' ',e.last_name) AS full_name,
              d.name AS department, des.title AS designation,
+             e.bank_name, e.bank_account, e.bank_ifsc, e.bank_branch,
              COALESCE(s.basic,0) AS basic, COALESCE(s.hra,0) AS hra,
              COALESCE(s.conveyance,0) AS conveyance,
              COALESCE(s.special_allowance,0) AS special_allowance,
@@ -1143,6 +1136,7 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
 
     const HEADERS = [
       'Emp Code', 'Full Name', 'Department', 'Designation',
+      'Bank Name', 'Account Number', 'IFSC Code', 'Bank Branch',
       'Basic', 'HRA', 'Conveyance', 'Defray Allowance', 'Gratuity',
       'PF Applicable (Y/N)', 'PF Basis (Capped/Actual)',
       'ESI Applicable (Y/N)', 'PT Applicable (Y/N)',
@@ -1157,6 +1151,7 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
       HEADERS,
       ...empResult.rows.map(e => [
         e.employee_code, e.full_name, e.department || '', e.designation || '',
+        e.bank_name || '', e.bank_account || '', e.bank_ifsc || '', e.bank_branch || '',
         parseFloat(e.basic) || 0, parseFloat(e.hra) || 0, parseFloat(e.conveyance) || 0,
         parseFloat(e.special_allowance) || 0, parseFloat(e.gratuity) || 0,
         yn(e.pf_applicable), e.pf_wage_basis === 'actual' ? 'Actual' : 'Capped',
@@ -1167,7 +1162,7 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = HEADERS.map((h,i) => ({ wch: i<4 ? 20 : 14 }));
+    ws['!cols'] = HEADERS.map((h,i) => ({ wch: i<4 ? 20 : (i>=4 && i<=7 ? 18 : 14) }));
     ws['!merges'] = [
       { s:{r:0,c:0}, e:{r:0,c:HEADERS.length-1} },
       { s:{r:1,c:0}, e:{r:1,c:HEADERS.length-1} },
@@ -1182,6 +1177,10 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
       ['use Payroll → Upload Payroll Excel for that, every month.'],
       [''],
       ['Column', 'What to Enter'],
+      ['Bank Name',        'Employee\'s bank name, e.g. HDFC, SBI (leave blank to keep existing value unchanged)'],
+      ['Account Number',   'Employee\'s bank account number (leave blank to keep existing value unchanged)'],
+      ['IFSC Code',        'Bank branch IFSC code (leave blank to keep existing value unchanged)'],
+      ['Bank Branch',      'Bank branch name (leave blank to keep existing value unchanged)'],
       ['Basic',            'Monthly basic salary in ₹'],
       ['HRA',              'Monthly House Rent Allowance in ₹'],
       ['Conveyance',       'Monthly conveyance/travel allowance in ₹'],
@@ -1278,6 +1277,15 @@ exports.bulkUploadSalaryStructure = async (req, res) => {
       const tds_applicable     = isYes(row['TDS Applicable (Y/N)']);
       const pf_wage_basis      = /actual/i.test(String(row['PF Basis (Capped/Actual)'] || '')) ? 'actual' : 'capped';
 
+      // Bank details are optional on this sheet — only overwrite the employee's
+      // existing bank info if a value was actually entered for that cell,
+      // so leaving a cell blank never wipes out data that's already saved.
+      const bankUpdates = {};
+      if (String(row['Bank Name']      || '').trim()) bankUpdates.bank_name    = String(row['Bank Name']).trim();
+      if (String(row['Account Number'] || '').trim()) bankUpdates.bank_account = String(row['Account Number']).trim();
+      if (String(row['IFSC Code']      || '').trim()) bankUpdates.bank_ifsc    = String(row['IFSC Code']).trim().toUpperCase();
+      if (String(row['Bank Branch']    || '').trim()) bankUpdates.bank_branch  = String(row['Bank Branch']).trim();
+
       const gross        = basic + hra + conveyance + special_allowance + gratuity;
       const pfBase        = pf_wage_basis === 'actual' ? basic : Math.min(basic, 15000);
       const pf_employee    = pf_applicable  ? Math.round(pfBase * 0.12) : 0;
@@ -1317,6 +1325,18 @@ exports.bulkUploadSalaryStructure = async (req, res) => {
            pt, lwf, total_employer_cost, total_ded, net, ctc_monthly, ctc_annual, pf_wage_basis, req.user.id]
         );
         await client.query(`RELEASE SAVEPOINT ${sp}`);
+
+        if (Object.keys(bankUpdates).length) {
+          const sets = [], params = [];
+          let idx = 1;
+          for (const [key, val] of Object.entries(bankUpdates)) {
+            sets.push(`${key}=$${idx++}`);
+            params.push(val);
+          }
+          params.push(empId);
+          await client.query(`UPDATE employees SET ${sets.join(',')} WHERE id=$${idx}`, params);
+        }
+
         updated++;
       } catch (rowErr) {
         await client.query(`ROLLBACK TO SAVEPOINT ${sp}`);
