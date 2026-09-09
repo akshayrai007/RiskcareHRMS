@@ -433,8 +433,10 @@ function sepRecalcLwd() {
     // irrelevant, and Last Working Date becomes freely editable (subject to
     // manager/HR approval), no minimum enforced here.
     periodEl.disabled = true;
-    lwdEl.min = '';
-    if (!lwdEl.value) lwdEl.value = noticeDate;
+    // A waiver can pull the date earlier than the normal notice period, but it
+    // still can't be in the past — floor it at today's notice date.
+    lwdEl.min = noticeDate;
+    if (!lwdEl.value || lwdEl.value < noticeDate) lwdEl.value = noticeDate;
     document.getElementById('sep-tentative-lwd').value = noticeDate;
     noteEl.textContent = '⚠ You are requesting a notice period waiver — this is subject to your manager/HR approval.';
     return;
@@ -973,6 +975,7 @@ async function submitResignation() {
   const fd = new FormData();
   fd.append('type', type);
   fd.append('notice_date', notice_date);
+  fd.append('notice_applicable', notice_applicable);
   // Only send the chosen notice period when it actually applies; a waiver
   // request leaves this to the backend's role-based fallback.
   if (notice_applicable !== 'no') fd.append('notice_period_days', notice_period_days);
