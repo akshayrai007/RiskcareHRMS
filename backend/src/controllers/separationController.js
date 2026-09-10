@@ -13,10 +13,15 @@ const scope = require('../utils/scope');
 // sometimes hands back as plain numbers when a cell is formatted as a date
 // but read without cellDates:true. Treating a serial number as milliseconds
 // (new Date(45900)) silently produces a date near 1970-01-01.
+const MONTH_ABBR = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11 };
+
 function parseExcelDate(val) {
   if (!val) return null;
   if (val instanceof Date) {
-    return isNaN(val.getTime()) ? null : val.toISOString().split('T')[0];
+    if (isNaN(val.getTime())) return null;
+    const y = val.getFullYear();
+    if (y < 1950 || y > 2100) return null; // guard against corrupted/garbage cell values
+    return val.toISOString().split('T')[0];
   }
   if (typeof val === 'number' || /^\d+(\.\d+)?$/.test(String(val).trim())) {
     const serial = parseFloat(val);
@@ -27,8 +32,29 @@ function parseExcelDate(val) {
   }
   const s = String(val).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  // "01-Jul-2026" / "01 Jul 2026" / "1-Jul-26" — explicit parse instead of
+  // relying on the generic `new Date(str)` constructor, whose behaviour for
+  // non-ISO strings is implementation-defined and has been seen to produce
+  // wildly wrong years (e.g. "17532") on some Node/V8 builds.
+  const dmy = s.match(/^(\d{1,2})[\s\-\/]([A-Za-z]{3,9})[\s\-\/](\d{2,4})$/);
+  if (dmy) {
+    const day = parseInt(dmy[1], 10);
+    const mon = MONTH_ABBR[dmy[2].slice(0,3).toLowerCase()];
+    let year = parseInt(dmy[3], 10);
+    if (dmy[3].length === 2) year += (year < 50 ? 2000 : 1900);
+    if (mon !== undefined && day >= 1 && day <= 31 && year >= 1950 && year <= 2100) {
+      const d = new Date(Date.UTC(year, mon, day));
+      return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+    }
+    return null; // recognisably a date-like string but didn't parse cleanly — don't guess
+  }
+
   const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+  if (isNaN(d.getTime())) return null;
+  const y = d.getFullYear();
+  if (y < 1950 || y > 2100) return null; // same garbage-year guard as above
+  return d.toISOString().split('T')[0];
 }
 
 function getNoticePeriod(role) {
@@ -1138,19 +1164,31 @@ exports.bulkSeparateImport = async (req, res) => {
     return out;
   }
 
-  async function applyOptionalUpdates(client, empId, optUpdates) {
+  async function applyOptionalUpdates(client, empId, optUpdates, warnings) {
     const keys = Object.keys(optUpdates);
     if (!keys.length) return;
-    const sets = [], params = [];
-    let idx = 1;
-    for (const key of keys) { sets.push(`${key}=$${idx++}`); params.push(optUpdates[key]); }
-    sets.push(`updated_at=NOW()`);
-    params.push(empId);
-    await client.query(`UPDATE employees SET ${sets.join(',')} WHERE id=$${idx}`, params);
+    const spOpt = `spopt_${empId}`;
+    await client.query(`SAVEPOINT ${spOpt}`);
+    try {
+      const sets = [], params = [];
+      let idx = 1;
+      for (const key of keys) { sets.push(`${key}=$${idx++}`); params.push(optUpdates[key]); }
+      sets.push(`updated_at=NOW()`);
+      params.push(empId);
+      await client.query(`UPDATE employees SET ${sets.join(',')} WHERE id=$${idx}`, params);
+      await client.query(`RELEASE SAVEPOINT ${spOpt}`);
+    } catch (err) {
+      // A single extra field (most often a duplicate Official Email ID)
+      // failing must NOT undo the separation itself — roll back just this
+      // nested update and keep going; the employee still gets deactivated.
+      await client.query(`ROLLBACK TO SAVEPOINT ${spOpt}`);
+      warnings.push(`extra details not saved (${err.message})`);
+    }
   }
 
   let updated = 0, created = 0, repaired = 0, skipped = 0;
   const errors = [];
+  const warnings = []; // non-fatal: row succeeded, but one extra field couldn't be saved (e.g. duplicate email)
   const client = await db.getClient();
 
   try {
@@ -1203,7 +1241,9 @@ exports.bulkSeparateImport = async (req, res) => {
           // Backfill the card's extra fields (Band Grade, Reporting Officer,
           // addresses, etc.) on the already-resigned record too, so re-
           // uploading the sheet with more complete data still fills the gaps.
-          await applyOptionalUpdates(client, existingEmpId, optUpdates);
+          await applyOptionalUpdates(client, existingEmpId, optUpdates, {
+            push: (msg) => warnings.push(`${empCode}: ${msg}`)
+          });
           await client.query(`RELEASE SAVEPOINT ${sp}`);
           repaired++;
           continue;
@@ -1281,7 +1321,9 @@ exports.bulkSeparateImport = async (req, res) => {
         // same values); for an existing employee this is what actually
         // carries the sheet's data onto their record so it shows up on
         // their employee card.
-        await applyOptionalUpdates(client, empId, optUpdates);
+        await applyOptionalUpdates(client, empId, optUpdates, {
+          push: (msg) => warnings.push(`${empCode}: ${msg}`)
+        });
         await client.query(`RELEASE SAVEPOINT ${sp}`);
         if (isNewRecord) created++; else updated++;
       } catch (rowErr) {
@@ -1294,8 +1336,9 @@ exports.bulkSeparateImport = async (req, res) => {
     await client.query('COMMIT');
     res.json({
       success: true,
-      message: `Bulk separation: ${updated} existing deactivated, ${created} new legacy records created & deactivated, ${repaired} already-resigned records had their dates repaired, ${skipped} skipped, ${errors.length} errors`,
-      errors: errors.slice(0, 30)
+      message: `Bulk separation: ${updated} existing deactivated, ${created} new legacy records created & deactivated, ${repaired} already-resigned records had their dates repaired, ${skipped} skipped, ${errors.length} errors` + (warnings.length ? `, ${warnings.length} row(s) deactivated OK but had 1 extra field skipped (see warnings)` : ''),
+      errors: errors.slice(0, 30),
+      warnings: warnings.slice(0, 30)
     });
   } catch (err) {
     await client.query('ROLLBACK');
