@@ -112,7 +112,6 @@
             <input type="checkbox" id="show-inactive" checked onchange="loadAll()" style="width:16px;height:16px;cursor:pointer">
             Show Resigned / Inactive Employees
           </label>
-          <button class="btn btn-danger btn-sm" onclick="openInitiateModal()">➕ Initiate Separation (Termination / Absconding)</button>
           <button class="btn btn-outline btn-sm" onclick="downloadResignedDocsZip()">⬇ Download All Resigned Docs (ZIP)</button>
           <button class="btn btn-outline btn-sm" onclick="downloadBulkSeparateTemplate()">📄 Download Template</button>
           <label class="btn btn-sm" id="bulk-separate-btn" style="background:#dc2626;color:#fff;cursor:pointer;margin:0">⬆ Bulk Update Resigned <input type="file" accept=".xlsx,.xls" style="display:none" onchange="bulkSeparateImport(this)"></label>
