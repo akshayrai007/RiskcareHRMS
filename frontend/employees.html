@@ -1457,7 +1457,7 @@ function renderEmployees(list) {
         }
       </td>
       <td>${e.manager_name || '—'}</td>
-      <td>${(e.joining_date && String(e.joining_date).startsWith('1970')) ? '—' : fmt.date(e.joining_date)}</td>
+      <td>${fmt.isRealDate(e.joining_date) ? fmt.date(e.joining_date) : '—'}</td>
       <td>${fmt.date(e.sep_last_working_date || e.separation_date)}</td>
       <td style="font-size:12px;color:var(--muted);">${e.app_version ? `<span style="background:#ede9fe;color:#6d28d9;padding:2px 7px;border-radius:10px;font-size:11px;">v${e.app_version}</span>` : '<span style="color:var(--muted)">Web</span>'}</td>
       <td onclick="event.stopPropagation()">
@@ -1524,7 +1524,7 @@ async function showEmpDetail(id) {
               </tr>
               <tr style="border-bottom:1px solid #f0f7eb">
                 <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Joining Date</td>
-                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${fmt.date(e.joining_date)}</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${fmt.isRealDate(e.joining_date) ? fmt.date(e.joining_date) : '—'}</td>
               </tr>
               <tr style="border-bottom:1px solid #f0f7eb">
                 <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Reporting To</td>
