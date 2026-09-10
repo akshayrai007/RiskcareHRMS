@@ -1058,7 +1058,7 @@ exports.exportMasterExcel = async (req, res) => {
       // STATUTORY IDs & BANK (7)
       'PAN','Aadhaar','UAN','PF No','Bank','Account No','IFSC',
       // EARNINGS (6)
-      'Basic','HRA','Conveyance','Special Allow','Gratuity','Gross Salary',
+      'Basic','HRA','Conveyance','Defray Allow','Gratuity','Gross Salary',
       // EMPLOYEE DEDUCTIONS (5)
       'PF (Emp)','ESI (Emp)','Prof Tax','TDS','Total Deductions',
       // EMPLOYER CONTRIBUTIONS (4)
@@ -1766,7 +1766,7 @@ exports.exportAttendanceRegister = async (req, res) => {
 
     const salHeaders = [
       'Emp Code', 'Name', 'Department', 'Designation',
-      'Basic', 'HRA', 'Conveyance', 'Special Allow', 'Gratuity', 'Gross Salary',
+      'Basic', 'HRA', 'Conveyance', 'Defray Allow', 'Gratuity', 'Gross Salary',
       'PF (Emp)', 'ESI (Emp)', 'Prof Tax', 'TDS', 'Advance EMI', 'Total Deductions',
       'Working Days', 'Present Days', 'Earned Gross', 'Net Payable'
     ];
