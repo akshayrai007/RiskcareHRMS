@@ -104,7 +104,7 @@
           <table class="excel-grid">
             <thead><tr>
               <th>Employee</th><th>Code</th><th>Department</th><th>Designation</th>
-              <th>Role</th><th>Category</th><th>Status</th><th>Reporting To</th><th>Joining Date</th><th>App Ver.</th><th></th>
+              <th>Role</th><th>Category</th><th>Status</th><th>Reporting To</th><th>Joining Date</th><th>Last Working Day</th><th>App Ver.</th><th></th>
             </tr></thead>
             <tbody id="emp-tbody"></tbody>
           </table>
@@ -1450,14 +1450,15 @@ function renderEmployees(list) {
         }
       </td>
       <td>${e.manager_name || '—'}</td>
-      <td>${fmt.date(e.joining_date)}</td>
+      <td>${(e.joining_date && String(e.joining_date).startsWith('1970')) ? '—' : fmt.date(e.joining_date)}</td>
+      <td>${fmt.date(e.sep_last_working_date || e.separation_date)}</td>
       <td style="font-size:12px;color:var(--muted);">${e.app_version ? `<span style="background:#ede9fe;color:#6d28d9;padding:2px 7px;border-radius:10px;font-size:11px;">v${e.app_version}</span>` : '<span style="color:var(--muted)">Web</span>'}</td>
       <td onclick="event.stopPropagation()">
         <button class="btn btn-ghost btn-sm" onclick="showEmpDetail(${e.id})">View →</button>
       </td>
     </tr>`;
   }).join('')
-  : '<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:48px"><div style="font-size:32px;margin-bottom:10px">👥</div>No employees found</td></tr>';
+  : '<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:48px"><div style="font-size:32px;margin-bottom:10px">👥</div>No employees found</td></tr>';
 }
 
 async function showEmpDetail(id) {
