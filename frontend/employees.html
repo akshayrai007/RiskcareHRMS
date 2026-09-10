@@ -321,7 +321,7 @@
       <div class="card">
         <div class="card-header">
           <div class="card-title">📥 Bulk Import Employees</div>
-          <a href="/employee_import_template.xlsx" download class="btn btn-outline btn-sm">⬇ Download Template</a>
+          <button type="button" class="btn btn-outline btn-sm" onclick="downloadImportTemplate()">⬇ Download Template</button>
         </div>
         <div class="card-body" style="padding:24px">
           <div id="import-drop-zone" style="border:2px dashed #c7d2fe;border-radius:14px;padding:40px;text-align:center;background:#f8f9ff;cursor:pointer"
@@ -2353,6 +2353,23 @@ async function downloadMasterReport(month, year) {
   a.click();
   URL.revokeObjectURL(a.href);
   toast('✅ Master Excel downloaded!');
+}
+
+async function downloadImportTemplate() {
+  try {
+    toast('Preparing import template…');
+    const res = await fetch(`${API_BASE}/employees/import-template`, {
+      headers: { Authorization: 'Bearer ' + Auth.getToken() }
+    });
+    if (!res.ok) { toast('Download failed', 'error'); return; }
+    const blob = await res.blob();
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: 'employee_import_template.xlsx'
+    });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  } catch (e) { toast('Download failed: ' + e.message, 'error'); }
 }
 
 async function downloadSalaryTemplate() {
