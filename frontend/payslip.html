@@ -164,7 +164,6 @@ function renderPayslip(p) {
   const dob = fmtDate(p.date_of_birth);
   const doj = fmtDate(p.joining_date);
   const location = p.location || [p.city, p.state].filter(Boolean).join(', ') || '';
-  const esiNo = p.esi_number || (esiEmp > 0 ? '' : 'Not Applicable');
 
   const Rs = v => { const n = parseFloat(v); return n > 0 ? n.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) : ''; };
   const C = window.CFG;
@@ -292,10 +291,8 @@ function renderPayslip(p) {
           ${infoRow('Bank A/C No.', p.bank_account)}
           ${infoRow('Location', location)}
           ${infoRow('PAN', p.pan_number)}
-          ${infoRow('Project', '')}
           ${infoRow('UAN', p.uan_number)}
           ${infoRow('PF A/C No.', p.pf_number)}
-          ${infoRow('ESI No.', esiNo)}
         </table>
       </td>
     </tr>
