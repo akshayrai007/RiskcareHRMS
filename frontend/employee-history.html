@@ -182,8 +182,22 @@ async function openEmployeeHistory(empId) {
   const body = document.getElementById('hist-detail-body');
   const title = document.getElementById('hist-detail-title');
   title.textContent = 'Loading…';
-  body.innerHTML = '<div class="empty-state">Loading history…</div>';
+  body.innerHTML = '<div class="empty-state">Loading history…<br><span style="font-size:11px;color:var(--muted)">First request after inactivity can take up to a minute while the server wakes up.</span></div>';
   openModal('hist-detail-modal');
+
+  // Hard fallback: if nothing has replaced this loading state within 20s (should
+  // never happen since api() itself times out at 15s, but this guarantees the
+  // modal can never appear silently frozen forever).
+  const watchdog = setTimeout(() => {
+    if (body.innerHTML.includes('Loading history')) {
+      title.textContent = 'Employee History';
+      body.innerHTML = `
+        <div class="empty-state">
+          This is taking longer than expected — the server may still be starting up.<br>
+          <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="openEmployeeHistory(${empId})">🔄 Retry</button>
+        </div>`;
+    }
+  }, 20000);
 
   let res;
   try {
@@ -191,6 +205,7 @@ async function openEmployeeHistory(empId) {
   } catch (e) {
     res = { success: false, message: 'Unexpected error while loading history' };
   }
+  clearTimeout(watchdog);
 
   if (!res || !res.success || !res.data || !res.data.employee) {
     title.textContent = 'Employee History';
