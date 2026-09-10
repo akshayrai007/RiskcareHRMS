@@ -126,11 +126,12 @@
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>Employee</th><th>Code</th><th>Department</th><th>Designation</th>
-              <th>Separation Type</th><th>Last Working Day</th><th>Deactivated On</th><th></th>
+              <th>Employee</th><th>Code</th><th>Branch</th><th>Department</th><th>Designation</th>
+              <th>Date of Joining</th><th>Separation Type</th><th>Last Working Day</th>
+              <th>Personal Mobile</th><th>Personal Email</th><th></th>
             </tr></thead>
             <tbody id="sep-tbody">
-              <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)"><div class="spinner"></div></td></tr>
+              <tr><td colspan="11" style="text-align:center;padding:40px;color:var(--muted)"><div class="spinner"></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -2261,7 +2262,7 @@ function filterSeparated() {
   );
   const tbody = document.getElementById('sep-tbody');
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:48px"><div style="font-size:32px;margin-bottom:10px">✅</div>No separated employees</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:48px"><div style="font-size:32px;margin-bottom:10px">✅</div>No separated employees</td></tr>';
     return;
   }
   tbody.innerHTML = filtered.map(e => `
@@ -2276,14 +2277,17 @@ function filterSeparated() {
         </div>
       </td>
       <td class="font-mono" style="color:var(--muted)">${e.employee_code}</td>
+      <td style="color:var(--muted)">${e.branch || '—'}</td>
       <td>${e.department_name || '—'}</td>
       <td style="color:var(--muted)">${e.designation_title || '—'}</td>
+      <td>${fmt.isRealDate(e.joining_date) ? fmt.date(e.joining_date) : '—'}</td>
       <td><span class="badge" style="background:rgba(239,68,68,.1);color:#dc2626">${e.separation_type || 'Deactivated'}</span></td>
       <td>${(() => {
         const lwd = e.sep_last_working_date || e.separation_date;
-        return (lwd && String(lwd).startsWith('1970')) ? '—' : (lwd ? fmt.date(lwd) : '—');
+        return fmt.isRealDate(lwd) ? fmt.date(lwd) : '—';
       })()}</td>
-      <td class="text-muted">${e.updated_at ? fmt.date(e.updated_at) : '—'}</td>
+      <td style="color:var(--muted)">${e.personal_mobile || '—'}</td>
+      <td style="color:var(--muted)">${e.personal_email || '—'}</td>
       <td>
         ${Role.is('hr','accounts') ? `
           <button class="btn btn-ghost btn-sm" onclick="fixLastWorkingDate(${e.id},'${e.first_name} ${e.last_name}')">✎ Fix LWD</button>
