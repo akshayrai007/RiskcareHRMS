@@ -1220,9 +1220,16 @@
           <div id="emp-danger-modal-code" style="font-size:12px;color:var(--muted)"></div>
         </div>
       </div>
-      <!-- Deactivation remark field — shown only when action=deactivate -->
+      <!-- Last Working Date + remark — shown only when action=deactivate -->
       <div id="deactivation-remark-wrap" style="display:none;margin-top:14px">
         <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">
+          📅 Deactivated / Last Working Date <span style="color:#dc2626">*</span>
+        </label>
+        <input type="date" id="deactivation-lwd-input" class="form-control"
+          style="border:1.5px solid #fca5a5" />
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">The date this person actually stopped working — not necessarily today. Attendance and payroll for this employee stop counting from this date onward, even if they still show as Present up to today.</div>
+
+        <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin:14px 0 6px">
           📝 Salary / Termination Remark <span style="color:#dc2626">*</span>
         </label>
         <textarea id="deactivation-remark-input"
@@ -2272,12 +2279,28 @@ function filterSeparated() {
       <td>${e.department_name || '—'}</td>
       <td style="color:var(--muted)">${e.designation_title || '—'}</td>
       <td><span class="badge" style="background:rgba(239,68,68,.1);color:#dc2626">${e.separation_type || 'Deactivated'}</span></td>
-      <td>${e.sep_last_working_date ? fmt.date(e.sep_last_working_date) : (e.separation_date ? fmt.date(e.separation_date) : '—')}</td>
+      <td>${(() => {
+        const lwd = e.sep_last_working_date || e.separation_date;
+        return (lwd && String(lwd).startsWith('1970')) ? '—' : (lwd ? fmt.date(lwd) : '—');
+      })()}</td>
       <td class="text-muted">${e.updated_at ? fmt.date(e.updated_at) : '—'}</td>
       <td>
-        ${Role.is('hr','accounts') ? `<button class="btn btn-ghost btn-sm" onclick="reactivateEmployee(${e.id},'${e.first_name} ${e.last_name}')">♻ Reactivate</button>` : ''}
+        ${Role.is('hr','accounts') ? `
+          <button class="btn btn-ghost btn-sm" onclick="fixLastWorkingDate(${e.id},'${e.first_name} ${e.last_name}')">✎ Fix LWD</button>
+          <button class="btn btn-ghost btn-sm" onclick="reactivateEmployee(${e.id},'${e.first_name} ${e.last_name}')">♻ Reactivate</button>
+        ` : ''}
       </td>
     </tr>`).join('');
+}
+
+async function fixLastWorkingDate(id, name) {
+  const current = new Date().toISOString().split('T')[0];
+  const input = prompt(`Enter the correct Last Working Day for ${name} (YYYY-MM-DD):`, current);
+  if (!input) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.trim())) { toast('Please enter a date as YYYY-MM-DD', 'error'); return; }
+  const data = await api('PUT', `/separations/employee/${id}/fix-lwd`, { last_working_date: input.trim() });
+  if (data?.success) { toast(`✅ Last working day updated for ${name}`); loadSeparated(); }
+  else toast(data?.message || 'Failed', 'error');
 }
 
 async function reactivateEmployee(id, name) {
@@ -3329,11 +3352,13 @@ function openDangerModal(id, name, code, action) {
   document.getElementById('emp-danger-modal-name').textContent = name;
   document.getElementById('emp-danger-modal-code').textContent = code;
 
-  // Show/hide remark field
+  // Show/hide remark + last-working-date fields
   const remarkWrap = document.getElementById('deactivation-remark-wrap');
   const remarkInput = document.getElementById('deactivation-remark-input');
+  const lwdInput = document.getElementById('deactivation-lwd-input');
   remarkWrap.style.display = action === 'deactivate' ? 'block' : 'none';
   if (remarkInput) remarkInput.value = '';
+  if (lwdInput) lwdInput.value = action === 'deactivate' ? new Date().toISOString().split('T')[0] : '';
 
   if (action === 'deactivate') {
     header.style.background = 'linear-gradient(135deg,#d97706,#b45309)';
@@ -3378,8 +3403,14 @@ async function executeDangerAction() {
     // DEBUG: raw fetch to see exact server response
     const debugMethod = _dangerAction === 'delete' ? 'DELETE' : 'PUT';
     const remarkVal   = (document.getElementById('deactivation-remark-input')?.value || '').trim();
-    const debugBody   = _dangerAction === 'deactivate' ? { is_active: false, deactivation_remark: remarkVal || null }
-                      : _dangerAction === 'reactivate' ? { is_active: true,  deactivation_remark: null }
+    const lwdVal      = (document.getElementById('deactivation-lwd-input')?.value || '').trim();
+    if (_dangerAction === 'deactivate' && !lwdVal) {
+      toast('Please enter the Deactivated / Last Working Date', 'error');
+      btn.disabled = false; btn.textContent = 'Yes, Deactivate';
+      return;
+    }
+    const debugBody   = _dangerAction === 'deactivate' ? { is_active: false, deactivation_remark: remarkVal || null, separation_date: lwdVal }
+                      : _dangerAction === 'reactivate' ? { is_active: true,  deactivation_remark: null, separation_date: null }
                       : null;
     const debugRes = await fetch(`${API_BASE}/employees/${_dangerEmpId}`, {
       method: debugMethod,
