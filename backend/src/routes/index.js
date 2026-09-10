@@ -1,743 +1,1087 @@
 const CONFIG = require('../Main_file');
-/**
- * HRMS — Master Migration (migrate_all.js)
- * Runs ALL migrations in correct order:
- *   1. Core schema (migrate.js)
- *   2. Additions (migrate_additions.js)
- *   3. GK Daily system (migrate_gk_daily.js)
- *
- * Usage: node src/config/migrate_all.js
- */
+// src/routes/index.js — COMPLETE (Updated with Announcements, WFH, Import)
+const express  = require('express');
+const router   = express.Router();
+const multer   = require('multer');
+const xlsxUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const { authenticate, authorize } = require('../middleware/auth');
 
-require('dotenv').config();
-const db = require('./db');   // ← fixed: was `const pool = require('./db')`
+// ── Controllers ───────────────────────────────────────────────────────────────
+const chatCtrl       = require('../controllers/chatController');
 
-async function runAllMigrations() {
-  const client = await db.getClient();   // ← fixed: was pool.connect()
+const authCtrl       = require('../controllers/authController');
+const empCtrl        = require('../controllers/employeeController');
+const attCtrl        = require('../controllers/attendanceController');
+const leaveCtrl      = require('../controllers/leaveController');
+const advCtrl        = require('../controllers/advanceController');
+const payCtrl        = require('../controllers/payrollController');
+const geoCtrl        = require('../controllers/geofenceController');
+const sepCtrl        = require('../controllers/separationController');
+const empImportCtrl  = require('../controllers/employeeImportController');
+const attImportCtrl   = require('../controllers/attendanceImportController');
+const excelExportCtrl  = require('../controllers/excelExportController');
+const annCtrl        = require('../controllers/announcementController');
+const gkCtrl         = require('../controllers/gkController');
+const provCtrl       = require('../controllers/provisionController');
+const itDeclCtrl     = require('../controllers/itDeclarationController');
+const docsCtrl        = require('../controllers/documentsController');
+const offerCtrl       = require('../controllers/offerLetterController');
+const relievingCtrl   = require('../controllers/relievingLetterController');
+const onboardCtrl     = require('../controllers/onboardingController');
+
+const ADMIN      = ['admin','super_admin'];
+const HR_ADMIN   = ['hr','admin','super_admin','accounts'];
+const ACCOUNTS   = ['accounts','super_admin'];
+const ADMIN_ONLY = ['admin','super_admin'];
+const EMP_MGMT   = ['hr','accounts','admin','super_admin'];
+const PROVISION_APPROVERS = ['hr','admin','super_admin','manager','tl'];
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+router.post('/auth/login',                      authCtrl.login);
+router.post('/auth/refresh',                    authCtrl.refreshToken);
+router.post('/auth/forgot-password/verify',            authCtrl.forgotVerify);
+router.post('/auth/forgot-password/verify-employee-id', authCtrl.forgotVerifyEmployeeId);
+router.post('/auth/forgot-password/reset',              authCtrl.forgotReset);
+router.get ('/auth/me',          authenticate,  authCtrl.getMe);
+router.post('/auth/change-password', authenticate, authCtrl.changePassword);
+router.post('/auth/update-photo',     authenticate, authCtrl.updatePhoto);
+
+// ── Employees ─────────────────────────────────────────────────────────────────
+router.get   ('/employees',               authenticate,                          empCtrl.getAll);
+router.get   ('/employees/export',        authenticate, authorize(...EMP_MGMT), empCtrl.exportExcel || ((req,res) => res.status(501).json({success:false,message:'Not implemented'})));
+router.get   ('/employees/export-master',        authenticate, authorize(...EMP_MGMT), empCtrl.exportMasterExcel);
+router.get   ('/attendance/export-register',     authenticate, authorize('hr','accounts','super_admin'), empCtrl.exportAttendanceRegister);
+router.get   ('/employees/code-preview',  authenticate, authorize(...EMP_MGMT), empCtrl.previewNextCode);
+router.get   ('/employees/contacts',      authenticate,                          empCtrl.getContacts);
+router.get   ('/employees/:id',           authenticate,                          empCtrl.getOne);
+router.get   ('/employees/:id/designation-history', authenticate,                 empCtrl.getDesignationHistory);
+router.post  ('/employees',               authenticate, authorize(...EMP_MGMT),  empCtrl.create);
+router.put   ('/employees/:id',           authenticate, authorize(...EMP_MGMT),  empCtrl.update);
+router.patch ('/employees/:id',           authenticate, authorize(...EMP_MGMT),  empCtrl.update);
+router.delete('/employees/:id',           authenticate, authorize(...EMP_MGMT),  empCtrl.deleteEmployee);
+router.post  ('/employees/reset-password',authenticate, authorize(...EMP_MGMT), empCtrl.resetPassword);
+router.post  ('/employees/:id/separate',  authenticate, authorize(...EMP_MGMT), (req,res)=>res.json({success:false,message:'Not implemented'}));
+
+// ── Provision Confirmation Workflow ───────────────────────────────────────────
+// Lists & details
+router.get ('/provision',                authenticate, authorize(...PROVISION_APPROVERS), provCtrl.listProvisionEmployees);
+router.get ('/provision/accrual-log',    authenticate, authorize('hr','admin','super_admin'), provCtrl.getAccrualLog);
+router.get ('/provision/:id/status',     authenticate, authorize(...PROVISION_APPROVERS), provCtrl.getConfirmationStatus);
+// Workflow actions
+router.post('/provision/:id/initiate',   authenticate, authorize('hr','admin','super_admin'), provCtrl.initiateConfirmation);
+router.post('/provision/:id/approve',    authenticate, authorize(...PROVISION_APPROVERS),    provCtrl.approveConfirmation);
+// Monthly accrual (run 1st of each month, or manually)
+router.post('/provision/monthly-accrual', authenticate, authorize('hr','admin','super_admin'), provCtrl.runMonthlyAccrual);
+
+// ── Employee Bulk Import (Excel) ──────────────────────────────────────────────
+router.post('/employees/import',
+  authenticate, authorize(...EMP_MGMT),
+  empImportCtrl.uploadMiddleware,
+  empImportCtrl.importEmployees
+);
+router.post('/employees/master-update',
+  authenticate, authorize(...EMP_MGMT),
+  empImportCtrl.uploadMiddleware,
+  empImportCtrl.masterUpdate
+);
+
+// ── Attendance ────────────────────────────────────────────────────────────────
+router.post('/attendance/punch-in',         authenticate, attCtrl.punchIn);
+router.post('/attendance/punch-out',        authenticate, attCtrl.punchOut);
+
+// ── Attendance Bulk Import — must be BEFORE generic GET /attendance ───────────
+router.post('/attendance/import',
+  authenticate, authorize(...['hr']),
+  (req, res, next) => {
+    attImportCtrl.uploadMiddleware(req, res, (err) => {
+      if (err) return res.status(400).json({ success: false, message: err.message || 'File upload error' });
+      next();
+    });
+  },
+  attImportCtrl.importAttendance
+);
+
+router.get ('/attendance',                  authenticate, attCtrl.get);
+router.get ('/attendance/summary',          authenticate, attCtrl.getSummary);
+router.get ('/attendance/team-today',       authenticate, attCtrl.getTeamToday);
+router.get ('/attendance/punch-locations',  authenticate, attCtrl.getPunchLocations);
+router.post('/attendance/regularize',       authenticate, attCtrl.requestRegularization);
+router.get ('/attendance/regularizations',  authenticate, attCtrl.getRegularizations);
+router.post('/attendance/regularize/action',authenticate, attCtrl.actionRegularization);
+router.post('/attendance/force-regularize', authenticate, authorize('hr','super_admin'), attCtrl.forceRegularization);
+router.get ('/attendance/emp-absent-dates',  authenticate, authorize('hr','super_admin'), attCtrl.getEmpAbsentDates);
+router.post('/attendance/bulk-force-regularize', authenticate, authorize('hr','super_admin'), attCtrl.bulkForceRegularization);
+router.get ('/attendance/absent-report',            authenticate, authorize('hr','super_admin','admin','accounts'), attCtrl.getAbsentReport);
+router.get ('/attendance/absent-report/excel',      authenticate, authorize('hr','super_admin','admin','accounts'), excelExportCtrl.downloadAbsentReportExcel);
+router.get ('/leave/summary/excel',                 authenticate, authorize('hr','super_admin','admin','accounts'), excelExportCtrl.downloadLeaveSummaryExcel);
+
+// ── Attendance Bulk Import (Excel) — kept here for reference (defined above) ──
+
+router.get ('/attendance/monthly-report',   authenticate, authorize('hr','accounts'), attImportCtrl.downloadAttendanceReport);
+router.get ('/attendance/import/template',  authenticate, authorize('hr','accounts','super_admin'), attImportCtrl.downloadImportTemplate);
+
+// ── OD / WFH apply (all employees) ───────────────────────────────────────────
+router.post('/attendance/od',              authenticate, attCtrl.applyOD);
+router.get ('/attendance/od',              authenticate, attCtrl.getODRequests);
+router.post('/attendance/od/bulk-action',   authenticate, authorize('hr','super_admin','admin','manager','tl'), attCtrl.bulkActionOD);
+router.post('/attendance/od/:id/action',   authenticate, authorize('hr','super_admin','admin','manager','tl'), attCtrl.actionOD);
+router.post('/attendance/wfh',             authenticate, attCtrl.applyWFH);
+router.get ('/attendance/wfh',             authenticate, attCtrl.getWFHRequests);
+router.post('/attendance/wfh/:id/action',  authenticate, authorize('hr','super_admin','admin','manager','tl'), attCtrl.actionWFH);
+router.get ('/attendance/report/download',  authenticate, authorize('hr','accounts'), attImportCtrl.downloadAttendanceReport);
+// KC718 / super_admin: mark own attendance for a date range without punch in/out
+router.post('/attendance/mark-range',      authenticate, attCtrl.markRange);
+
+
+
+
+// ── WFH (Work From Home) ──────────────────────────────────────────────────────
+router.post('/wfh/apply',       authenticate, attImportCtrl.applyWFH);
+router.get ('/wfh',             authenticate, attImportCtrl.getWFH);
+router.post('/wfh/:id/action',  authenticate, attImportCtrl.actionWFH);
+
+// ── Leave ─────────────────────────────────────────────────────────────────────
+router.get('/leave-types', authenticate, async (req, res) => {
   try {
-    console.log('🚀 Starting HRMS master migration...\n');
-    await client.query('BEGIN');
+    const db = require('../config/db');
+    const empId = req.user.id;
 
-    // ═══════════════════════════════════════════════════════════════
-    // PART 1: CORE SCHEMA
-    // ═══════════════════════════════════════════════════════════════
-    console.log('📦 Part 1: Core schema...');
+    // Determine if this employee is currently on provisional period
+    const empRes = await db.query(
+      `SELECT employee_category, provision_end_date, joining_date FROM employees WHERE id=$1`,
+      [empId]
+    );
+    const emp = empRes.rows[0];
+    const now = new Date();
 
-    await client.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
+    // Contractual: provisional if still within 6 months of joining
+    const joiningDate = emp?.joining_date ? new Date(emp.joining_date) : null;
+    const sixMonthMark = joiningDate
+      ? new Date(new Date(joiningDate).setMonth(joiningDate.getMonth() + 6))
+      : null;
+    const isContractualProvisional =
+      emp?.employee_category === 'contractual' && sixMonthMark && now < sixMonthMark;
 
-    await client.query(`CREATE TABLE IF NOT EXISTS departments (
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(100) NOT NULL UNIQUE,
-      code VARCHAR(20) UNIQUE,
-      head_employee_id INT,
-      description TEXT,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
-    )`);
+    // Provision category: provisional until provision_end_date passes
+    const provisionEndDate = emp?.provision_end_date ? new Date(emp.provision_end_date) : null;
+    const isProvisional =
+      isContractualProvisional ||
+      (emp?.employee_category === 'provision' && provisionEndDate && provisionEndDate > now);
 
-    await client.query(`CREATE TABLE IF NOT EXISTS designations (
-      id SERIAL PRIMARY KEY,
-      title VARCHAR(100) NOT NULL,
-      department_id INT REFERENCES departments(id) ON DELETE SET NULL,
-      grade VARCHAR(20),
-      min_salary NUMERIC(12,2),
-      max_salary NUMERIC(12,2),
-      created_at TIMESTAMP DEFAULT NOW()
-    )`);
+    // Provisional employees: only PL. Confirmed employees: everything except PL.
+    // 'ML' (Maternity Leave) is never self-service — HR logs it directly via
+    // the "Apply on Behalf" flow, so it's excluded from the employee dropdown here.
+    const codeFilter = isProvisional
+      ? `AND code = 'PL'`
+      : `AND code NOT IN ('PL','ML')`;
 
-    await client.query(`CREATE TABLE IF NOT EXISTS employees (
-      id SERIAL PRIMARY KEY,
-      employee_code VARCHAR(30) UNIQUE NOT NULL,
-      first_name VARCHAR(100) NOT NULL,
-      last_name VARCHAR(100) NOT NULL DEFAULT '',
-      email VARCHAR(150) UNIQUE NOT NULL,
-      phone VARCHAR(20),
-      alternate_phone VARCHAR(20),
-      gender VARCHAR(10),
-      date_of_birth DATE,
-      blood_group VARCHAR(5),
-      marital_status VARCHAR(20),
-      nationality VARCHAR(50) DEFAULT 'Indian',
-      address_line1 TEXT,
-      address_line2 TEXT,
-      city VARCHAR(80),
-      state VARCHAR(80),
-      pincode VARCHAR(10),
-      department_id INT REFERENCES departments(id),
-      designation_id INT REFERENCES designations(id),
-      reporting_manager_id INT REFERENCES employees(id),
-      team_leader_id INT REFERENCES employees(id),
-      employment_type VARCHAR(30) DEFAULT 'Full-Time',
-      joining_date DATE NOT NULL,
-      probation_end_date DATE,
-      confirmation_date DATE,
-      role VARCHAR(20) DEFAULT 'employee'
-        CHECK (role IN ('super_admin','admin','hr','hr admin','accounts','accounts admin','manager','tl','employee')),
-      level VARCHAR(10) DEFAULT 'L1',
-      password_hash TEXT NOT NULL,
-      is_active BOOLEAN DEFAULT TRUE,
-      pan_number VARCHAR(15),
-      aadhar_number VARCHAR(15),
-      uan_number VARCHAR(15),
-      pf_number VARCHAR(30),
-      esi_number VARCHAR(30),
-      bank_name VARCHAR(100),
-      bank_account VARCHAR(30),
-      bank_ifsc VARCHAR(15),
-      bank_branch VARCHAR(100),
-      ctc NUMERIC(12,2) DEFAULT 0,
-      basic_salary NUMERIC(12,2) DEFAULT 0,
-      hra NUMERIC(12,2) DEFAULT 0,
-      special_allowance NUMERIC(12,2) DEFAULT 0,
-      travel_allowance NUMERIC(12,2) DEFAULT 0,
-      profile_photo VARCHAR(255),
-      resume_path VARCHAR(255),
-      separation_date DATE,
-      separation_reason TEXT,
-      separation_type VARCHAR(30),
-      approval_chain JSONB,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
-    )`);
+    const r = await db.query(
+      `SELECT id, name, code, days_allowed, monthly_accrual,
+              carry_forward, max_carry_forward, is_paid, applicable_gender, is_active
+       FROM leave_types WHERE is_active=true ${codeFilter} ORDER BY name`
+    );
+    res.json({ success: true, data: r.rows });
+  } catch(e) { res.status(500).json({ success: false, message: 'Server error' }); }
+});
 
-    await client.query(`CREATE TABLE IF NOT EXISTS leave_types (
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(100) NOT NULL,
-      code VARCHAR(20) UNIQUE NOT NULL,
-      days_allowed INT NOT NULL DEFAULT 0,
-      monthly_accrual NUMERIC(4,2) DEFAULT 0,
-      carry_forward BOOLEAN DEFAULT FALSE,
-      max_carry_forward INT DEFAULT 0,
-      is_paid BOOLEAN DEFAULT TRUE,
-      applicable_gender VARCHAR(10) DEFAULT 'all',
-      description TEXT,
-      is_active BOOLEAN DEFAULT TRUE,
-      created_at TIMESTAMP DEFAULT NOW()
-    )`);
+// HR-only: full, unfiltered leave type list (includes PL and ML) — used by the
+// "Apply on Behalf" (HR force-apply) flow so HR can log Maternity Leave records.
+router.get('/leave-types/all', authenticate, authorize(...HR_ADMIN), async (req, res) => {
+  try {
+    const db = require('../config/db');
+    const r = await db.query(
+      `SELECT id, name, code, days_allowed, monthly_accrual,
+              carry_forward, max_carry_forward, is_paid, applicable_gender, is_active
+       FROM leave_types WHERE is_active=true ORDER BY name`
+    );
+    res.json({ success: true, data: r.rows });
+  } catch(e) { res.status(500).json({ success: false, message: 'Server error' }); }
+});
 
-    await client.query(`CREATE TABLE IF NOT EXISTS leave_balances (
-      id SERIAL PRIMARY KEY,
-      employee_id INT REFERENCES employees(id) ON DELETE CASCADE,
-      leave_type_id INT REFERENCES leave_types(id) ON DELETE CASCADE,
-      year INT NOT NULL,
-      allocated NUMERIC(6,2) DEFAULT 0,
-      used NUMERIC(6,2) DEFAULT 0,
-      pending NUMERIC(6,2) DEFAULT 0,
-      carry_forward NUMERIC(6,2) DEFAULT 0,
-      UNIQUE(employee_id, leave_type_id, year)
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS leave_requests (
-      id SERIAL PRIMARY KEY,
-      employee_id INT REFERENCES employees(id),
-      leave_type_id INT REFERENCES leave_types(id),
-      from_date DATE NOT NULL,
-      to_date DATE NOT NULL,
-      total_days NUMERIC(4,1),
-      reason TEXT,
-      leave_category VARCHAR(20) DEFAULT 'leave'
-        CHECK (leave_category IN ('leave','od','lwp','compoff')),
-      status VARCHAR(20) DEFAULT 'pending'
-        CHECK (status IN ('pending','approved','rejected','cancelled')),
-      l1_approver_id INT REFERENCES employees(id),
-      l1_status VARCHAR(20) DEFAULT 'pending',
-      l1_remarks TEXT,
-      l1_action_at TIMESTAMP,
-      l2_approver_id INT REFERENCES employees(id),
-      l2_status VARCHAR(20) DEFAULT 'pending',
-      l2_remarks TEXT,
-      l2_action_at TIMESTAMP,
-      l3_approver_id INT REFERENCES employees(id),
-      l3_status VARCHAR(20) DEFAULT 'pending',
-      l3_remarks TEXT,
-      l3_action_at TIMESTAMP,
-      applied_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS holidays (
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(150) NOT NULL,
-      date DATE NOT NULL UNIQUE,
-      type VARCHAR(30) DEFAULT 'national',
-      description TEXT,
-      year INT GENERATED ALWAYS AS (EXTRACT(YEAR FROM date)::INT) STORED
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS attendance (
-      id SERIAL PRIMARY KEY,
-      employee_id INT REFERENCES employees(id),
-      date DATE NOT NULL,
-      punch_in TIME,
-      punch_out TIME,
-      working_hours NUMERIC(4,2),
-      status VARCHAR(20) DEFAULT 'present'
-        CHECK (status IN ('present','absent','half-day','late','on-leave','od','lwp','holiday','weekend','regularized','missing_punch_out','wfh','h-el','h-cl','h-sl','h-lwp','h-wfh')),
-      location_lat NUMERIC(10,6),
-      location_lng NUMERIC(10,6),
-      punch_in_location TEXT,
-      punch_out_location TEXT,
-      remarks TEXT,
-      is_regularized BOOLEAN DEFAULT FALSE,
-      regularization_reason TEXT,
-      regularization_status VARCHAR(20) DEFAULT NULL
-        CHECK (regularization_status IN ('pending','approved','rejected') OR regularization_status IS NULL),
-      regularization_approved_by INT REFERENCES employees(id),
-      regularization_applied_at TIMESTAMP,
-      regularization_punch_in TIME DEFAULT NULL,
-      regularization_punch_out TIME DEFAULT NULL,
-      regularization_requested_at TIMESTAMPTZ DEFAULT NULL,
-      regularization_actioned_by INT REFERENCES employees(id) ON DELETE SET NULL,
-      regularization_actioned_at TIMESTAMPTZ DEFAULT NULL,
-      regularization_remarks TEXT DEFAULT NULL,
-      approved_by INT REFERENCES employees(id),
-      UNIQUE(employee_id, date)
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS office_locations (
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(150) NOT NULL,
-      latitude NUMERIC(10,7) NOT NULL,
-      longitude NUMERIC(10,7) NOT NULL,
-      radius_meters INT NOT NULL DEFAULT 100,
-      address TEXT,
-      is_active BOOLEAN DEFAULT TRUE,
-      created_by INT REFERENCES employees(id),
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS employee_geofence (
-      id SERIAL PRIMARY KEY,
-      employee_id INT REFERENCES employees(id) ON DELETE CASCADE,
-      office_location_id INT REFERENCES office_locations(id) ON DELETE CASCADE,
-      is_universal BOOLEAN DEFAULT FALSE,
-      assigned_by INT REFERENCES employees(id),
-      created_at TIMESTAMP DEFAULT NOW(),
-      UNIQUE(employee_id, office_location_id)
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS attendance_geofence_logs (
-      id SERIAL PRIMARY KEY,
-      employee_id INT REFERENCES employees(id),
-      attendance_id INT REFERENCES attendance(id),
-      punch_type VARCHAR(10),
-      employee_lat NUMERIC(10,7),
-      employee_lng NUMERIC(10,7),
-      office_lat NUMERIC(10,7),
-      office_lng NUMERIC(10,7),
-      distance_meters INT,
-      is_within_geofence BOOLEAN,
-      office_location_id INT REFERENCES office_locations(id),
-      office_name VARCHAR(150),
-      employee_name VARCHAR(200),
-      created_at TIMESTAMP DEFAULT NOW()
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS payroll (
-      id SERIAL PRIMARY KEY,
-      employee_id INT REFERENCES employees(id),
-      month INT NOT NULL,
-      year INT NOT NULL,
-      working_days INT DEFAULT 0,
-      present_days NUMERIC(5,2) DEFAULT 0,
-      paid_leave_days NUMERIC(5,2) DEFAULT 0,
-      lop_days NUMERIC(5,2) DEFAULT 0,
-      paid_days NUMERIC(5,2) DEFAULT 0,
-      basic NUMERIC(12,2) DEFAULT 0,
-      hra NUMERIC(12,2) DEFAULT 0,
-      conveyance NUMERIC(12,2) DEFAULT 0,
-      special_allowance NUMERIC(12,2) DEFAULT 0,
-      other_allowance NUMERIC(12,2) DEFAULT 0,
-      bonus NUMERIC(12,2) DEFAULT 0,
-      gratuity NUMERIC(12,2) DEFAULT 0,
-      gross_salary NUMERIC(12,2) DEFAULT 0,
-      pf_employee NUMERIC(12,2) DEFAULT 0,
-      pf_employer NUMERIC(12,2) DEFAULT 0,
-      esi_employee NUMERIC(12,2) DEFAULT 0,
-      esi_employer NUMERIC(12,2) DEFAULT 0,
-      pf_admin NUMERIC(12,2) DEFAULT 0,
-      tds NUMERIC(12,2) DEFAULT 0,
-      lwf NUMERIC(12,2) DEFAULT 0,
-      professional_tax NUMERIC(12,2) DEFAULT 0,
-      advance_deduction NUMERIC(12,2) DEFAULT 0,
-      loan_emi_recovery NUMERIC(12,2) DEFAULT 0,
-      other_deduction NUMERIC(12,2) DEFAULT 0,
-      total_deductions NUMERIC(12,2) DEFAULT 0,
-      total_employer_cost NUMERIC(12,2) DEFAULT 0,
-      net_salary NUMERIC(12,2) DEFAULT 0,
-      ctc_monthly NUMERIC(12,2) DEFAULT 0,
-      ctc_annual NUMERIC(12,2) DEFAULT 0,
-      status VARCHAR(20) DEFAULT 'draft'
-        CHECK (status IN ('draft','processed','paid')),
-      payment_date DATE,
-      payment_mode VARCHAR(30),
-      transaction_ref VARCHAR(100),
-      generated_by INT REFERENCES employees(id),
-      generated_at TIMESTAMP DEFAULT NOW(),
-      UNIQUE(employee_id, month, year)
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS payroll_uploads (
-      id SERIAL PRIMARY KEY,
-      filename VARCHAR(255),
-      uploaded_by INT REFERENCES employees(id),
-      month INT, year INT,
-      total_rows INT DEFAULT 0,
-      processed_rows INT DEFAULT 0,
-      status VARCHAR(20) DEFAULT 'pending'
-        CHECK (status IN ('pending','processing','done','failed')),
-      error_log TEXT,
-      created_at TIMESTAMP DEFAULT NOW()
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS payroll_upload_rows (
-      id SERIAL PRIMARY KEY,
-      upload_id INT REFERENCES payroll_uploads(id) ON DELETE CASCADE,
-      employee_code VARCHAR(30),
-      row_data JSONB,
-      status VARCHAR(20) DEFAULT 'pending',
-      error_message TEXT,
-      created_at TIMESTAMP DEFAULT NOW()
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS employee_salary_structure (
-      id SERIAL PRIMARY KEY,
-      employee_id INT REFERENCES employees(id) ON DELETE CASCADE UNIQUE,
-      basic NUMERIC(12,2) DEFAULT 0,
-      hra NUMERIC(12,2) DEFAULT 0,
-      conveyance NUMERIC(12,2) DEFAULT 0,
-      special_allowance NUMERIC(12,2) DEFAULT 0,
-      gratuity NUMERIC(12,2) DEFAULT 0,
-      gross_salary NUMERIC(12,2) DEFAULT 0,
-      pf_employee NUMERIC(12,2) DEFAULT 0,
-      pf_employer NUMERIC(12,2) DEFAULT 0,
-      esi_employee NUMERIC(12,2) DEFAULT 0,
-      esi_employer NUMERIC(12,2) DEFAULT 0,
-      pf_admin NUMERIC(12,2) DEFAULT 0,
-      tds NUMERIC(12,2) DEFAULT 0,
-      lwf NUMERIC(12,2) DEFAULT 0,
-      professional_tax NUMERIC(12,2) DEFAULT 0,
-      total_deductions NUMERIC(12,2) DEFAULT 0,
-      total_employer_cost NUMERIC(12,2) DEFAULT 0,
-      net_salary NUMERIC(12,2) DEFAULT 0,
-      ctc_monthly NUMERIC(12,2) DEFAULT 0,
-      ctc_annual NUMERIC(12,2) DEFAULT 0,
-      pf_applicable BOOLEAN DEFAULT TRUE,
-      esi_applicable BOOLEAN DEFAULT FALSE,
-      pt_applicable BOOLEAN DEFAULT TRUE,
-      lwf_applicable BOOLEAN DEFAULT FALSE,
-      tds_applicable BOOLEAN DEFAULT FALSE,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS announcements (
-      id SERIAL PRIMARY KEY,
-      title VARCHAR(200) NOT NULL,
-      content TEXT NOT NULL,
-      type VARCHAR(30) DEFAULT 'general',
-      target_role VARCHAR(20) DEFAULT 'all',
-      department_id INT REFERENCES departments(id),
-      posted_by INT REFERENCES employees(id),
-      is_active BOOLEAN DEFAULT TRUE,
-      expires_at DATE,
-      image_url TEXT,
-      link_url TEXT,
-      link_label VARCHAR(100),
-      thought_day_number INT,
-      created_at TIMESTAMP DEFAULT NOW()
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS employee_documents (
-      id SERIAL PRIMARY KEY,
-      employee_id INT REFERENCES employees(id) ON DELETE CASCADE,
-      document_type VARCHAR(80) NOT NULL,
-      file_name VARCHAR(255),
-      file_path VARCHAR(255),
-      uploaded_by INT REFERENCES employees(id),
-      uploaded_at TIMESTAMP DEFAULT NOW(),
-      is_verified BOOLEAN DEFAULT FALSE,
-      verified_by INT REFERENCES employees(id)
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS separations (
-      id SERIAL PRIMARY KEY,
-      employee_id INT REFERENCES employees(id),
-      type VARCHAR(30) DEFAULT 'resignation'
-        CHECK (type IN ('resignation','termination','retirement','absconding','mutual-separation')),
-      reason TEXT,
-      notice_date DATE,
-      last_working_date DATE,
-      exit_interview_done BOOLEAN DEFAULT FALSE,
-      exit_feedback TEXT,
-      clearance_done BOOLEAN DEFAULT FALSE,
-      final_settlement_amount NUMERIC(12,2),
-      status VARCHAR(20) DEFAULT 'pending'
-        CHECK (status IN ('pending','approved','rejected','withdrawn','completed')),
-      initiated_by INT REFERENCES employees(id),
-      l1_approver_id INT REFERENCES employees(id), l1_status VARCHAR(20) DEFAULT 'pending',
-      l1_remarks TEXT, l1_action_at TIMESTAMP, l1_actioned_by INT REFERENCES employees(id),
-      l2_approver_id INT REFERENCES employees(id), l2_status VARCHAR(20) DEFAULT 'pending',
-      l2_remarks TEXT, l2_action_at TIMESTAMP, l2_actioned_by INT REFERENCES employees(id),
-      l3_approver_id INT REFERENCES employees(id), l3_status VARCHAR(20) DEFAULT 'pending',
-      l3_remarks TEXT, l3_action_at TIMESTAMP, l3_actioned_by INT REFERENCES employees(id),
-      l4_approver_id INT REFERENCES employees(id), l4_status VARCHAR(20) DEFAULT 'pending',
-      created_at TIMESTAMP DEFAULT NOW()
-    )`);
-
-    // ── Additional resignation-form fields (added later — safe/additive) ─────
-    // These use ADD COLUMN IF NOT EXISTS so they apply cleanly regardless of
-    // whatever the live `separations` table already looks like.
-    await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS resignation_reason_category VARCHAR(50)`);
-    await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS comments TEXT`);
-    await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS personal_email VARCHAR(150)`);
-    await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS contact_number VARCHAR(20)`);
-    await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
-    await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS attachment_mime VARCHAR(100)`);
-    await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS attachment_data TEXT`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS advance_salary (
-      id SERIAL PRIMARY KEY,
-      employee_id INT REFERENCES employees(id),
-      amount NUMERIC(12,2) NOT NULL,
-      reason TEXT,
-      requested_at TIMESTAMP DEFAULT NOW(),
-      status VARCHAR(20) DEFAULT 'pending'
-        CHECK (status IN ('pending','approved','rejected','recovered','disbursed','cleared')),
-      approved_by INT REFERENCES employees(id),
-      approved_at TIMESTAMP,
-      remarks TEXT,
-      recover_from_month INT,
-      recover_from_year INT,
-      recovered_amount NUMERIC(12,2) DEFAULT 0,
-      recovery_complete BOOLEAN DEFAULT FALSE,
-      approval_chain JSONB,
-      current_approver_code VARCHAR(20),
-      current_level SMALLINT DEFAULT 1,
-      monthly_emi NUMERIC(12,2) DEFAULT 0,
-      total_installments INT DEFAULT 1,
-      balance_remaining NUMERIC(12,2) DEFAULT 0,
-      emi_start_month INT,
-      emi_start_year INT,
-      purpose TEXT,
-      project_id INT,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS advance_approvals (
-      id SERIAL PRIMARY KEY,
-      advance_id INT REFERENCES advance_salary(id) ON DELETE CASCADE,
-      approver_id INT REFERENCES employees(id),
-      level INT NOT NULL,
-      status VARCHAR(20) DEFAULT 'pending'
-        CHECK (status IN ('pending','approved','rejected')),
-      remarks TEXT,
-      action_at TIMESTAMP,
-      created_at TIMESTAMP DEFAULT NOW()
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS loan_recovery_log (
-      id SERIAL PRIMARY KEY,
-      advance_id INT REFERENCES advance_salary(id),
-      employee_id INT REFERENCES employees(id),
-      payroll_id INT REFERENCES payroll(id),
-      month INT, year INT,
-      amount_recovered NUMERIC(12,2),
-      recovered_at TIMESTAMP DEFAULT NOW()
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS notifications (
-      id SERIAL PRIMARY KEY,
-      employee_id INT REFERENCES employees(id) ON DELETE CASCADE,
-      title VARCHAR(200),
-      message TEXT,
-      type VARCHAR(30) DEFAULT 'info',
-      is_read BOOLEAN DEFAULT FALSE,
-      reference_id INT,
-      reference_type VARCHAR(50),
-      created_at TIMESTAMP DEFAULT NOW()
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS wfh_requests (
-      id SERIAL PRIMARY KEY,
-      employee_id INT REFERENCES employees(id) ON DELETE CASCADE,
-      from_date DATE NOT NULL,
-      to_date DATE NOT NULL,
-      reason TEXT NOT NULL,
-      status VARCHAR(20) DEFAULT 'pending'
-        CHECK (status IN ('pending','approved','rejected','cancelled')),
-      actioned_by INT REFERENCES employees(id),
-      action_at TIMESTAMP,
-      remarks TEXT,
-      applied_at TIMESTAMP DEFAULT NOW()
-    )`);
-
-    // ── Legacy GK (monthly) ────────────────────────────────────────────────
-    await client.query(`CREATE TABLE IF NOT EXISTS gk_questions (
-      id SERIAL PRIMARY KEY,
-      month INT NOT NULL CHECK(month BETWEEN 1 AND 12),
-      year  INT NOT NULL,
-      question TEXT NOT NULL,
-      option_a TEXT NOT NULL, option_b TEXT NOT NULL,
-      option_c TEXT NOT NULL, option_d TEXT NOT NULL,
-      correct_answer CHAR(1) NOT NULL CHECK(correct_answer IN ('A','B','C','D')),
-      about TEXT,
-      is_active BOOLEAN DEFAULT TRUE,
-      created_by INT REFERENCES employees(id),
-      created_at TIMESTAMP DEFAULT NOW(),
-      UNIQUE(month, year)
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS gk_responses (
-      id SERIAL PRIMARY KEY,
-      question_id INT REFERENCES gk_questions(id) ON DELETE CASCADE,
-      employee_id INT REFERENCES employees(id) ON DELETE CASCADE,
-      answer CHAR(1) NOT NULL,
-      is_correct BOOLEAN NOT NULL,
-      answered_at TIMESTAMP DEFAULT NOW(),
-      UNIQUE(question_id, employee_id)
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS thought_of_day_schedules (
-      id SERIAL PRIMARY KEY,
-      day_number INT NOT NULL CHECK(day_number BETWEEN 1 AND 366),
-      year INT NOT NULL,
-      thought TEXT NOT NULL,
-      author VARCHAR(200),
-      display_date DATE,
-      created_at TIMESTAMP DEFAULT NOW(),
-      UNIQUE(day_number, year)
-    )`);
-
-    // ═══════════════════════════════════════════════════════════════
-    // PART 2: ADDITIONAL COLUMNS
-    // ═══════════════════════════════════════════════════════════════
-    console.log('📦 Part 2: Additional columns...');
-
-    const addCol = async (table, col, def) => {
-      await client.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${col} ${def}`);
-    };
-
-    await addCol('payroll',    'bonus',                   'NUMERIC(10,2) DEFAULT 0');
-    await addCol('payroll',    'advance_deduction',       'NUMERIC(10,2) DEFAULT 0');
-    await addCol('attendance', 'source',                  "VARCHAR(20) DEFAULT 'manual'");
-    await addCol('attendance', 'wfh_approved',            'BOOLEAN DEFAULT FALSE');
-    await addCol('attendance', 'regularization_punch_in',     'TIME DEFAULT NULL');
-    await addCol('attendance', 'regularization_punch_out',    'TIME DEFAULT NULL');
-    await addCol('attendance', 'regularization_requested_at', 'TIMESTAMPTZ DEFAULT NULL');
-    await addCol('attendance', 'regularization_actioned_by',  'INT REFERENCES employees(id) ON DELETE SET NULL');
-    await addCol('attendance', 'regularization_actioned_at',  'TIMESTAMPTZ DEFAULT NULL');
-    await addCol('attendance', 'regularization_remarks',      'TEXT DEFAULT NULL');
-    await addCol('leave_requests', 'half_day',            'BOOLEAN DEFAULT FALSE');
-    await addCol('leave_requests', 'half_day_type',       "VARCHAR(10) CHECK (half_day_type IN ('first','second'))");
-    await addCol('separations', 'noc_issued',             'BOOLEAN DEFAULT FALSE');
-    await addCol('separations', 'experience_letter_issued','BOOLEAN DEFAULT FALSE');
-    await addCol('employees',   'saturday_policy',         "VARCHAR(20) DEFAULT '2nd_4th_off' CHECK (saturday_policy IN ('2nd_4th_off','all_working'))");
-
-    // ── Fix 3: Single-device login ────────────────────────────────────────────
-    await addCol('employees', 'device_token',      'VARCHAR(255) DEFAULT NULL');
-
-    // ── Fix 4: App version tracking ───────────────────────────────────────────
-    await addCol('employees', 'app_version',       'VARCHAR(30) DEFAULT NULL');
-    await addCol('employees', 'last_login_at',     'TIMESTAMPTZ DEFAULT NULL');
-    await addCol('employees', 'last_login_device', 'VARCHAR(255) DEFAULT NULL');
-
-    // ── Fix 1: Announcement likes & comments ──────────────────────────────────
-    await client.query(`CREATE TABLE IF NOT EXISTS announcement_likes (
-      id SERIAL PRIMARY KEY,
-      announcement_id INT REFERENCES announcements(id) ON DELETE CASCADE,
-      employee_id INT REFERENCES employees(id) ON DELETE CASCADE,
-      created_at TIMESTAMP DEFAULT NOW(),
-      UNIQUE(announcement_id, employee_id)
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS announcement_comments (
-      id SERIAL PRIMARY KEY,
-      announcement_id INT REFERENCES announcements(id) ON DELETE CASCADE,
-      employee_id INT REFERENCES employees(id) ON DELETE CASCADE,
-      comment TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW()
-    )`);
-
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_ann_likes_ann   ON announcement_likes(announcement_id)`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_ann_comments_ann ON announcement_comments(announcement_id)`);
-
-    // Saturday policy — configured via CONFIG.allWorkingSaturdayCodes
-
-    await client.query(`CREATE TABLE IF NOT EXISTS gk_daily_questions (
-      id SERIAL PRIMARY KEY,
-      question_date DATE NOT NULL UNIQUE,
-      question TEXT NOT NULL,
-      option_a TEXT NOT NULL, option_b TEXT NOT NULL,
-      option_c TEXT NOT NULL, option_d TEXT NOT NULL,
-      correct_answer CHAR(1) NOT NULL CHECK(correct_answer IN ('A','B','C','D')),
-      about TEXT,
-      is_active BOOLEAN DEFAULT TRUE,
-      created_by INT REFERENCES employees(id),
-      created_at TIMESTAMP DEFAULT NOW()
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS gk_daily_responses (
-      id SERIAL PRIMARY KEY,
-      question_id INT NOT NULL REFERENCES gk_daily_questions(id) ON DELETE CASCADE,
-      employee_id INT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-      answer VARCHAR(5) NOT NULL,
-      is_correct BOOLEAN NOT NULL DEFAULT FALSE,
-      score_change NUMERIC(6,2) NOT NULL DEFAULT 0,
-      answered_at TIMESTAMP DEFAULT NOW(),
-      UNIQUE(question_id, employee_id)
-    )`);
-
-    await client.query(`CREATE TABLE IF NOT EXISTS gk_daily_thoughts (
-      id SERIAL PRIMARY KEY,
-      thought_date DATE NOT NULL UNIQUE,
-      thought TEXT NOT NULL,
-      author VARCHAR(200),
-      created_by INT REFERENCES employees(id),
-      created_at TIMESTAMP DEFAULT NOW()
-    )`);
-
-    // ── Employee Movement Log ──────────────────────────────────────────────
-    await client.query(`CREATE TABLE IF NOT EXISTS employee_movement_log (
-      id              SERIAL PRIMARY KEY,
-      employee_id     INT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-      lat             NUMERIC(11,8) NOT NULL,
-      lng             NUMERIC(11,8) NOT NULL,
-      accuracy        FLOAT,
-      gps_status      BOOLEAN NOT NULL DEFAULT TRUE,
-      internet_status BOOLEAN NOT NULL DEFAULT TRUE,
-      battery         SMALLINT,
-      logged_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`);
-    // Safe column additions for existing deployments
-    await client.query(`ALTER TABLE employee_movement_log ADD COLUMN IF NOT EXISTS gps_status BOOLEAN NOT NULL DEFAULT TRUE`);
-    await client.query(`ALTER TABLE employee_movement_log ADD COLUMN IF NOT EXISTS internet_status BOOLEAN NOT NULL DEFAULT TRUE`);
-    await client.query(`ALTER TABLE employee_movement_log ADD COLUMN IF NOT EXISTS battery SMALLINT`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_movement_emp_date
-      ON employee_movement_log(employee_id, DATE(logged_at AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}'))`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_movement_emp_logged
-      ON employee_movement_log(employee_id, logged_at)`);
-
-    // ═══════════════════════════════════════════════════════════════
-    // INDEXES
-    // ═══════════════════════════════════════════════════════════════
-    console.log('📦 Creating indexes...');
+router.post('/leave/apply',           authenticate,                        leaveCtrl.apply);
+router.get ('/leave/requests',        authenticate,                        leaveCtrl.getRequests);
+router.get ('/leave/applications',    authenticate,                        leaveCtrl.getRequests);
+router.get ('/leave/balance',         authenticate,                        leaveCtrl.getBalance);
+router.post('/leave/:id/action',      authenticate,                        leaveCtrl.action);
+router.put ('/leave/:id/action',      authenticate,                        leaveCtrl.action);
+router.post('/leave/:id/cancel',      authenticate,                        leaveCtrl.cancel);
+router.post('/leave/:id/revoke',      authenticate,                        leaveCtrl.revoke);
+router.put ('/leave/balance',         authenticate, authorize(...HR_ADMIN), leaveCtrl.updateBalance);
+router.post('/leave/monthly-accrual',        authenticate, authorize(...HR_ADMIN), leaveCtrl.monthlyAccrual);
+router.post('/leave/recalculate/:id',        authenticate, authorize(...HR_ADMIN), leaveCtrl.recalculateEmployee);
+router.get ('/leave/report',                 authenticate,                        leaveCtrl.getLeaveReport);
+router.get ('/leave/summary',                authenticate, authorize(...HR_ADMIN), leaveCtrl.getLeaveSummary);
+router.get ('/leave/transactions',           authenticate, authorize(...HR_ADMIN), leaveCtrl.getLeaveTransactions);
+router.post('/leave/import-balances',        authenticate, authorize(...HR_ADMIN), xlsxUpload.single('file'), leaveCtrl.importLeaveBalances);
 
 
-    // ── Feature #10: movement_alerts table ───────────────────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS movement_alerts (
-        id                SERIAL PRIMARY KEY,
-        employee_id       INT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-        alert_date        DATE NOT NULL,
-        alert_type        VARCHAR(20) NOT NULL
-                            CHECK (alert_type IN ('silence','low_battery','gps_off','net_off')),
-        message           TEXT NOT NULL,
-        details           JSONB DEFAULT '{}',
-        status            VARCHAR(20) DEFAULT 'open'
-                            CHECK (status IN ('open','resolved','auto_resolved')),
-        notified_at       TIMESTAMPTZ DEFAULT NOW(),
-        updated_at        TIMESTAMPTZ DEFAULT NOW(),
-        resolved_at       TIMESTAMPTZ,
-        resolved_by       INT REFERENCES employees(id),
-        resolution_note   TEXT,
-        manager_notified  BOOLEAN DEFAULT FALSE,
-        UNIQUE(employee_id, alert_date, alert_type)
-      )
-    `);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_alerts_emp_date ON movement_alerts(employee_id, alert_date)`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_alerts_status ON movement_alerts(status)`);
+// ── Advance Salary ────────────────────────────────────────────────────────────
+router.post('/advance/apply',                authenticate, advCtrl.apply);
+router.get ('/advance/mine',                 authenticate, advCtrl.getMine);
+router.get ('/advance',                      authenticate, advCtrl.getAll);
+router.post('/advance/:id/action',           authenticate, advCtrl.action);
+router.post('/advance/:id/revoke',           authenticate, advCtrl.revoke);
+router.delete('/advance/:id/dismiss',        authenticate, advCtrl.dismiss);
+router.post('/advance/:id/edit',             authenticate, advCtrl.edit);
+router.post('/advance/:id/process-payment',  authenticate, authorize('accounts'), advCtrl.processPayment);
+router.get ('/advance/:id/approvals',        authenticate, advCtrl.getApprovals);
+router.get ('/advance/emi/list',             authenticate, authorize('accounts','hr','super_admin'), advCtrl.getEMIList);
+router.post('/advance/emi',                  authenticate, authorize('accounts'), advCtrl.upsertEMI);
+router.put ('/advance/emi/:id',              authenticate, authorize('accounts'), advCtrl.upsertEMI);
+router.get ('/advance/emi/employee/:employee_id', authenticate, authorize('accounts','hr'), advCtrl.getActiveEMI);
+router.post('/advance/:id/mark-disbursed',       authenticate, authorize('accounts'), advCtrl.markDisbursedWithEMI);
+router.post('/advance/emi/:id/mark-paid',         authenticate, authorize('accounts'), advCtrl.markEMIPaid);
 
-    // ── Feature #7: beat_plans + beat_plan_stops tables ──────────────────────
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS beat_plans (
-        id           SERIAL PRIMARY KEY,
-        employee_id  INT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-        plan_date    DATE NOT NULL,
-        title        VARCHAR(200) DEFAULT 'Beat Plan',
-        notes        TEXT,
-        created_by   INT REFERENCES employees(id),
-        created_at   TIMESTAMPTZ DEFAULT NOW(),
-        updated_at   TIMESTAMPTZ DEFAULT NOW(),
-        UNIQUE(employee_id, plan_date)
-      )
-    `);
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS beat_plan_stops (
-        id               SERIAL PRIMARY KEY,
-        plan_id          INT NOT NULL REFERENCES beat_plans(id) ON DELETE CASCADE,
-        sequence         INT NOT NULL DEFAULT 1,
-        location_name    VARCHAR(200) NOT NULL,
-        address          TEXT,
-        lat              NUMERIC(10,6),
-        lng              NUMERIC(10,6),
-        notes            TEXT,
-        expected_arrival TIME,
-        visit_status     VARCHAR(20) DEFAULT 'pending'
-                           CHECK (visit_status IN ('pending','visited','missed')),
-        created_at       TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_beat_plans_emp_date ON beat_plans(employee_id, plan_date)`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_beat_stops_plan ON beat_plan_stops(plan_id, sequence)`);
+// ── Reimbursement ─────────────────────────────────────────────────────────────
+const reimbCtrl = require('../controllers/reimbursementController');
+router.post  ('/reimbursement/apply',               authenticate, reimbCtrl.apply);
+router.post  ('/reimbursement/draft',               authenticate, reimbCtrl.saveDraft);
+router.post  ('/reimbursement/:id/submit-draft',    authenticate, reimbCtrl.submitDraft);
+router.get   ('/reimbursement/export',              authenticate, reimbCtrl.exportData);
+router.get   ('/reimbursement',                     authenticate, reimbCtrl.getAll);
+router.post  ('/reimbursement/:id/action',          authenticate, reimbCtrl.action);
+router.post  ('/reimbursement/:id/revoke',          authenticate, reimbCtrl.revoke);
+router.put   ('/reimbursement/:id/edit',            authenticate, reimbCtrl.edit);
+router.post  ('/reimbursement/:id/disburse',        authenticate, authorize('accounts'), reimbCtrl.disburse);
+router.get   ('/reimbursement/:id/approvals',       authenticate, reimbCtrl.getApprovals);
+router.post  ('/reimbursement/item/:id/attachment', authenticate, reimbCtrl.uploadMiddleware, reimbCtrl.uploadAttachment);
+router.get   ('/reimbursement/item/:id/attachment', authenticate, reimbCtrl.getAttachment);
 
-    const indexes = [
-      'CREATE INDEX IF NOT EXISTS idx_attendance_emp_date    ON attendance(employee_id, date)',
-      'CREATE INDEX IF NOT EXISTS idx_leave_req_emp          ON leave_requests(employee_id)',
-      'CREATE INDEX IF NOT EXISTS idx_leave_bal_emp          ON leave_balances(employee_id)',
-      'CREATE INDEX IF NOT EXISTS idx_payroll_emp            ON payroll(employee_id)',
-      'CREATE INDEX IF NOT EXISTS idx_notifications_emp      ON notifications(employee_id)',
-      'CREATE INDEX IF NOT EXISTS idx_announcements_type     ON announcements(type)',
-      'CREATE INDEX IF NOT EXISTS idx_gk_responses_emp       ON gk_responses(employee_id)',
-      'CREATE INDEX IF NOT EXISTS idx_wfh_emp                ON wfh_requests(employee_id)',
-      'CREATE INDEX IF NOT EXISTS idx_wfh_status             ON wfh_requests(status)',
-      'CREATE INDEX IF NOT EXISTS idx_gkdq_date              ON gk_daily_questions(question_date)',
-      'CREATE INDEX IF NOT EXISTS idx_gkdr_emp               ON gk_daily_responses(employee_id)',
-      'CREATE INDEX IF NOT EXISTS idx_gkdr_qid               ON gk_daily_responses(question_id)',
-      'CREATE INDEX IF NOT EXISTS idx_gkdt_date              ON gk_daily_thoughts(thought_date)',
-      'CREATE INDEX IF NOT EXISTS idx_geofence_emp           ON employee_geofence(employee_id)',
-    ];
+// ── Payroll ───────────────────────────────────────────────────────────────────
+router.get ('/payroll',              authenticate,                     payCtrl.getPayroll);
+router.get ('/payroll/payslip',      authenticate,                     payCtrl.getPayslip);
+router.get ('/my/payslip',           authenticate,                     payCtrl.getPayslip);
+router.get ('/my/payslip-months',    authenticate, async (req, res) => {
+  const db    = require('../config/db');
+  const empId = req.user.id;
+  const r     = await db.query(
+    `SELECT DISTINCT month, year, status FROM payroll WHERE employee_id=$1 ORDER BY year DESC, month DESC LIMIT 6`,
+    [empId]
+  );
+  res.json({ success: true, data: r.rows });
+});
+router.post('/payroll/process',      authenticate, authorize(...ACCOUNTS), async (req, res) => {
+  res.json({ success: true, message: 'Use /payroll/upload to process payroll via Excel upload.' });
+});
+router.get ('/payroll/uploads',                   authenticate, authorize(...ACCOUNTS), payCtrl.getUploads);
+router.get ('/payroll/salary-structures',         authenticate, authorize('hr'),        payCtrl.getAllSalaryStructures);
+router.get ('/payroll/salary-structure/:employee_id', authenticate,                    payCtrl.getSalaryStructure);
+router.post('/payroll/salary-structure',          authenticate, authorize('hr'),        payCtrl.upsertSalaryStructure);
+router.post('/payroll/upload',                    authenticate, authorize('accounts'), payCtrl.uploadMiddleware, payCtrl.uploadPayroll);
+router.get ('/payroll/template',                  authenticate, authorize('accounts','hr','super_admin'), payCtrl.downloadPayrollTemplate);
+router.get ('/payroll/salary-structure-template',  authenticate, authorize('hr'),                   payCtrl.downloadSalaryStructureTemplate);
+router.post('/payroll/salary-structure-bulk',      authenticate, authorize('hr'), xlsxUpload.single('file'), payCtrl.bulkUploadSalaryStructure);
+router.get ('/payroll/form16/years',              authenticate,                        payCtrl.getForm16Years);
+router.get ('/payroll/form16',                    authenticate,                        payCtrl.getForm16);
 
-    for (const idx of indexes) {
-      await client.query(idx);
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+router.get('/dashboard', authenticate, async (req, res) => {
+  try {
+    const db    = require('../config/db');
+    const empId = req.user.id;
+    // FIX: Use IST date — server runs UTC on Render
+    const istToday = new Intl.DateTimeFormat('en-CA', { timeZone: CONFIG.timezone || 'Asia/Kolkata',
+      year:'numeric', month:'2-digit', day:'2-digit'
+    }).format(new Date());
+
+    const attRes = await db.query(
+      `SELECT *,
+              TO_CHAR(punch_in::time,'HH12:MI AM')  AS punch_in_time,
+              TO_CHAR(punch_out::time,'HH12:MI AM') AS punch_out_time,
+              TO_CHAR(date,'YYYY-MM-DD')      AS date_str
+       FROM attendance WHERE employee_id=$1 AND date=$2`,
+      [empId, istToday]
+    );
+
+    // ── Auto-mark KC718 / super_admin as Present if no record exists today ────
+    // They don't punch in/out; absence of a record = present on working days
+    let todayAtt = attRes.rows[0] || null;
+    const isSpecialUser = req.user.role === 'super_admin' || req.user.employee_code === CONFIG.cooEmployeeCode;
+    if (isSpecialUser && !todayAtt) {
+      // Only auto-present on working days (not Sunday, not 2nd/4th Saturday)
+      const todayDate = new Date(new Date().toLocaleString('en-US', { timeZone: CONFIG.timezone || 'Asia/Kolkata' }));
+      const dow = todayDate.getDay();
+      const dayOfMonth = todayDate.getDate();
+      // Rough 2nd/4th Saturday check
+      const isSat = dow === 6;
+      const satNum = Math.ceil(dayOfMonth / 7);
+      const is2nd4thSat = isSat && (satNum === 2 || satNum === 4);
+      const isSun = dow === 0;
+      // Check if today is a public holiday
+      const holCheck = await db.query(
+        `SELECT 1 FROM holidays WHERE date=$1 AND (region='all' OR region='south_west' OR region='north') LIMIT 1`,
+        [istToday]
+      );
+      const isHoliday = holCheck.rows.length > 0;
+
+      if (!isSun && !is2nd4thSat && !isHoliday) {
+        // Auto-insert present record
+        try {
+          await db.query(
+            `INSERT INTO attendance(employee_id, date, status, remarks, punch_in_location)
+             VALUES($1, $2, 'present', 'Auto-marked', 'Auto')
+             ON CONFLICT(employee_id, date) DO NOTHING`,
+            [empId, istToday]
+          );
+          // Re-fetch to return fresh record
+          const freshAtt = await db.query(
+            `SELECT *, TO_CHAR(date,'YYYY-MM-DD') AS date_str FROM attendance WHERE employee_id=$1 AND date=$2`,
+            [empId, istToday]
+          );
+          todayAtt = freshAtt.rows[0] || { status: 'present', date_str: istToday };
+        } catch (_) {
+          // Non-critical: if insert fails just return synthetic present
+          todayAtt = { status: 'present', date_str: istToday };
+        }
+      }
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // SEED LEAVE TYPES
-    // ═══════════════════════════════════════════════════════════════
-    await client.query(`INSERT INTO leave_types (name, code, days_allowed, monthly_accrual, carry_forward, max_carry_forward, is_paid) VALUES
-      ('Earned Leave',       'EL',  18,  1.5, true,  6, true),
-      ('Sick Leave',         'SL',  6,   0.5, false, 0, true),
-      ('Casual Leave',       'CL',  6,   0.5, false, 0, true),
-      ('On Duty',            'OD',  0,   0,   false, 0, true),
-      ('Loss of Pay',        'LWP', 0,   0,   false, 0, false),
-      ('Maternity Leave',    'ML',  180, 0,   false, 0, true),
-      ('Paternity Leave',    'PTL', 15,  0,   false, 0, true),
-      ('Comp Off',           'CO',  0,   0,   false, 0, true),
-      ('Provisional Leave',  'PL',  6,   0,   false, 0, true)
-    ON CONFLICT (code) DO UPDATE SET
-      days_allowed     = EXCLUDED.days_allowed,
-      monthly_accrual  = EXCLUDED.monthly_accrual`);
+    const now   = new Date();
+    const istParts = new Intl.DateTimeFormat('en-IN', { timeZone:CONFIG.timezone || 'Asia/Kolkata',
+      year:'numeric', month:'2-digit', day:'2-digit'
+    }).formatToParts(now);
+    const istP = {}; istParts.forEach(({type,value}) => { istP[type]=value; });
+    const month = parseInt(istP.month);
+    const year  = parseInt(istP.year);
+    const msRes = await db.query(
+      `SELECT
+        COUNT(*) FILTER (WHERE status IN ('present','late','half-day')) AS present,
+        COUNT(*) FILTER (WHERE status='absent') AS absent,
+        COALESCE(SUM(working_hours),0) AS total_hours,
+        COALESCE(AVG(working_hours) FILTER (
+          WHERE working_hours > 0
+            AND status IN ('present','late','regularized','od')
+        ), 0) AS avg_hours
+       FROM attendance
+       WHERE employee_id=$1
+         AND EXTRACT(MONTH FROM date)=$2
+         AND EXTRACT(YEAR  FROM date)=$3`,
+      [empId, month, year]
+    );
 
-    await client.query('COMMIT');
-    console.log('\n✅ All migrations completed successfully!');
-    console.log('   ✓ Core schema (all tables)');
-    console.log('   ✓ Additional columns');
-    console.log('   ✓ GK Daily tables');
-    console.log('   ✓ Indexes');
-    console.log('   ✓ Leave types seeded\n');
+    let pendingCount = 0;
+    let pendingRegCount = 0;
+    if (['manager','hr','admin','super_admin','tl'].includes(req.user.role)) {
+      const pRes = await db.query(
+        `SELECT COUNT(*) FROM leave_requests
+         WHERE status='pending'
+           AND employee_id != $1
+           AND (
+             current_approver_code = (SELECT employee_code FROM employees WHERE id=$1)
+             OR $2 IN ('hr','super_admin')
+           )`,
+        [empId, req.user.role]
+      );
+      pendingCount = parseInt(pRes.rows[0].count) || 0;
 
-  } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('❌ Migration failed:', err.message);
-    console.error(err);
-    throw err;
-  } finally {
-    client.release();
-    process.exit(0);   // ← force-exit so the pg pool doesn't hang
+      // Also count pending regularization requests — direct reports only
+      // (Regularization goes to direct manager, not up the full tree)
+      let regCond = '';
+      let regParams = [];
+      if (['super_admin','hr'].includes(req.user.role)) {
+        regParams = [];
+        regCond = `WHERE a.regularization_status='pending'`;
+      } else if (['admin','manager'].includes(req.user.role)) {
+        regParams = [empId];
+        regCond = `WHERE a.regularization_status='pending' AND e.reporting_manager_id=$1`;
+      } else if (req.user.role === 'tl') {
+        regParams = [empId];
+        regCond = `WHERE a.regularization_status='pending' AND (e.team_leader_id=$1 OR e.id=$1)`;
+      }
+      if (regCond) {
+        const rRes = await db.query(
+          `SELECT COUNT(*) FROM attendance a
+           JOIN employees e ON e.id=a.employee_id
+           ${regCond}`, regParams
+        );
+        pendingRegCount = parseInt(rRes.rows[0].count) || 0;
+      }
+    }
+
+    // Count unread notifications for the logged-in employee
+    const unreadNotifRes = await db.query(
+      `SELECT COUNT(*) FROM notifications
+       WHERE employee_id=$1 AND is_read=false
+         AND (expires_at IS NULL OR expires_at > NOW())`,
+      [empId]
+    );
+    const unreadNotifCount = parseInt(unreadNotifRes.rows[0].count) || 0;
+
+    res.json({
+      success: true,
+      data: {
+        today_attendance:             todayAtt,
+        monthly_summary:              msRes.rows[0]  || {},
+        pending_leave_approvals:      pendingCount,
+        pending_regularizations:      pendingRegCount,
+        unread_notifications:         unreadNotifCount,
+      }
+    });
+  } catch(e) {
+    console.error('Dashboard error:', e.message);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
-}
+});
 
-runAllMigrations().catch(console.error);
+// ── Announcements ─────────────────────────────────────────────────────────────
+router.get ('/announcements/feed',               authenticate,                         annCtrl.getFeed);
+router.get ('/announcements',                    authenticate,                         annCtrl.getAll);
+router.post('/announcements',                    authenticate, authorize(...HR_ADMIN), annCtrl.uploadMiddleware, annCtrl.create);
+router.put ('/announcements/:id',                authenticate, authorize(...HR_ADMIN), annCtrl.uploadMiddleware, annCtrl.update);
+router.delete('/announcements/:id',              authenticate, authorize(...HR_ADMIN), annCtrl.delete);
+// Fix 1: Like & Comment
+router.post('/announcements/:id/like',           authenticate,                         annCtrl.toggleLike);
+router.get ('/announcements/:id/comments',       authenticate,                         annCtrl.getComments);
+router.post('/announcements/:id/comments',       authenticate,                         annCtrl.addComment);
+router.delete('/announcements/:id/comments/:commentId', authenticate,                  annCtrl.deleteComment);
+
+// ── GK Quiz ───────────────────────────────────────────────────────────────────
+router.post  ('/gk/answer',             authenticate,                         gkCtrl.submitAnswer);
+router.get   ('/gk/leaderboard',        authenticate,                         gkCtrl.getLeaderboard);
+router.get   ('/gk/question',           authenticate,                         gkCtrl.getQuestion);
+router.get   ('/gk/thought',            authenticate,                         gkCtrl.getThought);
+router.get   ('/gk/my-stats',           authenticate,                         gkCtrl.getMyStats);
+router.get   ('/gk/my-history',         authenticate,                         gkCtrl.getMyHistory);
+router.get   ('/gk/responses',          authenticate, authorize(...HR_ADMIN), gkCtrl.getResponses);
+router.get   ('/gk/questions',          authenticate, authorize(...HR_ADMIN), gkCtrl.getQuestions);
+router.post  ('/gk/questions',          authenticate, authorize(...HR_ADMIN), gkCtrl.createQuestion);
+router.put   ('/gk/questions/:id',      authenticate, authorize(...HR_ADMIN), gkCtrl.updateQuestion);
+router.delete('/gk/questions/:id',      authenticate, authorize(...HR_ADMIN), gkCtrl.deleteQuestion);
+router.get   ('/gk/thoughts',           authenticate, authorize(...HR_ADMIN), gkCtrl.getThoughts);
+router.post  ('/gk/thoughts',           authenticate, authorize(...HR_ADMIN), gkCtrl.createThought);
+router.delete('/gk/thoughts/:id',       authenticate, authorize(...HR_ADMIN), gkCtrl.deleteThought);
+router.get   ('/gk/export/scores',      authenticate, authorize(...HR_ADMIN), gkCtrl.exportScores);
+router.get   ('/gk/export/yearly',      authenticate, authorize(...HR_ADMIN), gkCtrl.exportYearly);
+router.get   ('/gk/export/responses',   authenticate, authorize(...HR_ADMIN), gkCtrl.exportResponses);
+
+// ── Import Thoughts + GK from Excel (single combined upload) ─────────────────
+router.post('/gk/import',
+  authenticate, authorize(...HR_ADMIN),
+  gkCtrl.uploadMiddleware,
+  gkCtrl.importBoth
+);
+// Individual sheet imports (fallback)
+router.post('/gk/questions/import',
+  authenticate, authorize(...HR_ADMIN),
+  gkCtrl.uploadMiddleware,
+  gkCtrl.importQuestions
+);
+router.post('/gk/thoughts/import',
+  authenticate, authorize(...HR_ADMIN),
+  gkCtrl.uploadMiddleware,
+  gkCtrl.importThoughts
+);
+
+// ── Geofence ──────────────────────────────────────────────────────────────────
+router.get   ('/geofence/locations',                          authenticate,                           geoCtrl.getLocations);
+router.post  ('/geofence/locations',                          authenticate, authorize('admin','super_admin','hr'), geoCtrl.createLocation);
+router.put   ('/geofence/locations/:id',                      authenticate, authorize('admin','super_admin','hr'), geoCtrl.updateLocation);
+router.delete('/geofence/locations/:id',                      authenticate, authorize('admin','super_admin','hr'), geoCtrl.deleteLocation);
+router.get   ('/geofence/locations/:id/employees',            authenticate, authorize('admin','super_admin','hr'), geoCtrl.getLocationEmployees);
+router.get   ('/geofence/locations/:id/unassigned',           authenticate, authorize('admin','super_admin','hr'), geoCtrl.getUnassignedEmployees);
+router.get   ('/geofence/employees',                          authenticate, authorize('admin','super_admin','hr'), geoCtrl.getEmployeesForLocation);
+router.post  ('/geofence/validate',                           authenticate,                           geoCtrl.validatePunch);
+router.get   ('/geofence/my-locations',                       authenticate,                           geoCtrl.getMyLocations);
+router.get   ('/geofence/logs',                               authenticate,                           geoCtrl.getLogs);
+router.get   ('/geofence/employee/:employee_id',              authenticate,                           geoCtrl.getEmployeeGeofence);
+router.post  ('/geofence/assign',                             authenticate, authorize('admin','super_admin','hr'), geoCtrl.assignBuffer);
+router.post  ('/geofence/bulk-assign',                        authenticate, authorize('admin','super_admin','hr'), geoCtrl.bulkAssignBuffer);
+router.get   ('/geofence/unassigned-employees',                 authenticate, authorize('admin','super_admin','hr'), geoCtrl.getUnassignedToAnyLocation);
+router.post  ('/geofence/fix-office-universal',               authenticate, authorize('admin','super_admin','hr'), geoCtrl.fixOfficeUniversal);
+router.patch ('/geofence/:employee_id/:location_id/toggle',   authenticate, authorize('admin','super_admin','hr'), geoCtrl.toggleUniversal);
+router.delete('/geofence/:employee_id/:location_id',          authenticate, authorize('admin','super_admin'), geoCtrl.removeBuffer);
+
+// ── Buffer Rules ──────────────────────────────────────────────────────────────
+router.post  ('/geofence/validate-buffer',                    authenticate,                           geoCtrl.validateBuffer);
+router.get   ('/geofence/boundary',                           authenticate,                           geoCtrl.getBoundary);
+router.get   ('/geofence/buffer-rules',                       authenticate, authorize('admin','super_admin','hr'), geoCtrl.getAllBufferRules);
+router.get   ('/geofence/buffer-rules/:employee_id',          authenticate, authorize('admin','super_admin','hr'), geoCtrl.getBufferRule);
+router.post  ('/geofence/buffer-rules',                       authenticate, authorize('admin','super_admin','hr'), geoCtrl.upsertBufferRule);
+router.put   ('/geofence/buffer-rules/:employee_id',          authenticate, authorize('admin','super_admin','hr'), geoCtrl.upsertBufferRule);
+router.delete('/geofence/buffer-rules/:employee_id',          authenticate, authorize('admin','super_admin'), geoCtrl.deleteBufferRule);
+
+// ── Separation ────────────────────────────────────────────────────────────────
+// NOTE: Specific/static routes MUST come before generic routes (POST /separations,
+//       GET /separations) to avoid Express matching them against the HR_ADMIN guard.
+router.get ('/separations/notice-period',        authenticate,                                                        sepCtrl.getNoticePeriod);
+router.post('/separations/resign',               authenticate, xlsxUpload.single('attachment'),                       sepCtrl.submitResignation);
+router.post('/separations/process-lwd',          authenticate, authorize('super_admin','admin'),                      sepCtrl.processLWD);
+router.get ('/separations/my',                   authenticate,                                                        sepCtrl.getMySeparations);
+router.get ('/separations/bulk-template',        authenticate, authorize(...HR_ADMIN),                                sepCtrl.bulkSeparateTemplate);
+router.get ('/separations/:id',                  authenticate,                                                        sepCtrl.getOne);
+router.get ('/separations/:id/attachment',        authenticate,                                                        sepCtrl.downloadAttachment);
+router.post('/separations/:id/withdraw',         authenticate,                                                        sepCtrl.withdraw);
+router.post('/separations/:id/manager-action',   authenticate, authorize('manager','tl','admin','super_admin'),       sepCtrl.managerAction);
+router.post('/separations/:id/hr-action',        authenticate, authorize('hr','admin','super_admin'),                 sepCtrl.hrAction);
+router.post('/separations/:id/accounts-action',  authenticate, authorize('accounts','admin','super_admin'),           sepCtrl.accountsAction);
+router.post('/separations/:id/admin-action',     authenticate, authorize('admin','super_admin'),                      sepCtrl.adminAction);
+// Generic routes last
+router.get ('/separations',                      authenticate, authorize(...HR_ADMIN),                                sepCtrl.getAll);
+router.post('/separations',                      authenticate, authorize(...HR_ADMIN),                                sepCtrl.initiate);
+router.post('/separations/bulk-import',          authenticate, authorize(...HR_ADMIN), xlsxUpload.single('file'),     sepCtrl.bulkSeparateImport);
+router.post('/separations/backfill-approvals',   authenticate, authorize(...HR_ADMIN),                                sepCtrl.backfillApprovals);
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+router.get('/notifications', authenticate, async (req, res) => {
+  try {
+    const db     = require('../config/db');
+    const result = await db.query(
+      `SELECT * FROM notifications WHERE employee_id=$1 AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY created_at DESC LIMIT 50`,
+      [req.user.id]
+    );
+    const unread = result.rows.filter(n => !n.is_read).length;
+    res.json({ success: true, data: result.rows, unread });
+  } catch(e) { res.status(500).json({ success: false, message: 'Server error' }); }
+});
+
+// read-all MUST come before :id/read to prevent route conflict
+router.patch('/notifications/read-all', authenticate, async (req, res) => {
+  try {
+    await require('../config/db').query(
+      `UPDATE notifications SET is_read=true WHERE employee_id=$1`,
+      [req.user.id]
+    );
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ success: false, message: 'Server error' }); }
+});
+
+router.patch('/notifications/:id/read', authenticate, async (req, res) => {
+  try {
+    await require('../config/db').query(
+      `UPDATE notifications SET is_read=true WHERE id=$1 AND employee_id=$2`,
+      [req.params.id, req.user.id]
+    );
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ success: false, message: 'Server error' }); }
+});
+
+// ── Departments & Designations ────────────────────────────────────────────────
+router.get('/departments', authenticate, async (req, res) => {
+  const r = await require('../config/db').query('SELECT * FROM departments ORDER BY name');
+  res.json({ success: true, data: r.rows });
+});
+router.get('/designations', authenticate, async (req, res) => {
+  const r = await require('../config/db').query('SELECT * FROM designations ORDER BY title');
+  res.json({ success: true, data: r.rows });
+});
+
+// ── Holidays ──────────────────────────────────────────────────────────────────
+router.get('/holidays', authenticate, async (req, res) => {
+  try {
+    const db   = require('../config/db');
+    const { getEmployeeRegion } = require('../config/regionHelper');
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+
+    // Get employee's city/state
+    const empInfo = await db.query(
+      `SELECT e.city, e.state, e.reporting_manager_id,
+              m.city AS mgr_city, m.state AS mgr_state
+       FROM employees e
+       LEFT JOIN employees m ON e.reporting_manager_id = m.id
+       WHERE e.id=$1`, [req.user.id]
+    );
+    const emp = empInfo.rows[0];
+    const city  = emp?.city  || '';
+    const state = emp?.state || '';
+
+    // WFH or blank location → use manager's location as fallback
+    const isWFH = city.toLowerCase().includes('work from home') ||
+                  city.toLowerCase().includes('wfh') ||
+                  (!city.trim() && !state.trim());
+
+    const region = isWFH
+      ? getEmployeeRegion(emp?.mgr_city || '', emp?.mgr_state || '')
+      : getEmployeeRegion(city, state);
+
+    const r = await db.query(
+      `SELECT id, name, TO_CHAR(date,'YYYY-MM-DD') AS date, type, region, description, year
+       FROM holidays
+       WHERE year=$1 AND (region='all' OR region=$2)
+       ORDER BY date ASC`,
+      [year, region]
+    );
+    res.json({ success: true, data: r.rows });
+  } catch(e) { res.status(500).json({ success: false, message: 'Server error' }); }
+});
+
+// ── Birthdays ─────────────────────────────────────────────────────────────────
+
+// GET /birthdays/upcoming — today + next 7 days, with like/wish counts
+router.get('/birthdays/upcoming', authenticate, async (req, res) => {
+  try {
+    const db     = require('../config/db');
+    const empId  = req.user.id;
+    const today  = new Intl.DateTimeFormat('en-CA', { timeZone: CONFIG.timezone || 'Asia/Kolkata',
+      year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+
+    // Fetch employees whose birthday falls in next 7 days (month/day match, ignore year)
+    const result = await db.query(`
+      SELECT
+        e.id,
+        CONCAT(e.first_name,' ',e.last_name) AS full_name,
+        e.employee_code,
+        d.name   AS department_name,
+        des.title AS designation_title,
+        TO_CHAR(e.date_of_birth,'MM-DD') AS birth_md,
+        TO_CHAR(e.date_of_birth,'DD Mon') AS birth_display,
+        gs.offset_days AS days_until,
+        COALESCE((SELECT COUNT(*) FROM birthday_likes  bl WHERE bl.birthday_emp_id=e.id AND bl.like_date=$1),0) AS like_count,
+        COALESCE((SELECT COUNT(*) FROM birthday_wishes bw WHERE bw.birthday_emp_id=e.id AND bw.wish_date=$1),0) AS wish_count,
+        COALESCE(EXISTS(SELECT 1 FROM birthday_likes  bl WHERE bl.birthday_emp_id=e.id AND bl.from_emp_id=$2 AND bl.like_date=$1),false) AS i_liked,
+        COALESCE(EXISTS(SELECT 1 FROM birthday_wishes bw WHERE bw.birthday_emp_id=e.id AND bw.from_emp_id=$2 AND bw.wish_date=$1),false) AS i_wished
+      FROM employees e
+      JOIN generate_series(0, 7) AS gs(offset_days)
+        ON TO_CHAR(e.date_of_birth, 'MM-DD') = TO_CHAR((NOW() AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}')::date + (gs.offset_days || ' days')::interval, 'MM-DD')
+      LEFT JOIN departments  d   ON e.department_id  = d.id
+      LEFT JOIN designations des ON e.designation_id = des.id
+      WHERE e.is_active = TRUE
+        AND e.date_of_birth IS NOT NULL
+      ORDER BY gs.offset_days ASC, e.first_name ASC
+    `, [today, empId]);
+
+    res.json({ success: true, data: result.rows });
+  } catch(e) {
+    console.error('Birthday fetch error:', e.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// POST /birthdays/:id/like — toggle like for today's birthday
+router.post('/birthdays/:id/like', authenticate, async (req, res) => {
+  try {
+    const db           = require('../config/db');
+    const birthdayEmpId = parseInt(req.params.id);
+    const fromEmpId    = req.user.id;
+    const today        = new Intl.DateTimeFormat('en-CA', { timeZone: CONFIG.timezone || 'Asia/Kolkata',
+      year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+
+    // Check if already liked
+    const existing = await db.query(
+      `SELECT id FROM birthday_likes WHERE birthday_emp_id=$1 AND from_emp_id=$2 AND like_date=$3`,
+      [birthdayEmpId, fromEmpId, today]
+    );
+
+    if (existing.rows.length) {
+      // Unlike
+      await db.query(`DELETE FROM birthday_likes WHERE id=$1`, [existing.rows[0].id]);
+      return res.json({ success: true, liked: false, message: 'Like removed' });
+    }
+
+    // Like
+    await db.query(
+      `INSERT INTO birthday_likes(birthday_emp_id, from_emp_id, like_date) VALUES($1,$2,$3)`,
+      [birthdayEmpId, fromEmpId, today]
+    );
+
+    // Notify the birthday person
+    const liker = await db.query(`SELECT first_name, last_name FROM employees WHERE id=$1`, [fromEmpId]);
+    if (liker.rows.length) {
+      await db.query(
+        `INSERT INTO notifications(employee_id, title, message, type)
+         VALUES($1,'❤️ Birthday Like',$2,'birthday')
+         ON CONFLICT DO NOTHING`,
+        [birthdayEmpId, `${liker.rows[0].first_name} ${liker.rows[0].last_name} liked your birthday! 🎂`]
+      );
+    }
+
+    const count = await db.query(
+      `SELECT COUNT(*) FROM birthday_likes WHERE birthday_emp_id=$1 AND like_date=$2`,
+      [birthdayEmpId, today]
+    );
+    res.json({ success: true, liked: true, like_count: parseInt(count.rows[0].count) });
+  } catch(e) {
+    console.error('Birthday like error:', e.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// POST /birthdays/:id/wish — send a birthday wish
+router.post('/birthdays/:id/wish', authenticate, async (req, res) => {
+  try {
+    const db            = require('../config/db');
+    const birthdayEmpId = parseInt(req.params.id);
+    const fromEmpId     = req.user.id;
+    const { message }   = req.body;
+    const today         = new Intl.DateTimeFormat('en-CA', { timeZone: CONFIG.timezone || 'Asia/Kolkata',
+      year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+
+    if (!message?.trim())
+      return res.status(400).json({ success: false, message: 'Message required' });
+
+    await db.query(
+      `INSERT INTO birthday_wishes(birthday_emp_id, from_emp_id, wish_date, message)
+       VALUES($1,$2,$3,$4)
+       ON CONFLICT(birthday_emp_id, from_emp_id, wish_date) DO UPDATE SET message=EXCLUDED.message`,
+      [birthdayEmpId, fromEmpId, today, message.trim()]
+    );
+
+    // Notify birthday person
+    const wisher = await db.query(`SELECT first_name, last_name FROM employees WHERE id=$1`, [fromEmpId]);
+    if (wisher.rows.length) {
+      await db.query(
+        `INSERT INTO notifications(employee_id, title, message, type)
+         VALUES($1,'🎂 Birthday Wish',$2,'birthday')`,
+        [birthdayEmpId, `${wisher.rows[0].first_name} ${wisher.rows[0].last_name}: "${message.trim().slice(0,80)}"`]
+      );
+    }
+
+    res.json({ success: true, message: 'Wish sent! 🎉' });
+  } catch(e) {
+    console.error('Birthday wish error:', e.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// GET /birthdays/:id/wishes — get all wishes for a birthday person today
+router.get('/birthdays/:id/wishes', authenticate, async (req, res) => {
+  try {
+    const db = require('../config/db');
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: CONFIG.timezone || 'Asia/Kolkata',
+      year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+
+    const result = await db.query(`
+      SELECT bw.id, bw.message, bw.created_at,
+             bw.from_emp_id,
+             CONCAT(e.first_name,' ',e.last_name) AS from_name,
+             e.employee_code AS from_code
+      FROM birthday_wishes bw
+      JOIN employees e ON e.id = bw.from_emp_id
+      WHERE bw.birthday_emp_id=$1 AND bw.wish_date=$2
+      ORDER BY bw.created_at DESC
+    `, [parseInt(req.params.id), today]);
+
+    res.json({ success: true, data: result.rows });
+  } catch(e) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// DELETE /birthdays/wishes/:id — delete own wish
+router.delete('/birthdays/wishes/:id', authenticate, async (req, res) => {
+  try {
+    const db     = require('../config/db');
+    const wishId = parseInt(req.params.id);
+    const empId  = req.user.id;
+    // Only allow deleting own wishes
+    const result = await db.query(
+      `DELETE FROM birthday_wishes WHERE id=$1 AND from_emp_id=$2 RETURNING id`,
+      [wishId, empId]
+    );
+    if (!result.rows.length)
+      return res.status(403).json({ success: false, message: 'Not found or not your wish' });
+    res.json({ success: true, message: 'Wish deleted' });
+  } catch(e) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ── Work Anniversaries ────────────────────────────────────────────────────────
+// GET /anniversaries/upcoming — today + next 7 days work anniversaries
+router.get('/anniversaries/upcoming', authenticate, async (req, res) => {
+  try {
+    const db    = require('../config/db');
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: CONFIG.timezone || 'Asia/Kolkata',
+      year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+    const todayIST   = new Date(new Date().toLocaleString('en-US', { timeZone: CONFIG.timezone || 'Asia/Kolkata' }));
+    const currentYear = todayIST.getFullYear();
+    const fromEmpId  = req.user.id;
+
+    // Find employees whose joining date MM-DD falls in today → next 7 days
+    const result = await db.query(
+      `SELECT
+         e.id, e.employee_code,
+         CONCAT(e.first_name,' ',e.last_name) AS full_name,
+         e.joining_date,
+         d.name AS department_name,
+         des.title AS designation_title,
+         TO_CHAR(e.joining_date,'MM-DD') AS join_md,
+         TO_CHAR(e.joining_date,'DD Mon') AS join_display,
+         ($1::int - EXTRACT(YEAR FROM e.joining_date)::int) AS years_completed,
+         CASE
+           WHEN TO_CHAR(e.joining_date,'MMDD') = TO_CHAR(NOW() AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}','MMDD')
+           THEN 0
+           ELSE (
+             TO_DATE(TO_CHAR($1::int,'9999') || '-' || TO_CHAR(e.joining_date,'MM-DD'), 'YYYY-MM-DD')
+             - CURRENT_DATE
+           )
+         END AS days_until,
+         COALESCE(EXISTS(
+           SELECT 1 FROM birthday_likes bl
+           WHERE bl.birthday_emp_id=e.id AND bl.from_emp_id=$2 AND bl.like_date=$3
+         ),false) AS i_liked,
+         COALESCE((SELECT COUNT(*) FROM birthday_likes bl
+           WHERE bl.birthday_emp_id=e.id AND bl.like_date=$3),0) AS like_count,
+         COALESCE(EXISTS(
+           SELECT 1 FROM birthday_wishes bw
+           WHERE bw.birthday_emp_id=e.id AND bw.from_emp_id=$2 AND bw.wish_date=$3
+         ),false) AS i_wished,
+         COALESCE((SELECT COUNT(*) FROM birthday_wishes bw
+           WHERE bw.birthday_emp_id=e.id AND bw.wish_date=$3),0) AS wish_count
+       FROM employees e
+       LEFT JOIN departments d ON e.department_id = d.id
+       LEFT JOIN designations des ON e.designation_id = des.id
+       WHERE e.is_active = true
+         AND e.joining_date IS NOT NULL
+         AND EXTRACT(YEAR FROM e.joining_date) < $1
+         AND (
+           TO_CHAR(e.joining_date,'MMDD') = TO_CHAR(NOW() AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}','MMDD')
+           OR (
+             TO_CHAR(e.joining_date,'MMDD') > TO_CHAR(NOW() AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}','MMDD')
+             AND TO_CHAR(e.joining_date,'MMDD') <= TO_CHAR((NOW() AT TIME ZONE '${CONFIG.timezone || "Asia/Kolkata"}' + INTERVAL '7 days'),'MMDD')
+           )
+         )
+       ORDER BY TO_CHAR(e.joining_date,'MMDD') ASC`,
+      [currentYear, fromEmpId, today]
+    );
+
+    res.json({ success: true, data: result.rows });
+  } catch(e) {
+    console.error('Anniversary fetch error:', e.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ── Offer Letters ─────────────────────────────────────────────────────────────
+router.get   ('/offer-letters',              authenticate, authorize('hr'), offerCtrl.getAll);
+router.post  ('/offer-letters',              authenticate, authorize('hr'), offerCtrl.create);
+router.get   ('/offer-letters/:id/preview',  authenticate, authorize('hr', 'admin', 'super_admin'), offerCtrl.preview);
+router.get   ('/offer-letters/:id',          authenticate, authorize('hr'), offerCtrl.getOne);
+router.put   ('/offer-letters/:id',          authenticate, authorize('hr'), offerCtrl.update);
+router.delete('/offer-letters/:id',          authenticate, authorize('hr'), offerCtrl.remove);
+router.post  ('/offer-letters/:id/send',     authenticate, authorize('hr'), offerCtrl.sendEmail);
+router.post  ('/offer-letters/bulk-send',    authenticate, authorize('hr'), xlsxUpload.single('file'), offerCtrl.bulkSend);
+
+// ── Relieving Letters ─────────────────────────────────────────────────────────
+router.get ('/relieving-letters/eligible',          authenticate, authorize('hr', 'admin', 'super_admin'), relievingCtrl.getEligible);
+router.get ('/relieving-letters/preview/:id',       authenticate, authorize('hr', 'admin', 'super_admin'), relievingCtrl.preview);
+router.put ('/relieving-letters/update-email/:id',  authenticate, authorize('hr', 'admin', 'super_admin'), relievingCtrl.updateEmail);
+router.put ('/relieving-letters/update-dates/:id',  authenticate, authorize('hr', 'admin', 'super_admin'), relievingCtrl.updateDates);
+router.post('/relieving-letters/send/:id',          authenticate, authorize('hr', 'admin', 'super_admin'), relievingCtrl.sendRelievingLetter);
+router.post('/relieving-letters/bulk-send',         authenticate, authorize('hr', 'admin', 'super_admin'), relievingCtrl.bulkSend);
+router.post('/relieving-letters/bulk-send-excel',   authenticate, authorize('hr', 'admin', 'super_admin'), xlsxUpload.single('file'), relievingCtrl.bulkSendExcel);
+
+// ── Test Email (debug only) ───────────────────────────────────────────────────
+router.get('/test-email', authenticate, async (req, res) => {
+  try {
+    const emailSvc = require('../config/emailService');
+    const emp = await require('../config/db').query(
+      `SELECT email, first_name FROM employees WHERE id=$1`, [req.user.id]
+    );
+    const email = emp.rows[0]?.email;
+    if (!email) return res.json({ success: false, message: 'No email found for your account' });
+
+    await emailSvc.send({
+      to:      email,
+      toName:  emp.rows[0].first_name,
+      subject: '✅ HRMS Email Test',
+      preview: 'Email system is working!',
+      html: `
+        <div style="font-size:24px;text-align:center;padding:20px">✅</div>
+        <div style="font-size:18px;font-weight:700;text-align:center;color:#1B5E20">Email System Working!</div>
+        <p style="text-align:center;color:#555;margin-top:12px">
+          This is a test email from HRMS.<br>
+          Sent to: <strong>${email}</strong><br>
+          Time: ${new Date().toLocaleString('en-IN', { timeZone: CONFIG.timezone || 'Asia/Kolkata' })}
+        </p>
+        <p style="text-align:center;font-size:12px;color:#999">
+          EMAIL_ENABLED=${process.env.EMAIL_ENABLED}<br>
+          EMAIL_FROM=${process.env.EMAIL_FROM}<br>
+          BREVO_USER=${process.env.BREVO_SMTP_USER}
+        </p>`
+    });
+
+    res.json({ success: true, message: `Test email sent to ${email}` });
+  } catch(err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── IT Declaration & Tax ──────────────────────────────────────────────────────
+router.get   ('/it-declaration',                    authenticate,                                          itDeclCtrl.getDeclaration);
+router.get   ('/it-declaration/all',                authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.getAllDeclarations);
+router.get   ('/it-declaration/export-excel',       authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.exportExcel);
+router.get   ('/it-declaration/tax-preview',        authenticate,                                          itDeclCtrl.taxPreview);
+router.get   ('/it-declaration/proofs',             authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.getProofsByDeclaration);
+router.get   ('/it-declaration/config',             authenticate,                                          itDeclCtrl.getConfig);
+router.get   ('/it-declaration/dashboard',          authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.getDashboard);
+router.post  ('/it-declaration',                    authenticate,                                          itDeclCtrl.saveDeclaration);
+router.post  ('/it-declaration/proof',              authenticate, itDeclCtrl.uploadMiddleware,             itDeclCtrl.uploadProof);
+router.post  ('/it-declaration/config',             authenticate, authorize('hr','admin','super_admin'),   itDeclCtrl.saveConfig);
+router.get   ('/it-declaration/proof/:id',          authenticate,                                          itDeclCtrl.getProof);
+router.delete('/it-declaration/proof/:id',          authenticate,                                          itDeclCtrl.deleteProof);
+router.get   ('/it-declaration/:id',                authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.getDeclarationById);
+router.post  ('/it-declaration/:id/review',         authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.reviewDeclaration);
+router.post  ('/it-declaration/proof/:id/review',   authenticate, authorize('hr','accounts','admin','super_admin'), itDeclCtrl.reviewProof);
+
+// ── Employee Documents module ─────────────────────────────────────────────────
+router.get   ('/documents/checklist',     authenticate,                    docsCtrl.getChecklistDefs);
+router.get   ('/documents/employees',     authenticate, authorize('hr','admin','super_admin'), docsCtrl.getEmployeesForPicker);
+router.get   ('/documents/download-zip/:employee_id', authenticate,        docsCtrl.downloadZip);
+router.get   ('/documents/bulk-download-zip',          authenticate,        docsCtrl.bulkDownloadZip);
+router.get   ('/documents',                authenticate,                    docsCtrl.getDocuments);
+router.post  ('/documents/upload',         authenticate, docsCtrl.uploadMiddleware, docsCtrl.uploadDocument);
+router.post  ('/documents/upload-multi',   authenticate, (req, res, next) => {
+  docsCtrl.uploadMultiMiddleware(req, res, (err) => {
+    if (err) return res.status(400).json({ success: false, message: err.message || 'File upload error' });
+    next();
+  });
+}, docsCtrl.uploadMultiDocument);
+router.get   ('/documents/file/:id',       authenticate,                    docsCtrl.getFile);
+router.delete('/documents/:id',            authenticate,                    docsCtrl.deleteDocument);
+
+// ── Project Budget Tracking ───────────────────────────────────────────────────
+const projCtrl = require('../controllers/projectController');
+
+router.get   ('/projects/summary',                  authenticate, authorize('accounts','super_admin','admin'), projCtrl.getSummary);
+router.get   ('/projects/pending-reports',          authenticate, projCtrl.pendingReports);
+router.get   ('/projects/employees/:empId/allocation', authenticate, authorize('accounts','super_admin','admin'), projCtrl.getEmployeeAllocation);
+router.put   ('/projects/employees/:empId/allocation', authenticate, authorize('accounts','super_admin','admin'), projCtrl.setSalaryAllocation);
+router.get   ('/projects',                          authenticate, authorize('accounts','super_admin','admin','manager','tl','hr'), projCtrl.listProjects);
+router.post  ('/projects',                          authenticate, authorize('accounts','super_admin','admin'), projCtrl.createProject);
+router.get   ('/projects/:id',                      authenticate, authorize('accounts','super_admin','admin','manager','tl','hr'), projCtrl.getProject);
+router.put   ('/projects/:id',                      authenticate, authorize('accounts','super_admin','admin'), projCtrl.updateProject);
+router.delete('/projects/:id',                      authenticate, authorize('accounts','super_admin','admin'), projCtrl.deleteProject);
+router.post  ('/projects/:id/assign',               authenticate, authorize('accounts','super_admin','admin'), projCtrl.assignEmployee);
+router.delete('/projects/:id/employees/:empId',     authenticate, authorize('accounts','super_admin','admin'), projCtrl.removeEmployee);
+router.post  ('/projects/:id/expenditure',          authenticate, authorize('accounts','super_admin','admin'), projCtrl.addExpenditure);
+router.get   ('/projects/:id/expenditures',         authenticate, authorize('accounts','super_admin','admin','manager'), projCtrl.getExpenditures);
+router.get   ('/projects/:id/export',               authenticate, authorize('accounts','super_admin','admin'), projCtrl.exportProjectExcel);
+router.get   ('/projects/:id/reports',              authenticate, projCtrl.listReports);
+router.post  ('/projects/:id/reports',              authenticate, projCtrl.submitReport);
+router.patch ('/projects/reports/:reportId',        authenticate, projCtrl.updateReport);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CHAT ROUTES — v3 (WhatsApp + Google Meet grade)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Groups ───────────────────────────────────────────────────────────────────
+router.get   ('/chat/groups',                             authenticate, chatCtrl.listGroups);
+router.post  ('/chat/groups',                             authenticate, chatCtrl.createGroup);
+router.get   ('/chat/groups/join/:inviteCode',            authenticate, chatCtrl.joinByLink);
+router.get   ('/chat/groups/:id',                         authenticate, chatCtrl.getGroup);
+router.patch ('/chat/groups/:id',                         authenticate, chatCtrl.updateGroup);
+router.post  ('/chat/groups/:id/members',                 authenticate, chatCtrl.addMembers);
+router.delete('/chat/groups/:id/members/:memberId',       authenticate, chatCtrl.removeMember);
+router.post  ('/chat/groups/:id/invite-link/reset',       authenticate, chatCtrl.resetInviteLink);
+router.post  ('/chat/groups/:id/mute',                    authenticate, chatCtrl.muteGroup);
+router.delete('/chat/groups/:id/mute',                    authenticate, chatCtrl.unmuteGroup);
+router.delete('/chat/groups/:id',                         authenticate, chatCtrl.deleteGroupForMe);
+router.delete('/chat/groups/:id/messages',                authenticate, chatCtrl.clearGroupMessages);
+router.post  ('/chat/groups/:id/promote/:memberId',       authenticate, chatCtrl.promoteAdmin);
+router.post  ('/chat/groups/:id/demote/:memberId',        authenticate, chatCtrl.demoteAdmin);
+router.get   ('/chat/groups/:id/search',                  authenticate, chatCtrl.searchMessages);
+
+// ── Messages ─────────────────────────────────────────────────────────────────
+router.get   ('/chat/groups/:id/messages',                authenticate, chatCtrl.getMessages);
+router.post  ('/chat/groups/:id/messages',                authenticate, chatCtrl.sendMessage);
+// ── File upload: direct (<=50 MB) + chunked (up to 1 GB) ─────────────────────
+const fileCtrl = require('../controllers/chatFileController');
+router.post  ('/chat/groups/:id/files', authenticate, (req, res, next) => {
+  fileCtrl.directUploadMiddleware(req, res, (err) => {
+    if (err) return res.status(400).json({ success: false, message: err.message });
+    next();
+  });
+}, fileCtrl.sendFile);
+// Chunked upload
+router.post  ('/chat/upload/init',                        authenticate, fileCtrl.initUpload);
+router.post  ('/chat/upload/chunk/:uploadId',             authenticate, fileCtrl.uploadChunk);
+router.post  ('/chat/upload/complete/:uploadId',          authenticate, fileCtrl.completeUpload);
+router.delete('/chat/upload/abort/:uploadId',             authenticate, fileCtrl.abortUpload);
+router.get   ('/chat/upload/status/:uploadId',            authenticate, fileCtrl.uploadStatus);
+router.patch ('/chat/messages/:id',                       authenticate, chatCtrl.editMessage);
+router.delete('/chat/messages/:id/me',                    authenticate, chatCtrl.deleteForMe);
+router.delete('/chat/messages/:id/everyone',              authenticate, chatCtrl.deleteForEveryone);
+
+// ── Delivery / Read receipts ──────────────────────────────────────────────────
+router.post  ('/chat/messages/delivered',                 authenticate, chatCtrl.markDelivered);
+router.post  ('/chat/messages/seen',                      authenticate, chatCtrl.markSeen);
+
+// ── Reactions ─────────────────────────────────────────────────────────────────
+router.post  ('/chat/messages/:id/reactions',             authenticate, chatCtrl.addReaction);
+
+// ── Pinned messages ───────────────────────────────────────────────────────────
+router.post  ('/chat/messages/:id/pin',                   authenticate, chatCtrl.pinMessage);
+router.delete('/chat/messages/:id/pin',                   authenticate, chatCtrl.unpinMessage);
+
+// ── Presence ──────────────────────────────────────────────────────────────────
+router.post  ('/chat/presence',                           authenticate, chatCtrl.updatePresence);
+router.post  ('/chat/presence/offline',                    authenticate, chatCtrl.markOffline);
+router.get   ('/chat/presence',                           authenticate, chatCtrl.getPresence);
+
+// ── Scheduled meetings ────────────────────────────────────────────────────────
+
+// ── Static file serving ───────────────────────────────────────────────────────
+router.get   ('/chat/files/:id',  fileCtrl.serveFile);
+router.get   ('/api/chat/files/:id', fileCtrl.serveFile);
+
+// ── Call History ──────────────────────────────────────────────────────────────
+
+
+
+// ── Performance ──────────────────────────────────────────────────────────
+const perfCtrl = require('../controllers/performanceController');
+router.get   ('/performance/cycles',                    authenticate,                                       perfCtrl.getCycles);
+router.post  ('/performance/cycles',                    authenticate, authorize('hr','admin','super_admin'), perfCtrl.createCycle);
+router.get   ('/performance/cycles/:id',                authenticate,                                       perfCtrl.getCycle);
+router.post  ('/performance/cycles/:id/initiate',       authenticate, authorize('hr','admin','super_admin'), perfCtrl.initiateCycle);
+router.get   ('/performance/my-reviews',                authenticate,                                       perfCtrl.getMyReviews);
+router.get   ('/performance/team-reviews',              authenticate,                                       perfCtrl.getTeamReviews);
+router.get   ('/performance/review/:id',                authenticate,                                       perfCtrl.getReview);
+router.post  ('/performance/review/:id/goals',          authenticate,                                       perfCtrl.addGoal);
+router.put   ('/performance/review/:id/goals/:goalId',  authenticate,                                       perfCtrl.updateGoal);
+router.delete('/performance/review/:id/goals/:goalId',  authenticate,                                       perfCtrl.deleteGoal);
+router.post  ('/performance/review/:id/submit',         authenticate,                                       perfCtrl.submitReview);
+router.post  ('/performance/review/:id/complete',       authenticate, authorize('hr','admin','super_admin'), perfCtrl.completeReview);
+router.get   ('/performance/summary/:employee_id',      authenticate,                                       perfCtrl.getSummary);
+router.get   ('/performance/all',                       authenticate, authorize('hr','admin','super_admin'), perfCtrl.getAllReviews);
+router.post  ('/performance/assign-reviewer',           authenticate, authorize('hr','admin','super_admin'), perfCtrl.assignReviewer);
+
+router.get   ('/geofence/unassigned-employees', authenticate, authorize('admin','super_admin','hr'), geoCtrl.getUnassignedEmployeesGlobal);
+router.post  ('/geofence/fix-office-universal',  authenticate, authorize('admin','super_admin','hr'), geoCtrl.fixOfficeUniversal);
+
+// ── Employee Documents (new) ─────────────────────────────────────────────────
+const empDocsCtrl = require('../controllers/empDocsController');
+router.get   ('/emp-documents/types',                                         authenticate, empDocsCtrl.getDocumentTypes);
+router.get   ('/emp-documents/file/:id',     authenticate, empDocsCtrl.getFile);
+router.get   ('/emp-documents/:employee_id',                                  authenticate, empDocsCtrl.getDocuments);
+router.post  ('/emp-documents/upload', authenticate, empDocsCtrl.upload.single('file'), empDocsCtrl.uploadDocument);
+router.delete('/emp-documents/:id',                                           authenticate, empDocsCtrl.deleteDocument);
+// Multi-file upload for the documents checklist page
+router.post  ('/emp-documents/upload-multi', authenticate, (req, res, next) => {
+  docsCtrl.uploadMultiMiddleware(req, res, (err) => {
+    if (err) return res.status(400).json({ success: false, message: err.message || 'File upload error' });
+    next();
+  });
+}, docsCtrl.uploadMultiDocument);
+
+// ── Previous Employment ───────────────────────────────────────────────────────
+router.get   ('/prev-employment/:employee_id', authenticate, empDocsCtrl.getPrevEmployment);
+router.post  ('/prev-employment',              authenticate, empDocsCtrl.upsertPrevEmployment);
+router.delete('/prev-employment/:id',          authenticate, empDocsCtrl.deletePrevEmployment);
+
+// ── Qualifications ────────────────────────────────────────────────────────────
+router.get   ('/qualifications/:employee_id',  authenticate, empDocsCtrl.getQualifications);
+router.post  ('/qualifications',               authenticate, empDocsCtrl.upsertQualification);
+router.delete('/qualifications/:id',           authenticate, empDocsCtrl.deleteQualification);
+
+// ── Onboarding Tracker (HR only) ─────────────────────────────────────────────
+router.get ('/onboarding/steps',                    authenticate, authorize(...HR_ADMIN), onboardCtrl.getSteps);
+router.get ('/onboarding/dashboard',                authenticate, authorize(...HR_ADMIN), onboardCtrl.getDashboard);
+router.post('/onboarding/seed-all',                 authenticate, authorize(...HR_ADMIN), onboardCtrl.seedAll);
+router.get ('/onboarding',                          authenticate, authorize(...HR_ADMIN), onboardCtrl.getAll);
+router.get ('/onboarding/:employee_id',             authenticate, authorize(...HR_ADMIN), onboardCtrl.getEmployee);
+router.get ('/onboarding/:employee_id/history',     authenticate, authorize(...HR_ADMIN), onboardCtrl.getHistory);
+router.post('/onboarding/:employee_id/step',        authenticate, authorize(...HR_ADMIN), onboardCtrl.updateStep);
+router.post('/onboarding/:employee_id/bulk',        authenticate, authorize(...HR_ADMIN), onboardCtrl.bulkUpdate);
+
+// ── Send Documents (HR → Employee ad-hoc document delivery) ──────────────────
+const sendDocsCtrl = require('../controllers/sendDocumentsController');
+router.post ('/send-documents/send',          authenticate, authorize(...HR_ADMIN), sendDocsCtrl.uploadMiddleware, sendDocsCtrl.send);
+router.get  ('/send-documents/received',      authenticate,                         sendDocsCtrl.getReceived);
+router.get  ('/send-documents/sent',          authenticate, authorize(...HR_ADMIN), sendDocsCtrl.getSent);
+router.get  ('/send-documents/file/:id',      authenticate,                         sendDocsCtrl.getFile);
+router.get  ('/send-documents/zip/:batch_id', authenticate,                         sendDocsCtrl.getZip);
+router.delete('/send-documents/:id',          authenticate,                         sendDocsCtrl.deleteDoc);
+
+module.exports = router;
