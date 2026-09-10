@@ -181,16 +181,6 @@
         <label class="form-label">Comments *</label>
         <textarea id="sep-reason" class="form-control" rows="3" placeholder="Please explain your reason for leaving. This will be reviewed by your manager and HR."></textarea>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Personal Email Id *</label>
-          <input id="sep-personal-email" class="form-control" type="email" placeholder="you@example.com">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Contact Number *</label>
-          <input id="sep-contact-number" class="form-control" type="tel" placeholder="10-digit mobile number">
-        </div>
-      </div>
       <div class="form-group">
         <label class="form-label">Attach Document <span style="color:var(--muted);font-weight:400">(optional — resignation letter, etc.)</span></label>
         <input id="sep-attachment" class="form-control" type="file">
@@ -939,14 +929,10 @@ async function submitResignation() {
   const reason                   = document.getElementById('sep-reason').value.trim();
   const suggested_lwd            = document.getElementById('sep-lwd').value;
   const resignation_reason_category = document.getElementById('sep-reason-category').value;
-  const personal_email           = document.getElementById('sep-personal-email').value.trim();
-  const contact_number           = document.getElementById('sep-contact-number').value.trim();
   const fileInput                = document.getElementById('sep-attachment');
 
   if (!notice_date || !reason)              { toast('All fields are required', 'error'); return; }
   if (!resignation_reason_category)         { toast('Please select a Resignation Reason', 'error'); return; }
-  if (!personal_email)                      { toast('Personal Email Id is required', 'error'); return; }
-  if (!contact_number)                      { toast('Contact Number is required', 'error'); return; }
 
   const fd = new FormData();
   fd.append('type', type);
@@ -954,8 +940,6 @@ async function submitResignation() {
   fd.append('reason', reason);
   fd.append('suggested_lwd', suggested_lwd);
   fd.append('resignation_reason_category', resignation_reason_category);
-  fd.append('personal_email', personal_email);
-  fd.append('contact_number', contact_number);
   if (fileInput.files[0]) fd.append('attachment', fileInput.files[0]);
 
   let data;
