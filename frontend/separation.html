@@ -254,6 +254,16 @@
         <label class="form-label">Approver <span style="color:var(--muted);font-weight:400">(auto-filled — employee's reporting manager)</span></label>
         <input id="init-approver" class="form-control" disabled placeholder="Select an employee first">
       </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Personal Email Id</label>
+          <input id="init-personal-email" class="form-control" type="email" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contact Number</label>
+          <input id="init-contact-number" class="form-control" type="tel" placeholder="10-digit mobile number">
+        </div>
+      </div>
       <div class="form-group">
         <label class="form-label">Reason / Comments *</label>
         <textarea id="init-reason" class="form-control" rows="3" placeholder="Reason for this separation…"></textarea>
@@ -969,6 +979,8 @@ function openInitiateModal() {
   document.getElementById('init-emp-selected').style.display = 'none';
   document.getElementById('init-emp-search').style.display = '';
   document.getElementById('init-approver').value = '';
+  document.getElementById('init-personal-email').value = '';
+  document.getElementById('init-contact-number').value = '';
   document.getElementById('init-reason').value = '';
   document.getElementById('init-notice').value = new Date().toISOString().split('T')[0];
   document.getElementById('init-notice-applicable').value = 'yes';
@@ -1005,6 +1017,7 @@ async function initSelectEmp(e) {
   document.getElementById('init-emp-selected').style.display = 'flex';
   document.getElementById('init-emp-selected-name').textContent = `${e.first_name} ${e.last_name} (${e.employee_code})`;
   document.getElementById('init-approver').value = e.manager_name || '— No Manager —';
+  document.getElementById('init-contact-number').value = e.phone || '';
   initRecalcLwd();
 }
 
@@ -1049,12 +1062,14 @@ async function submitInitiateSeparation() {
   const type = document.getElementById('init-type').value;
   const notice_date = document.getElementById('init-notice').value;
   const last_working_date = document.getElementById('init-lwd').value;
+  const personal_email = document.getElementById('init-personal-email').value.trim();
+  const contact_number = document.getElementById('init-contact-number').value.trim();
   const reason = document.getElementById('init-reason').value.trim();
   if (!employee_id) { toast('Please select an employee', 'error'); return; }
   if (!notice_date || !reason) { toast('All fields are required', 'error'); return; }
   if (!last_working_date) { toast('Last Working Date is required', 'error'); return; }
 
-  const data = await api('POST', '/separations', { employee_id, type, reason, notice_date, last_working_date });
+  const data = await api('POST', '/separations', { employee_id, type, reason, notice_date, last_working_date, personal_email, contact_number });
   if (data?.success) {
     toast(data.message || 'Separation initiated', 'success');
     closeModal('initiate-modal');
