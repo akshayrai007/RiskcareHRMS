@@ -894,10 +894,14 @@ exports.bulkSeparateTemplate = async (req, res) => {
     const empRes = await db.query(
       `SELECT e.employee_code, e.first_name, e.last_name, e.branch,
               e.joining_date, e.personal_mobile, e.personal_email,
+              e.division, e.date_of_birth, e.gender, e.email, e.phone,
+              e.address_line1, e.state, e.permanent_address, e.permanent_state,
+              m.first_name AS mgr_first, m.last_name AS mgr_last,
               d.name AS department_name, des.title AS designation_title
        FROM employees e
        LEFT JOIN departments  d   ON e.department_id  = d.id
        LEFT JOIN designations des ON e.designation_id = des.id
+       LEFT JOIN employees    m   ON e.reporting_manager_id = m.id
        WHERE e.is_active = true ORDER BY e.employee_code LIMIT 1`
     );
     const sample = empRes.rows[0];
@@ -908,29 +912,53 @@ exports.bulkSeparateTemplate = async (req, res) => {
         'Employee Name':            sample ? `${sample.first_name} ${sample.last_name}` : 'John Doe',
         'Branch':                   sample?.branch || 'Mumbai',
         'Designation':              sample?.designation_title || 'Executive',
+        'Division':                 sample?.division || 'Operations',
         'Date of Joining':          sample?.joining_date ? new Date(sample.joining_date).toISOString().split('T')[0] : '2022-01-01',
         'Last Working Day':         '2026-08-31',
+        'Date of Birth':            sample?.date_of_birth ? new Date(sample.date_of_birth).toISOString().split('T')[0] : '1995-01-15',
+        'Reporting Officer':        sample ? `${sample.mgr_first||''} ${sample.mgr_last||''}`.trim() || 'Manager Name' : 'Manager Name',
         'Department':               sample?.department_name || 'Operations',
+        'Band Grade':               'L4',
+        'Official Email ID':        sample?.email || 'john.doe@company.com',
+        'Official Mobile Number':   sample?.phone || '9876543210',
+        'Separation Reason':        'Personal reasons',
+        'Gender':                   sample?.gender || 'Male',
         'Personal Mobile Number':   sample?.personal_mobile || '9876543210',
         'Personal Email ID':        sample?.personal_email || 'john.doe@gmail.com',
+        'Present Address':          sample?.address_line1 || '123 Main Street',
+        'Present State':            sample?.state || 'Maharashtra',
+        'Permanent Address':        sample?.permanent_address || '123 Main Street',
+        'Permanent State':          sample?.permanent_state || 'Maharashtra',
       }
     ];
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(data);
-    ws['!cols'] = [{ wch: 14 }, { wch: 24 }, { wch: 16 }, { wch: 20 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 22 }, { wch: 28 }];
+    ws['!cols'] = Object.keys(data[0]).map(() => ({ wch: 20 }));
     XLSX.utils.book_append_sheet(wb, ws, 'Resigned Employees');
 
     const legend = [
-      { 'Field': 'Employee ID', 'Instructions': 'Required. Must match an existing ACTIVE employee_code exactly (e.g. E066). This is the only column used to find the employee.' },
+      { 'Field': 'Employee ID', 'Instructions': 'Required. Must match an existing employee_code exactly (e.g. E066). This is the only column used to find the employee.' },
       { 'Field': 'Employee Name', 'Instructions': 'For your reference only, to confirm you picked the right row. Also used to create a new record if the Employee ID is not found.' },
-      { 'Field': 'Branch', 'Instructions': 'For your reference only. Not used to update existing employees.' },
-      { 'Field': 'Designation', 'Instructions': 'For your reference only when updating an existing employee. Used when creating a new legacy record (auto-creates the designation if it does not already exist).' },
-      { 'Field': 'Date of Joining', 'Instructions': 'Format YYYY-MM-DD. For your reference only when updating an existing employee. Used when creating a new legacy record.' },
+      { 'Field': 'Branch', 'Instructions': 'Updates the employee\'s Branch. Leave blank to keep the existing value unchanged.' },
+      { 'Field': 'Designation', 'Instructions': 'Updates the employee\'s Designation (auto-creates it if it does not already exist). Leave blank to keep the existing value unchanged.' },
+      { 'Field': 'Division', 'Instructions': 'Updates the employee\'s Division. Leave blank to keep the existing value unchanged.' },
+      { 'Field': 'Date of Joining', 'Instructions': 'Format YYYY-MM-DD. Only used when creating a brand-new legacy record; existing employees keep their original joining date.' },
       { 'Field': 'Last Working Day', 'Instructions': 'Required. Format YYYY-MM-DD. This becomes the separation date. Defaults to today if blank.' },
-      { 'Field': 'Department', 'Instructions': 'For your reference only when updating an existing employee. Used when creating a new legacy record (auto-creates the department if it does not already exist).' },
-      { 'Field': 'Personal Mobile Number', 'Instructions': 'For your reference only when updating an existing employee. Used when creating a new legacy record.' },
-      { 'Field': 'Personal Email ID', 'Instructions': 'For your reference only when updating an existing employee. Used when creating a new legacy record — becomes their login email if no other email exists.' },
+      { 'Field': 'Date of Birth', 'Instructions': 'Format YYYY-MM-DD. Updates the employee\'s Date of Birth. Leave blank to keep the existing value unchanged.' },
+      { 'Field': 'Reporting Officer', 'Instructions': 'Free-text name of the employee\'s reporting manager at the time of separation — stored as-is (does not need to match an active employee record). Leave blank to keep the existing value unchanged.' },
+      { 'Field': 'Department', 'Instructions': 'Updates the employee\'s Department (auto-creates it if it does not already exist). Leave blank to keep the existing value unchanged.' },
+      { 'Field': 'Band Grade', 'Instructions': 'Updates the employee\'s Band Grade (e.g. L1–L5) — same field as "Band Grade" on the Edit Employee form. Leave blank to keep the existing value unchanged.' },
+      { 'Field': 'Official Email ID', 'Instructions': 'Updates the employee\'s official/login email. Leave blank to keep the existing value unchanged — this is their login ID, so only fill this in if it genuinely needs correcting.' },
+      { 'Field': 'Official Mobile Number', 'Instructions': 'Updates the employee\'s official phone number. Leave blank to keep the existing value unchanged.' },
+      { 'Field': 'Separation Reason', 'Instructions': 'Reason for leaving (e.g. Resigned, Terminated, Retired). Defaults to a generic legacy-import note if blank.' },
+      { 'Field': 'Gender', 'Instructions': 'Updates the employee\'s Gender. Leave blank to keep the existing value unchanged.' },
+      { 'Field': 'Personal Mobile Number', 'Instructions': 'Updates the employee\'s personal mobile number. Leave blank to keep the existing value unchanged.' },
+      { 'Field': 'Personal Email ID', 'Instructions': 'Updates the employee\'s personal email. Leave blank to keep the existing value unchanged.' },
+      { 'Field': 'Present Address', 'Instructions': 'Updates the employee\'s present address. Leave blank to keep the existing value unchanged.' },
+      { 'Field': 'Present State', 'Instructions': 'Updates the employee\'s present-address state. Leave blank to keep the existing value unchanged.' },
+      { 'Field': 'Permanent Address', 'Instructions': 'Updates the employee\'s permanent address. Leave blank to keep the existing value unchanged.' },
+      { 'Field': 'Permanent State', 'Instructions': 'Updates the employee\'s permanent-address state. Leave blank to keep the existing value unchanged.' },
       { 'Field': '', 'Instructions': '' },
       { 'Field': '⚠ WARNING', 'Instructions': 'This IMMEDIATELY deactivates the employee login and marks them Resigned/Inactive. It skips the normal 4-level approval workflow — use only for backfilling employees who have already left.' },
     ];
@@ -986,11 +1014,17 @@ exports.backfillApprovals = async (req, res) => {
 
 // ── Bulk Resignation/Separation Import (Excel) ───────────────────────────────
 // Columns expected: Employee ID, Employee Name, Branch, Designation,
-// Date of Joining, Last Working Day, Department, Personal Mobile Number,
-// Personal Email ID. Only "Employee ID" and "Last Working Day" are required
-// to update an EXISTING employee — the rest are used when the Employee ID
-// isn't found and a new legacy (already-resigned) record is created from the
-// sheet's own data instead of being skipped.
+// Division, Date of Joining, Last Working Day, Date of Birth,
+// Reporting Officer, Department, Band Grade, Official Email ID,
+// Official Mobile Number, Separation Reason, Gender, Personal Mobile Number,
+// Personal Email ID, Present Address, Present State, Permanent Address,
+// Permanent State. Only "Employee ID" and "Last Working Day" are required.
+// Every other column is optional and, when filled in, updates the matching
+// employee record (see buildOptionalUpdates/applyOptionalUpdates below) so
+// it shows up on that employee's card — a blank cell always leaves the
+// existing value untouched. When the Employee ID isn't found, a new legacy
+// (already-resigned) record is created from the sheet's own data instead of
+// being skipped.
 // Marks each matched employee is_active=false immediately AND inserts a
 // completed separations record (so it shows up in the All Separations list),
 // skipping the 4-level workflow — for backfilling employees who already
@@ -1066,6 +1100,55 @@ exports.bulkSeparateImport = async (req, res) => {
     return r.rows[0].id;
   }
 
+  // ── Build the set of "extra" employee fields carried by the resigned-
+  // employee sheet (Division, DOB, Reporting Officer, Band Grade, official
+  // contact details, present/permanent address, etc). Every cell is
+  // optional here — a blank cell means "leave the existing value alone",
+  // exactly like the Bank columns on the payroll salary sheet, so re-
+  // uploading a partially-filled sheet never wipes out data already saved.
+  async function buildOptionalUpdates(client, row) {
+    const str = (v) => { const s = String(v ?? '').trim(); return s ? s : null; };
+    const out = {};
+    if (str(row['Branch']))                 out.branch = str(row['Branch']);
+    if (str(row['Division']))                out.division = str(row['Division']);
+    const dob = parseExcelDate(row['Date of Birth']);
+    if (dob)                                 out.date_of_birth = dob;
+    if (str(row['Reporting Officer']))       out.reporting_officer = str(row['Reporting Officer']);
+    if (str(row['Band Grade']))              out.level = str(row['Band Grade']);
+    if (str(row['Official Email ID']))       out.email = str(row['Official Email ID']).toLowerCase();
+    if (str(row['Official Mobile Number']))  out.phone = str(row['Official Mobile Number']);
+    if (str(row['Gender']))                  out.gender = str(row['Gender']);
+    if (str(row['Personal Mobile Number']))  out.personal_mobile = str(row['Personal Mobile Number']);
+    if (str(row['Personal Email ID']))       out.personal_email = str(row['Personal Email ID']).toLowerCase();
+    if (str(row['Present Address']))         out.address_line1 = str(row['Present Address']);
+    if (str(row['Present State']))           out.state = str(row['Present State']);
+    if (str(row['Permanent Address']))       out.permanent_address = str(row['Permanent Address']);
+    if (str(row['Permanent State']))         out.permanent_state = str(row['Permanent State']);
+
+    const deptName = str(row['Department']);
+    if (deptName) {
+      const deptId = await findOrCreateDept(client, deptName);
+      if (deptId) out.department_id = deptId;
+    }
+    const desigName = str(row['Designation']);
+    if (desigName) {
+      const desigId = await findOrCreateDesignation(client, desigName, out.department_id || null);
+      if (desigId) out.designation_id = desigId;
+    }
+    return out;
+  }
+
+  async function applyOptionalUpdates(client, empId, optUpdates) {
+    const keys = Object.keys(optUpdates);
+    if (!keys.length) return;
+    const sets = [], params = [];
+    let idx = 1;
+    for (const key of keys) { sets.push(`${key}=$${idx++}`); params.push(optUpdates[key]); }
+    sets.push(`updated_at=NOW()`);
+    params.push(empId);
+    await client.query(`UPDATE employees SET ${sets.join(',')} WHERE id=$${idx}`, params);
+  }
+
   let updated = 0, created = 0, repaired = 0, skipped = 0;
   const errors = [];
   const client = await db.getClient();
@@ -1090,6 +1173,11 @@ exports.bulkSeparateImport = async (req, res) => {
       try {
         let empId = empMap[empCode];
         let isNewRecord = false;
+        // Every extra field the resigned-employee sheet may carry (Division,
+        // DOB, Reporting Officer, Band Grade, official contact details,
+        // present/permanent address, etc). Computed once per row and applied
+        // to whichever employee record this row resolves to below.
+        const optUpdates = await buildOptionalUpdates(client, row);
 
         if (!empId && allCodesMap[empCode]) {
           // Already inactive/resigned — instead of skipping, repair the
@@ -1112,6 +1200,10 @@ exports.bulkSeparateImport = async (req, res) => {
             `UPDATE employees SET separation_date=$1, updated_at=NOW() WHERE id=$2`,
             [sepDate, existingEmpId]
           );
+          // Backfill the card's extra fields (Band Grade, Reporting Officer,
+          // addresses, etc.) on the already-resigned record too, so re-
+          // uploading the sheet with more complete data still fills the gaps.
+          await applyOptionalUpdates(client, existingEmpId, optUpdates);
           await client.query(`RELEASE SAVEPOINT ${sp}`);
           repaired++;
           continue;
@@ -1183,6 +1275,13 @@ exports.bulkSeparateImport = async (req, res) => {
            WHERE id=$4`,
           [sepDate, sepType, reason, empId]
         );
+        // Fill in Division, DOB, Reporting Officer, Band Grade, official
+        // contact details, present/permanent address, etc. — for a new
+        // legacy record most of this duplicates the INSERT above (harmless,
+        // same values); for an existing employee this is what actually
+        // carries the sheet's data onto their record so it shows up on
+        // their employee card.
+        await applyOptionalUpdates(client, empId, optUpdates);
         await client.query(`RELEASE SAVEPOINT ${sp}`);
         if (isNewRecord) created++; else updated++;
       } catch (rowErr) {
