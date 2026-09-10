@@ -437,3 +437,73 @@ exports.masterUpdate = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error: ' + err.message });
   } finally { client.release(); }
 };
+
+// Generate the Employee Import template on the fly, so it always matches the
+// COL mapping this controller actually parses (no more stale/missing static
+// file). Layout: Row1 title, Row2 headers, Row3 sample/hint row (filtered out
+// on import because its employee_code starts with "kcms00"), Row4+ blank for
+// data — matches the "title+header+hint = start at index 3" logic above.
+// A second sheet lists Department/Designation/Employee IDs for lookup.
+exports.downloadImportTemplate = async (req, res) => {
+  try {
+    const HEADERS = [
+      'Employee Code*', 'Password (optional)', 'First Name*', 'Last Name',
+      'Email*', 'Phone', 'Alternate Phone', 'Gender', 'Date of Birth (YYYY-MM-DD)',
+      'Blood Group', 'Marital Status', 'Joining Date (YYYY-MM-DD)', 'Employment Type',
+      'Role', 'Department ID', 'Designation ID',
+      'Reporting Manager ID', 'Team Leader ID',
+      'PAN Number', 'Aadhar Number', 'UAN Number',
+      'Bank Name', 'Bank Account', 'Bank IFSC', 'Bank Branch',
+      'Address Line 1', 'City', 'State', 'Pincode',
+      'Probation End Date (YYYY-MM-DD)', 'Notes'
+    ];
+
+    const sampleRow = [
+      'KCMS001 (SAMPLE — DELETE THIS ROW)', '', 'John', 'Doe',
+      'john.doe@example.com', '9999999999', '', 'Male', '1995-01-15',
+      'O+', 'Single', '2026-01-01', 'Full-Time',
+      'employee', '1', '1',
+      '', '',
+      '', '', '',
+      '', '', '', '',
+      '', '', '', '',
+      '', ''
+    ];
+
+    const rows = [
+      ['HRMS — Employee Import Template  (Roles: employee, tl, manager, hr, accounts, admin)'],
+      HEADERS,
+      sampleRow
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = HEADERS.map(() => ({ wch: 20 }));
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: HEADERS.length - 1 } }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Employee Import');
+
+    // Reference sheet — Department/Designation IDs to use above
+    const [deptRes, desigRes] = await Promise.all([
+      db.query(`SELECT id, name FROM departments ORDER BY name`),
+      db.query(`SELECT id, title, department_id FROM designations ORDER BY title`)
+    ]);
+    const refRows = [
+      ['Department ID', 'Department Name'],
+      ...deptRes.rows.map(d => [d.id, d.name]),
+      [],
+      ['Designation ID', 'Designation Title', 'Department ID'],
+      ...desigRes.rows.map(d => [d.id, d.title, d.department_id])
+    ];
+    const wsRef = XLSX.utils.aoa_to_sheet(refRows);
+    wsRef['!cols'] = [{ wch: 16 }, { wch: 28 }, { wch: 16 }];
+    XLSX.utils.book_append_sheet(wb, wsRef, 'Reference (IDs)');
+
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="employee_import_template.xlsx"');
+    res.send(buf);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+  }
+};
