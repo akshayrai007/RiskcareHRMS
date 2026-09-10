@@ -293,7 +293,7 @@ function openDetailsPopup(id) {
     ['Date of Joining', formatDate(n.joining_date)],
     ['Email', n.email || '—'],
     ...(Role.isAdminOrHR() ? [['Contact', n.phone || '—']] : []),
-    ['Emergency Contact', n.emergency_contact_phone || '—'],
+    ...(Role.isAdminOrHR() ? [['Emergency Contact', n.emergency_contact_phone || '—']] : []),
     ['Designation', n.designation_title || n.role || '—'],
     ['Branch', n.city || '—'],
   ];
