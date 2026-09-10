@@ -1265,7 +1265,23 @@ exports.bulkSeparateImport = async (req, res) => {
           const firstName = nameParts[0] || empCode;
           const lastName  = nameParts.slice(1).join(' ') || '';
           const personalEmail  = String(row['Personal Email ID'] || row['Official Email ID'] || '').trim().toLowerCase();
-          const email      = personalEmail || `${empCode.toLowerCase()}.resigned@legacy.local`;
+          let email = personalEmail || `${empCode.toLowerCase()}.resigned@legacy.local`;
+          // Guard against employees.email's unique constraint: if this address
+          // is already used by a different employee record, don't let that
+          // fail the whole row (previously threw "duplicate key value
+          // violates unique constraint employees_email_key" and left the
+          // employee un-deactivated). Fall back to a legacy placeholder
+          // instead and just warn — the real address is preserved either way
+          // in personal_email below.
+          if (email) {
+            const dupe = await client.query(
+              `SELECT id FROM employees WHERE LOWER(email)=$1 LIMIT 1`, [email]
+            );
+            if (dupe.rows.length) {
+              warnings.push(`${empCode}: email "${email}" already used by another employee (id ${dupe.rows[0].id}) — used a legacy placeholder email instead`);
+              email = `${empCode.toLowerCase()}.resigned@legacy.local`;
+            }
+          }
           const personalMobile = String(row['Personal Mobile Number'] || row['Official Mobile Number'] || '').trim() || null;
           const branch     = String(row['Branch'] || '').trim() || null;
           const deptId     = await findOrCreateDept(client, String(row['Department'] || '').trim());
