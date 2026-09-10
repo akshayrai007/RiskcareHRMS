@@ -107,7 +107,7 @@ exports.getAll = async (req, res) => {
          e.id, e.employee_code, e.first_name, e.last_name, e.email, e.phone,
          e.gender, e.joining_date, e.role, e.is_active, e.employment_type,
          e.employee_category, e.provision_end_date, e.confirmed_date,
-         e.saturday_policy,
+         e.saturday_policy, e.emergency_contact_phone,
          e.department_id, e.designation_id, e.reporting_manager_id, e.team_leader_id,
          e.basic_salary, e.ctc, e.city,
          e.separation_date, e.separation_type, e.separation_reason,
