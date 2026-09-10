@@ -145,14 +145,7 @@
           <input id="sep-applied-date" class="form-control" disabled>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Type of Separation *</label>
-        <select id="sep-type" class="form-control">
-          <option value="resignation">Resignation (Voluntary)</option>
-          <option value="mutual-separation">Mutual Separation</option>
-          <option value="retirement">Retirement</option>
-        </select>
-      </div>
+      <input type="hidden" id="sep-type" value="resignation">
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Notice Date (today) *</label>
@@ -173,7 +166,6 @@
           <input id="sep-lwd" class="form-control" type="date" placeholder="Auto-calculated">
           <div id="sep-lwd-note" style="font-size:11px;color:var(--muted);margin-top:4px">💡 You can suggest a later date; earlier than notice period is not allowed.</div>
         </div>
-      </div>
       </div>
       <div class="form-group">
         <label class="form-label">Approver <span style="color:var(--muted);font-weight:400">(auto — your reporting manager)</span></label>
@@ -402,24 +394,12 @@ let _sepNoticeDays = 0; // cached from server, used by sepRecalcLwd()
   }
 })();
 
-// Recalculate Tentative/Actual Relieving Date whenever Notice Date or the
-// Notice Period Applicable (Yes/No) toggle changes.
+// Recalculate Tentative/Actual Relieving Date whenever Notice Date changes.
 function sepRecalcLwd() {
   const noticeDate  = document.getElementById('sep-notice').value;
-  const applicable  = document.getElementById('sep-notice-applicable').value;
   const lwdEl       = document.getElementById('sep-lwd');
   const noteEl      = document.getElementById('sep-lwd-note');
   if (!noticeDate) return;
-
-  if (applicable === 'no') {
-    // Employee is requesting a notice-period waiver — Last Working Date becomes
-    // freely editable (subject to manager/HR approval), no minimum enforced here.
-    lwdEl.min = '';
-    if (!lwdEl.value) lwdEl.value = noticeDate;
-    document.getElementById('sep-tentative-lwd').value = noticeDate;
-    noteEl.textContent = '⚠ You are requesting a notice period waiver — this is subject to your manager/HR approval.';
-    return;
-  }
 
   const d = new Date(noticeDate);
   d.setDate(d.getDate() + _sepNoticeDays);
