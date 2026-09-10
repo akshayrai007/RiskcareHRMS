@@ -1166,3 +1166,44 @@ exports.bulkSeparateImport = async (req, res) => {
     client.release();
   }
 };
+
+// ── Fix a placeholder/wrong Last Working Date for an already-separated
+// employee (e.g. the 1970 serial-date bug, or a bulk import that fell back
+// to "today" because the sheet's LWD cell was blank). HR/Admin only.
+// Updates both the completed separation record and employees.separation_date
+// so every view (Directory, Separated tab, exports) stays in sync.
+exports.fixLastWorkingDate = async (req, res) => {
+  const client = await db.getClient();
+  try {
+    const employeeId = parseInt(req.params.id);
+    const { last_working_date } = req.body;
+    if (!employeeId || !last_working_date)
+      return res.status(400).json({ success: false, message: 'employeeId and last_working_date are required' });
+
+    await client.query('BEGIN');
+
+    const sep = await client.query(
+      `SELECT id FROM separations WHERE employee_id=$1 ORDER BY created_at DESC LIMIT 1`,
+      [employeeId]
+    );
+    if (sep.rows.length) {
+      await client.query(
+        `UPDATE separations SET last_working_date=$1, updated_at=NOW() WHERE id=$2`,
+        [last_working_date, sep.rows[0].id]
+      );
+    }
+    await client.query(
+      `UPDATE employees SET separation_date=$1, updated_at=NOW() WHERE id=$2`,
+      [last_working_date, employeeId]
+    );
+
+    await client.query('COMMIT');
+    res.json({ success: true, message: 'Last working date updated' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[fixLastWorkingDate]', err);
+    res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+  } finally {
+    client.release();
+  }
+};
