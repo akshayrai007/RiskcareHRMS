@@ -290,13 +290,11 @@ function openDetailsPopup(id) {
   const rows = [
     ['Name', nodeName(n)],
     ['Employee ID', n.employee_code || '—'],
-    ['Date of Birth', formatDate(n.date_of_birth)],
     ['Date of Joining', formatDate(n.joining_date)],
     ['Email', n.email || '—'],
-    ['Contact', n.phone || '—'],
+    ...(Role.isAdminOrHR() ? [['Contact', n.phone || '—']] : []),
     ['Emergency Contact', n.emergency_contact_phone || '—'],
     ['Designation', n.designation_title || n.role || '—'],
-    ['Blood Group', n.blood_group || '—'],
     ['Branch', n.city || '—'],
   ];
   document.getElementById('oc-modal-rows').innerHTML = rows.map(([label, value]) =>
