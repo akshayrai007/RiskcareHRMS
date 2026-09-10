@@ -531,6 +531,7 @@ router.get ('/separations',                      authenticate, authorize(...HR_A
 router.post('/separations',                      authenticate, authorize(...HR_ADMIN),                                sepCtrl.initiate);
 router.post('/separations/bulk-import',          authenticate, authorize(...HR_ADMIN), xlsxUpload.single('file'),     sepCtrl.bulkSeparateImport);
 router.post('/separations/backfill-approvals',   authenticate, authorize(...HR_ADMIN),                                sepCtrl.backfillApprovals);
+router.put ('/separations/employee/:id/fix-lwd', authenticate, authorize(...HR_ADMIN),                                sepCtrl.fixLastWorkingDate);
 
 // ── Notifications ─────────────────────────────────────────────────────────────
 router.get('/notifications', authenticate, async (req, res) => {
