@@ -1132,7 +1132,7 @@ exports.exportMasterExcel = async (req, res) => {
         e.blood_group || '', e.marital_status || '', e.address_line1 || '',
         e.city || '', e.state || '', e.department || '', e.designation || '',
         e.role || '', e.employee_category || '', e.level || '',
-        e.joining_date ? toISTDateString(new Date(e.joining_date)) : '',
+        (e.joining_date && new Date(e.joining_date).getFullYear() > 1980) ? toISTDateString(new Date(e.joining_date)) : '',
         e.reporting_manager || '',
         e.pan_number || '', e.aadhar_number || '', e.uan_number || '', e.pf_number || '',
         e.bank_name || '', e.bank_account || '', e.bank_ifsc || '',
