@@ -1293,6 +1293,20 @@ if (Role.is('hr', 'accounts')) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Department colors — deterministic so the same department always gets the
+// same color across chips, rows, and anywhere else we reference it ──────────
+const DEPT_PALETTE = [
+  '#ef4444','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316',
+  '#6366f1','#84cc16','#06b6d4','#d946ef','#0ea5e9','#eab308','#22c55e','#a855f7'
+];
+function deptColor(key) {
+  const s = String(key || '').trim().toLowerCase();
+  if (!s) return '#94a3b8';
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+  return DEPT_PALETTE[hash % DEPT_PALETTE.length];
+}
+
 loadDepartments();
 loadEmployees();
 
@@ -1311,7 +1325,7 @@ async function loadDepartments() {
   });
   const tabsEl = document.getElementById('dept-tabs');
   tabsEl.innerHTML = `<button class="dept-pill active" onclick="filterByDept('',this)">All</button>` +
-    data.data.map(d => `<button class="dept-pill" onclick="filterByDept('${d.id}',this)">${d.name} <span id="dept-cnt-${d.id}" style="opacity:.65"></span></button>`).join('');
+    data.data.map(d => `<button class="dept-pill" style="--dept-color:${deptColor(d.name)}" onclick="filterByDept('${d.id}',this)">${d.name} <span id="dept-cnt-${d.id}" style="opacity:.65"></span></button>`).join('');
 }
 
 // ── Edit modal: Department → Designation cascade ──────────────────────────────
@@ -1429,7 +1443,10 @@ function renderEmployees(list) {
   document.getElementById('emp-count').textContent = `${list.length} employee${list.length !== 1 ? 's' : ''}`;
   document.getElementById('emp-tbody').innerHTML = list.length ? list.map(e => {
     const inactive = e.is_active === false;
-    const rowStyle = inactive ? 'cursor:pointer;opacity:.65;background:rgba(239,68,68,.03)' : 'cursor:pointer';
+    const dColor = deptColor(e.department_name || e.department_id);
+    const rowStyle = inactive
+      ? `cursor:pointer;opacity:.65;background:rgba(239,68,68,.03);border-left:4px solid ${dColor}`
+      : `cursor:pointer;border-left:4px solid ${dColor};background:color-mix(in srgb, ${dColor} 5%, transparent)`;
     return `
     <tr style="${rowStyle}" onclick="showEmpDetail(${e.id})">
       <td>
@@ -1442,7 +1459,7 @@ function renderEmployees(list) {
         </div>
       </td>
       <td class="font-mono">${e.employee_code}</td>
-      <td>${e.department_name || '—'}</td>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${dColor};margin-right:6px;vertical-align:middle"></span>${e.department_name || '—'}</td>
       <td style="color:var(--text2)">${e.designation_title || '—'}</td>
       <td><span class="badge badge-${e.role}">${e.role}</span></td>
       <td>${(() => {
