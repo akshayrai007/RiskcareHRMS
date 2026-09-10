@@ -55,6 +55,12 @@ router.get   ('/employees/code-preview',  authenticate, authorize(...EMP_MGMT), 
 router.get   ('/employees/contacts',      authenticate,                          empCtrl.getContacts);
 router.get   ('/employees/:id',           authenticate,                          empCtrl.getOne);
 router.get   ('/employees/:id/designation-history', authenticate,                 empCtrl.getDesignationHistory);
+
+// ── History / Org Chart (controller existed but was never wired to a route) ──
+const historyCtrl = require('../controllers/historyController');
+router.get('/history/employees',      authenticate, authorize(...EMP_MGMT), historyCtrl.listEmployees);
+router.get('/history/employees/:id',  authenticate, authorize(...EMP_MGMT), historyCtrl.getEmployeeHistory);
+router.get('/org-chart',              authenticate,                        historyCtrl.getOrgChart);
 router.post  ('/employees',               authenticate, authorize(...EMP_MGMT),  empCtrl.create);
 router.put   ('/employees/:id',           authenticate, authorize(...EMP_MGMT),  empCtrl.update);
 router.patch ('/employees/:id',           authenticate, authorize(...EMP_MGMT),  empCtrl.update);
