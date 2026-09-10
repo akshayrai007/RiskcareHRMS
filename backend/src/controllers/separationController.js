@@ -1079,13 +1079,16 @@ exports.bulkSeparateImport = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Failed to parse Excel: ' + err.message });
   }
 
-  const empRes = await db.query(`SELECT id, employee_code, is_active FROM employees`);
+  const empRes = await db.query(`SELECT id, employee_code, is_active, first_name, last_name FROM employees`);
   const empMap = {};       // active employees only — eligible for separation
   const allCodesMap = {};  // every employee regardless of status — for diagnosing skips
+  const nameMap = {};      // "first last" (lowercased) -> employee id, for resolving Reporting Officer text to a real manager
   empRes.rows.forEach(r => {
     const code = (r.employee_code || '').trim().toUpperCase();
     allCodesMap[code] = r;
     if (r.is_active) empMap[code] = r.id;
+    const fullName = `${r.first_name || ''} ${r.last_name || ''}`.trim().toLowerCase().replace(/\s+/g, ' ');
+    if (fullName) nameMap[fullName] = r.id;
   });
 
   const deptRes = await db.query(`SELECT id, name FROM departments`);
@@ -1139,7 +1142,21 @@ exports.bulkSeparateImport = async (req, res) => {
     if (str(row['Division']))                out.division = str(row['Division']);
     const dob = parseExcelDate(row['Date of Birth']);
     if (dob)                                 out.date_of_birth = dob;
-    if (str(row['Reporting Officer']))       out.reporting_officer = str(row['Reporting Officer']);
+    // joining_date is handled separately (see JOINING_DATE_FILL_IF_EMPTY_KEY
+    // below) — for an *existing* employee it must only fill a currently-blank
+    // value, never overwrite a real joining date already on file.
+    const doj = parseExcelDate(row['Date of Joining']);
+    if (doj)                                 out.__joining_date_if_empty = doj;
+    if (str(row['Reporting Officer'])) {
+      out.reporting_officer = str(row['Reporting Officer']);
+      // Also resolve the free-text name to a real employee row when possible,
+      // so the Employees directory's "Reporting To" column (which only reads
+      // reporting_manager_id, not the text field) shows it too — previously
+      // this was only ever written to reporting_officer, so the directory
+      // list showed blank even though the card showed the name.
+      const key = out.reporting_officer.toLowerCase().replace(/\s+/g, ' ');
+      if (nameMap[key]) out.reporting_manager_id = nameMap[key];
+    }
     if (str(row['Band Grade']))              out.level = str(row['Band Grade']);
     if (str(row['Official Email ID']))       out.email = str(row['Official Email ID']).toLowerCase();
     if (str(row['Official Mobile Number']))  out.phone = str(row['Official Mobile Number']);
@@ -1172,7 +1189,15 @@ exports.bulkSeparateImport = async (req, res) => {
     try {
       const sets = [], params = [];
       let idx = 1;
-      for (const key of keys) { sets.push(`${key}=$${idx++}`); params.push(optUpdates[key]); }
+      for (const key of keys) {
+        if (key === '__joining_date_if_empty') {
+          // Fill-if-blank only: never clobber a joining_date that's already set.
+          sets.push(`joining_date=COALESCE(joining_date,$${idx++})`);
+        } else {
+          sets.push(`${key}=$${idx++}`);
+        }
+        params.push(optUpdates[key]);
+      }
       sets.push(`updated_at=NOW()`);
       params.push(empId);
       await client.query(`UPDATE employees SET ${sets.join(',')} WHERE id=$${idx}`, params);
