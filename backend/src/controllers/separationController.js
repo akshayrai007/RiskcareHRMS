@@ -791,7 +791,7 @@ exports.getAll = async (req, res) => {
     }
     const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
     const result = await db.query(
-      SEP_SELECT + ` ${where} ORDER BY s.created_at DESC`,
+      SEP_SELECT + ` ${where} ORDER BY s.last_working_date DESC NULLS LAST, s.created_at DESC`,
       params
     );
     // Attach deactivation info for inactive employees
