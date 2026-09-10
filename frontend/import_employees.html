@@ -87,7 +87,7 @@
       <div class="topbar-title">⬆ Import Employees</div>
     </div>
     <div class="topbar-right">
-      <a href="/outputs/1_employee_import_template.xlsx" class="btn btn-outline btn-sm" download>⬇ Download Template</a>
+      <button type="button" class="btn btn-outline btn-sm" onclick="downloadImportTemplate()">⬇ Download Template</button>
       <a href="employees.html" class="btn btn-outline btn-sm">← Back to Employees</a>
       <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
       <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
@@ -353,6 +353,23 @@ function showAlert(id, msg, type) {
 <script>
   if(typeof buildSidebar === 'function') buildSidebar('import_employees.html');
   if(typeof loadNotifBadge === 'function') loadNotifBadge();
+
+  async function downloadImportTemplate() {
+    try {
+      toast('Preparing import template…');
+      const res = await fetch(`${API_BASE}/employees/import-template`, {
+        headers: { Authorization: 'Bearer ' + Auth.getToken() }
+      });
+      if (!res.ok) { toast('Download failed', 'error'); return; }
+      const blob = await res.blob();
+      const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(blob),
+        download: 'employee_import_template.xlsx'
+      });
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch (e) { toast('Download failed: ' + e.message, 'error'); }
+  }
 </script>
 </body>
 </html>
