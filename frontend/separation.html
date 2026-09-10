@@ -158,24 +158,24 @@
           <label class="form-label">Notice Date (today) *</label>
           <input id="sep-notice" class="form-control" type="date">
         </div>
-        <div class="form-group" id="sep-notice-applicable-group" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Tentative Relieving Date <span style="color:var(--muted);font-weight:400">(auto)</span></label>
+          <input id="sep-tentative-lwd" class="form-control" disabled>
+        </div>
+      </div>
+      <div class="form-row" id="sep-notice-row" style="display:none">
+        <div class="form-group" id="sep-notice-applicable-group">
           <label class="form-label">Notice Period Applicable? *</label>
           <select id="sep-notice-applicable" class="form-control" onchange="sepRecalcLwd()">
             <option value="yes">Yes</option>
             <option value="no">No — requesting waiver</option>
           </select>
         </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group" id="sep-notice-period-group" style="display:none">
+        <div class="form-group" id="sep-notice-period-group">
           <label class="form-label">Notice Period <span style="color:var(--muted);font-weight:400">(select as per your terms)</span></label>
           <select id="sep-notice-period" class="form-control" onchange="sepRecalcLwd()">
             <option value="30">30 days</option>
           </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Tentative Relieving Date <span style="color:var(--muted);font-weight:400">(auto)</span></label>
-          <input id="sep-tentative-lwd" class="form-control" disabled>
         </div>
       </div>
       <div class="form-group">
@@ -469,8 +469,7 @@ if (Role.isAdminOrHR()) {
 // days) and only HR/Admin gets the controls to override them.
 if (Role.isAdminOrHR()) {
   document.getElementById('sep-type-group').style.display = '';
-  document.getElementById('sep-notice-applicable-group').style.display = '';
-  document.getElementById('sep-notice-period-group').style.display = '';
+  document.getElementById('sep-notice-row').style.display = '';
 }
 
 // Load pending count badge
