@@ -92,7 +92,6 @@
           </button>
         </div>
       </div>
-      <div id="dept-tabs" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px"></div>
       <style>
         table.excel-grid { border-collapse: collapse; width: 100%; }
         table.excel-grid th, table.excel-grid td { border: 1px solid var(--border); }
@@ -1323,9 +1322,6 @@ async function loadDepartments() {
     if (sel2) sel2.innerHTML += `<option value="${d.id}">${d.name}</option>`;
     if (sel3) sel3.innerHTML += `<option value="${d.id}">${d.name}</option>`;
   });
-  const tabsEl = document.getElementById('dept-tabs');
-  tabsEl.innerHTML = `<button class="dept-pill active" onclick="filterByDept('',this)">All</button>` +
-    data.data.map(d => `<button class="dept-pill" onclick="filterByDept('${d.id}',this)">${d.name} <span id="dept-cnt-${d.id}" style="opacity:.65"></span></button>`).join('');
 }
 
 // ── Edit modal: Department → Designation cascade ──────────────────────────────
@@ -1373,12 +1369,6 @@ async function loadEmployees() {
 
   // Render using CURRENT _statusFilter (caller sets it before calling us)
   filterEmployees();
-
-  const counts = activeList.reduce((a, e) => { a[e.department_id] = (a[e.department_id] || 0) + 1; return a; }, {});
-  Object.entries(counts).forEach(([id, cnt]) => {
-    const el = document.getElementById('dept-cnt-' + id);
-    if (el) el.textContent = cnt;
-  });
 }
 
 let _statusFilter = 'active'; // default: show active only
@@ -1405,13 +1395,6 @@ function setStatusFilter(val, btn) {
   filterEmployees();
 }
 
-function filterByDept(deptId, btn) {
-  document.querySelectorAll('#dept-tabs .dept-pill').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('dept-filter').value = deptId;
-  filterEmployees();
-}
-
 function filterEmployees() {
   const q    = document.getElementById('search').value.toLowerCase();
   const dept = document.getElementById('dept-filter').value;
@@ -1435,7 +1418,6 @@ function clearFilters() {
   document.getElementById('search').value      = '';
   document.getElementById('dept-filter').value = '';
   document.getElementById('role-filter').value = '';
-  document.querySelectorAll('#dept-tabs .dept-pill').forEach((b, i) => b.classList.toggle('active', i === 0));
   setStatusFilter('active', document.getElementById('status-pill-active'));
 }
 
