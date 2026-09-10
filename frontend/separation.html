@@ -159,27 +159,21 @@
           <input id="sep-notice" class="form-control" type="date">
         </div>
         <div class="form-group">
-          <label class="form-label">Notice Period Applicable? *</label>
-          <select id="sep-notice-applicable" class="form-control" onchange="sepRecalcLwd()">
-            <option value="yes">Yes</option>
-            <option value="no">No — requesting waiver</option>
-          </select>
+          <label class="form-label">Notice Period <span style="color:var(--muted);font-weight:400">(auto, based on your role)</span></label>
+          <input id="sep-notice-period" class="form-control" disabled placeholder="—">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Notice Period <span style="color:var(--muted);font-weight:400">(auto, based on your role)</span></label>
-          <input id="sep-notice-period" class="form-control" disabled placeholder="—">
-        </div>
-        <div class="form-group">
           <label class="form-label">Tentative Relieving Date <span style="color:var(--muted);font-weight:400">(auto)</span></label>
           <input id="sep-tentative-lwd" class="form-control" disabled>
         </div>
+        <div class="form-group">
+          <label class="form-label">Actual / Requested Last Working Date <span style="color:var(--muted);font-weight:400">(editable)</span></label>
+          <input id="sep-lwd" class="form-control" type="date" placeholder="Auto-calculated">
+          <div id="sep-lwd-note" style="font-size:11px;color:var(--muted);margin-top:4px">💡 You can suggest a later date; earlier than notice period is not allowed.</div>
+        </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Actual / Requested Last Working Date *</label>
-        <input id="sep-lwd" class="form-control" type="date" placeholder="Auto-calculated">
-        <div id="sep-lwd-note" style="font-size:11px;color:var(--muted);margin-top:4px">💡 You can suggest a later date; earlier than notice period is not allowed.</div>
       </div>
       <div class="form-group">
         <label class="form-label">Approver <span style="color:var(--muted);font-weight:400">(auto — your reporting manager)</span></label>
