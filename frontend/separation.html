@@ -139,6 +139,16 @@
         <div class="form-group">
           <label class="form-label">Employee</label>
           <input id="sep-emp-name" class="form-control" disabled>
+          <div id="sep-hr-emp-picker" style="display:none;margin-top:6px">
+            <input class="form-control" id="sep2-emp-search" placeholder="HR: search to file for another employee…"
+              oninput="sep2FilterEmps(this.value)" autocomplete="off" style="font-size:12px">
+            <div id="sep2-emp-dropdown" style="display:none;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);max-height:180px;overflow-y:auto;position:relative;z-index:10"></div>
+            <input type="hidden" id="sep2-emp-id">
+            <div id="sep2-emp-selected" style="display:none;margin-top:6px;padding:6px 10px;background:var(--accent-l);border-radius:var(--radius-sm);align-items:center;justify-content:space-between;font-size:12px">
+              <span id="sep2-emp-selected-name" style="font-weight:600;color:var(--accent)"></span>
+              <button type="button" onclick="sep2ClearEmp()" style="border:none;background:none;cursor:pointer;color:var(--muted)">✕ File for myself instead</button>
+            </div>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Applied Date</label>
@@ -472,6 +482,7 @@ if (Role.isAdminOrHR()) {
 if (Role.isAdminOrHR()) {
   document.getElementById('sep-type-group').style.display = '';
   document.getElementById('sep-notice-row').style.display = '';
+  document.getElementById('sep-hr-emp-picker').style.display = '';
 }
 
 // Load pending count badge
@@ -963,7 +974,89 @@ async function saveExitDetails() {
   else toast(data?.message||'Failed','error');
 }
 
+// HR-only: file a resignation/termination/etc. on behalf of another employee,
+// from the same "Submit Resignation" modal, reusing the shared employee cache.
+let sep2SelectedEmp = null;
+async function sep2FilterEmps(q) {
+  const dd = document.getElementById('sep2-emp-dropdown');
+  if (!q || q.trim().length < 2) { dd.style.display = 'none'; return; }
+  if (!initAllEmps.length) {
+    const data = await api('GET', '/employees?is_active=true');
+    initAllEmps = data?.data || data || [];
+  }
+  const term = q.trim().toLowerCase();
+  const matches = initAllEmps.filter(e =>
+    `${e.first_name} ${e.last_name}`.toLowerCase().includes(term) ||
+    (e.employee_code || '').toLowerCase().includes(term)
+  ).slice(0, 20);
+  dd.innerHTML = matches.map(e =>
+    `<div style="padding:8px 10px;cursor:pointer;font-size:13px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''" onclick='sep2SelectEmp(${JSON.stringify(e).replace(/'/g,"&apos;")})'>${e.first_name} ${e.last_name} (${e.employee_code}) — ${e.role}</div>`
+  ).join('') || '<div style="padding:8px 10px;font-size:13px;color:var(--muted)">No matches</div>';
+  dd.style.display = '';
+}
+
+function sep2SelectEmp(e) {
+  sep2SelectedEmp = e;
+  document.getElementById('sep2-emp-id').value = e.id;
+  document.getElementById('sep2-emp-search').style.display = 'none';
+  document.getElementById('sep2-emp-dropdown').style.display = 'none';
+  document.getElementById('sep2-emp-selected').style.display = 'flex';
+  document.getElementById('sep2-emp-selected-name').textContent = `${e.first_name} ${e.last_name} (${e.employee_code})`;
+  document.getElementById('sep-emp-name').value = `${e.first_name} ${e.last_name} (${e.employee_code})`;
+  document.getElementById('sep-approver').value = e.manager_name || '— No Manager —';
+}
+
+function sep2ClearEmp() {
+  sep2SelectedEmp = null;
+  document.getElementById('sep2-emp-id').value = '';
+  document.getElementById('sep2-emp-search').value = '';
+  document.getElementById('sep2-emp-search').style.display = '';
+  document.getElementById('sep2-emp-selected').style.display = 'none';
+  // Restore the logged-in HR user's own name/approver in the display fields.
+  (async () => {
+    const np = await api('GET', '/separations/notice-period');
+    if (np?.success && np.data.self) {
+      document.getElementById('sep-emp-name').value = `${np.data.self.employee_name} (${np.data.self.employee_code})`;
+      document.getElementById('sep-approver').value = np.data.self.approver_name;
+    }
+  })();
+}
+
 async function submitResignation() {
+  // HR/Admin filing on behalf of a different employee: reuse the existing,
+  // already role-safe "Initiate Separation" endpoint instead of the
+  // self-service one (which is locked to the logged-in user and to
+  // resignation-family types).
+  if (sep2SelectedEmp) {
+    const type          = document.getElementById('sep-type').value;
+    const reason         = document.getElementById('sep-reason').value.trim();
+    const notice_date    = document.getElementById('sep-notice').value;
+    const last_working_date = document.getElementById('sep-lwd').value;
+
+    if (!reason) { toast('Reason is required', 'error'); return; }
+
+    let data;
+    try {
+      data = await api('POST', '/separations', {
+        employee_id: sep2SelectedEmp.id,
+        type: type === 'mutual-separation' ? 'resignation' : type,
+        reason, notice_date, last_working_date
+      });
+    } catch (e) {
+      toast('Cannot connect to server', 'error');
+      return;
+    }
+
+    if (data?.success) {
+      toast(data.message || 'Separation initiated', 'success');
+      closeModal('resign-modal');
+      sep2ClearEmp();
+      loadPendingCount();
+      loadMySeparation();
+    } else toast(data?.message || 'Failed', 'error');
+    return;
+  }
+
   const type                     = document.getElementById('sep-type').value;
   const notice_date              = document.getElementById('sep-notice').value;
   const notice_applicable        = document.getElementById('sep-notice-applicable').value;
