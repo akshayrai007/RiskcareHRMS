@@ -698,7 +698,7 @@ exports.downloadAttendanceReport = async (req, res) => {
 
     const salaryHeaders = [
       'Emp Code', 'Name', 'Department', 'Designation',
-      'Basic', 'HRA', 'Conveyance', 'Special Allow', 'Gratuity', 'Gross Salary',
+      'Basic', 'HRA', 'Conveyance', 'Defray Allow', 'Gratuity', 'Gross Salary',
       'PF (Emp)', 'ESI (Emp)', 'Prof Tax', 'TDS', 'Advance EMI', 'Total Deductions',
       'Working Days', 'Effective Days', 'Earned Gross', 'Earned Net', 'Net Payable'
     ];
