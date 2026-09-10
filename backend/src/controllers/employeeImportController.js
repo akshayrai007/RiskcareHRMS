@@ -482,28 +482,34 @@ exports.downloadImportTemplate = async (req, res) => {
     ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: HEADERS.length - 1 } }];
     XLSX.utils.book_append_sheet(wb, ws, 'Employee Import');
 
-    // Reference sheet — Department/Designation IDs to use above
-    const [deptRes, desigRes] = await Promise.all([
-      db.query(`SELECT id, name FROM departments ORDER BY name`),
-      db.query(`SELECT id, title, department_id FROM designations ORDER BY title`)
-    ]);
-    const refRows = [
-      ['Department ID', 'Department Name'],
-      ...deptRes.rows.map(d => [d.id, d.name]),
-      [],
-      ['Designation ID', 'Designation Title', 'Department ID'],
-      ...desigRes.rows.map(d => [d.id, d.title, d.department_id])
-    ];
-    const wsRef = XLSX.utils.aoa_to_sheet(refRows);
-    wsRef['!cols'] = [{ wch: 16 }, { wch: 28 }, { wch: 16 }];
-    XLSX.utils.book_append_sheet(wb, wsRef, 'Reference (IDs)');
+    // Reference sheet — Department/Designation IDs to use above. Wrapped on
+    // its own: if this org's schema differs slightly (e.g. no department_id
+    // on designations), the main template must still download successfully.
+    try {
+      const [deptRes, desigRes] = await Promise.all([
+        db.query(`SELECT id, name FROM departments ORDER BY name`),
+        db.query(`SELECT id, title, department_id FROM designations ORDER BY title`)
+      ]);
+      const refRows = [
+        ['Department ID', 'Department Name'],
+        ...deptRes.rows.map(d => [d.id, d.name]),
+        [],
+        ['Designation ID', 'Designation Title', 'Department ID'],
+        ...desigRes.rows.map(d => [d.id, d.title, d.department_id])
+      ];
+      const wsRef = XLSX.utils.aoa_to_sheet(refRows);
+      wsRef['!cols'] = [{ wch: 16 }, { wch: 28 }, { wch: 16 }];
+      XLSX.utils.book_append_sheet(wb, wsRef, 'Reference (IDs)');
+    } catch (refErr) {
+      console.error('[downloadImportTemplate] reference sheet skipped:', refErr.message);
+    }
 
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="employee_import_template.xlsx"');
     res.send(buf);
   } catch (err) {
-    console.error(err);
+    console.error('[downloadImportTemplate]', err);
     res.status(500).json({ success: false, message: 'Server error: ' + err.message });
   }
 };
