@@ -1037,6 +1037,7 @@ async function initSelectEmp(e) {
   document.getElementById('init-joining-date').value = e.joining_date ? new Date(e.joining_date).toISOString().split('T')[0] : '—';
   document.getElementById('init-emergency-mobile').value = e.emergency_contact_phone || '— Not on file —';
   document.getElementById('init-contact-number').value = e.phone || '';
+  document.getElementById('init-personal-email').value = e.personal_email || '';
   initRecalcLwd();
 }
 
