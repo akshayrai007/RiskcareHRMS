@@ -872,6 +872,15 @@ async function start() {
           ALTER TABLE employees
           ADD COLUMN IF NOT EXISTS deactivation_remark TEXT DEFAULT NULL
         `).catch(() => {});
+        // ── Reporting Officer (free-text) — used by the bulk Separation/
+        // Resigned import so legacy HR data (former manager's name) can be
+        // captured even when that manager no longer exists as an active
+        // employee record (reporting_manager_id is an FK and can't hold an
+        // arbitrary name). Shown as a fallback in the employee card when
+        // reporting_manager_id / manager_name is blank. Band Grade reuses
+        // the existing `level` column (the Edit Employee form's "Band
+        // Grade" field) — no new column needed for that. ─────────────────
+        await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS reporting_officer VARCHAR(200) DEFAULT NULL`).catch(() => {});
         console.log('✅ DB schema ready');
         // NOTE: fixWrongAbsents, fixMissingPunchOuts, fixTimezoneShiftedLeaves removed from
         // startup — they held DB connections and starved the pool causing login timeouts.
