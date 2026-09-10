@@ -53,6 +53,7 @@ router.get   ('/employees/export-master',        authenticate, authorize(...EMP_
 router.get   ('/attendance/export-register',     authenticate, authorize('hr','accounts','super_admin'), empCtrl.exportAttendanceRegister);
 router.get   ('/employees/code-preview',  authenticate, authorize(...EMP_MGMT), empCtrl.previewNextCode);
 router.get   ('/employees/contacts',      authenticate,                          empCtrl.getContacts);
+router.get   ('/employees/import-template', authenticate, authorize(...EMP_MGMT), empImportCtrl.downloadImportTemplate);
 router.get   ('/employees/:id',           authenticate,                          empCtrl.getOne);
 router.get   ('/employees/:id/designation-history', authenticate,                 empCtrl.getDesignationHistory);
 
@@ -93,7 +94,6 @@ router.post('/employees/master-update',
   empImportCtrl.uploadMiddleware,
   empImportCtrl.masterUpdate
 );
-router.get('/employees/import-template', authenticate, authorize(...EMP_MGMT), empImportCtrl.downloadImportTemplate);
 
 // ── Attendance ────────────────────────────────────────────────────────────────
 router.post('/attendance/punch-in',         authenticate, attCtrl.punchIn);
