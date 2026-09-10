@@ -107,6 +107,12 @@ function toast(msg, type = 'success') {
 
 const fmt = {
   date:   s => { if (!s) return '—'; return new Date(s).toLocaleDateString(window.CFG.currencyLocale,{day:'2-digit',month:'short',year:'numeric'}); },
+  // Some legacy/imported records ended up with a "joining date" of 1970-01-01
+  // (or thereabouts) — either an Excel serial-number parsing bug on import, or
+  // a placeholder value someone typed for "unknown". No real employee joined
+  // before this company existed, so treat any date before this cutoff as
+  // "unknown" and show '—' instead of a misleading fake date.
+  isRealDate: s => { if (!s) return false; const d = new Date(s); return !isNaN(d.getTime()) && d.getFullYear() > 1980; },
   time:   s => { if (!s) return '—'; return String(s).slice(0,5); },
   money:  n => (window.CFG.currencySymbol||'₹')+(parseFloat(n)||0).toLocaleString(window.CFG.currencyLocale,{minimumFractionDigits:0}),
   num:    n => parseFloat(n||0).toFixed(1),
