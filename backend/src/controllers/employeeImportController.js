@@ -35,19 +35,45 @@ function clean(val) {
   return val !== null && val !== undefined && val !== '' ? String(val).trim() : null;
 }
 
+// Handles 'YYYY-MM-DD' strings, other parseable date strings, AND raw Excel
+// serial date numbers (e.g. 45900) — which XLSX sometimes hands back as plain
+// numbers when a cell is formatted as a date but read without cellDates:true.
+// IMPORTANT: only numbers inside a plausible date-serial range are treated as
+// serials. Blindly treating any numeric-looking value as a serial (the old
+// behaviour here) silently turned blank/junk cells into garbage dates near
+// 1970-01-01 or 1899-12-30 — which is exactly the bug that produced bogus
+// "01 Jan 1970" joining dates on imported/re-uploaded employee records.
+// NOTE: this is shared by date_of_birth too, so it must NOT reject old dates
+// outright (people born before 1980 are real) — the "is this suspiciously
+// ancient for a JOINING date" check lives separately, in toJoiningDate() below.
 function toDate(val) {
   if (!val) return null;
   const s = String(val).trim();
+  if (!s) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  // Handle Excel serial date numbers
-  if (!isNaN(val)) {
-    const d = new Date(Math.round((parseInt(val) - 25569) * 86400 * 1000));
-    return d.toISOString().split('T')[0];
+  if (/^-?\d+(\.\d+)?$/.test(s)) {
+    const serial = parseFloat(s);
+    // Plausible Excel date-serial range (~1954–2146). Anything outside this
+    // is not a real date serial — fall through to null rather than guessing.
+    if (serial > 20000 && serial < 90000) {
+      const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+      return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+    }
+    return null;
   }
-  // Try parsing other formats
   const d = new Date(s);
   if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
   return null;
+}
+
+// Joining date specifically: on top of toDate()'s parsing, reject anything
+// that lands before 1980. No current employee joined this company before it
+// existed — a pre-1980 result here is always a placeholder/typo/blank-cell
+// artifact ("01/01/1970" etc.), never a real joining date. Use this (not the
+// bare toDate()) wherever a JOINING date is parsed from an import file.
+function toJoiningDate(val) {
+  const d = toDate(val);
+  return (d && d.slice(0, 4) > '1980') ? d : null;
 }
 
 function toNum(val) {
@@ -146,7 +172,7 @@ exports.importEmployees = async (req, res) => {
             toDate(row[COL.date_of_birth]),
             clean(row[COL.blood_group]),
             clean(row[COL.marital_status]),
-            toDate(row[COL.joining_date]) || new Date().toISOString().split('T')[0],
+            toJoiningDate(row[COL.joining_date]) || new Date().toISOString().split('T')[0],
             clean(row[COL.employment_type]) || 'Full-Time',
             role,
             hash,
@@ -185,7 +211,7 @@ exports.importEmployees = async (req, res) => {
         {
           const currentYear = new Date().getFullYear();
           const today = new Date();
-          const empJoiningDate = new Date(toDate(row[COL.joining_date]) || new Date());
+          const empJoiningDate = new Date(toJoiningDate(row[COL.joining_date]) || new Date());
           const sixMonthMark = new Date(empJoiningDate);
           sixMonthMark.setMonth(sixMonthMark.getMonth() + 6);
           const isUnderSixMonths = today < sixMonthMark;
@@ -381,7 +407,7 @@ exports.masterUpdate = async (req, res) => {
           pf_number:        clean(row[MASTER_COL.pf_number]),
           phone:            clean(row[MASTER_COL.phone]),
           date_of_birth:    toDate(row[MASTER_COL.date_of_birth]),
-          joining_date:     toDate(row[MASTER_COL.joining_date]),
+          joining_date:     toJoiningDate(row[MASTER_COL.joining_date]),
         };
 
         if (firstName) updates.first_name = firstName;
