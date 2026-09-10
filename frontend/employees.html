@@ -46,7 +46,6 @@
     <!-- TABS -->
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('directory')">👥 Directory</button>
-      <button class="tab-btn" id="separated-tab" style="display:none" onclick="switchTab('separated')">🔴 Separated <span id="sep-count-badge" style="background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;display:none"></span></button>
       <button class="tab-btn" id="geofence-tab" style="display:none" onclick="switchTab('geofence')">📍 Geofence</button>
       <button class="tab-btn" id="logs-tab"     style="display:none" onclick="switchTab('logs')">📋 Punch Logs</button>
       <button class="tab-btn" id="import-tab"   style="display:none" onclick="switchTab('import')">📥 Import Employees</button>
@@ -106,32 +105,6 @@
               <th>Role</th><th>Category</th><th>Status</th><th>Reporting To</th><th>Joining Date</th><th>Last Working Day</th><th>App Ver.</th><th></th>
             </tr></thead>
             <tbody id="emp-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- SEPARATED EMPLOYEES -->
-    <div id="tab-separated" style="display:none">
-      <div class="card" style="padding:16px 20px;margin-bottom:16px;background:rgba(239,68,68,.03);border-color:rgba(239,68,68,.15)">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span style="font-size:13px;font-weight:700;color:#dc2626">🔴 Separated / Deactivated Employees</span>
-          <div style="margin-left:auto">
-            <input id="sep-search" class="form-control" style="width:220px" placeholder="Search name, code…" oninput="filterSeparated()">
-          </div>
-        </div>
-      </div>
-      <div class="card" style="padding:0">
-        <div class="table-wrap">
-          <table>
-            <thead><tr>
-              <th>Employee</th><th>Code</th><th>Branch</th><th>Department</th><th>Designation</th>
-              <th>Date of Joining</th><th>Separation Type</th><th>Last Working Day</th>
-              <th>Personal Mobile</th><th>Personal Email</th><th></th>
-            </tr></thead>
-            <tbody id="sep-tbody">
-              <tr><td colspan="11" style="text-align:center;padding:40px;color:var(--muted)"><div class="spinner"></div></td></tr>
-            </tbody>
           </table>
         </div>
       </div>
@@ -683,7 +656,7 @@
                 <option value="super_admin">Super Admin (MD)</option>
               </select>
             </div>
-            <div class="form-group" style="margin:0"><label class="form-label">Level</label><input id="edit-level" class="form-control" type="text" placeholder="L4, L5…"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Band Grade</label><input id="edit-level" class="form-control" type="text" placeholder="L4, L5…"></div>
             <div class="form-group" style="margin:0"><label class="form-label">Probation End Date</label><input id="edit-probation" class="form-control" type="date"></div>
             <div class="form-group" style="margin:0">
               <label class="form-label">Department</label>
@@ -1260,11 +1233,11 @@ let empData = [];
 let assignEmpData = [];
 
 // ── ISSUE 7 FIX ───────────────────────────────────────────────────────────────
-// Block 1: Separated + Import tabs — HR + Accounts only
+// Block 1: Import tab — HR + Accounts only
+// (The Separated tab was removed from here — separated/resigned employees
+// are now managed on the dedicated Separation / Resignation page instead.)
 if (Role.is('hr', 'accounts')) {
-  document.getElementById('separated-tab').style.display = '';
   document.getElementById('import-tab').style.display    = '';
-  loadSeparatedCount();
 }
 
 // Block 2: Geofence + Punch Logs tabs — Admin only
@@ -1528,7 +1501,11 @@ async function showEmpDetail(id) {
               </tr>
               <tr style="border-bottom:1px solid #f0f7eb">
                 <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Reporting To</td>
-                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.manager_name||'—'}</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${(e.manager_name && e.manager_name.trim()) || e.reporting_officer || '—'}${!e.manager_name?.trim() && e.reporting_officer?` <span style="color:#94a3b8;font-size:11px">(no longer an active record)</span>`:''}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #f0f7eb">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Band Grade</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.level||'—'}</td>
               </tr>
               <tr style="border-bottom:1px solid #f0f7eb">
                 <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fafcf8">Location</td>
@@ -1556,6 +1533,31 @@ async function showEmpDetail(id) {
             </tbody>
           </table>
         </div>
+
+        ${e.is_active === false ? `
+        <!-- Separation Details — only shown for resigned/separated employees -->
+        <div style="background:#fff;border:1.5px solid #fecaca;border-radius:12px;overflow:hidden;margin-bottom:16px">
+          <div style="background:#fef2f2;padding:10px 16px;border-bottom:1.5px solid #fecaca;display:flex;align-items:center;gap:8px">
+            <span style="font-size:13px">🔴</span>
+            <span style="font-size:11px;font-weight:800;color:#dc2626;letter-spacing:.6px;text-transform:uppercase">Separation Details</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <tbody>
+              <tr style="border-bottom:1px solid #fef2f2">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;width:38%;background:#fffbfb">Last Working Day</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${fmt.isRealDate(e.separation_date) ? fmt.date(e.separation_date) : '—'}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #fef2f2">
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fffbfb">Separation Type</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.separation_type||'—'}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase;background:#fffbfb">Separation Reason</td>
+                <td style="padding:10px 16px;font-size:13px;color:#1e293b;font-weight:500">${e.separation_reason||'—'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>` : ''}
 
         <!-- Designation History -->
         <div style="background:#fff;border:1.5px solid #e2eed8;border-radius:12px;overflow:hidden;margin-bottom:16px">
@@ -2237,92 +2239,17 @@ async function loadLogs() {
     || '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">No logs found</td></tr>';
 }
 
-// ── Separated Employees ───────────────────────────────────────────────────────
-let separatedData = [];
-
-async function loadSeparatedCount() {
-  const data = await api('GET', '/employees?is_active=false');
-  if (!data?.success) return;
-  const count = data.total || data.data?.length || 0;
-  const badge = document.getElementById('sep-count-badge');
-  if (badge && count > 0) { badge.textContent = count; badge.style.display = 'inline'; }
-}
-
-async function loadSeparated() {
-  const data = await api('GET', '/employees?is_active=false');
-  separatedData = data?.data || [];
-  filterSeparated();
-}
-
-function filterSeparated() {
-  const q = document.getElementById('sep-search')?.value?.toLowerCase() || '';
-  const filtered = separatedData.filter(e =>
-    !q || `${e.first_name} ${e.last_name} ${e.employee_code} ${e.email}`.toLowerCase().includes(q)
-  );
-  const tbody = document.getElementById('sep-tbody');
-  if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:48px"><div style="font-size:32px;margin-bottom:10px">✅</div>No separated employees</td></tr>';
-    return;
-  }
-  tbody.innerHTML = filtered.map(e => `
-    <tr>
-      <td>
-        <div class="flex gap-2">
-          <div class="avatar" style="background:linear-gradient(135deg,#94a3b8,#64748b)">${e.first_name?.[0]}${e.last_name?.[0] || ''}</div>
-          <div>
-            <div style="font-weight:700;font-size:13.5px;color:var(--muted)">${e.first_name} ${e.last_name}</div>
-            <div class="text-muted">${e.email}</div>
-          </div>
-        </div>
-      </td>
-      <td class="font-mono" style="color:var(--muted)">${e.employee_code}</td>
-      <td style="color:var(--muted)">${e.branch || '—'}</td>
-      <td>${e.department_name || '—'}</td>
-      <td style="color:var(--muted)">${e.designation_title || '—'}</td>
-      <td>${fmt.isRealDate(e.joining_date) ? fmt.date(e.joining_date) : '—'}</td>
-      <td><span class="badge" style="background:rgba(239,68,68,.1);color:#dc2626">${e.separation_type || 'Deactivated'}</span></td>
-      <td>${(() => {
-        const lwd = e.sep_last_working_date || e.separation_date;
-        return fmt.isRealDate(lwd) ? fmt.date(lwd) : '—';
-      })()}</td>
-      <td style="color:var(--muted)">${e.personal_mobile || '—'}</td>
-      <td style="color:var(--muted)">${e.personal_email || '—'}</td>
-      <td>
-        ${Role.is('hr','accounts') ? `
-          <button class="btn btn-ghost btn-sm" onclick="fixLastWorkingDate(${e.id},'${e.first_name} ${e.last_name}')">✎ Fix LWD</button>
-          <button class="btn btn-ghost btn-sm" onclick="reactivateEmployee(${e.id},'${e.first_name} ${e.last_name}')">♻ Reactivate</button>
-        ` : ''}
-      </td>
-    </tr>`).join('');
-}
-
-async function fixLastWorkingDate(id, name) {
-  const current = new Date().toISOString().split('T')[0];
-  const input = prompt(`Enter the correct Last Working Day for ${name} (YYYY-MM-DD):`, current);
-  if (!input) return;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.trim())) { toast('Please enter a date as YYYY-MM-DD', 'error'); return; }
-  const data = await api('PUT', `/separations/employee/${id}/fix-lwd`, { last_working_date: input.trim() });
-  if (data?.success) { toast(`✅ Last working day updated for ${name}`); loadSeparated(); }
-  else toast(data?.message || 'Failed', 'error');
-}
-
-async function reactivateEmployee(id, name) {
-  if (!confirm(`Reactivate ${name}?`)) return;
-  const data = await api('PUT', `/employees/${id}`, { is_active: true, separation_date: null, separation_type: null });
-  if (data?.success) { toast(`✅ ${name} reactivated`); loadSeparated(); loadSeparatedCount(); loadEmployees(); }
-  else toast(data?.message || 'Failed', 'error');
-}
-
 // ── Tab switching ─────────────────────────────────────────────────────────────
+// (The Separated tab/table was removed — see the Separation / Resignation
+// page for managing resigned/separated employees.)
 function switchTab(name) {
-  ['directory','separated','geofence','logs','import','reshuffle'].forEach(t => {
+  ['directory','geofence','logs','import','reshuffle'].forEach(t => {
     document.getElementById('tab-' + t).style.display = t === name ? '' : 'none';
   });
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    const names = ['directory','separated','geofence','logs','import','reshuffle'];
+    const names = ['directory','geofence','logs','import','reshuffle'];
     b.classList.toggle('active', names[i] === name);
   });
-  if (name === 'separated') loadSeparated();
   if (name === 'geofence')  { loadLocations(); loadBufferRules(); }
   if (name === 'logs')      loadLogs();
   if (name === 'reshuffle') loadReshuffle();
@@ -3448,7 +3375,6 @@ async function executeDangerAction() {
         _statusFilter = 'inactive';
         await loadEmployees();
         setStatusFilter('inactive', document.getElementById('status-pill-inactive'));
-        loadSeparatedCount();
       } else toast('Deactivate failed: ' + (data?.message || 'Unknown error'), 'error');
 
     } else if (_dangerAction === 'reactivate') {
@@ -3460,7 +3386,6 @@ async function executeDangerAction() {
         _statusFilter = 'active';
         await loadEmployees();
         setStatusFilter('active', document.getElementById('status-pill-active'));
-        loadSeparatedCount();
       } else toast('Reactivate failed: ' + (data?.message || 'Unknown error'), 'error');
 
     } else if (_dangerAction === 'delete') {
@@ -3471,7 +3396,6 @@ async function executeDangerAction() {
         closeModal('emp-detail-modal');
         _statusFilter = 'active';
         await loadEmployees();
-        loadSeparatedCount();
       } else toast('Delete failed: ' + (data?.message || 'Unknown error'), 'error');
     }
   } catch (err) {
