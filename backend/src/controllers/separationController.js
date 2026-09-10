@@ -38,6 +38,17 @@ function getNoticePeriod(role) {
   return 30;
 }
 
+// The org recognizes these standard notice periods (30/45/60/90 days).
+// Employees pick one that matches their actual employment terms; if what
+// comes in isn't one of these (missing, tampered, non-numeric), we fall back
+// to the role-based default instead of trusting the client blindly.
+const VALID_NOTICE_PERIODS = [30, 45, 60, 90];
+function resolveNoticePeriod(role, requestedDays) {
+  const parsed = parseInt(requestedDays, 10);
+  if (VALID_NOTICE_PERIODS.includes(parsed)) return parsed;
+  return getNoticePeriod(role);
+}
+
 function calcLWD(resignDate, noticeDays) {
   const d = new Date(resignDate);
   d.setDate(d.getDate() + noticeDays);
@@ -138,7 +149,7 @@ exports.submitResignation = async (req, res) => {
     const empId   = req.user.id;
     const empRole = req.user.role;
     const {
-      reason, notice_date, suggested_lwd,
+      reason, notice_date, suggested_lwd, notice_period_days, notice_applicable,
       resignation_reason_category, comments, personal_email, contact_number
     } = req.body;
     let { type } = req.body;
@@ -169,12 +180,25 @@ exports.submitResignation = async (req, res) => {
       });
 
     const resignDate = notice_date || new Date().toISOString().split('T')[0];
-    const noticeDays = getNoticePeriod(empRole);
-    const autoLwd    = calcLWD(resignDate, noticeDays);
-    // Employee may suggest an earlier LWD — only accept if it's >= auto-calculated LWD
-    let lwd = autoLwd;
-    if (suggested_lwd && new Date(suggested_lwd) >= new Date(autoLwd)) {
-      lwd = suggested_lwd;
+    const isWaiver   = String(notice_applicable).toLowerCase() === 'no';
+
+    let noticeDays, lwd;
+    if (isWaiver) {
+      // Notice-period waiver requested — no minimum notice enforced, so the
+      // employee's suggested date is honored as long as it isn't in the past.
+      // (Still goes through manager/HR approval like any other separation.)
+      noticeDays = 0;
+      lwd = (suggested_lwd && new Date(suggested_lwd) >= new Date(resignDate))
+        ? suggested_lwd
+        : resignDate;
+    } else {
+      noticeDays = resolveNoticePeriod(empRole, notice_period_days);
+      const autoLwd = calcLWD(resignDate, noticeDays);
+      // Employee may suggest a later LWD — only accept if it's >= auto-calculated LWD
+      lwd = autoLwd;
+      if (suggested_lwd && new Date(suggested_lwd) >= new Date(autoLwd)) {
+        lwd = suggested_lwd;
+      }
     }
 
     const empInfo = await client.query(
@@ -613,7 +637,7 @@ exports.initiate = async (req, res) => {
   const client = await db.getClient();
   try {
     await client.query('BEGIN');
-    const { employee_id, type, reason, notice_date, last_working_date } = req.body;
+    const { employee_id, type, reason, notice_date, last_working_date, personal_email, contact_number } = req.body;
     if (!employee_id || !type)
       return res.status(400).json({ success: false, message: 'employee_id and type are required' });
 
@@ -643,11 +667,13 @@ exports.initiate = async (req, res) => {
     const result = await client.query(
       `INSERT INTO separations
          (employee_id, type, reason, notice_date, last_working_date,
-          notice_period_days, status, initiated_by, initiated_by_role, manager_id, original_lwd)
-       VALUES($1,$2,$3,$4,$5,$6,'pending',$7,$8,$9,$5)
+          notice_period_days, status, initiated_by, initiated_by_role, manager_id, original_lwd,
+          personal_email, contact_number)
+       VALUES($1,$2,$3,$4,$5,$6,'pending',$7,$8,$9,$5,$10,$11)
        RETURNING *`,
       [employee_id, type, reason||null, resignDate, autoLWD,
-       noticeDays, req.user.id, req.user.role, e.reporting_manager_id||null]
+       noticeDays, req.user.id, req.user.role, e.reporting_manager_id||null,
+       personal_email||null, contact_number||null]
     );
 
     await notifyEmployee(client, employee_id, '📋 Separation Initiated',
@@ -1138,6 +1164,47 @@ exports.bulkSeparateImport = async (req, res) => {
     await client.query('ROLLBACK');
     console.error('[bulkSeparateImport]', err);
     res.status(500).json({ success: false, message: err.message });
+  } finally {
+    client.release();
+  }
+};
+
+// ── Fix a placeholder/wrong Last Working Date for an already-separated
+// employee (e.g. the 1970 serial-date bug, or a bulk import that fell back
+// to "today" because the sheet's LWD cell was blank). HR/Admin only.
+// Updates both the completed separation record and employees.separation_date
+// so every view (Directory, Separated tab, exports) stays in sync.
+exports.fixLastWorkingDate = async (req, res) => {
+  const client = await db.getClient();
+  try {
+    const employeeId = parseInt(req.params.id);
+    const { last_working_date } = req.body;
+    if (!employeeId || !last_working_date)
+      return res.status(400).json({ success: false, message: 'employeeId and last_working_date are required' });
+
+    await client.query('BEGIN');
+
+    const sep = await client.query(
+      `SELECT id FROM separations WHERE employee_id=$1 ORDER BY created_at DESC LIMIT 1`,
+      [employeeId]
+    );
+    if (sep.rows.length) {
+      await client.query(
+        `UPDATE separations SET last_working_date=$1, updated_at=NOW() WHERE id=$2`,
+        [last_working_date, sep.rows[0].id]
+      );
+    }
+    await client.query(
+      `UPDATE employees SET separation_date=$1, updated_at=NOW() WHERE id=$2`,
+      [last_working_date, employeeId]
+    );
+
+    await client.query('COMMIT');
+    res.json({ success: true, message: 'Last working date updated' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[fixLastWorkingDate]', err);
+    res.status(500).json({ success: false, message: 'Server error: ' + err.message });
   } finally {
     client.release();
   }
