@@ -24,6 +24,13 @@
 .tl-dot.rejected{background:var(--red)}
 .tl-dot.pending{background:var(--yellow)}
 .tl-dot.inactive{background:var(--border)}
+/* Resign modal — visual hierarchy fixes: auto-filled fields look flat/muted
+   and distinct from real editable inputs, so the form doesn't read as a wall
+   of identical boxes. */
+#resign-modal .form-control:disabled{background:var(--surface2);border-color:transparent;color:var(--muted);box-shadow:none;font-weight:500}
+.sep-auto-panel{background:var(--surface2);border-radius:12px;padding:16px 18px;margin-bottom:18px;display:grid;grid-template-columns:1fr 1fr;gap:14px 20px}
+.sep-auto-panel .sep-auto-item .form-label{font-size:10.5px;margin-bottom:3px}
+.sep-auto-panel .sep-auto-item .sep-auto-value{font-size:13.5px;font-weight:600;color:var(--text)}
 </style>
 </head>
 <body>
@@ -135,42 +142,29 @@
       <div style="background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:14px;margin-bottom:18px;font-size:13px;color:var(--muted)">
         ⚠ Once submitted, your resignation will be sent to your manager for approval. You can withdraw it while it's still pending at Level 1.
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Employee</label>
-          <input id="sep-emp-name" class="form-control" disabled>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Applied Date</label>
-          <input id="sep-applied-date" class="form-control" disabled>
-        </div>
-      </div>
       <input type="hidden" id="sep-type" value="resignation">
+
+      <!-- Read-only summary: employee, applied date, notice period, tentative date, approver -->
+      <div class="sep-auto-panel">
+        <div class="sep-auto-item"><div class="form-label">Employee</div><div class="sep-auto-value" id="sep-emp-name">—</div></div>
+        <div class="sep-auto-item"><div class="form-label">Applied Date</div><div class="sep-auto-value" id="sep-applied-date">—</div></div>
+        <div class="sep-auto-item"><div class="form-label">Notice Period <span style="font-weight:400">(based on your role)</span></div><div class="sep-auto-value" id="sep-notice-period">—</div></div>
+        <div class="sep-auto-item"><div class="form-label">Tentative Relieving Date</div><div class="sep-auto-value" id="sep-tentative-lwd">—</div></div>
+        <div class="sep-auto-item" style="grid-column:1/-1"><div class="form-label">Approver <span style="font-weight:400">(your reporting manager)</span></div><div class="sep-auto-value" id="sep-approver">—</div></div>
+      </div>
+
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Notice Date (today) *</label>
           <input id="sep-notice" class="form-control" type="date">
         </div>
         <div class="form-group">
-          <label class="form-label">Notice Period <span style="color:var(--muted);font-weight:400">(auto, based on your role)</span></label>
-          <input id="sep-notice-period" class="form-control" disabled placeholder="—">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Tentative Relieving Date <span style="color:var(--muted);font-weight:400">(auto)</span></label>
-          <input id="sep-tentative-lwd" class="form-control" disabled>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Actual / Requested Last Working Date <span style="color:var(--muted);font-weight:400">(editable)</span></label>
+          <label class="form-label">Actual / Requested Last Working Date *</label>
           <input id="sep-lwd" class="form-control" type="date" placeholder="Auto-calculated">
-          <div id="sep-lwd-note" style="font-size:11px;color:var(--muted);margin-top:4px">💡 You can suggest a later date; earlier than notice period is not allowed.</div>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Approver <span style="color:var(--muted);font-weight:400">(auto — your reporting manager)</span></label>
-        <input id="sep-approver" class="form-control" disabled placeholder="—">
-      </div>
+      <div id="sep-lwd-note" style="font-size:11px;color:var(--muted);margin:-10px 0 16px">💡 You can suggest a later date; earlier than notice period is not allowed.</div>
+
       <div class="form-group">
         <label class="form-label">Resignation Reason *</label>
         <select id="sep-reason-category" class="form-control">
@@ -375,7 +369,7 @@ let allData = [];
 // Set default notice date to today
 const today = new Date().toISOString().split('T')[0];
 document.getElementById('sep-notice').value = today;
-document.getElementById('sep-applied-date').value = today;
+document.getElementById('sep-applied-date').textContent = today;
 
 let _sepNoticeDays = 0; // cached from server, used by sepRecalcLwd()
 
@@ -385,10 +379,10 @@ let _sepNoticeDays = 0; // cached from server, used by sepRecalcLwd()
   const np = await api('GET', '/separations/notice-period');
   if (np?.success) {
     _sepNoticeDays = np.data.notice_period_days;
-    document.getElementById('sep-notice-period').value = `${_sepNoticeDays} days`;
+    document.getElementById('sep-notice-period').textContent = `${_sepNoticeDays} days`;
     if (np.data.self) {
-      document.getElementById('sep-emp-name').value = `${np.data.self.employee_name} (${np.data.self.employee_code})`;
-      document.getElementById('sep-approver').value = np.data.self.approver_name;
+      document.getElementById('sep-emp-name').textContent = `${np.data.self.employee_name} (${np.data.self.employee_code})`;
+      document.getElementById('sep-approver').textContent = np.data.self.approver_name;
     }
     sepRecalcLwd();
   }
@@ -406,7 +400,7 @@ function sepRecalcLwd() {
   const autoLwd = d.toISOString().split('T')[0];
   lwdEl.value = autoLwd;
   lwdEl.min   = autoLwd; // cannot pick earlier than notice period
-  document.getElementById('sep-tentative-lwd').value = autoLwd;
+  document.getElementById('sep-tentative-lwd').textContent = autoLwd;
   noteEl.textContent = '💡 You can suggest a later date; earlier than notice period is not allowed.';
 }
 document.getElementById('sep-notice').addEventListener('change', sepRecalcLwd);
