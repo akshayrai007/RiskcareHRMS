@@ -77,12 +77,8 @@
         <!-- Active / Inactive status pills -->
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
           <span style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.3px">STATUS:</span>
-          <button id="status-pill-all" class="status-pill active-pill" onclick="setStatusFilter('all',this)"
-            style="padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s">
-            All <span id="status-count-all" style="opacity:.8"></span>
-          </button>
-          <button id="status-pill-active" class="status-pill" onclick="setStatusFilter('active',this)"
-            style="padding:5px 14px;border-radius:20px;border:1.5px solid var(--accent);background:var(--accent-l);color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s">
+          <button id="status-pill-active" class="status-pill active-pill" onclick="setStatusFilter('active',this)"
+            style="padding:5px 14px;border-radius:20px;border:1.5px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s">
             ✅ Active <span id="status-count-active" style="opacity:.8"></span>
           </button>
           <button id="status-pill-inactive" class="status-pill" onclick="setStatusFilter('inactive',this)"
@@ -102,7 +98,7 @@
           <table class="excel-grid">
             <thead><tr>
               <th>Employee</th><th>Code</th><th>Department</th><th>Designation</th>
-              <th>Role</th><th>Category</th><th>Status</th><th>Reporting To</th><th>Joining Date</th><th>Last Working Day</th><th id="th-sep-reason" style="display:none">Separation Reason</th><th>App Ver.</th><th></th>
+              <th>Role</th><th>Category</th><th>Status</th><th>Reporting To</th><th>Joining Date</th><th id="th-lwd" style="display:none">Last Working Day</th><th id="th-sep-reason" style="display:none">Separation Reason</th><th>App Ver.</th><th></th>
             </tr></thead>
             <tbody id="emp-tbody"></tbody>
           </table>
@@ -1336,7 +1332,6 @@ async function loadEmployees() {
   // Update status pill counts
   const inactiveCnt = empData.filter(e => e.is_active === false).length;
   const activeCnt   = empData.filter(e => e.is_active !== false).length;
-  document.getElementById('status-count-all').textContent      = `(${empData.length})`;
   document.getElementById('status-count-active').textContent   = `(${activeCnt})`;
   document.getElementById('status-count-inactive').textContent = `(${inactiveCnt})`;
 
@@ -1350,17 +1345,15 @@ function setStatusFilter(val, btn) {
   _statusFilter = val;
   const sepReasonTh = document.getElementById('th-sep-reason');
   if (sepReasonTh) sepReasonTh.style.display = (val === 'active') ? 'none' : '';
+  const lwdTh = document.getElementById('th-lwd');
+  if (lwdTh) lwdTh.style.display = (val === 'active') ? 'none' : '';
   // Update pill styles
   document.querySelectorAll('.status-pill').forEach(p => {
     p.style.fontWeight = '700';
     p.style.opacity = '1';
   });
-  const isAll      = val === 'all';
   const isActive   = val === 'active';
   const isInactive = val === 'inactive';
-  document.getElementById('status-pill-all').style.background      = isAll      ? 'var(--accent)' : 'var(--surface2)';
-  document.getElementById('status-pill-all').style.color           = isAll      ? '#fff'          : 'var(--muted)';
-  document.getElementById('status-pill-all').style.borderColor     = isAll      ? 'var(--accent)'  : 'var(--border)';
   document.getElementById('status-pill-active').style.background   = isActive   ? 'var(--accent)' : 'var(--accent-l)';
   document.getElementById('status-pill-active').style.color        = isActive   ? '#fff'           : '#15803d';
   document.getElementById('status-pill-active').style.borderColor  = isActive   ? 'var(--accent)' : 'var(--border)';
@@ -1375,9 +1368,7 @@ function filterEmployees() {
   const dept = document.getElementById('dept-filter').value;
   const role = document.getElementById('role-filter').value;
   const filtered = empData.filter(e => {
-    const matchStatus = _statusFilter === 'all'
-      ? true
-      : _statusFilter === 'inactive'
+    const matchStatus = _statusFilter === 'inactive'
       ? e.is_active === false
       : e.is_active !== false;
     return matchStatus &&
@@ -1433,7 +1424,7 @@ function renderEmployees(list) {
       </td>
       <td>${e.manager_name || '—'}</td>
       <td>${fmt.isRealDate(e.joining_date) ? fmt.date(e.joining_date) : '—'}</td>
-      <td>${fmt.date(e.sep_last_working_date || e.separation_date)}</td>
+      ${_statusFilter === 'active' ? '' : `<td>${fmt.date(e.sep_last_working_date || e.separation_date)}</td>`}
       ${_statusFilter === 'active' ? '' : `<td style="color:var(--text2);max-width:220px;white-space:normal">${e.separation_reason || '—'}</td>`}
       <td style="font-size:12px;color:var(--muted);">${e.app_version ? `<span style="background:#ede9fe;color:#6d28d9;padding:2px 7px;border-radius:10px;font-size:11px;">v${e.app_version}</span>` : '<span style="color:var(--muted)">Web</span>'}</td>
       <td onclick="event.stopPropagation()">
