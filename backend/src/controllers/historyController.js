@@ -113,6 +113,7 @@ exports.getEmployeeHistory = async (req, res) => {
 // reporting-line tree on the client (id + reporting_manager_id).
 exports.getOrgChart = async (req, res) => {
   try {
+    const canViewSensitive = ['admin', 'super_admin', 'hr', 'accounts'].includes(req.user.role);
     const result = await db.query(
       `SELECT e.id, e.first_name, e.last_name, e.employee_code, e.role, e.level,
               e.profile_photo, e.reporting_manager_id,
@@ -125,7 +126,10 @@ exports.getOrgChart = async (req, res) => {
        WHERE e.is_active = true
        ORDER BY e.first_name ASC`
     );
-    res.json({ success: true, data: result.rows });
+    const rows = canViewSensitive
+      ? result.rows
+      : result.rows.map(r => ({ ...r, emergency_contact_phone: undefined }));
+    res.json({ success: true, data: rows });
   } catch (err) {
     console.error('[historyController.getOrgChart]', err.message);
     res.status(500).json({ success: false, message: 'Server error' });
