@@ -892,44 +892,50 @@ exports.bulkSeparateTemplate = async (req, res) => {
   try {
     const XLSX = require('xlsx');
     const empRes = await db.query(
-      `SELECT e.employee_code, e.first_name, e.last_name, e.email, e.phone,
-              e.branch, d.name AS department_name
+      `SELECT e.employee_code, e.first_name, e.last_name, e.branch,
+              e.joining_date, e.personal_mobile, e.personal_email,
+              d.name AS department_name, des.title AS designation_title
        FROM employees e
-       LEFT JOIN departments d ON e.department_id = d.id
+       LEFT JOIN departments  d   ON e.department_id  = d.id
+       LEFT JOIN designations des ON e.designation_id = des.id
        WHERE e.is_active = true ORDER BY e.employee_code LIMIT 1`
     );
     const sample = empRes.rows[0];
 
     const data = [
       {
-        'Employee ID':             sample ? sample.employee_code : 'E123',
-        'Employee Name':           sample ? `${sample.first_name} ${sample.last_name}` : 'John Doe',
-        'Branch':                  sample?.branch || 'Mumbai',
-        'Last Working Day':        '2026-08-31',
-        'Department':              sample?.department_name || 'Operations',
-        'Official Email ID':       sample?.email || 'john.doe@riskcare.co.in',
-        'Official Mobile Number':  sample?.phone || '9876543210'
+        'Employee ID':              sample ? sample.employee_code : 'E123',
+        'Employee Name':            sample ? `${sample.first_name} ${sample.last_name}` : 'John Doe',
+        'Branch':                   sample?.branch || 'Mumbai',
+        'Designation':              sample?.designation_title || 'Executive',
+        'Date of Joining':          sample?.joining_date ? new Date(sample.joining_date).toISOString().split('T')[0] : '2022-01-01',
+        'Last Working Day':         '2026-08-31',
+        'Department':               sample?.department_name || 'Operations',
+        'Personal Mobile Number':   sample?.personal_mobile || '9876543210',
+        'Personal Email ID':        sample?.personal_email || 'john.doe@gmail.com',
       }
     ];
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(data);
-    ws['!cols'] = [{ wch: 14 }, { wch: 24 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 28 }, { wch: 20 }];
+    ws['!cols'] = [{ wch: 14 }, { wch: 24 }, { wch: 16 }, { wch: 20 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 22 }, { wch: 28 }];
     XLSX.utils.book_append_sheet(wb, ws, 'Resigned Employees');
 
     const legend = [
       { 'Field': 'Employee ID', 'Instructions': 'Required. Must match an existing ACTIVE employee_code exactly (e.g. E066). This is the only column used to find the employee.' },
-      { 'Field': 'Employee Name', 'Instructions': 'For your reference only, to confirm you picked the right row. Not used by the system.' },
-      { 'Field': 'Branch', 'Instructions': 'For your reference only. Not used by the system.' },
+      { 'Field': 'Employee Name', 'Instructions': 'For your reference only, to confirm you picked the right row. Also used to create a new record if the Employee ID is not found.' },
+      { 'Field': 'Branch', 'Instructions': 'For your reference only. Not used to update existing employees.' },
+      { 'Field': 'Designation', 'Instructions': 'For your reference only when updating an existing employee. Used when creating a new legacy record (auto-creates the designation if it does not already exist).' },
+      { 'Field': 'Date of Joining', 'Instructions': 'Format YYYY-MM-DD. For your reference only when updating an existing employee. Used when creating a new legacy record.' },
       { 'Field': 'Last Working Day', 'Instructions': 'Required. Format YYYY-MM-DD. This becomes the separation date. Defaults to today if blank.' },
-      { 'Field': 'Department', 'Instructions': 'For your reference only. Not used by the system.' },
-      { 'Field': 'Official Email ID', 'Instructions': 'For your reference only. Not used by the system.' },
-      { 'Field': 'Official Mobile Number', 'Instructions': 'For your reference only. Not used by the system.' },
+      { 'Field': 'Department', 'Instructions': 'For your reference only when updating an existing employee. Used when creating a new legacy record (auto-creates the department if it does not already exist).' },
+      { 'Field': 'Personal Mobile Number', 'Instructions': 'For your reference only when updating an existing employee. Used when creating a new legacy record.' },
+      { 'Field': 'Personal Email ID', 'Instructions': 'For your reference only when updating an existing employee. Used when creating a new legacy record — becomes their login email if no other email exists.' },
       { 'Field': '', 'Instructions': '' },
       { 'Field': '⚠ WARNING', 'Instructions': 'This IMMEDIATELY deactivates the employee login and marks them Resigned/Inactive. It skips the normal 4-level approval workflow — use only for backfilling employees who have already left.' },
     ];
     const wsLegend = XLSX.utils.json_to_sheet(legend);
-    wsLegend['!cols'] = [{ wch: 20 }, { wch: 95 }];
+    wsLegend['!cols'] = [{ wch: 22 }, { wch: 95 }];
     XLSX.utils.book_append_sheet(wb, wsLegend, 'Instructions');
 
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -979,10 +985,12 @@ exports.backfillApprovals = async (req, res) => {
 };
 
 // ── Bulk Resignation/Separation Import (Excel) ───────────────────────────────
-// Columns expected: Employee ID, Employee Name, Branch, Last Working Day,
-// Department, Official Email ID, Official Mobile Number. Only "Employee ID"
-// and "Last Working Day" are actually used — the rest are for the HR user's
-// own reference/verification while filling the sheet.
+// Columns expected: Employee ID, Employee Name, Branch, Designation,
+// Date of Joining, Last Working Day, Department, Personal Mobile Number,
+// Personal Email ID. Only "Employee ID" and "Last Working Day" are required
+// to update an EXISTING employee — the rest are used when the Employee ID
+// isn't found and a new legacy (already-resigned) record is created from the
+// sheet's own data instead of being skipped.
 // Marks each matched employee is_active=false immediately AND inserts a
 // completed separations record (so it shows up in the All Separations list),
 // skipping the 4-level workflow — for backfilling employees who already
@@ -1033,6 +1041,28 @@ exports.bulkSeparateImport = async (req, res) => {
       [name.trim()]
     );
     deptMap[key] = r.rows[0].id;
+    return r.rows[0].id;
+  }
+
+  const desigRes = await db.query(`SELECT id, title FROM designations`);
+  const desigMap = {};
+  desigRes.rows.forEach(d => { desigMap[d.title.trim().toLowerCase()] = d.id; });
+
+  // designations.title has no unique constraint (unlike departments.name), so
+  // this can't use ON CONFLICT — look it up first, then insert if missing.
+  async function findOrCreateDesignation(client, title, deptId) {
+    if (!title) return null;
+    const key = title.trim().toLowerCase();
+    if (desigMap[key]) return desigMap[key];
+    const existing = await client.query(
+      `SELECT id FROM designations WHERE LOWER(title)=$1 LIMIT 1`, [key]
+    );
+    if (existing.rows.length) { desigMap[key] = existing.rows[0].id; return existing.rows[0].id; }
+    const r = await client.query(
+      `INSERT INTO designations(title, department_id) VALUES($1,$2) RETURNING id`,
+      [title.trim(), deptId || null]
+    );
+    desigMap[key] = r.rows[0].id;
     return r.rows[0].id;
   }
 
@@ -1102,21 +1132,29 @@ exports.bulkSeparateImport = async (req, res) => {
           const nameParts = fullName.split(/\s+/);
           const firstName = nameParts[0] || empCode;
           const lastName  = nameParts.slice(1).join(' ') || '';
-          const email     = String(row['Official Email ID'] || '').trim().toLowerCase()
-                             || `${empCode.toLowerCase()}.resigned@legacy.local`;
-          const phone     = String(row['Official Mobile Number'] || '').trim() || null;
-          const branch    = String(row['Branch'] || '').trim() || null;
-          const deptId    = await findOrCreateDept(client, String(row['Department'] || '').trim());
+          const personalEmail  = String(row['Personal Email ID'] || row['Official Email ID'] || '').trim().toLowerCase();
+          const email      = personalEmail || `${empCode.toLowerCase()}.resigned@legacy.local`;
+          const personalMobile = String(row['Personal Mobile Number'] || row['Official Mobile Number'] || '').trim() || null;
+          const branch     = String(row['Branch'] || '').trim() || null;
+          const deptId     = await findOrCreateDept(client, String(row['Department'] || '').trim());
+          const desigId    = await findOrCreateDesignation(client, String(row['Designation'] || '').trim(), deptId);
+          // Real joining date from the sheet (if a plausible one was given) —
+          // NOT the separation date. Previously this silently used sepDate as
+          // a stand-in "joining date", which made every bulk-imported legacy
+          // employee look like they joined on the day they left.
+          const realJoiningDate = parseExcelDate(row['Date of Joining']) || sepDate;
           const randomPw  = 'DEACTIVATED_' + require('crypto').randomUUID();
           const pwHash    = await bcrypt.hash(randomPw, 10);
 
           const insRes = await client.query(
             `INSERT INTO employees
                (employee_code, first_name, last_name, email, phone, branch,
-                department_id, joining_date, role, password_hash, is_active)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'employee',$9,true)
+                department_id, designation_id, joining_date, personal_mobile,
+                personal_email, role, password_hash, is_active)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'employee',$12,true)
              RETURNING id`,
-            [empCode, firstName, lastName, email, phone, branch, deptId, sepDate, pwHash]
+            [empCode, firstName, lastName, email, personalMobile, branch,
+             deptId, desigId, realJoiningDate, personalMobile, personalEmail || null, pwHash]
           );
           empId = insRes.rows[0].id;
           allCodesMap[empCode] = { id: empId, is_active: true };
