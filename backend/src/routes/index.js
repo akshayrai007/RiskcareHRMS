@@ -93,6 +93,7 @@ router.post('/employees/master-update',
   empImportCtrl.uploadMiddleware,
   empImportCtrl.masterUpdate
 );
+router.get('/employees/import-template', authenticate, authorize(...EMP_MGMT), empImportCtrl.downloadImportTemplate);
 
 // ── Attendance ────────────────────────────────────────────────────────────────
 router.post('/attendance/punch-in',         authenticate, attCtrl.punchIn);
