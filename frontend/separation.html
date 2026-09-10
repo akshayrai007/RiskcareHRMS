@@ -543,7 +543,10 @@ async function bulkSeparateImport(input) {
     const data = await res.json();
     if (!data.success) { toast(data.message,'error'); return; }
     toast(data.message, 'success');
-    if (data.errors?.length) alert('Details:\n' + data.errors.join('\n'));
+    let details = '';
+    if (data.errors?.length) details += 'Rows that failed (not deactivated):\n' + data.errors.join('\n') + '\n\n';
+    if (data.warnings?.length) details += 'Deactivated OK, but 1 extra field couldn\'t be saved:\n' + data.warnings.join('\n');
+    if (details) alert(details.trim());
     loadAll();
   } catch(e) { toast('Import failed: '+e.message,'error'); }
   input.value = '';
