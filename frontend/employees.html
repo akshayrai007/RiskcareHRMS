@@ -1325,7 +1325,7 @@ async function loadDepartments() {
   });
   const tabsEl = document.getElementById('dept-tabs');
   tabsEl.innerHTML = `<button class="dept-pill active" onclick="filterByDept('',this)">All</button>` +
-    data.data.map(d => `<button class="dept-pill" style="--dept-color:${deptColor(d.name)}" onclick="filterByDept('${d.id}',this)">${d.name} <span id="dept-cnt-${d.id}" style="opacity:.65"></span></button>`).join('');
+    data.data.map(d => `<button class="dept-pill" onclick="filterByDept('${d.id}',this)">${d.name} <span id="dept-cnt-${d.id}" style="opacity:.65"></span></button>`).join('');
 }
 
 // ── Edit modal: Department → Designation cascade ──────────────────────────────
