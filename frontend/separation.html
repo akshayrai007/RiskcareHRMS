@@ -260,10 +260,6 @@
           <input id="init-joining-date" class="form-control" disabled placeholder="Select an employee first">
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Emergency Mobile <span style="color:var(--muted);font-weight:400">(auto — from employee record, if on file)</span></label>
-        <input id="init-emergency-mobile" class="form-control" disabled placeholder="Select an employee first">
-      </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Personal Email Id</label>
@@ -995,7 +991,6 @@ function openInitiateModal() {
   document.getElementById('init-emp-search').style.display = '';
   document.getElementById('init-approver').value = '';
   document.getElementById('init-joining-date').value = '';
-  document.getElementById('init-emergency-mobile').value = '';
   document.getElementById('init-personal-email').value = '';
   document.getElementById('init-contact-number').value = '';
   document.getElementById('init-reason').value = '';
@@ -1035,7 +1030,6 @@ async function initSelectEmp(e) {
   document.getElementById('init-emp-selected-name').textContent = `${e.first_name} ${e.last_name} (${e.employee_code})`;
   document.getElementById('init-approver').value = e.manager_name || '— No Manager —';
   document.getElementById('init-joining-date').value = e.joining_date ? new Date(e.joining_date).toISOString().split('T')[0] : '—';
-  document.getElementById('init-emergency-mobile').value = e.emergency_contact_phone || '— Not on file —';
   document.getElementById('init-contact-number').value = e.phone || '';
   document.getElementById('init-personal-email').value = e.personal_email || '';
   initRecalcLwd();
