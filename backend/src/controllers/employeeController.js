@@ -15,13 +15,6 @@ function toISTDateString(date) {
     year: 'numeric', month: '2-digit', day: '2-digit'
   }).format(new Date(date)); // returns "YYYY-MM-DD" in IST
 }
-// Excel column-letter for a 1-based column index (A, B, ... Z, AA, AB ...).
-// Used to build live formula strings ("SUM(E5:H5)") in the Master Excel export.
-function colLetter(n) {
-  let s = '';
-  while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); }
-  return s;
-}
 const { getEmployeeRegion } = require('../config/regionHelper');
 const db = require('../config/db');
 const scope = require('../utils/scope');
@@ -107,8 +100,7 @@ exports.getAll = async (req, res) => {
          e.id, e.employee_code, e.first_name, e.last_name, e.email, e.phone,
          e.gender, e.joining_date, e.role, e.is_active, e.employment_type,
          e.employee_category, e.provision_end_date, e.confirmed_date,
-         e.saturday_policy, e.emergency_contact_phone,
-         e.branch, e.personal_mobile, e.personal_email,
+         e.saturday_policy,
          e.department_id, e.designation_id, e.reporting_manager_id, e.team_leader_id,
          e.basic_salary, e.ctc, e.city,
          e.separation_date, e.separation_type, e.separation_reason,
@@ -127,9 +119,7 @@ exports.getAll = async (req, res) => {
        LEFT JOIN provision_confirmations pc ON pc.employee_id = e.id
        LEFT JOIN separations sep_active ON sep_active.employee_id = e.id AND sep_active.status = 'completed'
        WHERE ${conditions.join(' AND ')}
-       ORDER BY ${is_active === 'false'
-         ? "COALESCE(sep_active.last_working_date, e.separation_date) DESC NULLS LAST, e.first_name"
-         : "d.name, e.first_name"}`,
+       ORDER BY d.name, e.first_name`,
       params
     );
     res.json({ success: true, data: result.rows, total: result.rows.length });
@@ -976,8 +966,7 @@ exports.exportMasterExcel = async (req, res) => {
     // ── 1. Employees + salary structure ─────────────────────────────────────
     const empResult = await db.query(`
       SELECT e.id, e.employee_code, e.first_name, e.last_name, e.email, e.phone,
-             e.gender, e.date_of_birth, e.blood_group, e.marital_status, e.address_line1,
-             e.joining_date,
+             e.gender, e.date_of_birth, e.joining_date,
              d.name AS department, des.title AS designation,
              e.role, e.employment_type, e.employee_category, e.level,
              e.city, e.state,
@@ -987,8 +976,8 @@ exports.exportMasterExcel = async (req, res) => {
              CONCAT(m.first_name,' ',m.last_name) AS reporting_manager,
              COALESCE(s.basic,e.basic_salary,0)         AS basic,
              COALESCE(s.hra,e.hra,0)                    AS hra,
-             COALESCE(s.conveyance,e.conveyance,0)      AS conveyance,
-             COALESCE(e.special_allowance,s.special_allowance,0) AS special_allowance,
+             COALESCE(s.conveyance,0)                   AS conveyance,
+             COALESCE(s.special_allowance,e.special_allowance,0) AS special_allowance,
              COALESCE(s.gratuity,0)                     AS gratuity,
              COALESCE(s.gross_salary,0)                 AS gross_salary,
              COALESCE(s.pf_employee,0)                  AS pf_employee,
@@ -1013,290 +1002,97 @@ exports.exportMasterExcel = async (req, res) => {
       LEFT JOIN employees    m   ON e.reporting_manager_id = m.id
       LEFT JOIN employee_salary_structure s ON s.employee_id = e.id
       WHERE (
-        -- Master is a full roster, not a month-scoped register — every
-        -- deactivated employee stays visible (with reason) regardless of
-        -- when they were deactivated or whether they logged attendance.
-        e.is_active = true OR e.is_active = false
+        e.is_active = true
+        OR (
+          -- Include employees deactivated this month or later
+          e.is_active = false
+          AND (
+            e.separation_date IS NULL
+            OR e.separation_date >= MAKE_DATE($1::int, $2::int, 1)
+          )
+          AND EXISTS (
+            SELECT 1 FROM attendance a
+            WHERE a.employee_id = e.id
+              AND EXTRACT(MONTH FROM a.date) = $2
+              AND EXTRACT(YEAR  FROM a.date) = $1
+          )
+        )
+        OR (
+          -- Include future-LWD completed separations
+          EXISTS (
+            SELECT 1 FROM separations sep
+            WHERE sep.employee_id = e.id AND sep.status = 'completed'
+            AND sep.last_working_date >= MAKE_DATE($1::int, $2::int, 1)
+          )
+        )
       )
       ORDER BY
         CASE WHEN e.is_active = false THEN 2
              WHEN COALESCE(e.saturday_policy,'2nd_4th_off') = 'all_working' THEN 1
              ELSE 0 END,
-        d.name, e.first_name`);
+        d.name, e.first_name`, [y, m]);
     const employees = empResult.rows;
 
-    // (Attendance/punch/holiday data is intentionally NOT loaded here — Master
-    //  Excel carries no attendance sheets. That data is month-specific and
-    //  belongs to the Attendance Register export instead.)
-
-    const wb = new ExcelJS.Workbook(); wb.calcProperties = { fullCalcOnLoad: true };
+    const wb = new ExcelJS.Workbook();
     wb.creator = 'HRMS';
     wb.created = new Date();
 
-    // ══════════════════════════════════════════════════════════════════════
-    // SHEET 1 — EMPLOYEE MASTER  (identity + professional + IDs + salary)
-    // One wide row per employee — directory + salary breakup merged, since
-    // both are one-row-per-employee STATIC data. No attendance / earned /
-    // net-payable columns — those are month-specific and live in the
-    // Attendance export.
-    // ══════════════════════════════════════════════════════════════════════
-    const ws2 = wb.addWorksheet('Employee Master', {
-      views: [{ state: 'frozen', xSplit: 2, ySplit: 3 }]
+    // ════════════════════════════════════════════════════════════════════════
+    // SHEET 3 — EMPLOYEE DIRECTORY
+    // ════════════════════════════════════════════════════════════════════════
+    const ws3 = wb.addWorksheet('Employee Directory', {
+      views: [{ state: 'frozen', xSplit: 3, ySplit: 2 }]
     });
 
-    const MASTER_GROUPS = [
-      { label: 'IDENTITY',               cols: 9, color: 'FF1565C0' },
-      { label: 'PROFESSIONAL',           cols: 9, color: 'FF2E7D32' },
-      { label: 'STATUTORY IDs & BANK',   cols: 7, color: 'FF6A1B9A' },
-      { label: 'EARNINGS',               cols: 6, color: 'FF388E3C' },
-      { label: 'EMPLOYEE DEDUCTIONS',    cols: 5, color: 'FFC62828' },
-      { label: 'EMPLOYER CONTRIBUTIONS', cols: 4, color: 'FF8E24AA' },
-      { label: 'CTC',                    cols: 2, color: 'FF37474F' },
-    ];
-    const masterHeaders = [
-      // IDENTITY (9)
-      'Emp Code','Name','Email','Phone','Gender','DOB','Blood Group','Marital Status','Address',
-      // PROFESSIONAL (9)
-      'City','State','Department','Designation','Role','Category','Level','Joining Date','Reporting Manager',
-      // STATUTORY IDs & BANK (7)
-      'PAN','Aadhaar','UAN','PF No','Bank','Account No','IFSC',
-      // EARNINGS (6)
-      'Basic','HRA','Conveyance','Defray Allow','Gratuity','Gross Salary',
-      // EMPLOYEE DEDUCTIONS (5)
-      'PF (Emp)','ESI (Emp)','Prof Tax','TDS','Total Deductions',
-      // EMPLOYER CONTRIBUTIONS (4)
-      'PF (Employer)','ESI (Employer)','PF Admin','Total Employer Cost',
-      // CTC (2)
-      'CTC Monthly','CTC Annual',
-    ];
-    const MASTER_COLS = masterHeaders.length;                 // 42
-    const FIRST_MONEY_COL0 = 25;                              // 0-based index of 'Basic'
-    const masterWidths = [
-      12,24,30,14,9,12,11,13,32,
-      14,14,16,22,12,13,7,13,22,
-      14,16,16,16,20,20,14,
-      12,11,12,14,11,13,
-      11,11,10,11,15,
-      13,13,11,17,
-      13,13,
-    ];
+    try { ws3.mergeCells(1, 1, 1, 20); } catch(_) {}
+    const dirTitle = ws3.getCell(1, 1);
+    dirTitle.value = `HRMS — Employee Directory | Generated ${new Date().toLocaleDateString(CONFIG.currencyLocale || 'en-IN')}`;
+    dirTitle.font = { bold: true, size: 13, color: { argb: 'FFFFFFFF' } };
+    dirTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4E342E' } };
+    dirTitle.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws3.getRow(1).height = 26;
 
-    // Title
-    try { ws2.mergeCells(1, 1, 1, MASTER_COLS); } catch(_) {}
-    const masterTitle = ws2.getCell(1, 1);
-    masterTitle.value = `HRMS — Employee Master | Generated ${new Date().toLocaleDateString(CONFIG.currencyLocale || 'en-IN')}`;
-    masterTitle.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
-    masterTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4E342E' } };
-    masterTitle.alignment = { horizontal: 'center', vertical: 'middle' };
-    ws2.getRow(1).height = 28;
-
-    // Group header band (row 2)
-    let mColOffset = 1;
-    MASTER_GROUPS.forEach(g => {
-      try { ws2.mergeCells(2, mColOffset, 2, mColOffset + g.cols - 1); } catch(_) {}
-      const c = ws2.getCell(2, mColOffset);
-      c.value = g.label;
-      c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
-      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: g.color } };
-      c.alignment = { horizontal: 'center', vertical: 'middle' };
-      mColOffset += g.cols;
+    const dirHeaders = ['Emp Code','Name','Email','Phone','Gender','DOB','Joining Date',
+      'Department','Designation','Role','Category','Level','City','State',
+      'PAN','Aadhar','UAN','PF No','Bank','Account','IFSC','Manager'];
+    dirHeaders.forEach((h, i) => {
+      const cell = ws3.getCell(2, i + 1);
+      cell.value = h;
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 9 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6D4C41' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     });
-    ws2.getRow(2).height = 20;
+    ws3.getRow(2).height = 22;
 
-    // Column headers (row 3)
-    masterHeaders.forEach((h, i) => {
-      const c = ws2.getCell(3, i + 1);
-      c.value = h;
-      c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 9 };
-      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF37474F' } };
-      c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-      c.border = { bottom: { style: 'thin', color: { argb: 'FFFFFFFF' } } };
-    });
-    ws2.getRow(3).height = 30;
-    masterWidths.forEach((w, i) => { ws2.getColumn(i + 1).width = w; });
-    ws2.getColumn(MASTER_COLS + 1).width = 55;   // deactivation remark
-
-    // Column letters for the live formulas (Gross / Total Ded / Employer Cost / CTC).
-    const M = {
-      basic: colLetter(26), special: colLetter(29), grat: colLetter(30), gross: colLetter(31),
-      pfEmp: colLetter(32), tds: colLetter(35), totalDed: colLetter(36),
-      pfEmr: colLetter(37), pfAdm: colLetter(39), totalEmpCost: colLetter(40),
-      ctcMonthly: colLetter(41),
-    };
-
-    function writeMasterRow(e, rowNum, isAlt, tint) {
-      const bg = tint || (isAlt ? 'FFF4F6F8' : 'FFFFFFFF');
-      const R = rowNum;
-      const num = v => parseFloat(v) || 0;
+    employees.forEach((e, ri) => {
+      const row = ri + 3;
+      const isAlt = ri % 2 === 1;
       const vals = [
-        e.employee_code || '', `${e.first_name || ''} ${e.last_name || ''}`.trim(),
-        e.email || '', e.phone || '', e.gender || '',
+        e.employee_code, `${e.first_name} ${e.last_name||''}`.trim(), e.email, e.phone||'',
+        e.gender||'',
         e.date_of_birth ? toISTDateString(new Date(e.date_of_birth)) : '',
-        e.blood_group || '', e.marital_status || '', e.address_line1 || '',
-        e.city || '', e.state || '', e.department || '', e.designation || '',
-        e.role || '', e.employee_category || '', e.level || '',
-        (e.joining_date && new Date(e.joining_date).getFullYear() > 1980) ? toISTDateString(new Date(e.joining_date)) : '',
-        e.reporting_manager || '',
-        e.pan_number || '', e.aadhar_number || '', e.uan_number || '', e.pf_number || '',
-        e.bank_name || '', e.bank_account || '', e.bank_ifsc || '',
-        num(e.basic), num(e.hra), num(e.conveyance), num(e.special_allowance), num(e.gratuity),
-        // Gross = Basic..Special ONLY (gratuity is an employer retiral cost and is
-        // deliberately excluded — matches payroll/offer-letter/import).
-        { formula: `SUM(${M.basic}${R}:${M.special}${R})` },
-        num(e.pf_employee), num(e.esi_employee), num(e.professional_tax), num(e.tds),
-        { formula: `SUM(${M.pfEmp}${R}:${M.tds}${R})` },
-        num(e.pf_employer), num(e.esi_employer), num(e.pf_admin),
-        { formula: `SUM(${M.pfEmr}${R}:${M.pfAdm}${R})+${M.grat}${R}` },
-        { formula: `${M.gross}${R}+${M.totalEmpCost}${R}` },
-        { formula: `${M.ctcMonthly}${R}*12` },
+        e.joining_date  ? toISTDateString(new Date(e.joining_date))  : '',
+        e.department||'', e.designation||'', e.role, e.employee_category||'', e.level||'',
+        e.city||'', e.state||'',
+        e.pan_number||'', e.aadhar_number||'', e.uan_number||'', e.pf_number||'',
+        e.bank_name||'', e.bank_account||'', e.bank_ifsc||'', e.reporting_manager||''
       ];
       vals.forEach((v, ci) => {
-        const cell = ws2.getCell(R, ci + 1);
+        const cell = ws3.getCell(row, ci + 1);
         cell.value = v;
-        cell.font = { size: 9, color: { argb: e.is_active === false ? 'FF9E0000' : 'FF000000' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+        cell.font = { size: 9 };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isAlt ? 'FFFBE9E7' : 'FFFFFFFF' } };
+        cell.alignment = { vertical: 'middle' };
         cell.border = { right: { style: 'hair' }, bottom: { style: 'hair' } };
-        if (ci >= FIRST_MONEY_COL0) {
-          cell.numFmt = '#,##0.00';
-          cell.alignment = { horizontal: 'right', vertical: 'middle' };
-        } else {
-          cell.alignment = { vertical: 'middle' };
-        }
       });
-      if (e.is_active === false) {
-        const rc = ws2.getCell(R, MASTER_COLS + 1);
-        rc.value = e.deactivation_remark
-          ? `❌ ${e.deactivation_remark}`
-          : `❌ Account deactivated${e.separation_date ? ' on ' + toISTDateString(new Date(e.separation_date)) : ''}`;
-        rc.font = { italic: true, size: 9, color: { argb: 'FFB71C1C' } };
-        rc.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
-      }
-      ws2.getRow(R).height = 16;
-    }
-
-    // Full-width section banner (onsite / offsite / deactivated separators).
-    function writeMasterBanner(rowNum, label, bgArgb, height) {
-      try { ws2.mergeCells(rowNum, 1, rowNum, MASTER_COLS); } catch(_) {}
-      const c = ws2.getCell(rowNum, 1);
-      c.value = label;
-      c.font = { bold: true, size: 10.5, color: { argb: 'FFFFFFFF' } };
-      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgArgb } };
-      c.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
-      ws2.getRow(rowNum).height = height || 19;
-    }
-
-    let mRow = 4;
-    let lastGrpMaster = null;
-    let altIdx = 0;
-    employees.forEach((e) => {
-      const grp = e.is_active === false ? 'deactivated'
-                : (e.saturday_policy === 'all_working' ? 'offsite' : 'onsite');
-      if (grp !== lastGrpMaster) {
-        writeMasterBanner(mRow,
-          grp === 'onsite'  ? '  🏢 Onsite Employees'
-          : grp === 'offsite' ? '  🌐 Offsite / Field Employees'
-          :                     '  ❌ Deactivated Employees',
-          grp === 'onsite'  ? 'FF2E7D32' : grp === 'offsite' ? 'FF1565C0' : 'FF6D1A1A', 17);
-        mRow++; lastGrpMaster = grp; altIdx = 0;
-      }
-      writeMasterRow(e, mRow, altIdx % 2 === 1,
-        e.is_active === false ? (altIdx % 2 ? 'FFFFF5F5' : 'FFFFFBFB') : null);
-      mRow++; altIdx++;
+      ws3.getRow(row).height = 16;
     });
 
-    // ══════════════════════════════════════════════════════════════════════
-    // SHEET 2 — SUMMARY  (statewise headcount rollup)
-    // Pure master-data rollup: how many people, where, of what type. No
-    // attendance / pay figures — those are month-specific and belong to the
-    // Attendance export, not to a master file.
-    // ══════════════════════════════════════════════════════════════════════
-    if (employees.length) {
-      const ws5 = wb.addWorksheet('Summary');
-      const sHeaders = ['Total Employees', 'Permanent', 'Provision', 'Contractual',
-                        'Onsite', 'Offsite / Field', 'Active', 'Inactive'];
-      const colCount = sHeaders.length + 1; // +1 for the leading group-key column
-      [26, 15, 12, 12, 12, 10, 14, 10, 10].forEach((w, i) => ws5.getColumn(i + 1).width = w);
-
-      function writeRollupTable(startRow, tableTitle, keyLabel, keyFn) {
-        const byKey = {};
-        employees.forEach(e => {
-          const key = keyFn(e);
-          const g = (byKey[key] ||= { key, total: 0, permanent: 0, provision: 0,
-                                        contractual: 0, onsite: 0, offsite: 0, active: 0, inactive: 0 });
-          g.total++;
-          const cat = e.employee_category || 'permanent';
-          if (cat === 'provision') g.provision++;
-          else if (cat === 'contractual') g.contractual++;
-          else g.permanent++;
-          if ((e.saturday_policy || '2nd_4th_off') === 'all_working') g.offsite++; else g.onsite++;
-          if (e.is_active === false) g.inactive++; else g.active++;
-        });
-        const groups = Object.values(byKey).sort((a, b) =>
-          a.key === '— No State —' ? 1 : b.key === '— No State —' ? -1 : a.key.localeCompare(b.key));
-
-        let row = startRow;
-        try { ws5.mergeCells(row, 1, row, colCount); } catch (_) {}
-        const t = ws5.getCell(row, 1);
-        t.value = tableTitle;
-        t.font = { bold: true, size: 13, color: { argb: 'FFFFFFFF' } };
-        t.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4E342E' } };
-        t.alignment = { horizontal: 'center', vertical: 'middle' };
-        ws5.getRow(row).height = 24; row++;
-
-        [keyLabel, ...sHeaders].forEach((h, i) => {
-          const c = ws5.getCell(row, i + 1);
-          c.value = h;
-          c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
-          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6D4C41' } };
-          c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-        });
-        ws5.getRow(row).height = 22; row++;
-
-        const grand = { total: 0, permanent: 0, provision: 0, contractual: 0,
-                          onsite: 0, offsite: 0, active: 0, inactive: 0 };
-        groups.forEach((g, idx) => {
-          const bg = idx % 2 ? 'FFFBE9E7' : 'FFFFFFFF';
-          [g.key, g.total, g.permanent, g.provision, g.contractual,
-            g.onsite, g.offsite, g.active, g.inactive].forEach((v, i) => {
-            const c = ws5.getCell(row, i + 1);
-            c.value = v;
-            c.font = { size: 10 };
-            c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
-            c.alignment = { horizontal: i === 0 ? 'left' : 'center', vertical: 'middle' };
-            c.border = { right: { style: 'hair' }, bottom: { style: 'hair' } };
-          });
-          ws5.getRow(row).height = 16; row++;
-          Object.keys(grand).forEach(k => { grand[k] += g[k]; });
-        });
-
-        ['GRAND TOTAL', grand.total, grand.permanent, grand.provision, grand.contractual,
-          grand.onsite, grand.offsite, grand.active, grand.inactive].forEach((v, i) => {
-          const c = ws5.getCell(row, i + 1);
-          c.value = v;
-          c.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
-          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4E342E' } };
-          c.alignment = { horizontal: i === 0 ? 'left' : 'center', vertical: 'middle' };
-          c.border = { top: { style: 'medium' } };
-        });
-        ws5.getRow(row).height = 18; row++;
-        return row;
-      }
-
-      writeRollupTable(
-        1, `HRMS — Statewise Headcount | Generated ${new Date().toLocaleDateString(CONFIG.currencyLocale || 'en-IN')}`, 'State',
-        e => (e.state || '').trim() || '— No State —',
-      );
-    }
-
-    // ── Attendance lives in the Attendance export, not here ─────────────────
-    // Master Excel is employee MASTER data (identity + salary structure).
-    // The Attendance Register / Punch Register / attendance-driven pay all
-    // live in the Attendance export, which owns the single copy of that logic.
+    [10,22,28,13,8,12,12,16,22,10,12,7,14,14,14,16,14,18,20,20,13,22].forEach((w, i) => {
+      ws3.getColumn(i + 1).width = w;
+    });
 
     // ── Send response ────────────────────────────────────────────────────────
-    if (!employees.length) {
-      return res.status(404).json({ success: false, message: 'No employees found.' });
-    }
     const buf = await wb.xlsx.writeBuffer();
     res.setHeader('Content-Disposition', `attachment; filename="HRMS_Master_${MONTH_NAMES[m-1]}${y}.xlsx"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1720,24 +1516,10 @@ exports.exportAttendanceRegister = async (req, res) => {
     let salStructMap = {};
     if (salEmpIds.length) {
       const salStructRes = await db.query(
-        `SELECT e.id AS employee_id,
-                COALESCE(s.basic,e.basic_salary,0)             AS basic,
-                COALESCE(s.hra,e.hra,0)                         AS hra,
-                COALESCE(s.conveyance,e.conveyance,0)           AS conveyance,
-                COALESCE(e.special_allowance,s.special_allowance,0) AS special_allowance,
-                COALESCE(s.gratuity,0)                          AS gratuity,
-                COALESCE(s.gross_salary,0)                      AS gross_salary,
-                COALESCE(s.pf_employee,0)                       AS pf_employee,
-                COALESCE(s.esi_employee,0)                      AS esi_employee,
-                COALESCE(s.professional_tax,0)                  AS professional_tax,
-                COALESCE(s.tds,0)                               AS tds,
-                COALESCE(s.pf_employer,0)                       AS pf_employer,
-                COALESCE(s.esi_employer,0)                      AS esi_employer,
-                COALESCE(s.pf_admin,0)                          AS pf_admin,
-                COALESCE(s.total_deductions,0)                  AS total_deductions
-         FROM employees e
-         LEFT JOIN employee_salary_structure s ON s.employee_id = e.id
-         WHERE e.id = ANY($1::int[])`,
+        `SELECT employee_id, basic, hra, conveyance, special_allowance, gratuity,
+                gross_salary, pf_employee, esi_employee, professional_tax, tds,
+                pf_employer, esi_employer, pf_admin, total_deductions
+         FROM employee_salary_structure WHERE employee_id = ANY($1::int[])`,
         [salEmpIds]
       );
       salStructRes.rows.forEach(r => { salStructMap[r.employee_id] = r; });
@@ -1769,7 +1551,7 @@ exports.exportAttendanceRegister = async (req, res) => {
 
     const salHeaders = [
       'Emp Code', 'Name', 'Department', 'Designation',
-      'Basic', 'HRA', 'Conveyance', 'Defray Allow', 'Gratuity', 'Gross Salary',
+      'Basic', 'HRA', 'Conveyance', 'Special Allow', 'Gratuity', 'Gross Salary',
       'PF (Emp)', 'ESI (Emp)', 'Prof Tax', 'TDS', 'Advance EMI', 'Total Deductions',
       'Working Days', 'Present Days', 'Earned Gross', 'Net Payable'
     ];
