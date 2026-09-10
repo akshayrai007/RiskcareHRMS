@@ -4,7 +4,15 @@
 (function applyCurrencySymbol() {
   const sym = (window.CFG && window.CFG.currencySymbol) ? window.CFG.currencySymbol : '₹';
   function setSymbols() {
-    document.querySelectorAll('.ccy-sym').forEach(el => el.textContent = sym);
+    // IMPORTANT: only write when the value actually differs. `el.textContent = sym`
+    // always replaces the child text node (even with an identical string), which
+    // itself is a DOM mutation. Since a MutationObserver below re-runs this same
+    // function on every DOM mutation, writing unconditionally creates an infinite
+    // mutate → observe → mutate loop that freezes the tab (this is what caused the
+    // "Loading…" modal to hang forever with the page becoming unresponsive).
+    document.querySelectorAll('.ccy-sym').forEach(el => {
+      if (el.textContent !== sym) el.textContent = sym;
+    });
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setSymbols);
