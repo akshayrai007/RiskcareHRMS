@@ -1191,8 +1191,11 @@ exports.bulkSeparateImport = async (req, res) => {
       let idx = 1;
       for (const key of keys) {
         if (key === '__joining_date_if_empty') {
-          // Fill-if-blank only: never clobber a joining_date that's already set.
-          sets.push(`joining_date=COALESCE(joining_date,$${idx++})`);
+          // Fill when NULL, or when it's obviously the "1970 serial-date bug"
+          // garbage value from an earlier bad import (anything before 1981 —
+          // matches the UI's isRealDate() cutoff in app.js) — never touch a
+          // genuine joining date.
+          sets.push(`joining_date=CASE WHEN joining_date IS NULL OR joining_date < DATE '1981-01-01' THEN $${idx++} ELSE joining_date END`);
         } else {
           sets.push(`${key}=$${idx++}`);
         }
@@ -1254,14 +1257,14 @@ exports.bulkSeparateImport = async (req, res) => {
           );
           if (sepRow.rows.length) {
             await client.query(
-              `UPDATE separations SET notice_date=$1, last_working_date=$1, original_lwd=$1, updated_at=NOW()
-               WHERE id=$2`,
-              [sepDate, sepRow.rows[0].id]
+              `UPDATE separations SET notice_date=$1, last_working_date=$1, original_lwd=$1, type=$2, reason=$3, updated_at=NOW()
+               WHERE id=$4`,
+              [sepDate, sepType, reason, sepRow.rows[0].id]
             );
           }
           await client.query(
-            `UPDATE employees SET separation_date=$1, updated_at=NOW() WHERE id=$2`,
-            [sepDate, existingEmpId]
+            `UPDATE employees SET separation_date=$1, separation_type=$2, separation_reason=$3, updated_at=NOW() WHERE id=$4`,
+            [sepDate, sepType, reason, existingEmpId]
           );
           // Backfill the card's extra fields (Band Grade, Reporting Officer,
           // addresses, etc.) on the already-resigned record too, so re-
