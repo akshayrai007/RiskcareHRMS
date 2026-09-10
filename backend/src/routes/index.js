@@ -53,18 +53,8 @@ router.get   ('/employees/export-master',        authenticate, authorize(...EMP_
 router.get   ('/attendance/export-register',     authenticate, authorize('hr','accounts','super_admin'), empCtrl.exportAttendanceRegister);
 router.get   ('/employees/code-preview',  authenticate, authorize(...EMP_MGMT), empCtrl.previewNextCode);
 router.get   ('/employees/contacts',      authenticate,                          empCtrl.getContacts);
-router.get   ('/employees/import-template', authenticate, authorize(...EMP_MGMT), empImportCtrl.downloadImportTemplate);
 router.get   ('/employees/:id',           authenticate,                          empCtrl.getOne);
 router.get   ('/employees/:id/designation-history', authenticate,                 empCtrl.getDesignationHistory);
-
-// ── Salary & Promotions history view (Accounts / HR / Admin / Super Admin) ──
-const historyCtrl = require('../controllers/historyController');
-const HISTORY_ROLES = ['hr','hr admin','accounts','accounts admin','admin','super_admin'];
-router.get('/history/employees',      authenticate, authorize(...HISTORY_ROLES), historyCtrl.listEmployees);
-router.get('/history/employees/:id',  authenticate, authorize(...HISTORY_ROLES), historyCtrl.getEmployeeHistory);
-
-// ── Org chart — visible to everyone once logged in ──────────────────────────
-router.get('/org-chart', authenticate, historyCtrl.getOrgChart);
 router.post  ('/employees',               authenticate, authorize(...EMP_MGMT),  empCtrl.create);
 router.put   ('/employees/:id',           authenticate, authorize(...EMP_MGMT),  empCtrl.update);
 router.patch ('/employees/:id',           authenticate, authorize(...EMP_MGMT),  empCtrl.update);
@@ -531,7 +521,6 @@ router.get ('/separations',                      authenticate, authorize(...HR_A
 router.post('/separations',                      authenticate, authorize(...HR_ADMIN),                                sepCtrl.initiate);
 router.post('/separations/bulk-import',          authenticate, authorize(...HR_ADMIN), xlsxUpload.single('file'),     sepCtrl.bulkSeparateImport);
 router.post('/separations/backfill-approvals',   authenticate, authorize(...HR_ADMIN),                                sepCtrl.backfillApprovals);
-router.put ('/separations/employee/:id/fix-lwd', authenticate, authorize(...HR_ADMIN),                                sepCtrl.fixLastWorkingDate);
 
 // ── Notifications ─────────────────────────────────────────────────────────────
 router.get('/notifications', authenticate, async (req, res) => {
