@@ -127,7 +127,9 @@ exports.getAll = async (req, res) => {
        LEFT JOIN provision_confirmations pc ON pc.employee_id = e.id
        LEFT JOIN separations sep_active ON sep_active.employee_id = e.id AND sep_active.status = 'completed'
        WHERE ${conditions.join(' AND ')}
-       ORDER BY d.name, e.first_name`,
+       ORDER BY ${is_active === 'false'
+         ? "COALESCE(sep_active.last_working_date, e.separation_date) DESC NULLS LAST, e.first_name"
+         : "d.name, e.first_name"}`,
       params
     );
     res.json({ success: true, data: result.rows, total: result.rows.length });
