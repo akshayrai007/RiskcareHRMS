@@ -56,6 +56,7 @@
     </div>
     <div class="topbar-right">
       <button class="btn btn-danger btn-sm" id="resign-btn" onclick="openModal('resign-modal')" style="display:none">📝 Submit Resignation</button>
+      <button class="btn btn-danger btn-sm" id="hr-initiate-btn" onclick="openInitiateModal()" style="display:none">➕ Initiate Separation (Termination / Absconding)</button>
       <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
       <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
     </div>
@@ -466,14 +467,23 @@ async function loadMySeparation() {
   const data = await api('GET', '/separations/my');
   const el = document.getElementById('my-sep-content');
 
-  // Show resign button only if no active separation
-  const active = (data?.data||[]).find(s => !['rejected','withdrawn','completed'].includes(s.status));
-  if (!active) {
-    document.getElementById('resign-btn').style.display = 'flex';
-    document.getElementById('emp-banner').style.display = 'block';
-  } else {
+  // HR is a shared position login, not a real employee — they never resign
+  // themselves. Show "Initiate Separation" instead of "Submit Resignation".
+  if (Role.is('hr')) {
     document.getElementById('resign-btn').style.display = 'none';
     document.getElementById('emp-banner').style.display = 'none';
+    document.getElementById('hr-initiate-btn').style.display = 'flex';
+  } else {
+    document.getElementById('hr-initiate-btn').style.display = 'none';
+    // Show resign button only if no active separation
+    const active = (data?.data||[]).find(s => !['rejected','withdrawn','completed'].includes(s.status));
+    if (!active) {
+      document.getElementById('resign-btn').style.display = 'flex';
+      document.getElementById('emp-banner').style.display = 'block';
+    } else {
+      document.getElementById('resign-btn').style.display = 'none';
+      document.getElementById('emp-banner').style.display = 'none';
+    }
   }
 
   const mySeps = data?.data || [];
