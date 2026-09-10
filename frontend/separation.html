@@ -633,7 +633,7 @@ function filterAll() {
           return `<td style="${XLD}"><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:${c}1f;color:${c}">${st}</span></td>`;
         };
         return `<tr style="background:${i%2===0?'transparent':'var(--surface2)'};cursor:pointer" onclick="openReview(${s.id})">
-          <td style="${XLD};font-weight:700">${s.employee_name}${inactiveBadge}</td>
+          <td style="${XLD};font-weight:700">${s.employee_name}</td>
           <td style="${XLD};color:var(--muted)">${s.employee_code||'—'}</td>
           <td style="${XLD};color:var(--muted)">${s.department_name||'—'}</td>
           <td style="${XLD}">${s.type}</td>
