@@ -176,19 +176,27 @@ exports.submitResignation = async (req, res) => {
     const empRole = req.user.role;
     const {
       reason, notice_date, suggested_lwd, notice_period_days, notice_applicable,
-      resignation_reason_category, comments, personal_email, contact_number
+      resignation_reason_category, comments
     } = req.body;
     let { type } = req.body;
     const file = req.file; // optional attachment, via multer memory storage
+
+    // Personal email / contact number are pulled from the employee's own record —
+    // no longer collected on the form since they're already on file.
+    const empContact = await client.query(
+      `SELECT personal_email, phone FROM employees WHERE id=$1`, [empId]
+    );
+    const personal_email  = empContact.rows[0]?.personal_email;
+    const contact_number  = empContact.rows[0]?.phone;
 
     if (!reason || !reason.trim())
       return res.status(400).json({ success: false, message: 'Reason is required' });
     if (!resignation_reason_category)
       return res.status(400).json({ success: false, message: 'Resignation reason category is required' });
     if (!personal_email || !personal_email.trim())
-      return res.status(400).json({ success: false, message: 'Personal email is required' });
+      return res.status(400).json({ success: false, message: 'Personal email is not on file for your record. Please contact HR to update it before resigning.' });
     if (!contact_number || !contact_number.trim())
-      return res.status(400).json({ success: false, message: 'Contact number is required' });
+      return res.status(400).json({ success: false, message: 'Contact number is not on file for your record. Please contact HR to update it before resigning.' });
 
     // Self-service employees may only pick from these types; anything else defaults to resignation
     const SELF_SERVICE_TYPES = ['resignation', 'mutual-separation', 'retirement'];
