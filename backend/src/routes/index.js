@@ -272,7 +272,7 @@ router.post('/payroll/process',      authenticate, authorize(...ACCOUNTS), async
 });
 router.get ('/payroll/uploads',                   authenticate, authorize(...ACCOUNTS), payCtrl.getUploads);
 router.get ('/payroll/salary-structures',         authenticate, authorize('hr'),        payCtrl.getAllSalaryStructures);
-router.get ('/payroll/salary-structure/:employee_id', authenticate,                    payCtrl.getSalaryStructure);
+router.get ('/payroll/salary-structure/:employee_id', authenticate, authorize('hr'),    payCtrl.getSalaryStructure);
 router.post('/payroll/salary-structure',          authenticate, authorize('hr'),        payCtrl.upsertSalaryStructure);
 router.post('/payroll/upload',                    authenticate, authorize('accounts'), payCtrl.uploadMiddleware, payCtrl.uploadPayroll);
 router.get ('/payroll/template',                  authenticate, authorize('accounts','hr','super_admin'), payCtrl.downloadPayrollTemplate);

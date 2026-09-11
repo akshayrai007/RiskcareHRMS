@@ -2,16 +2,22 @@
 // Powers the "Salary & Promotions" admin view (list + per-employee popup)
 // and the company Org Chart.
 const db = require('../config/db');
+const scope = require('../utils/scope');
 
 // GET /api/history/employees
 // List every active employee with a quick summary so HR/Accounts/Admin can
 // see at a glance who has had a recent salary change or promotion, then
-// click through for the full timeline.
+// click through for the full timeline. Scoped per utils/scope.js: hr/
+// accounts/super_admin see everyone; admin sees only self + direct reports.
 exports.listEmployees = async (req, res) => {
   try {
     const search = (req.query.search || '').trim();
     const params = [];
     let where = 'WHERE 1=1';
+
+    const empScope = scope.buildEmployeeScope(req.user, 'e', params.length + 1);
+    if (empScope.clause) { where += ` AND ${empScope.clause}`; params.push(...empScope.params); }
+
     if (search) {
       params.push(`%${search.toLowerCase()}%`);
       where += ` AND (LOWER(e.first_name||' '||e.last_name) LIKE $${params.length} OR LOWER(e.employee_code) LIKE $${params.length} OR LOWER(e.email) LIKE $${params.length})`;
@@ -49,6 +55,10 @@ exports.listEmployees = async (req, res) => {
 exports.getEmployeeHistory = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+
+    if (!(await scope.canAccessEmployee(req.user, id, db))) {
+      return res.status(403).json({ success: false, message: 'Not authorized to view this employee\'s history' });
+    }
 
     const empRes = await db.query(
       `SELECT e.id, e.employee_code, e.first_name, e.last_name, e.email, e.profile_photo,
