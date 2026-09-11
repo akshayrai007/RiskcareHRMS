@@ -728,21 +728,12 @@ function renderBalance(data) {
   }
   const ALWAYS_SHOW = [
     { code: 'EL', name: 'Earned Leave' },
-    { code: 'CL/SL', name: 'Casual / Sick Leave' },
+    { code: 'SL', name: 'Sick Leave' },
+    { code: 'CL', name: 'Casual Leave' },
   ];
   const byCode = {};
   (data||[]).forEach(b => { byCode[b.code] = b; });
-  const cl = byCode['CL'] || { allocated:0, used:0, pending:0, carry_forward:0, available:0 };
-  const sl = byCode['SL'] || { allocated:0, used:0, pending:0, carry_forward:0, available:0 };
-  byCode['CL/SL'] = {
-    code: 'CL/SL', name: 'Casual / Sick Leave',
-    allocated:     parseFloat(cl.allocated||0)     + parseFloat(sl.allocated||0),
-    used:          parseFloat(cl.used||0)          + parseFloat(sl.used||0),
-    pending:       parseFloat(cl.pending||0)        + parseFloat(sl.pending||0),
-    carry_forward: parseFloat(cl.carry_forward||0)  + parseFloat(sl.carry_forward||0),
-    available:     parseFloat(cl.available||0)      + parseFloat(sl.available||0),
-  };
-  const apiCodes = data.map(b => b.code).filter(c => c !== 'CL' && c !== 'SL');
+  const apiCodes = data.map(b => b.code).filter(c => c !== 'OD');
   const showCodes = [...new Set([...ALWAYS_SHOW.map(x => x.code), ...apiCodes])];
   const items = showCodes.map(code => byCode[code] || {
     code, name: ALWAYS_SHOW.find(x=>x.code===code)?.name || code,
@@ -762,7 +753,7 @@ function renderBalance(data) {
     </div>`;
   });
 
-  el.innerHTML = `<div class="bal-grid" style="padding:4px 0 0;grid-template-columns:repeat(2,1fr)">${cards.join('')}</div>`;
+  el.innerHTML = `<div class="bal-grid" style="padding:4px 0 0">${cards.join('')}</div>`;
 }
 
 let _allHolidayData = [];
