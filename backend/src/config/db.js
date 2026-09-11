@@ -1,6 +1,14 @@
 // src/config/db.js
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
 require('dotenv').config();
+
+// pg's default DATE (OID 1082) parser builds a JS Date at LOCAL midnight, then
+// res.json()'s toISOString() converts that to UTC — if the server process runs
+// with a timezone ahead of UTC (this app uses Asia/Kolkata for cron correctness),
+// local midnight shifts back into the previous UTC day, so every date_of_birth /
+// joining_date etc. comes out one day early. DATE has no time/timezone meaning
+// anyway, so just return it as the plain "YYYY-MM-DD" string pg already has.
+types.setTypeParser(1082, val => val);
 
 // ── Why these values? ────────────────────────────────────────────────────────
 // Render free tier + Neon DB: 27 employees pinging every 30s = ~1 req/s peak.
