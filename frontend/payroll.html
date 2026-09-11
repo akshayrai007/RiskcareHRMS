@@ -981,7 +981,7 @@ async function openSalaryEdit(empId) {
   document.getElementById('se-conveyance').value = r.conveyance || 0;
   document.getElementById('se-special').value    = r.special_allowance || 0;
   document.getElementById('se-gratuity').value   = r.gratuity || 0;
-  document.getElementById('se-other').value      = r.other_allowance || 0;
+  document.getElementById('se-other').value      = r.food_coupon || 0;
   // Deductions
   document.getElementById('se-pf-emp').value   = r.pf_employee || 0;
   document.getElementById('se-pf-emr').value   = r.pf_employer || 0;
@@ -1033,7 +1033,7 @@ async function saveSalaryStructure() {
     conveyance:       v('se-conveyance'),
     special_allowance:v('se-special'),
     gratuity:         v('se-gratuity'),
-    other_allowance:  v('se-other'),
+    food_coupon:      v('se-other'),
     pf_employee:      v('se-pf-emp'),
     pf_employer:      v('se-pf-emr'),
     pf_admin:         v('se-pf-admin'),
@@ -1086,7 +1086,7 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
       <div><label class="form-label">Conveyance</label><input id="se-conveyance" type="number" class="form-control" placeholder="0"></div>
       <div><label class="form-label">Defray Allowance</label><input id="se-special" type="number" class="form-control" placeholder="0"></div>
       <div><label class="form-label">Gratuity</label><input id="se-gratuity" type="number" class="form-control" placeholder="0"></div>
-      <div><label class="form-label">Other Allowance</label><input id="se-other" type="number" class="form-control" placeholder="0"></div>
+      <div><label class="form-label">Food Coupon</label><input id="se-other" type="number" class="form-control" placeholder="0"></div>
     </div>
 
     <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📋 Deductions (₹/month) — HR Defined</div>

@@ -182,11 +182,14 @@ function renderPayslip(p) {
   const fixedGratuity = parseFloat(p.fixed_gratuity ?? gratuity);
   const fixedSpecial  = parseFloat(p.fixed_special_allowance ?? p.fixed_conveyance ?? special);
 
+  const foodCoupon = parseFloat(p.other_allowance || 0);
+
   const earningItems = [
     { label: 'Basic', fixed: fixedBasic, earned: basic },
     { label: 'House Rent Allowance', fixed: fixedHRA, earned: hra },
     { label: 'Fixed Gratuity', fixed: fixedGratuity, earned: gratuity },
     { label: 'Defray Allowance', fixed: fixedSpecial, earned: special },
+    { label: 'Food Coupon', fixed: foodCoupon, earned: foodCoupon },
   ].filter(r => r.fixed > 0);
 
   // If conveyance is separate from special_allowance

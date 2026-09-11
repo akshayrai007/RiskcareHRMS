@@ -91,7 +91,7 @@ exports.upsertSalaryStructure = async (req, res) => {
   try {
     const {
       employee_id, basic = 0, hra = 0, conveyance = 0, special_allowance = 0,
-      gratuity = 0, pf_applicable = true, esi_applicable = true,
+      gratuity = 0, food_coupon = 0, pf_applicable = true, esi_applicable = true,
       pt_applicable = true, lwf_applicable = true, tds_applicable = false, notes,
       pf_wage_basis = 'capped' // 'capped' = PF on min(basic,15000); 'actual' = PF on full basic
     } = req.body;
@@ -103,7 +103,7 @@ exports.upsertSalaryStructure = async (req, res) => {
     const empState = empStateRes.rows[0]?.state;
 
     // Auto-calculate statutory amounts
-    const gross        = parseFloat(basic) + parseFloat(hra) + parseFloat(conveyance) + parseFloat(special_allowance) + parseFloat(gratuity);
+    const gross        = parseFloat(basic) + parseFloat(hra) + parseFloat(conveyance) + parseFloat(special_allowance) + parseFloat(gratuity) + parseFloat(food_coupon);
     const pfBase       = pf_wage_basis === 'actual' ? parseFloat(basic) : Math.min(parseFloat(basic), 15000);
     const pf_employee  = pf_applicable  ? Math.round(pfBase * 0.12)  : 0;
     const pf_employer  = pf_applicable  ? Math.round(pfBase * 0.12)  : 0;
@@ -122,20 +122,20 @@ exports.upsertSalaryStructure = async (req, res) => {
 
     await db.query(
       `INSERT INTO employee_salary_structure
-         (employee_id, basic, hra, conveyance, special_allowance, gratuity, gross_salary,
+         (employee_id, basic, hra, conveyance, special_allowance, gratuity, food_coupon, gross_salary,
           pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
           pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
           professional_tax, lwf, total_employer_cost,
           total_deductions, net_salary, ctc_monthly, ctc_annual, notes, pf_wage_basis, updated_by, updated_at)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,NOW())
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,NOW())
        ON CONFLICT(employee_id) DO UPDATE SET
-         basic=$2, hra=$3, conveyance=$4, special_allowance=$5, gratuity=$6, gross_salary=$7,
-         pf_applicable=$8, esi_applicable=$9, pt_applicable=$10, lwf_applicable=$11, tds_applicable=$12,
-         pf_employee=$13, pf_employer=$14, pf_admin=$15, esi_employee=$16, esi_employer=$17,
-         professional_tax=$18, lwf=$19, total_employer_cost=$20,
-         total_deductions=$21, net_salary=$22, ctc_monthly=$23, ctc_annual=$24, notes=$25, pf_wage_basis=$26,
-         updated_by=$27, updated_at=NOW()`,
-      [employee_id, basic, hra, conveyance, special_allowance, gratuity, gross,
+         basic=$2, hra=$3, conveyance=$4, special_allowance=$5, gratuity=$6, food_coupon=$7, gross_salary=$8,
+         pf_applicable=$9, esi_applicable=$10, pt_applicable=$11, lwf_applicable=$12, tds_applicable=$13,
+         pf_employee=$14, pf_employer=$15, pf_admin=$16, esi_employee=$17, esi_employer=$18,
+         professional_tax=$19, lwf=$20, total_employer_cost=$21,
+         total_deductions=$22, net_salary=$23, ctc_monthly=$24, ctc_annual=$25, notes=$26, pf_wage_basis=$27,
+         updated_by=$28, updated_at=NOW()`,
+      [employee_id, basic, hra, conveyance, special_allowance, gratuity, food_coupon, gross,
        pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
        pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
        pt, lwf, total_employer_cost,
@@ -353,17 +353,23 @@ exports.uploadPayroll = async (req, res) => {
       const earnedConveyance = proratedAmount(conveyance,  presentDays, totalDaysInMonth);
       const earnedOtherAllow = proratedAmount(otherAllow,  presentDays, totalDaysInMonth);
       const earnedGratuity   = proratedAmount(gratuity,    presentDays, totalDaysInMonth);
-      const gross = Math.round((earnedBasic + earnedHRA + earnedConveyance + earnedOtherAllow + earnedGratuity) * 100) / 100;
 
       // Statutory deductions recomputed on the EARNED (prorated) figures —
       // PF/ESI scale with actual earned wage; PT/LWF are flat monthly slabs
       // (not prorated) as long as the earned gross still crosses the
       // applicable threshold, matching how the salary structure defines them.
+      // Food Coupon is a fixed monthly meal-voucher benefit for select
+      // employees — NOT prorated by attendance, added straight from the
+      // salary structure (not the uploaded Excel).
       const structRes = await client.query(
-        `SELECT pf_applicable, esi_applicable, pt_applicable, lwf_applicable, pf_wage_basis
+        `SELECT pf_applicable, esi_applicable, pt_applicable, lwf_applicable, pf_wage_basis,
+                COALESCE(food_coupon,0) AS food_coupon
          FROM employee_salary_structure WHERE employee_id=$1`, [empId]
       );
-      const struct = structRes.rows[0] || { pf_applicable: true, esi_applicable: false, pt_applicable: true, lwf_applicable: false, pf_wage_basis: 'capped' };
+      const struct = structRes.rows[0] || { pf_applicable: true, esi_applicable: false, pt_applicable: true, lwf_applicable: false, pf_wage_basis: 'capped', food_coupon: 0 };
+      const foodCoupon = parseFloat(struct.food_coupon) || 0;
+
+      const gross = Math.round((earnedBasic + earnedHRA + earnedConveyance + earnedOtherAllow + earnedGratuity + foodCoupon) * 100) / 100;
 
       // PF ceiling (₹15,000) applies unless this employee opted for PF on
       // actual basic — either way, applied to the EARNED (prorated) basic
@@ -377,21 +383,22 @@ exports.uploadPayroll = async (req, res) => {
       const totalDed = pfEmp + esiEmp + pt + lwf + tds + loanEmi;
       const netPay   = Math.round((gross - totalDed) * 100) / 100;
 
-      // Upsert payroll record
+      // Upsert payroll record. Food Coupon is stored in the pre-existing
+      // (previously unused) other_allowance column.
       await client.query(
         `INSERT INTO payroll
            (employee_id, month, year, working_days, present_days, lop_days, paid_days,
-            basic, hra, conveyance, special_allowance, gratuity, gross_salary,
+            basic, hra, conveyance, special_allowance, gratuity, other_allowance, gross_salary,
             pf_employee, esi_employee, professional_tax, lwf, loan_emi_recovery, tds,
             total_deductions, net_salary, status, payment_date, upload_id)
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
          ON CONFLICT(employee_id, month, year) DO UPDATE SET
            working_days=$4, present_days=$5, lop_days=$6, paid_days=$7,
-           basic=$8, hra=$9, conveyance=$10, special_allowance=$11, gratuity=$12, gross_salary=$13,
-           pf_employee=$14, esi_employee=$15, professional_tax=$16, lwf=$17, loan_emi_recovery=$18,
-           tds=$19, total_deductions=$20, net_salary=$21, status=$22, payment_date=$23, upload_id=$24`,
+           basic=$8, hra=$9, conveyance=$10, special_allowance=$11, gratuity=$12, other_allowance=$13, gross_salary=$14,
+           pf_employee=$15, esi_employee=$16, professional_tax=$17, lwf=$18, loan_emi_recovery=$19,
+           tds=$20, total_deductions=$21, net_salary=$22, status=$23, payment_date=$24, upload_id=$25`,
         [empId, monthNum, yearNum, workDays, presentDays, lopDays, paidDays,
-         earnedBasic, earnedHRA, earnedConveyance, earnedOtherAllow, earnedGratuity, gross,
+         earnedBasic, earnedHRA, earnedConveyance, earnedOtherAllow, earnedGratuity, foodCoupon, gross,
          pfEmp, esiEmp, pt, lwf, loanEmi, tds,
          totalDed, netPay, status,
          status === 'paid' ? `${yearNum}-${String(monthNum).padStart(2,'0')}-28` : null,
@@ -699,6 +706,7 @@ exports.getAllSalaryStructures = async (req, res) => {
          COALESCE(ess.conveyance,0)        AS conveyance,
          COALESCE(ess.special_allowance,0) AS special_allowance,
          COALESCE(ess.gratuity,0)          AS gratuity,
+         COALESCE(ess.food_coupon,0)       AS food_coupon,
          COALESCE(ess.gross_salary,0)      AS gross_salary,
          COALESCE(ess.pf_employee,0)       AS pf_employee,
          COALESCE(ess.pf_employer,0)       AS pf_employer,
@@ -1121,6 +1129,7 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
              COALESCE(s.conveyance,0) AS conveyance,
              COALESCE(s.special_allowance,0) AS special_allowance,
              COALESCE(s.gratuity,0) AS gratuity,
+             COALESCE(s.food_coupon,0) AS food_coupon,
              COALESCE(s.pf_applicable,true)  AS pf_applicable,
              COALESCE(s.esi_applicable,false) AS esi_applicable,
              COALESCE(s.pt_applicable,true)  AS pt_applicable,
@@ -1137,7 +1146,7 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
     const HEADERS = [
       'Emp Code', 'Full Name', 'Department', 'Designation',
       'Bank', 'Branch', 'Account No.', 'IFSC',
-      'Basic', 'HRA', 'Conveyance', 'Defray Allowance', 'Gratuity',
+      'Basic', 'HRA', 'Conveyance', 'Defray Allowance', 'Gratuity', 'Food Coupon',
       'PF Applicable (Y/N)', 'PF Basis (Capped/Actual)',
       'ESI Applicable (Y/N)', 'PT Applicable (Y/N)',
       'LWF Applicable (Y/N)', 'TDS Applicable (Y/N)'
@@ -1153,7 +1162,7 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
         e.employee_code, e.full_name, e.department || '', e.designation || '',
         e.bank_name || '', e.bank_branch || '', e.bank_account || '', e.bank_ifsc || '',
         parseFloat(e.basic) || 0, parseFloat(e.hra) || 0, parseFloat(e.conveyance) || 0,
-        parseFloat(e.special_allowance) || 0, parseFloat(e.gratuity) || 0,
+        parseFloat(e.special_allowance) || 0, parseFloat(e.gratuity) || 0, parseFloat(e.food_coupon) || 0,
         yn(e.pf_applicable), e.pf_wage_basis === 'actual' ? 'Actual' : 'Capped',
         yn(e.esi_applicable), yn(e.pt_applicable),
         yn(e.lwf_applicable), yn(e.tds_applicable)
@@ -1186,6 +1195,7 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
       ['Conveyance',       'Monthly conveyance/travel allowance in ₹'],
       ['Defray Allowance', 'Any other fixed monthly allowance in ₹'],
       ['Gratuity',         'Monthly gratuity component in ₹ (usually 0 unless applicable)'],
+      ['Food Coupon',      'Monthly meal-voucher/food coupon benefit in ₹ — only applicable to select employees, leave 0 for everyone else'],
       ['PF Applicable',    'Y if Provident Fund applies to this employee, else N'],
       ['PF Basis',         'Capped = PF calculated on min(Basic, ₹15,000), the statutory PF wage ceiling (default). Actual = PF calculated on the FULL Basic, uncapped — for employees who opted out of the ceiling.'],
       ['ESI Applicable',   'Y if ESI applies (only relevant when gross ≤ ₹21,000), else N'],
@@ -1270,6 +1280,7 @@ exports.bulkUploadSalaryStructure = async (req, res) => {
       const conveyance         = parseFloat(row['Conveyance']) || 0;
       const special_allowance  = parseFloat(row['Defray Allowance'] ?? row['Other Allowance']) || 0;
       const gratuity           = parseFloat(row['Gratuity']) || 0;
+      const food_coupon        = parseFloat(row['Food Coupon']) || 0;
       const pf_applicable      = isYes(row['PF Applicable (Y/N)']);
       const esi_applicable     = isYes(row['ESI Applicable (Y/N)']);
       const pt_applicable      = isYes(row['PT Applicable (Y/N)']);
@@ -1286,7 +1297,7 @@ exports.bulkUploadSalaryStructure = async (req, res) => {
       if (String(row['Account No.'] || '').trim()) bankUpdates.bank_account = String(row['Account No.']).trim();
       if (String(row['IFSC']        || '').trim()) bankUpdates.bank_ifsc    = String(row['IFSC']).trim().toUpperCase();
 
-      const gross        = basic + hra + conveyance + special_allowance + gratuity;
+      const gross        = basic + hra + conveyance + special_allowance + gratuity + food_coupon;
       const pfBase        = pf_wage_basis === 'actual' ? basic : Math.min(basic, 15000);
       const pf_employee    = pf_applicable  ? Math.round(pfBase * 0.12) : 0;
       const pf_employer    = pf_applicable  ? Math.round(pfBase * 0.12) : 0;
@@ -1306,20 +1317,20 @@ exports.bulkUploadSalaryStructure = async (req, res) => {
       try {
         await client.query(
           `INSERT INTO employee_salary_structure
-             (employee_id, basic, hra, conveyance, special_allowance, gratuity, gross_salary,
+             (employee_id, basic, hra, conveyance, special_allowance, gratuity, food_coupon, gross_salary,
               pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
               pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
               professional_tax, lwf, total_employer_cost,
               total_deductions, net_salary, ctc_monthly, ctc_annual, pf_wage_basis, updated_by, updated_at)
-           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,NOW())
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,NOW())
            ON CONFLICT(employee_id) DO UPDATE SET
-             basic=$2, hra=$3, conveyance=$4, special_allowance=$5, gratuity=$6, gross_salary=$7,
-             pf_applicable=$8, esi_applicable=$9, pt_applicable=$10, lwf_applicable=$11, tds_applicable=$12,
-             pf_employee=$13, pf_employer=$14, pf_admin=$15, esi_employee=$16, esi_employer=$17,
-             professional_tax=$18, lwf=$19, total_employer_cost=$20,
-             total_deductions=$21, net_salary=$22, ctc_monthly=$23, ctc_annual=$24, pf_wage_basis=$25,
-             updated_by=$26, updated_at=NOW()`,
-          [empId, basic, hra, conveyance, special_allowance, gratuity, gross,
+             basic=$2, hra=$3, conveyance=$4, special_allowance=$5, gratuity=$6, food_coupon=$7, gross_salary=$8,
+             pf_applicable=$9, esi_applicable=$10, pt_applicable=$11, lwf_applicable=$12, tds_applicable=$13,
+             pf_employee=$14, pf_employer=$15, pf_admin=$16, esi_employee=$17, esi_employer=$18,
+             professional_tax=$19, lwf=$20, total_employer_cost=$21,
+             total_deductions=$22, net_salary=$23, ctc_monthly=$24, ctc_annual=$25, pf_wage_basis=$26,
+             updated_by=$27, updated_at=NOW()`,
+          [empId, basic, hra, conveyance, special_allowance, gratuity, food_coupon, gross,
            pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
            pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
            pt, lwf, total_employer_cost, total_ded, net, ctc_monthly, ctc_annual, pf_wage_basis, req.user.id]

@@ -732,11 +732,19 @@
                 oninput="recalcSalaryPreview()">
             </div>
 
-            <!-- Gratuity — full width -->
-            <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;grid-column:1/-1">
+            <!-- Gratuity -->
+            <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
               <div style="font-size:10px;color:var(--accent);font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Gratuity (₹) — monthly provision</div>
               <input id="edit-gratuity" type="number" class="form-control" placeholder="0.00"
-                style="padding:8px 12px;font-size:14px;font-weight:600;max-width:280px"
+                style="padding:8px 12px;font-size:14px;font-weight:600"
+                oninput="recalcSalaryPreview()">
+            </div>
+
+            <!-- Food Coupon — only applicable to select employees -->
+            <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
+              <div style="font-size:10px;color:var(--accent);font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Food Coupon (₹) — select employees only</div>
+              <input id="edit-food-coupon" type="number" class="form-control" placeholder="0.00"
+                style="padding:8px 12px;font-size:14px;font-weight:600"
                 oninput="recalcSalaryPreview()">
             </div>
 
@@ -2521,6 +2529,7 @@ async function openEditEmp(id) {
   document.getElementById('edit-conveyance').value  = s.conveyance  || '';
   document.getElementById('edit-special').value     = s.special_allowance || e.special_allowance || '';
   document.getElementById('edit-gratuity').value    = s.gratuity    || '';
+  document.getElementById('edit-food-coupon').value = s.food_coupon || '';
   document.getElementById('edit-pf').checked          = !!s.pf_applicable;
   document.getElementById('edit-esi').checked         = !!s.esi_applicable;
   document.getElementById('edit-pt').checked          = !!s.pt_applicable;
@@ -2609,9 +2618,10 @@ function recalcSalaryPreview() {
   const conveyance = v('edit-conveyance');
   const special    = v('edit-special');
   const gratuity   = v('edit-gratuity');
+  const foodCoupon = v('edit-food-coupon');
   if (!basic) { document.getElementById('salary-preview').style.display = 'none'; return; }
 
-  const gross   = basic + hra + conveyance + special + gratuity;
+  const gross   = basic + hra + conveyance + special + gratuity + foodCoupon;
   // Use HR-defined manual amounts
   const pfEmp   = document.getElementById('edit-pf').checked  ? (parseFloat(document.getElementById('edit-pf-emp-amt')?.value) || 0) : 0;
   const pfEmr   = document.getElementById('edit-pf').checked  ? (parseFloat(document.getElementById('edit-pf-emr-amt')?.value) || 0) : 0;
@@ -2720,6 +2730,7 @@ async function saveEmployeeEdit() {
       conveyance: parseFloat(document.getElementById('edit-conveyance').value) || 0,
       special_allowance: parseFloat(document.getElementById('edit-special').value) || 0,
       gratuity:   parseFloat(document.getElementById('edit-gratuity').value)   || 0,
+      food_coupon: parseFloat(document.getElementById('edit-food-coupon').value) || 0,
       pf_wage_basis:  document.getElementById('edit-pf-basis').value || 'capped',
       pf_applicable:  document.getElementById('edit-pf').checked,
       esi_applicable: document.getElementById('edit-esi').checked,
