@@ -154,7 +154,7 @@
     <div id="tab-leave-summary" style="display:none">
       <div class="card">
         <div class="card-header" style="flex-wrap:wrap;gap:10px">
-          <div class="card-title"><span class="card-title-icon">📊</span>Leave Summary — EL / CL-SL / ML</div>
+          <div class="card-title"><span class="card-title-icon">📊</span>Leave Summary — EL / SL / CL / ML</div>
           <div class="flex gap-2" style="flex-wrap:wrap;align-items:center">
             <input id="summary-search" class="form-control" style="width:220px" placeholder="Search or leave blank for all…" oninput="loadLeaveSummary()">
             <select id="summary-year" class="form-control" style="width:100px" onchange="loadLeaveSummary()">
@@ -470,32 +470,19 @@ async function loadBalance() {
     el.parentNode.insertBefore(banner, el);
   }
 
-  // Always show EL and combined CL/SL cards — look up values from API, default to 0
+  // EL, SL, CL always shown as separate cards — no more merging SL+CL.
   const ALWAYS_SHOW = [
     { code: 'EL', name: 'Earned Leave' },
-    { code: 'CL/SL', name: 'Casual / Sick Leave' },
+    { code: 'SL', name: 'Sick Leave' },
+    { code: 'CL', name: 'Casual Leave' },
   ];
 
   // Index API data by code
   const byCode = {};
   balanceData.forEach(b => { byCode[b.code] = b; });
 
-  // Merge CL + SL into a single combined entry
-  const cl = byCode['CL'] || { allocated:0, used:0, pending:0, carry_forward:0, available:0 };
-  const sl = byCode['SL'] || { allocated:0, used:0, pending:0, carry_forward:0, available:0 };
-  const clsl = {
-    code: 'CL/SL',
-    name: 'Casual / Sick Leave',
-    allocated:      parseFloat(cl.allocated||0)      + parseFloat(sl.allocated||0),
-    used:           parseFloat(cl.used||0)           + parseFloat(sl.used||0),
-    pending:        parseFloat(cl.pending||0)         + parseFloat(sl.pending||0),
-    carry_forward:  parseFloat(cl.carry_forward||0)   + parseFloat(sl.carry_forward||0),
-    available:      parseFloat(cl.available||0)       + parseFloat(sl.available||0),
-  };
-  byCode['CL/SL'] = clsl;
-
-  // Build from whichever codes the API returned (excluding raw CL/SL, replaced by the combined card)
-  const apiCodes = balanceData.map(b => b.code).filter(c => c !== 'CL' && c !== 'SL' && c !== 'OD');
+  // Build from whichever codes the API returned, excluding OD (has its own display elsewhere)
+  const apiCodes = balanceData.map(b => b.code).filter(c => c !== 'OD');
   const showCodes = [...new Set([...ALWAYS_SHOW.map(x => x.code), ...apiCodes])];
   const items = showCodes.map(code => {
     const api = byCode[code];
@@ -963,7 +950,8 @@ async function loadLeaveSummary() {
         <tr>
           <th colspan="4" style="${XLH};background:#e8eaf6;border:1px solid #9fa8da"></th>
           <th colspan="3" style="${XLH};background:#fce4ec;border:1px solid #f48fb1;color:#880e4f">📅 Earned Leave (EL)</th>
-          <th colspan="3" style="${XLH};background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20">🤒 CL / SL</th>
+          <th colspan="3" style="${XLH};background:#fff8e1;border:1px solid #ffe082;color:#e65100">🤒 Sick Leave (SL)</th>
+          <th colspan="3" style="${XLH};background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20">📋 Casual Leave (CL)</th>
           <th colspan="3" style="${XLH};background:#f3e5f5;border:1px solid #ce93d8;color:#6a1b9a">🤰 Maternity Leave</th>
         </tr>
         <tr>
@@ -974,6 +962,9 @@ async function loadLeaveSummary() {
           <th style="${XLH};background:#fce4ec">Allocated</th>
           <th style="${XLH};background:#fce4ec">Used</th>
           <th style="${XLH};background:#fce4ec">Available</th>
+          <th style="${XLH};background:#fff8e1">Allocated</th>
+          <th style="${XLH};background:#fff8e1">Used</th>
+          <th style="${XLH};background:#fff8e1">Available</th>
           <th style="${XLH};background:#e8f5e9">Allocated</th>
           <th style="${XLH};background:#e8f5e9">Used</th>
           <th style="${XLH};background:#e8f5e9">Available</th>
@@ -991,9 +982,12 @@ async function loadLeaveSummary() {
           <td style="${XLD};text-align:center">${fmt.num(r.el_allocated)}</td>
           <td style="${XLD};text-align:center;color:#c62828;font-weight:600">${fmt.num(r.el_used)}</td>
           <td style="${XLD};text-align:center;color:#2e7d32;font-weight:700">${fmt.num(r.el_available)}</td>
-          <td style="${XLD};text-align:center">${fmt.num(r.slcl_allocated)}</td>
-          <td style="${XLD};text-align:center;color:#c62828;font-weight:600">${fmt.num(r.slcl_used)}</td>
-          <td style="${XLD};text-align:center;color:#2e7d32;font-weight:700">${fmt.num(r.slcl_available)}</td>
+          <td style="${XLD};text-align:center">${fmt.num(r.sl_allocated)}</td>
+          <td style="${XLD};text-align:center;color:#c62828;font-weight:600">${fmt.num(r.sl_used)}</td>
+          <td style="${XLD};text-align:center;color:#2e7d32;font-weight:700">${fmt.num(r.sl_available)}</td>
+          <td style="${XLD};text-align:center">${fmt.num(r.cl_allocated)}</td>
+          <td style="${XLD};text-align:center;color:#c62828;font-weight:600">${fmt.num(r.cl_used)}</td>
+          <td style="${XLD};text-align:center;color:#2e7d32;font-weight:700">${fmt.num(r.cl_available)}</td>
           <td style="${XLD};text-align:center">${fmt.num(r.ml_allocated)}</td>
           <td style="${XLD};text-align:center;color:#c62828;font-weight:600">${fmt.num(r.ml_used)}</td>
           <td style="${XLD};text-align:center;color:#2e7d32;font-weight:700">${fmt.num(r.ml_available)}</td>
