@@ -1145,4 +1145,13 @@ router.post  ('/assets/allocate',  authenticate, authorize(...HR_ADMIN), assetCt
 router.put   ('/assets/:id',       authenticate, authorize(...HR_ADMIN), assetCtrl.updateAsset);
 router.delete('/assets/:id',       authenticate, authorize(...HR_ADMIN), assetCtrl.deleteAsset);
 
+// ── Access Control (per-employee page/tab overrides — HR/Admin/Super Admin) ──
+const accessCtrl = require('../controllers/accessControlController');
+const ACCESS_ADMIN = ['hr','admin','super_admin'];
+router.get   ('/access-control/catalog',                authenticate, authorize(...ACCESS_ADMIN), accessCtrl.getCatalog);
+router.get   ('/access-control/employees',               authenticate, authorize(...ACCESS_ADMIN), accessCtrl.listEmployeesForPicker);
+router.get   ('/access-control/effective/:employeeId',   authenticate, authorize(...ACCESS_ADMIN), accessCtrl.getEffectiveAccess);
+router.post  ('/access-control/override',                authenticate, authorize(...ACCESS_ADMIN), accessCtrl.setOverride);
+router.delete('/access-control/override/:employeeId/:pageKey', authenticate, authorize(...ACCESS_ADMIN), accessCtrl.clearOverride);
+
 module.exports = router;
