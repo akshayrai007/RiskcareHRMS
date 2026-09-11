@@ -338,6 +338,21 @@
   </div>
 </div>
 
+<!-- EMPLOYEE LEAVE DETAIL MODAL (click a name in Leave Summary) -->
+<div class="modal-backdrop" id="emp-leave-detail-modal">
+  <div class="modal" style="width:720px;max-width:94vw;max-height:88vh;overflow-y:auto">
+    <div class="modal-header">
+      <div class="modal-title" id="emp-leave-detail-title">Leave Detail</div>
+      <button class="modal-close" onclick="closeModal('emp-leave-detail-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="emp-leave-detail-content"><div class="loader"><div class="spinner"></div></div></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('emp-leave-detail-modal')">Close</button>
+      <button class="btn btn-primary" id="emp-leave-detail-download-btn">⬇ Download Excel</button>
+    </div>
+  </div>
+</div>
+
 <!-- REJECT MODAL -->
 <div class="modal-backdrop" id="reject-modal">
   <div class="modal" style="width:400px">
@@ -976,7 +991,7 @@ async function loadLeaveSummary() {
       <tbody>
         ${data.data.map((r, i) => `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
           <td style="${XLD};font-weight:700;color:var(--accent)">${r.employee_code}</td>
-          <td style="${XLD};font-weight:600;text-align:left">${r.employee_name}</td>
+          <td style="${XLD};font-weight:600;text-align:left;cursor:pointer;color:var(--accent);text-decoration:underline" onclick="openEmpLeaveDetail('${r.employee_code}', '${(r.employee_name||'').replace(/'/g,"\\'")}')">${r.employee_name}</td>
           <td style="${XLD};color:var(--muted);text-align:left">${r.department||'—'}</td>
           <td style="${XLD};color:var(--muted)">${r.designation||'—'}</td>
           <td style="${XLD};text-align:center">${fmt.num(r.el_allocated)}</td>
@@ -998,6 +1013,68 @@ async function loadLeaveSummary() {
       Showing ${data.data.length} employee(s) · Year ${yr}
     </div>
     </div>`;
+}
+
+// ── Click an employee name in Leave Summary → popup with month-wise transactions ─
+async function openEmpLeaveDetail(employeeCode, employeeName) {
+  document.getElementById('emp-leave-detail-title').textContent = `${employeeName} (${employeeCode})`;
+  const content = document.getElementById('emp-leave-detail-content');
+  content.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  openModal('emp-leave-detail-modal');
+
+  const yr = document.getElementById('summary-year')?.value || new Date().getFullYear();
+  const data = await api('GET', `/leave/transactions?year=${yr}&search=${encodeURIComponent(employeeCode)}`);
+  if (!data?.success || !data.data?.length) {
+    content.innerHTML = `<div class="empty-state"><div class="empty-icon">📂</div><p>No leave transactions found for ${yr}.</p></div>`;
+    document.getElementById('emp-leave-detail-download-btn').onclick = () => toast('No data to download', 'error');
+    return;
+  }
+
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const XLH = `border:1px solid #9ca3af;background:#f0f4ff;font-weight:700;font-size:11px;padding:7px 9px;white-space:nowrap;text-align:center`;
+  const XLD = `border:1px solid #e5e7eb;padding:6px 9px;font-size:12px;text-align:center;vertical-align:middle`;
+  const statusColors = { approved:'#166534', pending:'#854d0e', rejected:'#991b1b', cancelled:'#6b7280' };
+
+  const rows = [...data.data].sort((a,b) => new Date(a.from_date) - new Date(b.from_date));
+  content.innerHTML = `
+    <div style="overflow-x:auto">
+    <table style="border-collapse:collapse;width:100%;min-width:560px">
+      <thead><tr>
+        <th style="${XLH}">Month</th>
+        <th style="${XLH}">Leave Type</th>
+        <th style="${XLH}">From → To</th>
+        <th style="${XLH}">Days</th>
+        <th style="${XLH}">Status</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map((r,i) => `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
+          <td style="${XLD};font-weight:600">${monthNames[new Date(r.from_date).getMonth()]}</td>
+          <td style="${XLD}"><span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;background:#e0e7ff;color:#3730a3">${r.leave_type_name||r.leave_type_code}</span></td>
+          <td style="${XLD}">${fmt.date(r.from_date)} → ${fmt.date(r.to_date)}</td>
+          <td style="${XLD};font-weight:700">${r.days_requested}</td>
+          <td style="${XLD};font-weight:700;color:${statusColors[r.status]||'#6b7280'}">${r.status}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px">${rows.length} record(s) · Year ${yr}</div>`;
+
+  document.getElementById('emp-leave-detail-download-btn').onclick = async () => {
+    try {
+      const token = Auth.getToken();
+      const url = `${API_BASE}/leave/summary/excel?year=${yr}&search=${encodeURIComponent(employeeCode)}`;
+      const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+      if (!res.ok) { toast('Download failed', 'error'); return; }
+      const blob = await res.blob();
+      const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(blob),
+        download: `${employeeName}_Leave_${yr}.xlsx`
+      });
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+      toast('✅ Excel downloaded!', 'success');
+    } catch (e) { toast('Download failed: ' + e.message, 'error'); }
+  };
 }
 
 // ── Leave Transactions (individual search for HR) ────────────────────────────
