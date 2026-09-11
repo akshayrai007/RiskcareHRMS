@@ -138,6 +138,9 @@
 <script src="app.js"></script>
 <script>
 Auth.guard();
+// Hidden from everyone per HR access review — no corresponding web feature.
+window.location.href = 'dashboard.html';
+throw new Error('movement.html disabled');
 loadNotifBadge();
 buildSidebar('movement.html');
   loadNotifBadge();

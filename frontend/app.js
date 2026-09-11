@@ -174,9 +174,11 @@ const NAV_GROUPS = [
     items: [
       { href:'attendance.html',     icon: ICONS.attendance,   label:'Attendance',       always:true },
       { href:'leaves.html',         icon: ICONS.leaves,       label:'Leaves',           always:true },
-      { href:'performance.html',    icon: ICONS.performance,  label:'Performance',      always:true },
-      { href:'projects.html',       icon: ICONS.projects,     label:'Projects',         roles:['admin','super_admin','accounts'] },
       { href:'chat.html',           icon: ICONS.chat,         label:'Chat & Meetings',  always:true }
+      // performance.html and projects.html removed from nav per HR access
+      // review — hidden from everyone. Files kept in place in case this is
+      // revisited later; guarded at the top of each page too (not just the
+      // sidebar), so direct-URL access is also blocked.
     ]
   },
   {
@@ -191,7 +193,7 @@ const NAV_GROUPS = [
   {
     label: 'Documents',
     items: [
-      { href:'documents.html',      icon: ICONS.mydocs,       label:'My Documents',     always:true },
+      { href:'documents.html',      icon: ICONS.mydocs,       label:'My Documents',     roles:['hr','accounts','admin','manager','tl','employee'] },
       { href:'send-documents.html', icon: '📤',               label:'Send Documents',    always:true },
       { href:'form16.html',         icon: ICONS.form16,       label:'Form 16',          always:true },
       { href:'it-declaration.html', icon: ICONS.itdecl,       label:'IT Declaration',   always:true },
@@ -204,7 +206,7 @@ const NAV_GROUPS = [
       { href:'payslip.html',        icon: ICONS.payslip,      label:'My Payslip',       always:true },
       { href:'advance.html',        icon: ICONS.advance,        label:'Advance Salary',   always:true },
       { href:'reimbursement.html',  icon: ICONS.reimbursement,  label:'Reimbursement',    always:true },
-      { href:'provision.html',      icon: ICONS.provision,    label:'Provision',        roles:['admin','super_admin','hr','manager','tl'] },
+      { href:'provision.html',      icon: ICONS.provision,    label:'Provision',        roles:['admin','super_admin','hr','accounts','manager','tl'] },
       { href:'employee-history.html',  icon: ICONS.history,      label:'Salary & Promotions', roles:['admin','super_admin','hr','hr admin','accounts','accounts admin'] },
     ]
   },
@@ -227,7 +229,7 @@ const NAV_GROUPS = [
   {
     label: 'System',
     items: [
-      { href:'geofence.html', icon: ICONS.geofence, label:'Geofence', roles:['admin','super_admin','hr'] },
+      { href:'geofence.html', icon: ICONS.geofence, label:'Geofence', roles:['admin','super_admin'] },
       { href:'ai-voice.html',       icon: ICONS.aivoice,      label:'Voice Assistant',  always:true },
       { href:'access-control.html', icon: '🔐',              label:'Access Control',   roles:['hr','admin','super_admin'] },
     ]

@@ -253,6 +253,8 @@ textarea.fc { resize:vertical;min-height:80px; }
 <script src="app.js"></script>
 <script>
 Auth.guard();
+// Hidden from super_admin per HR access review.
+if (Auth.getUser()?.role === 'super_admin') { window.location.href = 'dashboard.html'; throw new Error('documents.html hidden from super_admin'); }
 
 const HR_ROLES = ['hr','accounts'];
 let isHR = false;

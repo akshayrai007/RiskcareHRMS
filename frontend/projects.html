@@ -556,6 +556,8 @@ let _editingId     = null;
 // ── Init ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   if (!Auth.guard()) return;
+  // Hidden from everyone per HR access review — feature not currently in use.
+  window.location.href = 'dashboard.html'; return;
   buildSidebar('projects.html');
   loadNotifBadge();
 

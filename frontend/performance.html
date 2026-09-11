@@ -410,6 +410,9 @@
 <script src="app.js"></script>
 <script>
 if (!Auth.guard()) throw new Error('unauthenticated');
+// Hidden from everyone per HR access review — feature not currently in use.
+window.location.href = 'dashboard.html';
+throw new Error('performance.html disabled');
 
 const user = Auth.getUser();
 const isAdminHR = (window.CFG.performanceAdminRoles || ['hr','admin','super_admin']).includes(user.role);

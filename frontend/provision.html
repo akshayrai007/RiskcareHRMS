@@ -173,8 +173,10 @@ buildSidebar('provision.html');
   loadNotifBadge();
   currentUser = Auth.getUser();
 
-  const isHR    = ['hr','admin','super_admin'].includes(currentUser.role);
-  const isMgr   = ['manager','tl'].includes(currentUser.role);
+  // Full/"Everyone" access per HR access review; admin moved to the
+  // reportees-scoped bucket below (was previously grouped with hr/super_admin).
+  const isHR    = ['hr','super_admin','accounts'].includes(currentUser.role);
+  const isMgr   = ['admin','manager','tl'].includes(currentUser.role);
 
   if (isHR) {
     document.getElementById('summary-bar').style.display = 'grid';
