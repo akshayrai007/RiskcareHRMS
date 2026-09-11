@@ -698,7 +698,7 @@ exports.downloadAttendanceReport = async (req, res) => {
 
     const salaryHeaders = [
       'Emp Code', 'Name', 'Department', 'Designation',
-      'Basic', 'HRA', 'Conveyance', 'Defray Allow', 'Gratuity', 'Gross Salary',
+      'Basic', 'HRA', 'Defray Allowance', 'Gratuity', 'Gross Salary',
       'PF (Emp)', 'ESI (Emp)', 'Prof Tax', 'TDS', 'Advance EMI', 'Total Deductions',
       'Working Days', 'Effective Days', 'Earned Gross', 'Earned Net', 'Net Payable'
     ];
@@ -725,7 +725,7 @@ exports.downloadAttendanceReport = async (req, res) => {
       const netPayable  = Math.max(0, earnedNet - emi);
       return [
         emp.employee_code, emp.name, emp.department || '—', emp.designation || '—',
-        basic, hra, conveyance, special, gratuity, gross,
+        basic, hra, special, gratuity, gross,
         pfEmp, esiEmp, pt, tds, emi, totalDed,
         workingDays, effDays, earnedGross, earnedNet, netPayable
       ];
@@ -740,13 +740,13 @@ exports.downloadAttendanceReport = async (req, res) => {
     const wsSalary = XLSX.utils.aoa_to_sheet(salaryData);
     wsSalary['!cols'] = [
       {wch:10},{wch:22},{wch:16},{wch:18},
-      {wch:11},{wch:9},{wch:11},{wch:12},{wch:9},{wch:12},
+      {wch:11},{wch:9},{wch:14},{wch:9},{wch:12},
       {wch:9},{wch:9},{wch:9},{wch:9},{wch:11},{wch:13},
       {wch:11},{wch:12},{wch:12},{wch:12},{wch:12},
     ];
     wsSalary['!merges'] = [
-      { s:{r:0,c:0}, e:{r:0,c:20} },
-      { s:{r:1,c:0}, e:{r:1,c:20} },
+      { s:{r:0,c:0}, e:{r:0,c:19} },
+      { s:{r:1,c:0}, e:{r:1,c:19} },
     ];
     XLSX.utils.book_append_sheet(wb, wsSalary, `Salary Calc ${mon}-${yr}`);
 

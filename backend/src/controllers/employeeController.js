@@ -1048,7 +1048,7 @@ exports.exportMasterExcel = async (req, res) => {
       { label: 'IDENTITY',               cols: 9, color: 'FF1565C0' },
       { label: 'PROFESSIONAL',           cols: 9, color: 'FF2E7D32' },
       { label: 'STATUTORY IDs & BANK',   cols: 7, color: 'FF6A1B9A' },
-      { label: 'EARNINGS',               cols: 6, color: 'FF388E3C' },
+      { label: 'EARNINGS',               cols: 5, color: 'FF388E3C' },
       { label: 'EMPLOYEE DEDUCTIONS',    cols: 5, color: 'FFC62828' },
       { label: 'EMPLOYER CONTRIBUTIONS', cols: 4, color: 'FF8E24AA' },
       { label: 'CTC',                    cols: 2, color: 'FF37474F' },
@@ -1060,8 +1060,8 @@ exports.exportMasterExcel = async (req, res) => {
       'City','State','Department','Designation','Role','Category','Level','Joining Date','Reporting Manager',
       // STATUTORY IDs & BANK (7)
       'PAN','Aadhaar','UAN','PF No','Bank','Account No','IFSC',
-      // EARNINGS (6)
-      'Basic','HRA','Conveyance','Defray Allow','Gratuity','Gross Salary',
+      // EARNINGS (5)
+      'Basic','HRA','Defray Allowance','Gratuity','Gross Salary',
       // EMPLOYEE DEDUCTIONS (5)
       'PF (Emp)','ESI (Emp)','Prof Tax','TDS','Total Deductions',
       // EMPLOYER CONTRIBUTIONS (4)
@@ -1069,13 +1069,13 @@ exports.exportMasterExcel = async (req, res) => {
       // CTC (2)
       'CTC Monthly','CTC Annual',
     ];
-    const MASTER_COLS = masterHeaders.length;                 // 42
+    const MASTER_COLS = masterHeaders.length;                 // 41
     const FIRST_MONEY_COL0 = 25;                              // 0-based index of 'Basic'
     const masterWidths = [
       12,24,30,14,9,12,11,13,32,
       14,14,16,22,12,13,7,13,22,
       14,16,16,16,20,20,14,
-      12,11,12,14,11,13,
+      12,11,14,11,13,
       11,11,10,11,15,
       13,13,11,17,
       13,13,
@@ -1118,10 +1118,10 @@ exports.exportMasterExcel = async (req, res) => {
 
     // Column letters for the live formulas (Gross / Total Ded / Employer Cost / CTC).
     const M = {
-      basic: colLetter(26), special: colLetter(29), grat: colLetter(30), gross: colLetter(31),
-      pfEmp: colLetter(32), tds: colLetter(35), totalDed: colLetter(36),
-      pfEmr: colLetter(37), pfAdm: colLetter(39), totalEmpCost: colLetter(40),
-      ctcMonthly: colLetter(41),
+      basic: colLetter(26), special: colLetter(28), grat: colLetter(29), gross: colLetter(30),
+      pfEmp: colLetter(31), tds: colLetter(34), totalDed: colLetter(35),
+      pfEmr: colLetter(36), pfAdm: colLetter(38), totalEmpCost: colLetter(39),
+      ctcMonthly: colLetter(40),
     };
 
     function writeMasterRow(e, rowNum, isAlt, tint) {
@@ -1139,7 +1139,7 @@ exports.exportMasterExcel = async (req, res) => {
         e.reporting_manager || '',
         e.pan_number || '', e.aadhar_number || '', e.uan_number || '', e.pf_number || '',
         e.bank_name || '', e.bank_account || '', e.bank_ifsc || '',
-        num(e.basic), num(e.hra), num(e.conveyance), num(e.special_allowance), num(e.gratuity),
+        num(e.basic), num(e.hra), num(e.special_allowance), num(e.gratuity),
         // Gross = Basic..Special ONLY (gratuity is an employer retiral cost and is
         // deliberately excluded — matches payroll/offer-letter/import).
         { formula: `SUM(${M.basic}${R}:${M.special}${R})` },
@@ -1758,7 +1758,7 @@ exports.exportAttendanceRegister = async (req, res) => {
     const ws3 = wb.addWorksheet(`Salary Calc ${MONTH_NAMES[m-1]} ${y}`, {
       views: [{ state: 'frozen', xSplit: 4, ySplit: 2 }]
     });
-    const salCols = 20;
+    const salCols = 19;
     try { ws3.mergeCells(1, 1, 1, salCols); } catch(_) {}
     const salTitle = ws3.getCell(1, 1);
     salTitle.value = `HRMS — Salary Calculation | ${MONTH_NAMES[m-1]} ${y} — Present-Day-Based Proration`;
@@ -1769,7 +1769,7 @@ exports.exportAttendanceRegister = async (req, res) => {
 
     const salHeaders = [
       'Emp Code', 'Name', 'Department', 'Designation',
-      'Basic', 'HRA', 'Conveyance', 'Defray Allow', 'Gratuity', 'Gross Salary',
+      'Basic', 'HRA', 'Defray Allowance', 'Gratuity', 'Gross Salary',
       'PF (Emp)', 'ESI (Emp)', 'Prof Tax', 'TDS', 'Advance EMI', 'Total Deductions',
       'Working Days', 'Present Days', 'Earned Gross', 'Net Payable'
     ];
@@ -1789,7 +1789,6 @@ exports.exportAttendanceRegister = async (req, res) => {
       const s = salStructMap[r.id] || {};
       const basic      = parseFloat(s.basic)             || 0;
       const hra        = parseFloat(s.hra)               || 0;
-      const conveyance = parseFloat(s.conveyance)        || 0;
       const special    = parseFloat(s.special_allowance) || 0;
       const gratuity    = parseFloat(s.gratuity)          || 0;
       const gross       = parseFloat(s.gross_salary)      || 0;
@@ -1808,7 +1807,7 @@ exports.exportAttendanceRegister = async (req, res) => {
 
       const values = [
         r.employee_code, r.name, r.department, r.designation,
-        basic, hra, conveyance, special, gratuity, gross,
+        basic, hra, special, gratuity, gross,
         pfEmp, esiEmp, pt, tds, emi, totalDed,
         workingDays, presentDays, earnedGross, netPayable
       ];
@@ -1820,14 +1819,14 @@ exports.exportAttendanceRegister = async (req, res) => {
         cell.border = { right: { style: 'hair' }, bottom: { style: 'hair' } };
         if (ci >= 4) cell.alignment = { horizontal: 'right', vertical: 'middle' };
         else cell.alignment = { vertical: 'middle' };
-        if (ci === 19) { // Net Payable — bold green
+        if (ci === 18) { // Net Payable — bold green
           cell.font = { bold: true, size: 10, color: { argb: 'FF1B5E20' } };
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isAlt ? 'FFC8E6C9' : 'FFE8F5E9' } };
         }
       });
       ws3.getRow(row).height = 16;
     });
-    [10,22,16,18, 11,9,11,12,9,12, 9,9,9,9,11,13, 11,11,12,12].forEach((w, i) => {
+    [10,22,16,18, 11,9,14,9,12, 9,9,9,9,11,13, 11,11,12,12].forEach((w, i) => {
       ws3.getColumn(i + 1).width = w;
     });
 
