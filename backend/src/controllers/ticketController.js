@@ -2,8 +2,12 @@
 // ── WORK TICKETS MODULE ──────────────────────────────────────────────────────
 // A lightweight support/request ticket tracker, separate from Task Assignment:
 //   - Tasks = a manager assigns to-dos to their own reportees.
-//   - Tickets = ANY employee can raise an issue/request, which gets routed to
-//     admin/HR/super_admin (the "support" roles) to triage and resolve.
+//   - Tickets = ANY employee can raise an issue/request. Who it routes to
+//     depends on the raiser: a manager (has real reportees — reporting_manager_id,
+//     NOT the literal role field) routes to their OWN team, same as Task
+//     Assignment; super_admin can route to anyone; everyone else (no
+//     reportees) routes to admin/HR/super_admin support staff since they
+//     have no team of their own to hand it to.
 // Raising a ticket to multiple assignees creates one ticket row per assignee
 // (each tracked independently), matching the Android client's contract.
 
@@ -18,6 +22,18 @@ function isSuperAdmin(user) {
 }
 function isSupportRole(user) {
   return SUPPORT_ROLES.includes(String(user.role || '').toLowerCase());
+}
+// "Manager" here means anyone who actually has reportees in the org chart —
+// NOT anyone whose role field literally says 'manager'. Reportees exist
+// under people with all sorts of role labels (accounts, admin, etc.), so a
+// role-string check misses real managers. Same rule as taskController.js.
+async function isManager(user) {
+  if (isSuperAdmin(user)) return false; // handled separately, broader scope
+  const r = await db.query(
+    `SELECT 1 FROM employees WHERE reporting_manager_id=$1 AND is_active=true LIMIT 1`,
+    [user.id]
+  );
+  return r.rows.length > 0;
 }
 
 let ready = null;
@@ -67,9 +83,30 @@ const TICKET_SELECT = `
   LEFT JOIN employees r ON r.id = t.raised_by
 `;
 
-// Who a ticket can be routed to — support-role staff only.
+// Who a ticket can be routed to:
+//   - super_admin: anyone in the company
+//   - a real manager (has reportees): their OWN team only — not fixed
+//     admin/HR/MD, matching how Task Assignment already scopes this
+//   - everyone else: no team of their own, so routes to support staff
 exports.getAssignableEmployees = async (req, res) => {
   try {
+    if (isSuperAdmin(req.user)) {
+      const r = await db.query(
+        `SELECT e.id, e.employee_code, CONCAT(e.first_name,' ',e.last_name) AS name, d.name AS department_name
+         FROM employees e LEFT JOIN departments d ON d.id = e.department_id
+         WHERE e.is_active=true ORDER BY e.first_name`
+      );
+      return res.json({ success: true, data: r.rows });
+    }
+    if (await isManager(req.user)) {
+      const r = await db.query(
+        `SELECT e.id, e.employee_code, CONCAT(e.first_name,' ',e.last_name) AS name, d.name AS department_name
+         FROM employees e LEFT JOIN departments d ON d.id = e.department_id
+         WHERE e.reporting_manager_id=$1 AND e.is_active=true ORDER BY e.first_name`,
+        [req.user.id]
+      );
+      return res.json({ success: true, data: r.rows });
+    }
     const r = await db.query(
       `SELECT e.id, e.employee_code, CONCAT(e.first_name,' ',e.last_name) AS name, d.name AS department_name
        FROM employees e LEFT JOIN departments d ON d.id = e.department_id
