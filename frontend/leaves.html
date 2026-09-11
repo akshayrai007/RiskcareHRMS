@@ -1082,15 +1082,12 @@ async function loadLeaveTransactions() {
   const el     = document.getElementById('leave-txn-content');
   const yr     = document.getElementById('txn-year')?.value || new Date().getFullYear();
   const srch   = document.getElementById('txn-search')?.value || '';
+  const month  = document.getElementById('txn-month')?.value || '';
   const ltype  = document.getElementById('txn-type')?.value || '';
   const status = document.getElementById('txn-status')?.value || '';
   el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
-  const params = `year=${yr}&search=${encodeURIComponent(srch)}&leave_type=${ltype}&status=${status}`;
+  const params = `year=${yr}&search=${encodeURIComponent(srch)}&month=${month}&leave_type=${ltype}&status=${status}`;
   const data   = await api('GET', `/leave/transactions?${params}`);
-  if (!srch) {
-    el.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><p style="color:var(--muted)">Enter an employee name or ID to view their leave transactions.</p></div>';
-    return;
-  }
   if (!data?.success || !data.data?.length) {
     el.innerHTML = `<div class="empty-state"><div class="empty-icon">🔄</div><p>No transactions found${srch?' for "'+srch+'"':''}.</p></div>`;
     return;

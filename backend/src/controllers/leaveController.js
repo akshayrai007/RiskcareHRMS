@@ -1424,11 +1424,13 @@ exports.getLeaveTransactions = async (req, res) => {
     const employee_id = req.query.employee_id ? parseInt(req.query.employee_id) : null;
     const leave_type = req.query.leave_type || '';
     const status = req.query.status || '';
+    const month = req.query.month ? parseInt(req.query.month) : null;
 
     let conds = [`EXTRACT(YEAR FROM lr.from_date) = $1`];
     let params = [year];
     let idx = 2;
 
+    if (month) { conds.push(`EXTRACT(MONTH FROM lr.from_date) = $${idx++}`); params.push(month); }
     if (employee_id) {
       conds.push(`lr.employee_id = $${idx++}`);
       params.push(employee_id);
