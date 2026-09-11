@@ -539,6 +539,9 @@ async function runAllMigrations() {
     // ── Fix 3: Single-device login ────────────────────────────────────────────
     await addCol('employees', 'device_token',      'VARCHAR(255) DEFAULT NULL');
 
+    // ── Push Notifications (FCM) ──────────────────────────────────────────────
+    await addCol('employees', 'fcm_token',         'VARCHAR(255) DEFAULT NULL');
+
     // ── Fix 4: App version tracking ───────────────────────────────────────────
     await addCol('employees', 'app_version',       'VARCHAR(30) DEFAULT NULL');
     await addCol('employees', 'last_login_at',     'TIMESTAMPTZ DEFAULT NULL');

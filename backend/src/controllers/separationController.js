@@ -106,6 +106,7 @@ async function notifyEmployee(client, empId, title, message) {
        VALUES($1,'separation',$2,$3,NOW() + INTERVAL '48 hours')`,
       [empId, title, message]
     );
+    require('../config/pushService').sendPush(empId, title, message, { channel: 'riskcare_alerts' });
   } catch (notifErr) {
     console.error('[notifyEmployee] Failed to notify emp:', empId, notifErr.message);
   }

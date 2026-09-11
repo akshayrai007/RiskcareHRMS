@@ -35,7 +35,14 @@ const COL = {
   nationality: 38, father_name: 39, spouse_name: 40, no_of_children: 41,
   place_of_birth: 42, personal_mobile: 43, personal_email: 44,
   emergency_contact_name: 45, emergency_contact_phone: 46,
-  location: 47, branch: 48, division: 49, pt_state: 50, notes: 51
+  location: 47, branch: 48, division: 49, pt_state: 50, notes: 51,
+  // ── Salary Structure — matches Edit Employee > Salary Structure tab exactly.
+  // Written into employee_salary_structure (the real source of truth for
+  // payroll/payslip), not just the legacy employees.basic_salary columns.
+  sal_basic: 52, sal_hra: 53, sal_conveyance: 54, sal_defray_allowance: 55,
+  sal_gratuity: 56, sal_food_coupon: 57,
+  sal_pf_applicable: 58, sal_pf_wage_basis: 59, sal_esi_applicable: 60,
+  sal_pt_applicable: 61, sal_lwf_applicable: 62, sal_tds_applicable: 63
 };
 
 // ── Find-or-create helpers (Department/Designation may be brand new) ────────
@@ -343,6 +350,29 @@ exports.importEmployees = async (req, res) => {
           }
         }
 
+        const payCtrl = require('./payrollController');
+        // Salary Structure — only written if the sheet actually has a Basic
+        // Salary for this row (imports of legacy/inactive-payroll employees
+        // often leave this blank on purpose, to be set later via Payroll).
+        const salBasic = parseFloat(clean(row[COL.sal_basic]));
+        if (salBasic > 0) {
+          const yn = (v) => { const s = clean(v)?.toUpperCase(); return s === 'Y' || s === 'YES' || s === 'TRUE'; };
+          await payCtrl.computeAndSaveSalaryStructure(client, newEmp.id, {
+            basic:             salBasic,
+            hra:               parseFloat(clean(row[COL.sal_hra])) || 0,
+            conveyance:        parseFloat(clean(row[COL.sal_conveyance])) || 0,
+            special_allowance: parseFloat(clean(row[COL.sal_defray_allowance])) || 0,
+            gratuity:          parseFloat(clean(row[COL.sal_gratuity])) || 0,
+            food_coupon:       parseFloat(clean(row[COL.sal_food_coupon])) || 0,
+            pf_applicable:     yn(row[COL.sal_pf_applicable]),
+            pf_wage_basis:     clean(row[COL.sal_pf_wage_basis])?.toLowerCase() === 'actual' ? 'actual' : 'capped',
+            esi_applicable:    yn(row[COL.sal_esi_applicable]),
+            pt_applicable:     yn(row[COL.sal_pt_applicable]),
+            lwf_applicable:    yn(row[COL.sal_lwf_applicable]),
+            tds_applicable:    yn(row[COL.sal_tds_applicable])
+          }, req.user.id);
+        }
+
         // Seed onboarding tracker steps
         const onboardCtrl = require('./onboardingController');
         await onboardCtrl.seedForEmployee(newEmp.id, client);
@@ -587,7 +617,11 @@ exports.downloadImportTemplate = async (req, res) => {
       'Nationality', 'Father Name', 'Spouse Name', 'No. of Children', 'Place of Birth',
       'Personal Mobile', 'Personal Email',
       'Emergency Contact Name', 'Emergency Contact Phone',
-      'Location', 'Branch', 'Division', 'PT State', 'Notes'
+      'Location', 'Branch', 'Division', 'PT State', 'Notes',
+      'Basic Salary (₹/month)', 'HRA (₹/month)', 'Conveyance (₹/month)', 'Defray Allowance (₹/month)',
+      'Gratuity (₹/month)', 'Food Coupon (₹/month)',
+      'PF Applicable (Y/N)', 'PF Wage Basis (capped/actual)', 'ESI Applicable (Y/N)',
+      'PT Applicable (Y/N)', 'LWF Applicable (Y/N)', 'TDS Applicable (Y/N)'
     ];
 
     // A real employee (whichever exists) as a fill-in-the-blank example, so
@@ -624,7 +658,11 @@ exports.downloadImportTemplate = async (req, res) => {
       'Indian', '', '', '', '',
       '', '',
       '', '',
-      '', '', '', '', ''
+      '', '', '', '', '',
+      '', '', '', '',
+      '', '',
+      'Y', 'capped', 'N',
+      'Y', 'N', 'N'
     ];
 
     const rows = [

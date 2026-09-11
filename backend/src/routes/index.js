@@ -563,6 +563,20 @@ router.patch('/notifications/:id/read', authenticate, async (req, res) => {
   } catch(e) { res.status(500).json({ success: false, message: 'Server error' }); }
 });
 
+// Registers/refreshes this device's FCM token so pushService.sendPush() can
+// reach it. Called on login and whenever Firebase hands the app a new token.
+router.post('/notifications/fcm-token', authenticate, async (req, res) => {
+  try {
+    const { fcm_token } = req.body;
+    if (!fcm_token) return res.status(400).json({ success: false, message: 'fcm_token is required' });
+    await require('../config/db').query(
+      `UPDATE employees SET fcm_token=$1 WHERE id=$2`,
+      [fcm_token, req.user.id]
+    );
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ success: false, message: 'Server error' }); }
+});
+
 // ── Departments & Designations ────────────────────────────────────────────────
 router.get('/departments', authenticate, async (req, res) => {
   const r = await require('../config/db').query('SELECT * FROM departments ORDER BY name');

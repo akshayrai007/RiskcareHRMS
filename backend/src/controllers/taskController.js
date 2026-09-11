@@ -111,12 +111,14 @@ exports.createTask = async (req, res) => {
     const taskId = ins.rows[0].id;
 
     const who = `${req.user.first_name || ''} ${req.user.last_name || ''}`.trim() || 'Someone';
+    const taskNotifTitle = is_compulsory ? '🔴 Compulsory Task Assigned' : '📋 New Task Assigned';
+    const taskNotifMsg = `${who} assigned you a${is_compulsory ? ' COMPULSORY' : ''} task: "${String(title).trim()}"${due_date ? ' — Due: ' + due_date : ''}`;
     await db.query(
       `INSERT INTO notifications(employee_id, type, title, message, is_read, expires_at)
        VALUES ($1,'task',$2,$3,FALSE,NOW() + INTERVAL '14 days')`,
-      [assigneeId, is_compulsory ? '🔴 Compulsory Task Assigned' : '📋 New Task Assigned',
-       `${who} assigned you a${is_compulsory ? ' COMPULSORY' : ''} task: "${String(title).trim()}"${due_date ? ' — Due: ' + due_date : ''}`]
+      [assigneeId, taskNotifTitle, taskNotifMsg]
     );
+    require('../config/pushService').sendPush(assigneeId, taskNotifTitle, taskNotifMsg, { channel: 'riskcare_general', screen: 'my_work' });
 
     res.json({ success: true, id: taskId });
   } catch (err) {

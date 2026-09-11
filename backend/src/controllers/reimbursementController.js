@@ -63,6 +63,7 @@ async function notifyEmployee(employeeId, title, message) {
     `INSERT INTO notifications(employee_id,title,message,type) VALUES($1,$2,$3,'reimbursement')`,
     [employeeId, title, message]
   ).catch(() => {});
+  require('../config/pushService').sendPush(employeeId, title, message, { channel: 'riskcare_general' });
 }
 async function notifyByCode(code, title, message) {
   const rows = await db.query(

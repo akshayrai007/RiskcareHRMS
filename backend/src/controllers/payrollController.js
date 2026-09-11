@@ -86,63 +86,74 @@ exports.getSalaryStructure = async (req, res) => {
   }
 };
 
+// Core salary-structure compute + upsert, shared by the HR-facing API
+// (upsertSalaryStructure below) and the bulk employee importer, which needs
+// to write this inside its own transaction (hence the `queryable` param —
+// pass a pg Pool/`db` for standalone calls, or a transaction `client` when
+// called from inside one).
+async function computeAndSaveSalaryStructure(queryable, employeeId, fields, updatedBy) {
+  const {
+    basic = 0, hra = 0, conveyance = 0, special_allowance = 0,
+    gratuity = 0, food_coupon = 0, pf_applicable = true, esi_applicable = true,
+    pt_applicable = true, lwf_applicable = true, tds_applicable = false, notes,
+    pf_wage_basis = 'capped' // 'capped' = PF on min(basic,15000); 'actual' = PF on full basic
+  } = fields;
+
+  const empStateRes = await queryable.query(`SELECT state FROM employees WHERE id=$1`, [employeeId]);
+  const empState = empStateRes.rows[0]?.state;
+
+  const gross        = parseFloat(basic) + parseFloat(hra) + parseFloat(conveyance) + parseFloat(special_allowance) + parseFloat(gratuity) + parseFloat(food_coupon);
+  const pfBase       = pf_wage_basis === 'actual' ? parseFloat(basic) : Math.min(parseFloat(basic), 15000);
+  const pf_employee  = pf_applicable  ? Math.round(pfBase * 0.12)  : 0;
+  const pf_employer  = pf_applicable  ? Math.round(pfBase * 0.12)  : 0;
+  const pf_admin     = pf_applicable  ? 150 : 0;  // Fixed ₹150 (EPFO minimum admin charge)
+  const esi_employee = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
+  const esi_employer = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
+  const pt           = pt_applicable  ? calcPT(gross, empState) : 0;
+  const lwf          = lwf_applicable ? 6 : 0;
+  const total_ded    = pf_employee + esi_employee + pt + lwf;
+  const net          = gross - total_ded;
+  const ctc          = gross + pf_employer + esi_employer + pf_admin;
+
+  const ctc_monthly = ctc;
+  const ctc_annual  = ctc * 12;
+  const total_employer_cost = pf_employer + esi_employer + pf_admin;
+
+  await queryable.query(
+    `INSERT INTO employee_salary_structure
+       (employee_id, basic, hra, conveyance, special_allowance, gratuity, food_coupon, gross_salary,
+        pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
+        pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
+        professional_tax, lwf, total_employer_cost,
+        total_deductions, net_salary, ctc_monthly, ctc_annual, notes, pf_wage_basis, updated_by, updated_at)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,NOW())
+     ON CONFLICT(employee_id) DO UPDATE SET
+       basic=$2, hra=$3, conveyance=$4, special_allowance=$5, gratuity=$6, food_coupon=$7, gross_salary=$8,
+       pf_applicable=$9, esi_applicable=$10, pt_applicable=$11, lwf_applicable=$12, tds_applicable=$13,
+       pf_employee=$14, pf_employer=$15, pf_admin=$16, esi_employee=$17, esi_employer=$18,
+       professional_tax=$19, lwf=$20, total_employer_cost=$21,
+       total_deductions=$22, net_salary=$23, ctc_monthly=$24, ctc_annual=$25, notes=$26, pf_wage_basis=$27,
+       updated_by=$28, updated_at=NOW()`,
+    [employeeId, basic, hra, conveyance, special_allowance, gratuity, food_coupon, gross,
+     pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
+     pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
+     pt, lwf, total_employer_cost,
+     total_ded, net, ctc_monthly, ctc_annual, notes || null, pf_wage_basis, updatedBy]
+  );
+
+  return { gross, net, ctc: ctc_monthly };
+}
+exports.computeAndSaveSalaryStructure = computeAndSaveSalaryStructure;
+
 // ── Upsert Salary Structure (HR/Admin) ───────────────────────────────────────
 exports.upsertSalaryStructure = async (req, res) => {
   try {
-    const {
-      employee_id, basic = 0, hra = 0, conveyance = 0, special_allowance = 0,
-      gratuity = 0, food_coupon = 0, pf_applicable = true, esi_applicable = true,
-      pt_applicable = true, lwf_applicable = true, tds_applicable = false, notes,
-      pf_wage_basis = 'capped' // 'capped' = PF on min(basic,15000); 'actual' = PF on full basic
-    } = req.body;
-
+    const { employee_id } = req.body;
     if (!employee_id)
       return res.status(400).json({ success: false, message: 'employee_id required' });
 
-    const empStateRes = await db.query(`SELECT state FROM employees WHERE id=$1`, [employee_id]);
-    const empState = empStateRes.rows[0]?.state;
-
-    // Auto-calculate statutory amounts
-    const gross        = parseFloat(basic) + parseFloat(hra) + parseFloat(conveyance) + parseFloat(special_allowance) + parseFloat(gratuity) + parseFloat(food_coupon);
-    const pfBase       = pf_wage_basis === 'actual' ? parseFloat(basic) : Math.min(parseFloat(basic), 15000);
-    const pf_employee  = pf_applicable  ? Math.round(pfBase * 0.12)  : 0;
-    const pf_employer  = pf_applicable  ? Math.round(pfBase * 0.12)  : 0;
-    const pf_admin     = pf_applicable  ? 150 : 0;  // Fixed ₹150 (EPFO minimum admin charge)
-    const esi_employee = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
-    const esi_employer = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
-    const pt           = pt_applicable  ? calcPT(gross, empState) : 0;
-    const lwf          = lwf_applicable ? 6 : 0;
-    const total_ded    = pf_employee + esi_employee + pt + lwf;
-    const net          = gross - total_ded;
-    const ctc          = gross + pf_employer + esi_employer + pf_admin;
-
-    const ctc_monthly = ctc;
-    const ctc_annual  = ctc * 12;
-    const total_employer_cost = pf_employer + esi_employer + pf_admin;
-
-    await db.query(
-      `INSERT INTO employee_salary_structure
-         (employee_id, basic, hra, conveyance, special_allowance, gratuity, food_coupon, gross_salary,
-          pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
-          pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
-          professional_tax, lwf, total_employer_cost,
-          total_deductions, net_salary, ctc_monthly, ctc_annual, notes, pf_wage_basis, updated_by, updated_at)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,NOW())
-       ON CONFLICT(employee_id) DO UPDATE SET
-         basic=$2, hra=$3, conveyance=$4, special_allowance=$5, gratuity=$6, food_coupon=$7, gross_salary=$8,
-         pf_applicable=$9, esi_applicable=$10, pt_applicable=$11, lwf_applicable=$12, tds_applicable=$13,
-         pf_employee=$14, pf_employer=$15, pf_admin=$16, esi_employee=$17, esi_employer=$18,
-         professional_tax=$19, lwf=$20, total_employer_cost=$21,
-         total_deductions=$22, net_salary=$23, ctc_monthly=$24, ctc_annual=$25, notes=$26, pf_wage_basis=$27,
-         updated_by=$28, updated_at=NOW()`,
-      [employee_id, basic, hra, conveyance, special_allowance, gratuity, food_coupon, gross,
-       pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
-       pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
-       pt, lwf, total_employer_cost,
-       total_ded, net, ctc_monthly, ctc_annual, notes || null, pf_wage_basis, req.user.id]
-    );
-
-    res.json({ success: true, message: 'Salary structure saved', data: { gross, net, ctc: ctc_monthly } });
+    const result = await computeAndSaveSalaryStructure(db, employee_id, req.body, req.user.id);
+    res.json({ success: true, message: 'Salary structure saved', data: result });
   } catch (err) {
     console.error("[upsertSalaryStructure error]", err.message, err.detail || "");
     res.status(500).json({ success: false, message: err.message || "Server error" });
