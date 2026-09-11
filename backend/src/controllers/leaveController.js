@@ -678,9 +678,10 @@ exports.getBalance = async (req, res) => {
 
     // Determine employee type to filter correct leave codes
     const empRes = await db.query(
-      `SELECT employee_category, provision_end_date, joining_date FROM employees WHERE id=$1`, [empId]
+      `SELECT employee_category, provision_end_date, joining_date, gender FROM employees WHERE id=$1`, [empId]
     );
     const emp = empRes.rows[0];
+    const isFemale = String(emp?.gender || '').toLowerCase().startsWith('f');
     const now = new Date();
     const provisionEndDate = emp?.provision_end_date ? new Date(emp.provision_end_date) : null;
 
@@ -705,9 +706,11 @@ exports.getBalance = async (req, res) => {
     // TYPE 2 (still provisional): show only PL
     // Contractual confirmed (>6 months): show EL, CL, SL same as permanent
     // TYPE 1 & 3 (permanent / confirmed): show EL, CL, SL, OD, LWP — never PL
+    // Maternity Leave (ML) is only ever shown to female employees.
+    const confirmedCodes = ['EL','CL','SL','LWP', ...(isFemale ? ['ML'] : [])];
     const codeFilter = isStillProvisional
       ? `AND lt.code = 'PL'`
-      : `AND lt.code IN ('EL','CL','SL','LWP','ML')`;
+      : `AND lt.code IN (${confirmedCodes.map(c => `'${c}'`).join(',')})`;
 
     const result = await db.query(
       `SELECT

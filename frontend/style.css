@@ -1009,11 +1009,15 @@ textarea.form-control { resize: vertical; min-height: 80px; }
    LEAVE BALANCE CARDS
    ═══════════════════════════════════════════════════════════════════ */
 .bal-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-wrap: nowrap;
   gap: 12px;
   margin-bottom: 0;
   padding: 0 0 4px;
+}
+.bal-grid > * {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .bal-card {
@@ -1512,7 +1516,8 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 }
   .hamburger-btn { display: flex; }
   .form-row { grid-template-columns: 1fr; }
-  .bal-grid { grid-template-columns: 1fr 1fr; }
+  .bal-grid { flex-wrap: wrap; }
+  .bal-grid > * { flex: 1 1 calc(50% - 6px); }
   .grid-2 { grid-template-columns: 1fr; }
   .day-detail-grid { grid-template-columns: 1fr 1fr; }
   .team-stat-grid { grid-template-columns: repeat(2, 1fr); }
