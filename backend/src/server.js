@@ -704,19 +704,20 @@ cron.schedule('5 8 * * *', async () => {
   }
 }, { timezone: CONFIG.timezone || 'Asia/Kolkata' });
 
-// ── Feature #10: Tracking silence / low-battery alerts every 30 min ──────────
-// Runs during work hours 9:00–21:00 IST — checks punched-in field employees
-// for silence (no GPS ping >30 min), low battery, GPS off, internet off
-cron.schedule('*/30 9-20 * * 1-6', async () => {
-  try {
-    const result = await alertsCtrl.checkTrackingSilence();
-    if (result.alerts > 0) {
-      console.log(`[TrackingAlerts] ✅ ${result.alerts} alerts created/updated for ${result.checked} employees`);
-    }
-  } catch (err) {
-    console.error('❌ TrackingAlerts cron failed:', err.message);
-  }
-}, { timezone: CONFIG.timezone || 'Asia/Kolkata' });
+// ── Feature #10: Tracking silence / low-battery alerts ────────────────────────
+// DISABLED for Riskcare — this is a KrishiHR field-tracking leftover (GPS ping
+// silence/low-battery notifications). Riskcare only uses location for punch-in/
+// out geofencing, not continuous field-movement tracking.
+// cron.schedule('*/30 9-20 * * 1-6', async () => {
+//   try {
+//     const result = await alertsCtrl.checkTrackingSilence();
+//     if (result.alerts > 0) {
+//       console.log(`[TrackingAlerts] ✅ ${result.alerts} alerts created/updated for ${result.checked} employees`);
+//     }
+//   } catch (err) {
+//     console.error('❌ TrackingAlerts cron failed:', err.message);
+//   }
+// }, { timezone: CONFIG.timezone || 'Asia/Kolkata' });
 
 async function start() {
   try {
