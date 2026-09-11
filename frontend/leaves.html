@@ -1026,7 +1026,25 @@ async function loadLeaveTransactions() {
   };
   const XLH = `border:1px solid #9ca3af;background:#f0f4ff;font-weight:700;font-size:11px;padding:8px 10px;white-space:nowrap;text-align:center`;
   const XLD = `border:1px solid #e5e7eb;padding:7px 10px;font-size:12px;text-align:center;vertical-align:middle`;
+
+  // Quick-glance status counts — Applied = total submitted regardless of outcome.
+  const counts = { applied: data.data.length, approved: 0, pending: 0, rejected: 0 };
+  data.data.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
+  const statCard = (label, n, bg, fg) => `
+    <div style="flex:1;min-width:110px;background:${bg};border-radius:10px;padding:12px 14px;text-align:center">
+      <div style="font-size:22px;font-weight:800;color:${fg}">${n}</div>
+      <div style="font-size:11px;font-weight:700;color:${fg};text-transform:uppercase;letter-spacing:.4px;margin-top:2px">${label}</div>
+    </div>`;
+  const statsHtml = `
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+      ${statCard('Applied',  counts.applied,  '#eef2ff', '#3730a3')}
+      ${statCard('Approved', counts.approved, '#dcfce7', '#166534')}
+      ${statCard('Pending',  counts.pending,  '#fef9c3', '#854d0e')}
+      ${statCard('Rejected', counts.rejected, '#fee2e2', '#991b1b')}
+    </div>`;
+
   el.innerHTML = `
+    ${statsHtml}
     <div style="overflow-x:auto;margin-top:4px">
     <table style="border-collapse:collapse;width:100%;min-width:800px">
       <thead>

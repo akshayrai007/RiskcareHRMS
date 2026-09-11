@@ -174,6 +174,7 @@ const NAV_GROUPS = [
     items: [
       { href:'attendance.html',     icon: ICONS.attendance,   label:'Attendance',       always:true },
       { href:'leaves.html',         icon: ICONS.leaves,       label:'Leaves',           always:true },
+      { href:'tasks.html',          icon: '✅',               label:'Tasks',            always:true },
       { href:'performance.html',    icon: ICONS.performance,  label:'Performance',      always:true },
       { href:'projects.html',       icon: ICONS.projects,     label:'Projects',         roles:['admin','super_admin','accounts'] },
       { href:'chat.html',           icon: ICONS.chat,         label:'Chat & Meetings',  always:true }

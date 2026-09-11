@@ -1089,6 +1089,16 @@ router.get  ('/send-documents/received',      authenticate,                     
 router.get  ('/send-documents/sent',          authenticate, authorize(...HR_ADMIN), sendDocsCtrl.getSent);
 router.get  ('/send-documents/file/:id',      authenticate,                         sendDocsCtrl.getFile);
 router.get  ('/send-documents/zip/:batch_id', authenticate,                         sendDocsCtrl.getZip);
+
+// ── Task Assignment ────────────────────────────────────────────────────────────
+const taskCtrl = require('../controllers/taskController');
+router.get   ('/tasks',                    authenticate, taskCtrl.listTasks);
+router.post  ('/tasks',                    authenticate, taskCtrl.createTask);
+router.put   ('/tasks/:id',                authenticate, taskCtrl.updateTask);
+router.delete('/tasks/:id',                authenticate, taskCtrl.deleteTask);
+router.post  ('/tasks/:id/status',         authenticate, taskCtrl.updateStatus);
+router.get   ('/tasks/assignable',         authenticate, taskCtrl.getAssignableEmployees);
+router.get   ('/tasks/stats',              authenticate, taskCtrl.stats);
 router.delete('/send-documents/:id',          authenticate,                         sendDocsCtrl.deleteDoc);
 
 module.exports = router;

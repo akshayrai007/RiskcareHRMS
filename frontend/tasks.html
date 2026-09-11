@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Tasks</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.task-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:12px;border-left:4px solid var(--yellow);transition:.15s}
+.task-card.in_progress{border-left-color:#3b82f6}
+.task-card.completed{border-left-color:var(--green);opacity:.85}
+.task-card.compulsory{border-left-width:6px}
+.task-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:12px;font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase}
+.badge-pending{background:rgba(245,158,11,.15);color:#b45309}
+.badge-in_progress{background:rgba(59,130,246,.15);color:#1d4ed8}
+.badge-completed{background:rgba(16,185,129,.15);color:#047857}
+.badge-high{background:rgba(239,68,68,.15);color:#b91c1c}
+.badge-medium{background:rgba(245,158,11,.15);color:#b45309}
+.badge-low{background:rgba(100,116,139,.15);color:#475569}
+.badge-compulsory{background:#fee2e2;color:#b91c1c}
+.stat-tile{flex:1;min-width:110px;border-radius:10px;padding:12px 14px;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">Tasks</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-primary btn-sm" id="assign-task-btn" onclick="openAssignModal()" style="display:none">➕ Assign Task</button>
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+
+    <!-- STATS -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
+      <div class="stat-tile" style="background:#fef9c3"><div style="font-size:22px;font-weight:800;color:#854d0e" id="stat-pending">0</div><div style="font-size:11px;font-weight:700;color:#854d0e;text-transform:uppercase">Pending</div></div>
+      <div class="stat-tile" style="background:#dbeafe"><div style="font-size:22px;font-weight:800;color:#1d4ed8" id="stat-in_progress">0</div><div style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase">In Progress</div></div>
+      <div class="stat-tile" style="background:#dcfce7"><div style="font-size:22px;font-weight:800;color:#047857" id="stat-completed">0</div><div style="font-size:11px;font-weight:700;color:#047857;text-transform:uppercase">Completed</div></div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="card" style="padding:16px 22px;margin-bottom:16px">
+      <div class="flex gap-2" style="flex-wrap:wrap;align-items:center">
+        <input id="task-search" class="form-control" style="width:220px" placeholder="Search title/description…" oninput="loadTasks()">
+        <select id="task-status-filter" class="form-control" style="width:150px" onchange="loadTasks()">
+          <option value="">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="in_progress">In Progress</option>
+          <option value="completed">Completed</option>
+        </select>
+        <select id="task-priority-filter" class="form-control" style="width:130px" onchange="loadTasks()">
+          <option value="">All Priority</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <select id="task-dept-filter" class="form-control" style="width:180px;display:none" onchange="loadTasks()">
+          <option value="">All Departments</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="task-list"><div class="loader"><div class="spinner"></div></div></div>
+
+  </div>
+</div>
+
+<!-- ASSIGN TASK MODAL -->
+<div class="modal-backdrop" id="assign-modal">
+  <div class="modal" style="width:560px">
+    <div class="modal-header">
+      <div class="modal-title" id="assign-modal-title">Assign Task</div>
+      <button class="modal-close" onclick="closeModal('assign-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="task-edit-id">
+      <div class="form-group">
+        <label class="form-label">Assign To *</label>
+        <select id="task-assignee" class="form-control"><option value="">Select employee…</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Title *</label>
+        <input id="task-title" class="form-control" placeholder="e.g. Submit monthly MIS report">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea id="task-description" class="form-control" rows="3" placeholder="Details of the task…"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Priority</label>
+          <select id="task-priority" class="form-control">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Due Date</label>
+          <input id="task-due-date" class="form-control" type="date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600">
+          <input type="checkbox" id="task-compulsory" style="width:16px;height:16px">
+          🔴 Compulsory (must be completed — flagged prominently to the employee)
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('assign-modal')">Cancel</button>
+      <button class="btn btn-primary" id="assign-save-btn" onclick="saveTask()">Assign Task</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+document.getElementById('page-title').textContent = window.CFG.clientName + ' - Tasks';
+document.getElementById('sidebar-logo-text').innerHTML = window.CFG.logoHtml;
+var _cs=document.getElementById('sidebar-company-sub')||document.getElementById('sidebar-company-short'); if(_cs) _cs.textContent=window.CFG.companyShortName||'';
+
+Auth.guard();
+buildSidebar('tasks.html');
+loadNotifBadge();
+
+const user = Auth.getUser();
+const isManagerRole = user.role === 'manager';
+const isSuperAdmin  = user.role === 'super_admin';
+const canAssign = isManagerRole || isSuperAdmin;
+
+if (canAssign) {
+  document.getElementById('assign-task-btn').style.display = '';
+  loadAssignableEmployees();
+}
+if (isSuperAdmin) {
+  document.getElementById('task-dept-filter').style.display = '';
+  loadDepartments();
+}
+
+loadStats();
+loadTasks();
+
+async function loadDepartments() {
+  const data = await api('GET', '/departments');
+  const sel = document.getElementById('task-dept-filter');
+  (data?.data || []).forEach(d => {
+    sel.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+  });
+}
+
+async function loadAssignableEmployees() {
+  const deptId = document.getElementById('task-dept-filter')?.value || '';
+  const qs = deptId ? `?department_id=${deptId}` : '';
+  const data = await api('GET', `/tasks/assignable${qs}`);
+  const sel = document.getElementById('task-assignee');
+  sel.innerHTML = '<option value="">Select employee…</option>';
+  (data?.data || []).forEach(e => {
+    sel.innerHTML += `<option value="${e.id}">${e.name} (${e.employee_code})${e.department_name ? ' — ' + e.department_name : ''}</option>`;
+  });
+}
+
+async function loadStats() {
+  const deptId = document.getElementById('task-dept-filter')?.value || '';
+  const qs = deptId ? `?department_id=${deptId}` : '';
+  const data = await api('GET', `/tasks/stats${qs}`);
+  if (!data?.success) return;
+  document.getElementById('stat-pending').textContent     = data.data.pending || 0;
+  document.getElementById('stat-in_progress').textContent = data.data.in_progress || 0;
+  document.getElementById('stat-completed').textContent   = data.data.completed || 0;
+}
+
+async function loadTasks() {
+  const el = document.getElementById('task-list');
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const status   = document.getElementById('task-status-filter')?.value || '';
+  const priority = document.getElementById('task-priority-filter')?.value || '';
+  const deptId   = document.getElementById('task-dept-filter')?.value || '';
+  const search   = document.getElementById('task-search')?.value || '';
+  let qs = [];
+  if (status)   qs.push('status='   + status);
+  if (priority) qs.push('priority=' + priority);
+  if (deptId)   qs.push('department_id=' + deptId);
+  if (search)   qs.push('search='   + encodeURIComponent(search));
+  const data = await api('GET', '/tasks' + (qs.length ? '?' + qs.join('&') : ''));
+  loadStats();
+  if (!data?.success || !data.data?.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>No tasks found.</p></div>';
+    return;
+  }
+  el.innerHTML = data.data.map(renderTaskCard).join('');
+}
+
+function renderTaskCard(t) {
+  const dueStr = t.due_date ? new Date(t.due_date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : null;
+  const isOverdue = t.due_date && t.status !== 'completed' && new Date(t.due_date) < new Date(new Date().toDateString());
+  const canManage = isSuperAdmin || (isManagerRole && canAssign);
+  const isMine = t.assigned_to === user.id;
+
+  return `
+  <div class="task-card ${t.status}${t.is_compulsory ? ' compulsory' : ''}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+          <span style="font-weight:800;font-size:14px">${t.title}</span>
+          ${t.is_compulsory ? '<span class="task-badge badge-compulsory">🔴 Compulsory</span>' : ''}
+          <span class="task-badge badge-${t.priority}">${t.priority}</span>
+          <span class="task-badge badge-${t.status}">${t.status.replace('_',' ')}</span>
+        </div>
+        ${t.description ? `<div style="font-size:13px;color:var(--muted);margin-bottom:8px;max-width:600px">${t.description}</div>` : ''}
+        <div style="font-size:12px;color:var(--muted)">
+          👤 <b style="color:var(--text)">${t.assignee_name}</b> (${t.assignee_code})${t.department_name ? ' · ' + t.department_name : ''}
+          ${t.assigner_name ? ' · Assigned by ' + t.assigner_name : ''}
+          ${dueStr ? ` · Due: <span style="color:${isOverdue ? '#ef4444' : 'var(--muted)'};font-weight:${isOverdue ? '700' : '400'}">${dueStr}${isOverdue ? ' (Overdue)' : ''}</span>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+        ${isMine && t.status !== 'completed' ? `
+          <select class="form-control" style="font-size:12px;padding:6px 8px" onchange="updateTaskStatus(${t.id}, this.value)">
+            <option value="">Update status…</option>
+            ${t.status !== 'pending' ? '' : '<option value="pending">Pending</option>'}
+            <option value="in_progress" ${t.status==='in_progress'?'selected':''}>In Progress</option>
+            <option value="completed">Mark Completed</option>
+          </select>` : ''}
+        ${canManage ? `<button class="btn btn-outline btn-sm" onclick="deleteTask(${t.id})">🗑 Delete</button>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+async function updateTaskStatus(id, status) {
+  if (!status) return;
+  const data = await api('POST', `/tasks/${id}/status`, { status });
+  if (data?.success) { toast('Task updated', 'success'); loadTasks(); }
+  else toast(data?.message || 'Update failed', 'error');
+}
+
+async function deleteTask(id) {
+  if (!confirm('Delete this task?')) return;
+  const data = await api('DELETE', `/tasks/${id}`);
+  if (data?.success) { toast('Task deleted', 'success'); loadTasks(); }
+  else toast(data?.message || 'Delete failed', 'error');
+}
+
+function openAssignModal() {
+  document.getElementById('assign-modal-title').textContent = 'Assign Task';
+  document.getElementById('task-edit-id').value = '';
+  document.getElementById('task-assignee').value = '';
+  document.getElementById('task-title').value = '';
+  document.getElementById('task-description').value = '';
+  document.getElementById('task-priority').value = 'medium';
+  document.getElementById('task-due-date').value = '';
+  document.getElementById('task-compulsory').checked = false;
+  loadAssignableEmployees();
+  openModal('assign-modal');
+}
+
+async function saveTask() {
+  const title = document.getElementById('task-title').value.trim();
+  const assignee = parseInt(document.getElementById('task-assignee').value);
+  if (!title) { toast('Title is required', 'error'); return; }
+  if (!assignee) { toast('Please select an employee to assign to', 'error'); return; }
+
+  const btn = document.getElementById('assign-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const body = {
+    title,
+    assigned_to: assignee,
+    description: document.getElementById('task-description').value.trim() || null,
+    priority: document.getElementById('task-priority').value,
+    due_date: document.getElementById('task-due-date').value || null,
+    is_compulsory: document.getElementById('task-compulsory').checked,
+  };
+  const data = await api('POST', '/tasks', body);
+  btn.disabled = false; btn.textContent = 'Assign Task';
+
+  if (data?.success) {
+    toast('Task assigned', 'success');
+    closeModal('assign-modal');
+    loadTasks();
+  } else {
+    toast(data?.message || 'Failed to assign task', 'error');
+  }
+}
+
+document.getElementById('task-dept-filter')?.addEventListener('change', loadAssignableEmployees);
+</script>
+</body>
+</html>
