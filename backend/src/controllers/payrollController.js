@@ -729,7 +729,13 @@ exports.getAllSalaryStructures = async (req, res) => {
          COALESCE(ess.net_salary,0)        AS net_salary,
          COALESCE(ess.ctc_monthly,0)       AS ctc_monthly,
          COALESCE(ess.ctc_annual,0)        AS ctc_annual,
-         COALESCE(ess.pf_wage_basis,'capped') AS pf_wage_basis
+         COALESCE(ess.pf_wage_basis,'capped') AS pf_wage_basis,
+         COALESCE(ess.pf_applicable,true)   AS pf_applicable,
+         COALESCE(ess.esi_applicable,true)  AS esi_applicable,
+         COALESCE(ess.pt_applicable,true)   AS pt_applicable,
+         COALESCE(ess.lwf_applicable,true)  AS lwf_applicable,
+         COALESCE(ess.tds_applicable,false) AS tds_applicable,
+         e.state AS employee_state
        FROM employees e
        LEFT JOIN employee_salary_structure ess ON ess.employee_id = e.id
        LEFT JOIN departments d   ON e.department_id = d.id

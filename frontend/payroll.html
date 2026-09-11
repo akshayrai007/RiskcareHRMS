@@ -982,33 +982,56 @@ async function openSalaryEdit(empId) {
   document.getElementById('se-special').value    = r.special_allowance || 0;
   document.getElementById('se-gratuity').value   = r.gratuity || 0;
   document.getElementById('se-other').value      = r.food_coupon || 0;
-  // Deductions
-  document.getElementById('se-pf-emp').value   = r.pf_employee || 0;
-  document.getElementById('se-pf-emr').value   = r.pf_employer || 0;
-  document.getElementById('se-pf-admin').value = r.pf_admin || 150;
+  // Deductions — checkbox reflects whether this deduction is applicable;
+  // the ₹ amount is always auto-calculated server-side, never typed in.
+  document.getElementById('se-pf').checked     = r.pf_applicable !== false;
   document.getElementById('se-pf-basis').value = r.pf_wage_basis === 'actual' ? 'actual' : 'capped';
-  document.getElementById('se-esi-emp').value  = r.esi_employee || 0;
-  document.getElementById('se-esi-emr').value  = r.esi_employer || 0;
-  document.getElementById('se-pt').value       = r.professional_tax || r.pt_amount || 0;
-  document.getElementById('se-lwf').value      = r.lwf || 0;
-  document.getElementById('se-tds').value      = r.tds || r.tds_monthly || 0;
-  document.getElementById('se-emi').value      = r.loan_emi_recovery || 0;
+  document.getElementById('se-esi').checked    = r.esi_applicable !== false;
+  document.getElementById('se-pt').checked     = r.pt_applicable !== false;
+  document.getElementById('se-lwf').checked    = r.lwf_applicable !== false;
+  document.getElementById('se-tds').checked    = !!r.tds_applicable;
+  document.getElementById('se-emp-id').dataset.state = r.employee_state || '';
   // Show modal
   const m = document.getElementById('salary-edit-modal');
   m.style.display = 'flex';
   // Add live preview listeners
   ['se-basic','se-hra','se-conveyance','se-special','se-gratuity','se-other',
-   'se-pf-emp','se-esi-emp','se-pt','se-lwf','se-tds','se-emi'].forEach(id => {
-    document.getElementById(id).oninput = updateSePreview;
+   'se-pf','se-pf-basis','se-esi','se-pt','se-lwf'].forEach(id => {
+    const el = document.getElementById(id);
+    el.oninput = updateSePreview; el.onchange = updateSePreview;
   });
   updateSePreview();
+}
+
+// PT slab — mirrors backend's calcPT() in payrollController.js exactly.
+function calcPTPreviewPayroll(gross, state) {
+  const s = (state || '').trim().toLowerCase();
+  if (s === 'west bengal') {
+    if (gross <= 8500)  return 0;
+    if (gross <= 10000) return 0;
+    if (gross <= 15000) return 110;
+    if (gross <= 25000) return 130;
+    if (gross <= 40000) return 150;
+    return 200;
+  }
+  return gross >= 10000 ? 200 : 0;
 }
 
 function updateSePreview() {
   const v = id => parseFloat(document.getElementById(id)?.value) || 0;
   const gross = v('se-basic')+v('se-hra')+v('se-conveyance')+v('se-special')+v('se-gratuity')+v('se-other');
-  const ded   = v('se-pf-emp')+v('se-esi-emp')+v('se-pt')+v('se-lwf')+v('se-tds')+v('se-emi');
-  const net   = gross - ded;
+
+  // Mirrors payrollController.js computeAndSaveSalaryStructure() exactly —
+  // this is a live preview of what gets auto-calculated on save.
+  const pfBasis = document.getElementById('se-pf-basis')?.value || 'capped';
+  const pfBase  = pfBasis === 'actual' ? v('se-basic') : Math.min(v('se-basic'), 15000);
+  const pfEmp   = document.getElementById('se-pf').checked  ? Math.round(pfBase * 0.12) : 0;
+  const esiEmp  = document.getElementById('se-esi').checked && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
+  const state   = document.getElementById('se-emp-id')?.dataset.state || '';
+  const pt      = document.getElementById('se-pt').checked  ? calcPTPreviewPayroll(gross, state) : 0;
+  const lwf     = document.getElementById('se-lwf').checked ? 6 : 0;
+  const ded     = pfEmp + esiEmp + pt + lwf;
+  const net     = gross - ded;
   document.getElementById('sep-gross').textContent = fmt.money(gross);
   document.getElementById('sep-ded').textContent   = fmt.money(ded);
   document.getElementById('sep-net').textContent   = fmt.money(net);
@@ -1034,21 +1057,12 @@ async function saveSalaryStructure() {
     special_allowance:v('se-special'),
     gratuity:         v('se-gratuity'),
     food_coupon:      v('se-other'),
-    pf_employee:      v('se-pf-emp'),
-    pf_employer:      v('se-pf-emr'),
-    pf_admin:         v('se-pf-admin'),
-    esi_employee:     v('se-esi-emp'),
-    esi_employer:     v('se-esi-emr'),
-    pt_amount:        v('se-pt'),
-    lwf_amount:       v('se-lwf'),
-    tds_monthly:      v('se-tds'),
-    loan_emi_recovery:v('se-emi'),
     pf_wage_basis:    document.getElementById('se-pf-basis')?.value || 'capped',
-    pf_applicable:    v('se-pf-emp') > 0,
-    esi_applicable:   v('se-esi-emp') > 0,
-    pt_applicable:    v('se-pt') > 0,
-    lwf_applicable:   v('se-lwf') > 0,
-    tds_applicable:   v('se-tds') > 0,
+    pf_applicable:    document.getElementById('se-pf').checked,
+    esi_applicable:   document.getElementById('se-esi').checked,
+    pt_applicable:    document.getElementById('se-pt').checked,
+    lwf_applicable:   document.getElementById('se-lwf').checked,
+    tds_applicable:   document.getElementById('se-tds').checked,
   };
 
   const data = await api('POST', '/payroll/salary-structure', body);
@@ -1089,19 +1103,32 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
       <div><label class="form-label">Food Coupon</label><input id="se-other" type="number" class="form-control" placeholder="0"></div>
     </div>
 
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📋 Deductions (₹/month) — HR Defined</div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📋 Deductions — HR Toggled, Amount Auto-Calculated</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Tick to enable each deduction — the ₹ amount is calculated automatically, not typed in.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
-      <div><label class="form-label">PF Employee</label><input id="se-pf-emp" type="number" class="form-control" placeholder="0"></div>
-      <div><label class="form-label">PF Employer</label><input id="se-pf-emr" type="number" class="form-control" placeholder="0"></div>
-      <div><label class="form-label">PF Admin</label><input id="se-pf-admin" type="number" class="form-control" placeholder="150"></div>
-      <div><label class="form-label">PF Basis</label><select id="se-pf-basis" class="form-control"><option value="capped">Capped (min Basic, ₹15,000)</option><option value="actual">Actual (full Basic, uncapped)</option></select></div>
-      <div><label class="form-label">ESI Employee</label><input id="se-esi-emp" type="number" class="form-control" placeholder="0"></div>
-      <div><label class="form-label">ESI Employer</label><input id="se-esi-emr" type="number" class="form-control" placeholder="0"></div>
-      <div><label class="form-label">Professional Tax (PT)</label><input id="se-pt" type="number" class="form-control" placeholder="0"></div>
-      <div><label class="form-label">LWF</label><input id="se-lwf" type="number" class="form-control" placeholder="0"></div>
-      <div><label class="form-label">TDS (monthly)</label><input id="se-tds" type="number" class="form-control" placeholder="0"></div>
-      <div><label class="form-label">EMI / Loan Recovery</label><input id="se-emi" type="number" class="form-control" placeholder="0"></div>
+      <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:700"><input type="checkbox" id="se-pf"> PF (Provident Fund)</label>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">12% of Basic (Employee + Employer) + ₹150 admin</div>
+        <select id="se-pf-basis" class="form-control" style="margin-top:6px;font-size:12px;padding:6px 10px"><option value="capped">Capped (min Basic, ₹15,000)</option><option value="actual">Actual (full Basic, uncapped)</option></select>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:700"><input type="checkbox" id="se-esi"> ESI</label>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">0.75% / 3.25% of Gross (only if Gross ≤ ₹21,000)</div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:700"><input type="checkbox" id="se-pt"> Professional Tax (PT)</label>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">By state slab (employee's State)</div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:700"><input type="checkbox" id="se-lwf"> LWF</label>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Fixed ₹6/month</div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;grid-column:1/-1">
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:700"><input type="checkbox" id="se-tds"> TDS (Tax Deducted at Source)</label>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Monthly ₹ amount is set separately during each month's Payroll run, not here.</div>
+      </div>
     </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:20px">EMI / Loan Recovery is managed from the Advance Salary module, not here.</div>
 
     <div id="se-preview" style="background:linear-gradient(135deg,#1e293b,#334155);border-radius:12px;padding:16px;margin-bottom:20px;display:none">
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;color:#fff;text-align:center">
