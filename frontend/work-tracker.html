@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Work Tracker</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.wt-log-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:10px}
+.wt-req-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border)}
+.wt-req-row:last-child{border-bottom:none}
+.wt-toggle{position:relative;width:42px;height:24px;border-radius:12px;background:#d1d5db;cursor:pointer;transition:background .15s;flex-shrink:0}
+.wt-toggle.on{background:#16a34a}
+.wt-toggle::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .15s}
+.wt-toggle.on::after{transform:translateX(18px)}
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">Work Tracker</div>
+    </div>
+    <div class="topbar-right">
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+
+    <!-- SUBMIT MY LOG (only shown if required) -->
+    <div id="submit-section" style="display:none" class="card" style="padding:20px 22px;margin-bottom:20px">
+      <div class="card-title" style="margin-bottom:14px"><span class="card-title-icon">📝</span>Submit Today's Work Log</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input id="wt-date" class="form-control" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hours Spent (optional)</label>
+          <input id="wt-hours" class="form-control" type="number" step="0.5" placeholder="e.g. 8">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">What did you work on? *</label>
+        <textarea id="wt-summary" class="form-control" rows="3" placeholder="Summary of today's work…"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="submitLog()">Submit Log</button>
+    </div>
+
+    <!-- MY LOG HISTORY (only shown if required) -->
+    <div id="my-history-section" style="display:none">
+      <div class="section-title" style="margin-bottom:10px">My Log History</div>
+      <div id="my-history-list"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- MANAGER/ADMIN: MANAGE REQUIRED LIST -->
+    <div id="manage-section" style="display:none;margin-top:24px">
+      <div class="card" style="padding:0;margin-bottom:20px">
+        <div class="card-header" style="padding:16px 22px">
+          <div class="card-title"><span class="card-title-icon">👥</span>Who Must Fill Work Tracker</div>
+          <select id="mgmt-dept-filter" class="form-control" style="width:180px;display:none" onchange="loadRequiredList()">
+            <option value="">All Departments</option>
+          </select>
+        </div>
+        <div id="required-list-content"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+
+      <div class="card" style="padding:0">
+        <div class="card-header" style="padding:16px 22px;flex-wrap:wrap;gap:10px">
+          <div class="card-title"><span class="card-title-icon">📋</span>Submitted Logs</div>
+          <div class="flex gap-2" style="flex-wrap:wrap">
+            <input id="logs-from" class="form-control" type="date" style="width:150px">
+            <input id="logs-to" class="form-control" type="date" style="width:150px">
+            <button class="btn btn-outline btn-sm" onclick="loadLogs()">Filter</button>
+          </div>
+        </div>
+        <div id="logs-content"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+document.getElementById('page-title').textContent = window.CFG.clientName + ' - Work Tracker';
+document.getElementById('sidebar-logo-text').innerHTML = window.CFG.logoHtml;
+var _cs=document.getElementById('sidebar-company-sub')||document.getElementById('sidebar-company-short'); if(_cs) _cs.textContent=window.CFG.companyShortName||'';
+
+Auth.guard();
+buildSidebar('work-tracker.html');
+loadNotifBadge();
+
+const user = Auth.getUser();
+const isManagerRole = user.role === 'manager';
+const isSuperAdmin  = user.role === 'super_admin';
+const canManage = isManagerRole || isSuperAdmin;
+
+document.getElementById('wt-date').value = new Date().toISOString().split('T')[0];
+
+(async function init() {
+  const status = await api('GET', '/work-tracker/my-status');
+  const required = !!status?.data?.required;
+
+  if (required) {
+    document.getElementById('submit-section').style.display = '';
+    document.getElementById('my-history-section').style.display = '';
+    loadMyHistory();
+  }
+  if (canManage) {
+    document.getElementById('manage-section').style.display = '';
+    if (isSuperAdmin) {
+      document.getElementById('mgmt-dept-filter').style.display = '';
+      loadDepartments();
+    }
+    loadRequiredList();
+    loadLogs();
+  }
+  if (!required && !canManage) {
+    document.querySelector('.content').innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div><p>You have not been asked to fill a Work Tracker log.</p></div>';
+  }
+})();
+
+async function loadDepartments() {
+  const data = await api('GET', '/departments');
+  const sel = document.getElementById('mgmt-dept-filter');
+  (data?.data || []).forEach(d => { sel.innerHTML += `<option value="${d.id}">${d.name}</option>`; });
+}
+
+async function submitLog() {
+  const summary = document.getElementById('wt-summary').value.trim();
+  if (!summary) { toast('Please enter a summary', 'error'); return; }
+  const body = {
+    log_date: document.getElementById('wt-date').value,
+    summary,
+    hours_spent: document.getElementById('wt-hours').value || null,
+  };
+  const data = await api('POST', '/work-tracker/submit', body);
+  if (data?.success) {
+    toast('Log submitted', 'success');
+    document.getElementById('wt-summary').value = '';
+    document.getElementById('wt-hours').value = '';
+    loadMyHistory();
+  } else {
+    toast(data?.message || 'Failed to submit', 'error');
+  }
+}
+
+async function loadMyHistory() {
+  const el = document.getElementById('my-history-list');
+  const data = await api('GET', '/work-tracker/my-logs');
+  if (!data?.success || !data.data?.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:24px"><p style="color:var(--muted)">No logs submitted yet.</p></div>';
+    return;
+  }
+  el.innerHTML = data.data.map(l => `
+    <div class="wt-log-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-weight:700;font-size:13px">${fmt.date(l.log_date)}</span>
+        ${l.hours_spent ? `<span style="font-size:12px;color:var(--muted)">${l.hours_spent} hrs</span>` : ''}
+      </div>
+      <div style="font-size:13px;color:var(--muted)">${l.summary}</div>
+    </div>`).join('');
+}
+
+async function loadRequiredList() {
+  const el = document.getElementById('required-list-content');
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const deptId = document.getElementById('mgmt-dept-filter')?.value || '';
+  const qs = deptId ? `?department_id=${deptId}` : '';
+  const data = await api('GET', `/work-tracker/required-list${qs}`);
+  if (!data?.success || !data.data?.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:24px"><p style="color:var(--muted)">No employees to manage.</p></div>';
+    return;
+  }
+  el.innerHTML = data.data.map(e => `
+    <div class="wt-req-row">
+      <div>
+        <div style="font-weight:600;font-size:13px">${e.name} <span style="color:var(--muted);font-weight:400">(${e.employee_code})</span></div>
+        ${e.department_name ? `<div style="font-size:11px;color:var(--muted)">${e.department_name}</div>` : ''}
+      </div>
+      <div class="wt-toggle ${e.work_tracker_required ? 'on' : ''}" onclick="toggleRequired(${e.id}, ${!e.work_tracker_required}, this)"></div>
+    </div>`).join('');
+}
+
+async function toggleRequired(employeeId, required, el) {
+  const data = await api('POST', '/work-tracker/set-required', { employee_id: employeeId, required });
+  if (data?.success) {
+    el.classList.toggle('on', required);
+    toast(required ? 'Marked as required' : 'Marked as not required', 'success');
+  } else {
+    toast(data?.message || 'Failed to update', 'error');
+  }
+}
+
+async function loadLogs() {
+  const el = document.getElementById('logs-content');
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const from = document.getElementById('logs-from')?.value || '';
+  const to   = document.getElementById('logs-to')?.value || '';
+  const deptId = document.getElementById('mgmt-dept-filter')?.value || '';
+  let qs = [];
+  if (from) qs.push('from_date=' + from);
+  if (to)   qs.push('to_date=' + to);
+  if (deptId) qs.push('department_id=' + deptId);
+  const data = await api('GET', '/work-tracker/logs' + (qs.length ? '?' + qs.join('&') : ''));
+  if (!data?.success || !data.data?.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:24px"><p style="color:var(--muted)">No logs found.</p></div>';
+    return;
+  }
+  const XLH = `border:1px solid #e5e7eb;background:#f8fafc;font-weight:700;font-size:11px;padding:8px 10px;text-align:left`;
+  const XLD = `border:1px solid #e5e7eb;padding:7px 10px;font-size:12px`;
+  el.innerHTML = `
+    <div style="overflow-x:auto;padding:0 22px 16px">
+    <table style="border-collapse:collapse;width:100%">
+      <thead><tr>
+        <th style="${XLH}">Date</th><th style="${XLH}">Emp Code</th><th style="${XLH}">Name</th>
+        <th style="${XLH}">Department</th><th style="${XLH}">Hours</th><th style="${XLH}">Summary</th>
+      </tr></thead>
+      <tbody>
+        ${data.data.map((l,i) => `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
+          <td style="${XLD}">${fmt.date(l.log_date)}</td>
+          <td style="${XLD};font-weight:700;color:var(--accent)">${l.employee_code}</td>
+          <td style="${XLD}">${l.employee_name}</td>
+          <td style="${XLD};color:var(--muted)">${l.department_name||'—'}</td>
+          <td style="${XLD};text-align:center">${l.hours_spent||'—'}</td>
+          <td style="${XLD};color:var(--muted)">${l.summary}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>`;
+}
+</script>
+</body>
+</html>

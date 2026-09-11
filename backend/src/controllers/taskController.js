@@ -124,7 +124,15 @@ exports.listTasks = async (req, res) => {
     const params = [];
     const conds = [];
 
-    if (isSuperAdmin(req.user)) {
+    // ?mine=1 forces the involved-only scope even for managers/super_admin —
+    // used by the "My Work" page so managers can see their OWN assigned
+    // tasks too, not just what they've handed out to their reportees.
+    const mineOnly = req.query.mine === '1' || req.query.mine === 'true';
+
+    if (mineOnly) {
+      params.push(req.user.id);
+      conds.push(`t.assigned_to = $${params.length}`);
+    } else if (isSuperAdmin(req.user)) {
       // Sees everyone — optionally scoped to one department.
       if (department_id) { params.push(parseInt(department_id)); conds.push(`a.department_id = $${params.length}`); }
     } else if (isManager(req.user)) {
@@ -151,6 +159,38 @@ exports.listTasks = async (req, res) => {
     res.json({ success: true, data: r.rows });
   } catch (err) {
     console.error('[tasks.listTasks]', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ── Board — same visibility rules as listTasks, grouped by status column ────
+exports.board = async (req, res) => {
+  try {
+    await ensureTables();
+    const { department_id } = req.query;
+    const params = [];
+    const conds = [];
+
+    if (isSuperAdmin(req.user)) {
+      if (department_id) { params.push(parseInt(department_id)); conds.push(`a.department_id = $${params.length}`); }
+    } else if (isManager(req.user)) {
+      params.push(req.user.id);
+      conds.push(`a.reporting_manager_id = $${params.length}`);
+    } else {
+      params.push(req.user.id);
+      conds.push(`t.assigned_to = $${params.length}`);
+    }
+    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+    const r = await db.query(
+      `SELECT ${TASK_SELECT} ${TASK_JOINS} ${where}
+       ORDER BY t.is_compulsory DESC, t.due_date NULLS LAST, t.created_at DESC`,
+      params
+    );
+    const columns = { pending: [], in_progress: [], completed: [] };
+    r.rows.forEach(row => { (columns[row.status] || columns.pending).push(row); });
+    res.json({ success: true, data: { columns, order: STATUSES } });
+  } catch (err) {
+    console.error('[tasks.board]', err.message);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

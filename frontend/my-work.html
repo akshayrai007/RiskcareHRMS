@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">My Work</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.task-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:12px;border-left:4px solid var(--yellow);transition:.15s}
+.task-card.in_progress{border-left-color:#3b82f6}
+.task-card.completed{border-left-color:var(--green);opacity:.85}
+.task-card.compulsory{border-left-width:6px}
+.task-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:12px;font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase}
+.badge-pending{background:rgba(245,158,11,.15);color:#b45309}
+.badge-in_progress{background:rgba(59,130,246,.15);color:#1d4ed8}
+.badge-completed{background:rgba(16,185,129,.15);color:#047857}
+.badge-high{background:rgba(239,68,68,.15);color:#b91c1c}
+.badge-medium{background:rgba(245,158,11,.15);color:#b45309}
+.badge-low{background:rgba(100,116,139,.15);color:#475569}
+.badge-compulsory{background:#fee2e2;color:#b91c1c}
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div><div class="logo-sub" id="sidebar-company-short" style="display:none"></div></div>
+    </div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">My Work</div>
+    </div>
+    <div class="topbar-right">
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+    <div class="card" style="padding:16px 22px;margin-bottom:16px">
+      <div class="flex gap-2" style="flex-wrap:wrap;align-items:center">
+        <select id="mw-status-filter" class="form-control" style="width:150px" onchange="loadMyWork()">
+          <option value="">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="in_progress">In Progress</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+    </div>
+    <div id="mw-list"><div class="loader"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+document.getElementById('page-title').textContent = window.CFG.clientName + ' - My Work';
+document.getElementById('sidebar-logo-text').innerHTML = window.CFG.logoHtml;
+var _cs=document.getElementById('sidebar-company-sub')||document.getElementById('sidebar-company-short'); if(_cs) _cs.textContent=window.CFG.companyShortName||'';
+
+Auth.guard();
+buildSidebar('my-work.html');
+loadNotifBadge();
+
+const user = Auth.getUser();
+
+async function loadMyWork() {
+  const el = document.getElementById('mw-list');
+  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  const status = document.getElementById('mw-status-filter')?.value || '';
+  const qs = ['mine=1', status ? 'status=' + status : ''].filter(Boolean).join('&');
+  const data = await api('GET', `/tasks?${qs}`);
+  if (!data?.success || !data.data?.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🙋</div><p>No tasks assigned to you.</p></div>';
+    return;
+  }
+  el.innerHTML = data.data.map(renderCard).join('');
+}
+
+function renderCard(t) {
+  const dueStr = t.due_date ? new Date(t.due_date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : null;
+  const isOverdue = t.due_date && t.status !== 'completed' && new Date(t.due_date) < new Date(new Date().toDateString());
+  return `
+  <div class="task-card ${t.status}${t.is_compulsory ? ' compulsory' : ''}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+          <span style="font-weight:800;font-size:14px">${t.title}</span>
+          ${t.is_compulsory ? '<span class="task-badge badge-compulsory">🔴 Compulsory</span>' : ''}
+          <span class="task-badge badge-${t.priority}">${t.priority}</span>
+          <span class="task-badge badge-${t.status}">${t.status.replace('_',' ')}</span>
+        </div>
+        ${t.description ? `<div style="font-size:13px;color:var(--muted);margin-bottom:8px;max-width:600px">${t.description}</div>` : ''}
+        <div style="font-size:12px;color:var(--muted)">
+          ${t.assigner_name ? 'Assigned by ' + t.assigner_name : ''}
+          ${dueStr ? ` · Due: <span style="color:${isOverdue ? '#ef4444' : 'var(--muted)'};font-weight:${isOverdue ? '700' : '400'}">${dueStr}${isOverdue ? ' (Overdue)' : ''}</span>` : ''}
+        </div>
+      </div>
+      ${t.status !== 'completed' ? `
+        <select class="form-control" style="font-size:12px;padding:6px 8px" onchange="updateStatus(${t.id}, this.value)">
+          <option value="">Update status…</option>
+          <option value="in_progress" ${t.status==='in_progress'?'selected':''}>In Progress</option>
+          <option value="completed">Mark Completed</option>
+        </select>` : ''}
+    </div>
+  </div>`;
+}
+
+async function updateStatus(id, status) {
+  if (!status) return;
+  const data = await api('POST', `/tasks/${id}/status`, { status });
+  if (data?.success) { toast('Task updated', 'success'); loadMyWork(); }
+  else toast(data?.message || 'Update failed', 'error');
+}
+
+loadMyWork();
+</script>
+</body>
+</html>

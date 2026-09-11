@@ -1099,6 +1099,16 @@ router.delete('/tasks/:id',                authenticate, taskCtrl.deleteTask);
 router.post  ('/tasks/:id/status',         authenticate, taskCtrl.updateStatus);
 router.get   ('/tasks/assignable',         authenticate, taskCtrl.getAssignableEmployees);
 router.get   ('/tasks/stats',              authenticate, taskCtrl.stats);
+router.get   ('/tasks/board',              authenticate, taskCtrl.board);
+
+// ── Work Tracker (daily work log — visible only to employees flagged required) ─
+const workTrackerCtrl = require('../controllers/workTrackerController');
+router.get   ('/work-tracker/my-status',      authenticate, workTrackerCtrl.getMyStatus);
+router.post  ('/work-tracker/set-required',   authenticate, workTrackerCtrl.setRequired);
+router.get   ('/work-tracker/required-list',  authenticate, workTrackerCtrl.getRequiredList);
+router.post  ('/work-tracker/submit',         authenticate, workTrackerCtrl.submitLog);
+router.get   ('/work-tracker/my-logs',        authenticate, workTrackerCtrl.getMyLogs);
+router.get   ('/work-tracker/logs',           authenticate, workTrackerCtrl.listLogs);
 router.delete('/send-documents/:id',          authenticate,                         sendDocsCtrl.deleteDoc);
 
 module.exports = router;

@@ -174,10 +174,18 @@ const NAV_GROUPS = [
     items: [
       { href:'attendance.html',     icon: ICONS.attendance,   label:'Attendance',       always:true },
       { href:'leaves.html',         icon: ICONS.leaves,       label:'Leaves',           always:true },
-      { href:'tasks.html',          icon: '✅',               label:'Tasks',            always:true },
       { href:'performance.html',    icon: ICONS.performance,  label:'Performance',      always:true },
       { href:'projects.html',       icon: ICONS.projects,     label:'Projects',         roles:['admin','super_admin','accounts'] },
       { href:'chat.html',           icon: ICONS.chat,         label:'Chat & Meetings',  always:true }
+    ]
+  },
+  {
+    label: 'Tasks',
+    items: [
+      { href:'board.html',          icon: '🗂️',              label:'Task Board',       roles:['manager','super_admin'] },
+      { href:'tasks.html',          icon: '📋',               label:'All Tasks',        roles:['manager','super_admin'] },
+      { href:'my-work.html',        icon: '🙋',               label:'My Work',          always:true },
+      { href:'work-tracker.html',   icon: '📝',               label:'Work Tracker',     always:true },
     ]
   },
   {
@@ -291,6 +299,20 @@ function buildSidebar(activePage) {
 
   const u = document.getElementById('sidebar-user');
   if (u) u.innerHTML = `<div class="user-avatar">${(user.first_name?.[0]||'')}${(user.last_name?.[0]||'')}</div><div class="user-info" style="flex:1;min-width:0"><div class="user-name">${user.first_name} ${user.last_name}</div><div class="user-role" style="background:${Role.badge(user.role)}">${user.role.toUpperCase()}</div></div>`;
+
+  // Work Tracker's nav link is visible to everyone by default (it's marked
+  // "always" so it doesn't need a page reload to appear once someone is
+  // flagged required), but should only actually show for: a manager/super
+  // admin (who manage who's required) or an employee who has been flagged
+  // required themselves. Hide it for everyone else, fire-and-forget.
+  if (!['manager', 'super_admin'].includes(user.role)) {
+    api('GET', '/work-tracker/my-status').then(data => {
+      if (!data?.success || !data.data?.required) {
+        const link = nav.querySelector('a[href="work-tracker.html"]');
+        if (link) link.style.display = 'none';
+      }
+    }).catch(() => {});
+  }
 }
 
 function toggleNavGroup(groupId) {
