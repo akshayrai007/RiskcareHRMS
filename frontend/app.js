@@ -182,8 +182,8 @@ const NAV_GROUPS = [
   {
     label: 'Tasks',
     items: [
-      { href:'board.html',          icon: '🗂️',              label:'Task Board',       roles:['manager','super_admin'] },
-      { href:'tasks.html',          icon: '📋',               label:'All Tasks',        roles:['manager','super_admin'] },
+      { href:'board.html',          icon: '🗂️',              label:'Task Board',       always:true },
+      { href:'tasks.html',          icon: '📋',               label:'All Tasks',        always:true },
       { href:'my-work.html',        icon: '🙋',               label:'My Work',          always:true },
       { href:'work-tracker.html',   icon: '📝',               label:'Work Tracker',     always:true },
     ]
@@ -300,19 +300,30 @@ function buildSidebar(activePage) {
   const u = document.getElementById('sidebar-user');
   if (u) u.innerHTML = `<div class="user-avatar">${(user.first_name?.[0]||'')}${(user.last_name?.[0]||'')}</div><div class="user-info" style="flex:1;min-width:0"><div class="user-name">${user.first_name} ${user.last_name}</div><div class="user-role" style="background:${Role.badge(user.role)}">${user.role.toUpperCase()}</div></div>`;
 
-  // Work Tracker's nav link is visible to everyone by default (it's marked
-  // "always" so it doesn't need a page reload to appear once someone is
-  // flagged required), but should only actually show for: a manager/super
-  // admin (who manage who's required) or an employee who has been flagged
-  // required themselves. Hide it for everyone else, fire-and-forget.
-  if (!['manager', 'super_admin'].includes(user.role)) {
-    api('GET', '/work-tracker/my-status').then(data => {
-      if (!data?.success || !data.data?.required) {
-        const link = nav.querySelector('a[href="work-tracker.html"]');
+  // Task Board / All Tasks (manager-only) and Work Tracker (manager/super
+  // admin, or an employee flagged required) all depend on whether this user
+  // is an actual "manager" — meaning they have real reportees in the org
+  // chart, NOT whether their role field literally says "manager" (reportees
+  // exist under accounts/admin/etc. too). That can only be determined by
+  // asking the backend, so these links start visible (marked "always" above)
+  // and get hidden here, fire-and-forget, once we know.
+  api('GET', '/tasks/am-i-manager').then(mgrData => {
+    const isMgrOrAdmin = mgrData?.success && (mgrData.data.is_manager || mgrData.data.is_super_admin);
+    if (!isMgrOrAdmin) {
+      ['board.html', 'tasks.html'].forEach(href => {
+        const link = nav.querySelector(`a[href="${href}"]`);
         if (link) link.style.display = 'none';
-      }
-    }).catch(() => {});
-  }
+      });
+      // Work Tracker: still show it if this employee has personally been
+      // flagged required, even though they don't manage anyone themselves.
+      api('GET', '/work-tracker/my-status').then(wtData => {
+        if (!wtData?.success || !wtData.data?.required) {
+          const link = nav.querySelector('a[href="work-tracker.html"]');
+          if (link) link.style.display = 'none';
+        }
+      }).catch(() => {});
+    }
+  }).catch(() => {});
 }
 
 function toggleNavGroup(groupId) {

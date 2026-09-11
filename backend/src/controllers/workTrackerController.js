@@ -15,8 +15,18 @@
 
 const db = require('../config/db');
 
-function isManager(user) { return String(user.role || '').toLowerCase() === 'manager'; }
 function isSuperAdmin(user) { return String(user.role || '').toLowerCase() === 'super_admin'; }
+
+// "Manager" = anyone with actual reportees in the org chart, regardless of
+// their role label (accounts/admin/etc. can all have reportees).
+async function isManager(user) {
+  if (isSuperAdmin(user)) return false;
+  const r = await db.query(
+    `SELECT 1 FROM employees WHERE reporting_manager_id=$1 AND is_active=true LIMIT 1`,
+    [user.id]
+  );
+  return r.rows.length > 0;
+}
 
 let ready = null;
 async function ensureTables() {
@@ -43,7 +53,6 @@ exports.ensureTables = ensureTables;
 // Is the caller allowed to manage (mark required / view logs of) this employee?
 async function canManage(user, employeeId) {
   if (isSuperAdmin(user)) return true;
-  if (!isManager(user)) return false;
   const r = await db.query(`SELECT 1 FROM employees WHERE id=$1 AND reporting_manager_id=$2`, [employeeId, user.id]);
   return r.rows.length > 0;
 }
@@ -54,7 +63,7 @@ exports.getMyStatus = async (req, res) => {
     await ensureTables();
     const r = await db.query(`SELECT work_tracker_required FROM employees WHERE id=$1`, [req.user.id]);
     const required = !!r.rows[0]?.work_tracker_required;
-    const canManageOthers = isManager(req.user) || isSuperAdmin(req.user);
+    const canManageOthers = (await isManager(req.user)) || isSuperAdmin(req.user);
     res.json({ success: true, data: { required, can_manage_others: canManageOthers } });
   } catch (err) {
     console.error('[workTracker.getMyStatus]', err.message);
@@ -106,7 +115,7 @@ exports.getRequiredList = async (req, res) => {
       const r = await db.query(q, params);
       return res.json({ success: true, data: r.rows });
     }
-    if (isManager(req.user)) {
+    if (await isManager(req.user)) {
       const r = await db.query(
         `SELECT e.id, e.employee_code, CONCAT(e.first_name,' ',e.last_name) AS name,
                 d.name AS department_name, e.work_tracker_required
@@ -174,7 +183,7 @@ exports.listLogs = async (req, res) => {
 
     if (isSuperAdmin(req.user)) {
       if (department_id) { params.push(parseInt(department_id)); conds.push(`e.department_id=$${params.length}`); }
-    } else if (isManager(req.user)) {
+    } else if (await isManager(req.user)) {
       params.push(req.user.id);
       conds.push(`e.reporting_manager_id=$${params.length}`);
     } else {

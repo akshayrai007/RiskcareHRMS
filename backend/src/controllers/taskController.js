@@ -16,11 +16,22 @@ const db  = require('../config/db');
 const STATUSES = ['pending', 'in_progress', 'completed'];
 const PRIORITIES = ['low', 'medium', 'high'];
 
-function isManager(user) {
-  return String(user.role || '').toLowerCase() === 'manager';
-}
 function isSuperAdmin(user) {
   return String(user.role || '').toLowerCase() === 'super_admin';
+}
+
+// "Manager" here means anyone who actually has reportees in the org chart —
+// NOT anyone whose role field literally says 'manager'. Reportees exist
+// under people with all sorts of role labels (accounts, admin, etc.), so a
+// role-string check misses real managers and wrongly excludes them from
+// managing their own team's tasks/work-tracker.
+async function isManager(user) {
+  if (isSuperAdmin(user)) return false; // handled separately, broader scope
+  const r = await db.query(
+    `SELECT 1 FROM employees WHERE reporting_manager_id=$1 AND is_active=true LIMIT 1`,
+    [user.id]
+  );
+  return r.rows.length > 0;
 }
 
 // ── Schema (idempotent) ──────────────────────────────────────────────────────
@@ -76,11 +87,9 @@ exports.createTask = async (req, res) => {
     if (priority && !PRIORITIES.includes(priority))
       return res.status(400).json({ success: false, message: 'Invalid priority' });
 
-    // Managers may only assign to their own direct reportees. Super Admin can
-    // assign to anyone.
+    // Managers (anyone with actual reportees) may only assign to their own
+    // direct reportees. Super Admin can assign to anyone.
     if (!isSuperAdmin(req.user)) {
-      if (!isManager(req.user))
-        return res.status(403).json({ success: false, message: 'Only a Manager or Super Admin can assign tasks' });
       const rep = await db.query(
         `SELECT id FROM employees WHERE id=$1 AND reporting_manager_id=$2 AND is_active=true`,
         [assigneeId, req.user.id]
@@ -135,7 +144,7 @@ exports.listTasks = async (req, res) => {
     } else if (isSuperAdmin(req.user)) {
       // Sees everyone — optionally scoped to one department.
       if (department_id) { params.push(parseInt(department_id)); conds.push(`a.department_id = $${params.length}`); }
-    } else if (isManager(req.user)) {
+    } else if (await isManager(req.user)) {
       // Sees only tasks for their own direct reportees.
       params.push(req.user.id);
       conds.push(`a.reporting_manager_id = $${params.length}`);
@@ -173,7 +182,7 @@ exports.board = async (req, res) => {
 
     if (isSuperAdmin(req.user)) {
       if (department_id) { params.push(parseInt(department_id)); conds.push(`a.department_id = $${params.length}`); }
-    } else if (isManager(req.user)) {
+    } else if (await isManager(req.user)) {
       params.push(req.user.id);
       conds.push(`a.reporting_manager_id = $${params.length}`);
     } else {
@@ -211,9 +220,11 @@ exports.updateStatus = async (req, res) => {
     if (!cur.rows.length) return res.status(404).json({ success: false, message: 'Task not found' });
     const t = cur.rows[0];
 
+    // t.reporting_manager_id === req.user.id already proves req.user is this
+    // employee's actual manager — no need to also check the role label.
     const canUpdate = t.assigned_to === req.user.id
       || isSuperAdmin(req.user)
-      || (isManager(req.user) && t.reporting_manager_id === req.user.id);
+      || t.reporting_manager_id === req.user.id;
     if (!canUpdate) return res.status(403).json({ success: false, message: 'Access denied' });
 
     await db.query(
@@ -248,7 +259,7 @@ exports.updateTask = async (req, res) => {
     if (!cur.rows.length) return res.status(404).json({ success: false, message: 'Task not found' });
     const t = cur.rows[0];
 
-    const canEdit = isSuperAdmin(req.user) || (isManager(req.user) && t.reporting_manager_id === req.user.id);
+    const canEdit = isSuperAdmin(req.user) || t.reporting_manager_id === req.user.id;
     if (!canEdit) return res.status(403).json({ success: false, message: 'Only the assigning manager or Super Admin can edit this task' });
 
     const sets = [], params = [];
@@ -283,7 +294,7 @@ exports.deleteTask = async (req, res) => {
     );
     if (!cur.rows.length) return res.status(404).json({ success: false, message: 'Task not found' });
     const t = cur.rows[0];
-    const canDelete = isSuperAdmin(req.user) || (isManager(req.user) && t.reporting_manager_id === req.user.id);
+    const canDelete = isSuperAdmin(req.user) || t.reporting_manager_id === req.user.id;
     if (!canDelete) return res.status(403).json({ success: false, message: 'Access denied' });
 
     await db.query(`DELETE FROM tasks WHERE id=$1`, [id]);
@@ -310,7 +321,7 @@ exports.getAssignableEmployees = async (req, res) => {
       const r = await db.query(q, params);
       return res.json({ success: true, data: r.rows });
     }
-    if (isManager(req.user)) {
+    if (await isManager(req.user)) {
       const r = await db.query(
         `SELECT e.id, e.employee_code, CONCAT(e.first_name,' ',e.last_name) AS name, d.name AS department_name
          FROM employees e LEFT JOIN departments d ON d.id = e.department_id
@@ -334,7 +345,7 @@ exports.stats = async (req, res) => {
     let where = '';
     if (isSuperAdmin(req.user)) {
       if (req.query.department_id) { params.push(parseInt(req.query.department_id)); where = `WHERE a.department_id=$${params.length}`; }
-    } else if (isManager(req.user)) {
+    } else if (await isManager(req.user)) {
       params.push(req.user.id); where = `WHERE a.reporting_manager_id=$${params.length}`;
     } else {
       params.push(req.user.id); where = `WHERE t.assigned_to=$${params.length}`;
@@ -348,6 +359,22 @@ exports.stats = async (req, res) => {
     res.json({ success: true, data: counts });
   } catch (err) {
     console.error('[tasks.stats]', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ── Am I a manager (have real reportees) or Super Admin? ─────────────────────
+// Used by the frontend to decide whether to show Task Board / All Tasks /
+// the Assign Task button — since "manager" is based on actual reportees in
+// the org chart, not the role label, the frontend can't determine this from
+// the logged-in user object alone.
+exports.amIManager = async (req, res) => {
+  try {
+    const superAdmin = isSuperAdmin(req.user);
+    const manager = superAdmin ? false : await isManager(req.user);
+    res.json({ success: true, data: { is_manager: manager, is_super_admin: superAdmin } });
+  } catch (err) {
+    console.error('[tasks.amIManager]', err.message);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

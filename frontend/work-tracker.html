@@ -116,15 +116,17 @@ buildSidebar('work-tracker.html');
 loadNotifBadge();
 
 const user = Auth.getUser();
-const isManagerRole = user.role === 'manager';
-const isSuperAdmin  = user.role === 'super_admin';
-const canManage = isManagerRole || isSuperAdmin;
+let isSuperAdmin = false; // resolved from the backend below
 
 document.getElementById('wt-date').value = new Date().toISOString().split('T')[0];
 
 (async function init() {
+  // can_manage_others is computed server-side from actual reportees in the
+  // org chart, not the role label — "manager" isn't always role='manager'.
   const status = await api('GET', '/work-tracker/my-status');
   const required = !!status?.data?.required;
+  const canManage = !!status?.data?.can_manage_others;
+  isSuperAdmin = user.role === 'super_admin';
 
   if (required) {
     document.getElementById('submit-section').style.display = '';

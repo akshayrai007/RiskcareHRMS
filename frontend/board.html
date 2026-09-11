@@ -71,16 +71,24 @@ buildSidebar('board.html');
 loadNotifBadge();
 
 const user = Auth.getUser();
-if (!['manager','super_admin'].includes(user.role)) {
-  document.body.innerHTML = '<div style="padding:60px;text-align:center;color:var(--muted)">Access denied — Task Board is available to Managers and Super Admin only.</div>';
-}
-
-if (user.role === 'super_admin') {
-  document.getElementById('board-dept-filter').style.display = '';
-  loadDepartments();
-}
-
 const COL_LABELS = { pending: '🟡 Pending', in_progress: '🔵 In Progress', completed: '🟢 Completed' };
+
+// "Manager" = has real reportees in the org chart, not the role label —
+// resolved from the backend since the frontend can't know this on its own.
+(async function init() {
+  const mgrData = await api('GET', '/tasks/am-i-manager');
+  const isSuperAdmin = !!mgrData?.data?.is_super_admin;
+  const isManagerRole = !!mgrData?.data?.is_manager;
+  if (!isSuperAdmin && !isManagerRole) {
+    document.body.innerHTML = '<div style="padding:60px;text-align:center;color:var(--muted)">Access denied — Task Board is available to Managers and Super Admin only.</div>';
+    return;
+  }
+  if (isSuperAdmin) {
+    document.getElementById('board-dept-filter').style.display = '';
+    loadDepartments();
+  }
+  loadBoard();
+})();
 
 async function loadDepartments() {
   const data = await api('GET', '/departments');
@@ -121,8 +129,6 @@ function renderCard(t) {
     </div>
   </div>`;
 }
-
-loadBoard();
 </script>
 </body>
 </html>

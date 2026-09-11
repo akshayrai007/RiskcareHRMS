@@ -152,21 +152,35 @@ buildSidebar('tasks.html');
 loadNotifBadge();
 
 const user = Auth.getUser();
-const isManagerRole = user.role === 'manager';
-const isSuperAdmin  = user.role === 'super_admin';
-const canAssign = isManagerRole || isSuperAdmin;
+// "Manager" = has real reportees in the org chart, not the role label —
+// resolved from the backend since the frontend can't know this on its own.
+let isManagerRole = false;
+let isSuperAdmin  = false;
+let canAssign = false;
 
-if (canAssign) {
-  document.getElementById('assign-task-btn').style.display = '';
-  loadAssignableEmployees();
-}
-if (isSuperAdmin) {
-  document.getElementById('task-dept-filter').style.display = '';
-  loadDepartments();
-}
+(async function init() {
+  const mgrData = await api('GET', '/tasks/am-i-manager');
+  isSuperAdmin  = !!mgrData?.data?.is_super_admin;
+  isManagerRole = !!mgrData?.data?.is_manager;
+  canAssign = isManagerRole || isSuperAdmin;
 
-loadStats();
-loadTasks();
+  if (!canAssign) {
+    document.querySelector('.content').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>All Tasks is available to Managers and Super Admin only. See "My Work" for your own tasks.</p></div>';
+    return;
+  }
+
+  if (canAssign) {
+    document.getElementById('assign-task-btn').style.display = '';
+    loadAssignableEmployees();
+  }
+  if (isSuperAdmin) {
+    document.getElementById('task-dept-filter').style.display = '';
+    loadDepartments();
+  }
+
+  loadStats();
+  loadTasks();
+})();
 
 async function loadDepartments() {
   const data = await api('GET', '/departments');

@@ -1100,6 +1100,7 @@ router.post  ('/tasks/:id/status',         authenticate, taskCtrl.updateStatus);
 router.get   ('/tasks/assignable',         authenticate, taskCtrl.getAssignableEmployees);
 router.get   ('/tasks/stats',              authenticate, taskCtrl.stats);
 router.get   ('/tasks/board',              authenticate, taskCtrl.board);
+router.get   ('/tasks/am-i-manager',       authenticate, taskCtrl.amIManager);
 
 // ── Work Tracker (daily work log — visible only to employees flagged required) ─
 const workTrackerCtrl = require('../controllers/workTrackerController');
