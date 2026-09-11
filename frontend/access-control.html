@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Access Control</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+.ac-table { width:100%;border-collapse:collapse;min-width:1000px }
+.ac-table th { border:1px solid #9ca3af;background:#1e293b;color:#fff;font-size:11px;font-weight:700;padding:10px 12px;text-align:left;white-space:nowrap }
+.ac-table td { border:1px solid #e5e7eb;padding:9px 12px;font-size:12px;vertical-align:middle }
+.ac-table tr:nth-child(even) td { background:#f9fafb }
+.ac-badge { display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700 }
+.ac-badge.full    { background:#dcfce7;color:#166534 }
+.ac-badge.partial { background:#fef3c7;color:#92400e }
+.ac-badge.none    { background:#fee2e2;color:#991b1b }
+.ac-badge.overridden { box-shadow:0 0 0 2px #6366f1 inset }
+.search-bar { display:flex;gap:10px;align-items:center;margin-bottom:16px }
+.search-bar input { flex:1;max-width:340px;padding:9px 14px;border-radius:10px;border:1.5px solid var(--border);font-size:13px }
+.ac-select { padding:5px 8px;border-radius:8px;border:1.5px solid var(--border);font-size:12px }
+.ac-tabs-wrap { display:flex;flex-wrap:wrap;gap:6px;margin-top:6px }
+.ac-tab-chip { display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:3px 10px;font-size:11px;cursor:pointer }
+.ac-tab-chip input { margin:0 }
+.ac-scope-row { display:flex;gap:12px;margin-top:6px;font-size:11px }
+.empty-state { text-align:center;padding:40px 20px;color:var(--muted) }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div><div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div></div></div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+      <div class="topbar-title">🔐 Access Control</div>
+    </div>
+    <div class="topbar-right">
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+    <div class="card" style="margin-bottom:16px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+        Select an employee to see exactly what they can access today (their role's default, or any specific override you've set for them), and change it here without touching their role.
+      </div>
+      <div class="search-bar">
+        <select id="ac-employee-select" class="form-control" style="max-width:420px">
+          <option value="">Select an employee…</option>
+        </select>
+        <span id="ac-employee-meta" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+    </div>
+
+    <div class="card" id="ac-table-card" style="display:none">
+      <div style="overflow-x:auto">
+        <table class="ac-table">
+          <thead>
+            <tr>
+              <th style="width:220px">Page</th>
+              <th style="width:110px">Role Default</th>
+              <th style="width:130px">Override</th>
+              <th>Tabs / Data (when Partial)</th>
+              <th style="width:90px">Action</th>
+            </tr>
+          </thead>
+          <tbody id="ac-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card" id="ac-empty" style="display:none"><div class="empty-state">Pick an employee above to view and manage their access.</div></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+if (!Auth.guard()) { }
+buildSidebar('access-control.html');
+
+(function guardRole(){
+  const role = Auth.getUser()?.role;
+  if (!['hr','admin','super_admin'].includes(role)) { window.location.href = 'dashboard.html'; }
+})();
+
+let acCatalog = [];
+let acCurrentEmployeeId = null;
+let acCurrentData = [];
+
+const LEVEL_LABEL = { full: 'Full', partial: 'Partial', none: 'No Access' };
+const SCOPE_LABEL = { all: 'Everyone\'s data', reportees: 'Their reportees only', own: 'Own record only' };
+
+async function loadEmployees() {
+  const res = await api('GET', '/access-control/employees');
+  const sel = document.getElementById('ac-employee-select');
+  if (!res?.success) { toast('Could not load employee list', 'error'); return; }
+  sel.innerHTML = '<option value="">Select an employee…</option>' + res.data.map(e =>
+    `<option value="${e.id}">${e.name} (${e.employee_code}) — ${e.role}${e.department_name ? ' · ' + e.department_name : ''}</option>`
+  ).join('');
+}
+
+async function loadCatalog() {
+  const res = await api('GET', '/access-control/catalog');
+  if (res?.success) acCatalog = res.data;
+}
+
+document.getElementById('ac-employee-select').addEventListener('change', async (e) => {
+  const empId = e.target.value;
+  if (!empId) {
+    document.getElementById('ac-table-card').style.display = 'none';
+    document.getElementById('ac-empty').style.display = '';
+    return;
+  }
+  await loadEffective(parseInt(empId));
+});
+
+async function loadEffective(employeeId) {
+  acCurrentEmployeeId = employeeId;
+  const res = await api('GET', `/access-control/effective/${employeeId}`);
+  if (!res?.success) { toast(res?.message || 'Failed to load access', 'error'); return; }
+  acCurrentData = res.data;
+  document.getElementById('ac-employee-meta').textContent =
+    `Role: ${res.employee.role} · ${res.employee.employee_code}`;
+  document.getElementById('ac-empty').style.display = 'none';
+  document.getElementById('ac-table-card').style.display = '';
+  renderTable();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('ac-tbody');
+  tbody.innerHTML = acCurrentData.map(row => {
+    const catalogPage = acCatalog.find(p => p.key === row.page_key);
+    const tabs = catalogPage?.tabs || [];
+    const isPartial = row.access_level === 'partial';
+    const tabsHtml = tabs.length ? `<div class="ac-tabs-wrap" id="tabs-${cssId(row.page_key)}" style="${isPartial ? '' : 'display:none'}">
+      ${tabs.map(t => `<label class="ac-tab-chip"><input type="checkbox" value="${t.key}" ${row.allowed_tabs?.includes(t.key) ? 'checked' : ''}> ${t.label}</label>`).join('')}
+    </div>` : '';
+    const scopeHtml = `<div class="ac-scope-row" id="scope-${cssId(row.page_key)}" style="${isPartial ? '' : 'display:none'}">
+      ${['all','reportees','own'].map(s => `<label><input type="radio" name="scope-${cssId(row.page_key)}" value="${s}" ${row.data_scope === s ? 'checked' : ''}> ${SCOPE_LABEL[s]}</label>`).join('')}
+    </div>`;
+    return `<tr data-page="${row.page_key}">
+      <td><b>${row.label}</b><br><span style="font-size:10px;color:var(--muted)">${row.page_key}</span></td>
+      <td><span class="ac-badge ${row.default_level}">${LEVEL_LABEL[row.default_level]}</span>${row.default_scope ? `<br><span style="font-size:10px;color:var(--muted)">${SCOPE_LABEL[row.default_scope]}</span>` : ''}</td>
+      <td>
+        <select class="ac-select" onchange="onLevelChange('${row.page_key}', this.value)">
+          <option value="default" ${row.source === 'default' ? 'selected' : ''}>Use role default</option>
+          <option value="full" ${row.source === 'override' && row.access_level === 'full' ? 'selected' : ''}>Full</option>
+          <option value="partial" ${row.source === 'override' && row.access_level === 'partial' ? 'selected' : ''}>Partial</option>
+          <option value="none" ${row.source === 'override' && row.access_level === 'none' ? 'selected' : ''}>No Access</option>
+        </select>
+        ${row.source === 'override' ? '<div style="font-size:10px;color:#6366f1;font-weight:700;margin-top:3px">OVERRIDDEN</div>' : ''}
+      </td>
+      <td>${tabsHtml}${scopeHtml}${!tabs.length && !isPartial ? '<span style="color:var(--muted);font-size:11px">—</span>' : ''}</td>
+      <td><button class="btn btn-primary btn-sm" onclick="saveRow('${row.page_key}')">💾 Save</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function cssId(pageKey) { return pageKey.replace(/[^a-zA-Z0-9]/g, '_'); }
+
+function onLevelChange(pageKey, level) {
+  const isPartial = level === 'partial';
+  const tabsWrap = document.getElementById(`tabs-${cssId(pageKey)}`);
+  const scopeWrap = document.getElementById(`scope-${cssId(pageKey)}`);
+  if (tabsWrap) tabsWrap.style.display = isPartial ? '' : 'none';
+  if (scopeWrap) scopeWrap.style.display = isPartial ? '' : 'none';
+}
+
+async function saveRow(pageKey) {
+  if (!acCurrentEmployeeId) return;
+  const row = document.querySelector(`tr[data-page="${pageKey}"]`);
+  const levelSelect = row.querySelector('.ac-select');
+  const level = levelSelect.value;
+
+  if (level === 'default') {
+    const res = await api('DELETE', `/access-control/override/${acCurrentEmployeeId}/${encodeURIComponent(pageKey)}`);
+    if (res?.success) { toast('Reverted to role default'); loadEffective(acCurrentEmployeeId); }
+    else toast(res?.message || 'Failed', 'error');
+    return;
+  }
+
+  let allowedTabs = [];
+  let dataScope = null;
+  if (level === 'partial') {
+    const tabsWrap = document.getElementById(`tabs-${cssId(pageKey)}`);
+    if (tabsWrap) allowedTabs = Array.from(tabsWrap.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value);
+    const scopeChecked = row.querySelector(`input[name="scope-${cssId(pageKey)}"]:checked`);
+    dataScope = scopeChecked ? scopeChecked.value : 'own';
+  }
+
+  const res = await api('POST', '/access-control/override', {
+    employee_id: acCurrentEmployeeId,
+    page_key: pageKey,
+    access_level: level,
+    allowed_tabs: allowedTabs,
+    data_scope: dataScope,
+  });
+  if (res?.success) { toast('Access override saved'); loadEffective(acCurrentEmployeeId); }
+  else toast(res?.message || 'Failed to save', 'error');
+}
+
+(async function init() {
+  await Promise.all([loadEmployees(), loadCatalog()]);
+})();
+</script>
+</body>
+</html>
