@@ -689,7 +689,7 @@
       <div id="etab-salary" style="padding:20px 24px;display:none">
 
         <div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#6d4c00;display:flex;align-items:center;gap:8px">
-          📝 All deduction amounts are entered manually by HR. Tick the checkbox to enable each deduction and enter the exact monthly amount.
+          📝 Tick the checkbox to enable each deduction — the amount is calculated automatically (PF 12% of Basic, ESI 0.75%/3.25% of Gross under ₹21,000, PT by state slab, LWF ₹6). See the Live Preview below.
         </div>
 
         <!-- Earnings -->
@@ -761,16 +761,11 @@
             <!-- PF -->
             <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
               <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:var(--accent)">
-                <input type="checkbox" id="edit-pf" style="accent-color:var(--accent);width:15px;height:15px"> PF (Provident Fund)
+                <input type="checkbox" id="edit-pf" style="accent-color:var(--accent);width:15px;height:15px" onchange="recalcSalaryPreview()"> PF (Provident Fund)
               </label>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">EMPLOYEE (₹)</div>
-                  <input id="edit-pf-emp-amt" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"></div>
-                <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">EMPLOYER (₹)</div>
-                  <input id="edit-pf-emr-amt" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"></div>
-              </div>
+              <div style="font-size:11px;color:var(--muted)">12% of Basic (Employee + Employer), auto-calculated</div>
               <div style="margin-top:8px"><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">PF BASIS</div>
-                <select id="edit-pf-basis" class="form-control" style="padding:6px 10px;font-size:12px">
+                <select id="edit-pf-basis" class="form-control" style="padding:6px 10px;font-size:12px" onchange="recalcSalaryPreview()">
                   <option value="capped">Capped (min Basic, ₹15,000)</option>
                   <option value="actual">Actual (full Basic, uncapped)</option>
                 </select></div>
@@ -778,43 +773,30 @@
             <!-- ESI -->
             <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
               <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:var(--accent)">
-                <input type="checkbox" id="edit-esi" style="accent-color:var(--accent);width:15px;height:15px"> ESI (Employee State Insurance)
+                <input type="checkbox" id="edit-esi" style="accent-color:var(--accent);width:15px;height:15px" onchange="recalcSalaryPreview()"> ESI (Employee State Insurance)
               </label>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">EMPLOYEE (₹)</div>
-                  <input id="edit-esi-emp-amt" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"></div>
-                <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">EMPLOYER (₹)</div>
-                  <input id="edit-esi-emr-amt" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"></div>
-              </div>
+              <div style="font-size:11px;color:var(--muted)">0.75% / 3.25% of Gross (only if Gross ≤ ₹21,000), auto-calculated</div>
             </div>
             <!-- PT -->
             <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
               <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:var(--accent)">
-                <input type="checkbox" id="edit-pt" style="accent-color:var(--accent);width:15px;height:15px"> PT (Professional Tax)
+                <input type="checkbox" id="edit-pt" style="accent-color:var(--accent);width:15px;height:15px" onchange="recalcSalaryPreview()"> PT (Professional Tax)
               </label>
-              <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">AMOUNT (₹)</div>
-                <input id="edit-pt-amt" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"></div>
+              <div style="font-size:11px;color:var(--muted)">By state slab (based on the employee's State), auto-calculated</div>
             </div>
             <!-- LWF -->
             <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
               <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:var(--accent)">
-                <input type="checkbox" id="edit-lwf" style="accent-color:var(--accent);width:15px;height:15px"> LWF (Labour Welfare Fund)
+                <input type="checkbox" id="edit-lwf" style="accent-color:var(--accent);width:15px;height:15px" onchange="recalcSalaryPreview()"> LWF (Labour Welfare Fund)
               </label>
-              <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">AMOUNT (₹)</div>
-                <input id="edit-lwf-amt" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"></div>
+              <div style="font-size:11px;color:var(--muted)">Fixed ₹6/month, auto-calculated</div>
             </div>
             <!-- TDS -->
             <div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:12px 14px;grid-column:1/-1">
-              <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:#e65100">
+              <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:700;color:#e65100">
                 <input type="checkbox" id="edit-tds" style="accent-color:#e65100;width:15px;height:15px"> TDS (Tax Deducted at Source)
               </label>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">MONTHLY TDS (₹)</div>
-                  <input id="edit-tds-amt" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"></div>
-                <div><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">ANNUAL TDS (₹) — auto fills monthly</div>
-                  <input id="edit-tds-annual" type="number" class="form-control" placeholder="0" style="padding:6px 10px;font-size:12px"
-                    oninput="document.getElementById('edit-tds-amt').value = Math.round(parseFloat(this.value||0)/12) || ''"></div>
-              </div>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">TDS's monthly ₹ amount is set separately during each month's Payroll run, not here.</div>
             </div>
           </div>
         </div>
@@ -2611,6 +2593,20 @@ function onRoleChange() {
   }
 }
 
+// PT slab — mirrors backend's calcPT() in payrollController.js exactly.
+function calcPTPreview(gross, state) {
+  const s = (state || '').trim().toLowerCase();
+  if (s === 'west bengal') {
+    if (gross <= 8500)  return 0;
+    if (gross <= 10000) return 0;
+    if (gross <= 15000) return 110;
+    if (gross <= 25000) return 130;
+    if (gross <= 40000) return 150;
+    return 200;
+  }
+  return gross >= 10000 ? 200 : 0;
+}
+
 function recalcSalaryPreview() {
   const v = id => parseFloat(document.getElementById(id)?.value) || 0;
   const basic      = v('edit-basic');
@@ -2621,16 +2617,20 @@ function recalcSalaryPreview() {
   const foodCoupon = v('edit-food-coupon');
   if (!basic) { document.getElementById('salary-preview').style.display = 'none'; return; }
 
-  const gross   = basic + hra + conveyance + special + gratuity + foodCoupon;
-  // Use HR-defined manual amounts
-  const pfEmp   = document.getElementById('edit-pf').checked  ? (parseFloat(document.getElementById('edit-pf-emp-amt')?.value) || 0) : 0;
-  const pfEmr   = document.getElementById('edit-pf').checked  ? (parseFloat(document.getElementById('edit-pf-emr-amt')?.value) || 0) : 0;
-  const esiEmp  = document.getElementById('edit-esi').checked ? (parseFloat(document.getElementById('edit-esi-emp-amt')?.value) || 0) : 0;
-  const esiEmr  = document.getElementById('edit-esi').checked ? (parseFloat(document.getElementById('edit-esi-emr-amt')?.value) || 0) : 0;
-  const pt      = document.getElementById('edit-pt').checked  ? (parseFloat(document.getElementById('edit-pt-amt')?.value) || 0) : 0;
-  const lwf     = document.getElementById('edit-lwf').checked ? (parseFloat(document.getElementById('edit-lwf-amt')?.value) || 0) : 0;
-  const tds     = document.getElementById('edit-tds').checked ? (parseFloat(document.getElementById('edit-tds-amt')?.value) || 0) : 0;
-  const totalDed = pfEmp + esiEmp + pt + lwf + tds;
+  const gross = basic + hra + conveyance + special + gratuity + foodCoupon;
+
+  // Mirrors payrollController.js computeAndSaveSalaryStructure() exactly —
+  // these are auto-calculated on save, this is just a live preview of that.
+  const pfBasis = document.getElementById('edit-pf-basis')?.value || 'capped';
+  const pfBase  = pfBasis === 'actual' ? basic : Math.min(basic, 15000);
+  const pfEmp   = document.getElementById('edit-pf').checked  ? Math.round(pfBase * 0.12) : 0;
+  const pfEmr   = document.getElementById('edit-pf').checked  ? Math.round(pfBase * 0.12) : 0;
+  const esiEmp  = document.getElementById('edit-esi').checked && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
+  const esiEmr  = document.getElementById('edit-esi').checked && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
+  const state   = document.getElementById('edit-state')?.value || '';
+  const pt      = document.getElementById('edit-pt').checked  ? calcPTPreview(gross, state) : 0;
+  const lwf     = document.getElementById('edit-lwf').checked ? 6 : 0;
+  const totalDed = pfEmp + esiEmp + pt + lwf;
   const net      = gross - totalDed;
   const ctc      = gross + pfEmr + esiEmr;
 
@@ -2737,14 +2737,6 @@ async function saveEmployeeEdit() {
       pt_applicable:  document.getElementById('edit-pt').checked,
       lwf_applicable: document.getElementById('edit-lwf').checked,
       tds_applicable: document.getElementById('edit-tds').checked,
-      pf_employee:    parseFloat(document.getElementById('edit-pf-emp-amt').value)  || 0,
-      pf_employer:    parseFloat(document.getElementById('edit-pf-emr-amt').value)  || 0,
-      esi_employee:   parseFloat(document.getElementById('edit-esi-emp-amt').value) || 0,
-      esi_employer:   parseFloat(document.getElementById('edit-esi-emr-amt').value) || 0,
-      pt_amount:      parseFloat(document.getElementById('edit-pt-amt').value)      || 0,
-      lwf_amount:     parseFloat(document.getElementById('edit-lwf-amt').value)     || 0,
-      tds_monthly:    parseFloat(document.getElementById('edit-tds-amt').value)     || 0,
-      tds_amount:     parseFloat(document.getElementById('edit-tds-annual').value)  || 0,
       notes:          document.getElementById('edit-sal-notes').value.trim() || null,
     };
     const salRes = await api('POST', '/payroll/salary-structure', salBody);
