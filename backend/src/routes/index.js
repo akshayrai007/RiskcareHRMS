@@ -1112,4 +1112,23 @@ router.get   ('/work-tracker/my-logs',        authenticate, workTrackerCtrl.getM
 router.get   ('/work-tracker/logs',           authenticate, workTrackerCtrl.listLogs);
 router.delete('/send-documents/:id',          authenticate,                         sendDocsCtrl.deleteDoc);
 
+// ── Work Tickets (support/request tracker — separate from Task Assignment) ────
+const ticketCtrl = require('../controllers/ticketController');
+router.get   ('/tickets',              authenticate, ticketCtrl.listTickets);
+router.post  ('/tickets',              authenticate, ticketCtrl.createTicket);
+router.get   ('/tickets/assignable',   authenticate, ticketCtrl.getAssignableEmployees);
+router.get   ('/tickets/:id',          authenticate, ticketCtrl.getTicket);
+router.post  ('/tickets/:id/status',   authenticate, ticketCtrl.updateStatus);
+router.post  ('/tickets/:id/comments', authenticate, ticketCtrl.addComment);
+
+// ── Asset Allocation ────────────────────────────────────────────────────────
+const assetCtrl = require('../controllers/assetController');
+router.get   ('/assets/my',        authenticate,                    assetCtrl.getMyAssets);
+router.get   ('/assets/items',     authenticate,                    assetCtrl.getAssetItems);
+router.get   ('/assets/employees', authenticate, authorize(...HR_ADMIN), assetCtrl.getAssetEmployees);
+router.get   ('/assets/employee',  authenticate, authorize(...HR_ADMIN), assetCtrl.getEmployeeAssets);
+router.post  ('/assets/allocate',  authenticate, authorize(...HR_ADMIN), assetCtrl.allocateAssets);
+router.put   ('/assets/:id',       authenticate, authorize(...HR_ADMIN), assetCtrl.updateAsset);
+router.delete('/assets/:id',       authenticate, authorize(...HR_ADMIN), assetCtrl.deleteAsset);
+
 module.exports = router;
