@@ -355,9 +355,9 @@ router.get('/dashboard', authenticate, async (req, res) => {
       `SELECT
         COUNT(*) FILTER (WHERE status IN ('present','late','half-day')) AS present,
         COUNT(*) FILTER (WHERE status='absent') AS absent,
-        COALESCE(SUM(working_hours),0) AS total_hours,
-        COALESCE(AVG(working_hours) FILTER (
-          WHERE working_hours > 0
+        COALESCE(SUM(COALESCE(working_hours, CASE WHEN punch_in IS NOT NULL AND punch_out IS NOT NULL THEN ROUND(EXTRACT(EPOCH FROM (punch_out::time - punch_in::time))/3600.0, 2) END)),0) AS total_hours,
+        COALESCE(AVG(COALESCE(working_hours, CASE WHEN punch_in IS NOT NULL AND punch_out IS NOT NULL THEN ROUND(EXTRACT(EPOCH FROM (punch_out::time - punch_in::time))/3600.0, 2) END)) FILTER (
+          WHERE (working_hours > 0 OR (punch_in IS NOT NULL AND punch_out IS NOT NULL))
             AND status IN ('present','late','regularized','od')
         ), 0) AS avg_hours
        FROM attendance
@@ -524,7 +524,7 @@ router.post('/separations/:id/hr-action',        authenticate, authorize('hr','a
 router.post('/separations/:id/accounts-action',  authenticate, authorize('accounts','admin','super_admin'),           sepCtrl.accountsAction);
 router.post('/separations/:id/admin-action',     authenticate, authorize('admin','super_admin'),                      sepCtrl.adminAction);
 // Generic routes last
-router.get ('/separations',                      authenticate, authorize(...HR_ADMIN),                                sepCtrl.getAll);
+router.get ('/separations',                      authenticate, authorize(...HR_ADMIN,'manager','tl'),                  sepCtrl.getAll);
 router.post('/separations',                      authenticate, authorize(...HR_ADMIN),                                sepCtrl.initiate);
 router.post('/separations/bulk-import',          authenticate, authorize(...HR_ADMIN), xlsxUpload.single('file'),     sepCtrl.bulkSeparateImport);
 router.post('/separations/backfill-approvals',   authenticate, authorize(...HR_ADMIN),                                sepCtrl.backfillApprovals);

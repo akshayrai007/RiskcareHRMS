@@ -520,15 +520,15 @@ exports.getSummary = async (req, res) => {
          COUNT(*) FILTER (WHERE status = 'on-leave')                 AS on_leave,
          COUNT(*) FILTER (WHERE status = 'lwp')                      AS lwp,
          COUNT(*) FILTER (WHERE punch_in_location ILIKE '%Work from Home%') AS wfh,
-         COALESCE(SUM(working_hours), 0)                             AS total_hours,
+         COALESCE(SUM(COALESCE(working_hours, CASE WHEN punch_in IS NOT NULL AND punch_out IS NOT NULL THEN ROUND(EXTRACT(EPOCH FROM (punch_out::time - punch_in::time))/3600.0, 2) END)), 0) AS total_hours,
          -- Average only days where employee actually worked (present/late/wfh/od) with hours recorded
          -- Leaves, holidays, absents excluded from average
-         COALESCE(AVG(working_hours) FILTER (
-           WHERE working_hours > 0
+         COALESCE(AVG(COALESCE(working_hours, CASE WHEN punch_in IS NOT NULL AND punch_out IS NOT NULL THEN ROUND(EXTRACT(EPOCH FROM (punch_out::time - punch_in::time))/3600.0, 2) END)) FILTER (
+           WHERE (working_hours > 0 OR (punch_in IS NOT NULL AND punch_out IS NOT NULL))
              AND status IN ('present','late','regularized','od')
          ), 0)                                                        AS avg_hours,
          COUNT(*) FILTER (
-           WHERE working_hours > 0
+           WHERE (working_hours > 0 OR (punch_in IS NOT NULL AND punch_out IS NOT NULL))
              AND status IN ('present','late','regularized','od')
          )                                                            AS worked_days_with_hours
        FROM attendance

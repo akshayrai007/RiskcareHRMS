@@ -315,8 +315,8 @@ async function isNonWorkingDay(today) {
   return false;
 }
 
-// ── Cron 1: Auto punch-IN for permanent WFH + super_admin at 9:30 AM IST ─────
-cron.schedule('30 9 * * 1-6', async () => {
+// ── Cron 1: Auto punch-IN for permanent WFH + super_admin at 10:00 AM IST ────
+cron.schedule('0 10 * * 1-6', async () => {
   console.log('⏰ Auto punch-IN for permanent WFH employees and super_admin...');
   try {
     const today = new Intl.DateTimeFormat('en-CA', {
@@ -336,7 +336,7 @@ cron.schedule('30 9 * * 1-6', async () => {
       const isOfficeUser = emp.role === 'super_admin' || emp.employee_code === CONFIG.cooEmployeeCode;
       await db.query(
         `INSERT INTO attendance(employee_id, date, status, punch_in, punch_in_location, remarks, wfh_approved)
-         VALUES($1, $2, 'present', '09:30:00', $3, $4, $5)
+         VALUES($1, $2, 'present', '10:00:00', $3, $4, $5)
          ON CONFLICT(employee_id, date) DO NOTHING`,
         [emp.id, today,
           isOfficeUser ? 'Office' : 'Work from Home',
@@ -351,8 +351,8 @@ cron.schedule('30 9 * * 1-6', async () => {
   }
 }, { timezone: CONFIG.timezone || 'Asia/Kolkata' });
 
-// ── Cron 2: Auto punch-OUT for permanent WFH + super_admin at 6:30 PM IST ────
-cron.schedule('30 18 * * 1-6', async () => {
+// ── Cron 2: Auto punch-OUT for permanent WFH + super_admin at 7:30 PM IST ────
+cron.schedule('30 19 * * 1-6', async () => {
   console.log('⏰ Auto punch-OUT for permanent WFH employees and super_admin...');
   try {
     const today = new Intl.DateTimeFormat('en-CA', {
@@ -371,8 +371,8 @@ cron.schedule('30 18 * * 1-6', async () => {
       // Only fill punch-out if punch-in exists and punch-out is missing
       await db.query(
         `UPDATE attendance
-         SET punch_out='18:30:00', punch_out_location=$3,
-             working_hours=9.0, status='present'
+         SET punch_out='19:30:00', punch_out_location=$3,
+             working_hours=9.5, status='present'
          WHERE employee_id=$1 AND date=$2
            AND punch_in IS NOT NULL AND punch_out IS NULL`,
         [emp.id, today, isOfficeUser ? 'Office' : 'Work from Home']
