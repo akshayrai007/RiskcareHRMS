@@ -1148,6 +1148,7 @@ router.delete('/assets/:id',       authenticate, authorize(...HR_ADMIN), assetCt
 
 // ── Access Control (per-employee page/tab overrides — HR/Admin/Super Admin) ──
 const ACCESS_ADMIN = ['hr','admin','super_admin'];
+router.get   ('/access-control/my-effective-all',        authenticate,                             accessCtrl.getMyEffectiveAll);
 router.get   ('/access-control/my-effective/:pageKey',   authenticate,                             accessCtrl.getMyEffectiveForPage);
 router.get   ('/access-control/catalog',                authenticate, authorize(...ACCESS_ADMIN), accessCtrl.getCatalog);
 router.get   ('/access-control/employees',               authenticate, authorize(...ACCESS_ADMIN), accessCtrl.listEmployeesForPicker);

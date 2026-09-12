@@ -248,8 +248,27 @@ const NAV_GROUPS = [
 // Flat NAV kept for any code that references it
 const NAV = NAV_GROUPS.flatMap(g => g.items);
 
-function buildSidebar(activePage) {
+// Cache of this user's effective access for every page (role default, with any
+// Access Control override already merged in) — fetched once per page load and
+// used by buildSidebar() so a page's visibility comes from Access Control
+// instead of each page hardcoding its own role list that can drift out of sync.
+// Keyed by page_key (e.g. "dashboard.html"), value is { access_level, ... }.
+let __effectiveAccessCache = null;
+async function loadEffectiveAccess() {
+  if (__effectiveAccessCache) return __effectiveAccessCache;
+  try {
+    const res = await api('GET', '/access-control/my-effective-all');
+    if (res?.success) {
+      __effectiveAccessCache = {};
+      res.data.forEach(row => { __effectiveAccessCache[row.page_key] = row; });
+    }
+  } catch (e) { /* fall back to static roles below */ }
+  return __effectiveAccessCache;
+}
+
+async function buildSidebar(activePage) {
   const user = Auth.getUser(); if (!user) return;
+  const effective = await loadEffectiveAccess();
 
   // Inject logo image
   const logoEl = document.getElementById('sidebar-logo-mark');
@@ -274,6 +293,11 @@ function buildSidebar(activePage) {
   let html = '';
   for (const group of NAV_GROUPS) {
     const visibleItems = group.items.filter(l => {
+      // Access Control has the final say whenever this page is in its catalog —
+      // an HR-granted override (or the role default it already knows about)
+      // wins over this file's own always/roles flags either way.
+      const eff = effective && effective[l.href];
+      if (eff) return eff.access_level !== 'none';
       if (l.hideRoles && l.hideRoles.includes(user.role)) return false;
       return l.always || (l.roles && l.roles.includes(user.role));
     });

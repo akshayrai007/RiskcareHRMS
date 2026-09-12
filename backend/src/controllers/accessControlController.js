@@ -233,6 +233,19 @@ exports.authorizeOrPageOverride = (pageKey, roles) => async (req, res, next) => 
   return res.status(403).json({ success: false, message: 'Access denied' });
 };
 
+// Self-check for EVERY page at once — one call the sidebar/nav can use to
+// decide what to show, instead of each page carrying its own hardcoded
+// role list that can drift out of sync with what Access Control says.
+exports.getMyEffectiveAll = async (req, res) => {
+  try {
+    const data = await computeEffective(req.user.id, req.user.role);
+    res.json({ success: true, data });
+  } catch (err) {
+    console.error('[accessControl.getMyEffectiveAll]', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 exports.getMyEffectiveForPage = async (req, res) => {
   try {
     const pageKey = req.params.pageKey;
