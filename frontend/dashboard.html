@@ -1016,7 +1016,7 @@ function styleTeamTodayTabs() {
     const el = document.getElementById('team-tab-' + t);
     if (!el) return;
     const active = t === _teamTodayTab;
-    el.style.background = active ? 'var(--primary)' : 'transparent';
+    el.style.background = active ? 'var(--accent)' : 'transparent';
     el.style.color = active ? '#fff' : '#1e293b';
   });
 }
