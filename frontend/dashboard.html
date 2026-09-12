@@ -994,10 +994,31 @@ async function deleteDashAnn(annId) {
   else toast(res?.message||'Failed','error');
 }
 
+// present/absent/on-leave bucket for the Team Today tabs — "present" also
+// covers late/regularized/od/wfh (still physically at work).
+function teamTodayBucket(status) {
+  const s = (status || '').toLowerCase();
+  if (['present','late','regularized','od','wfh'].includes(s)) return 'present';
+  if (['on-leave','leave','half-day','half_day'].includes(s) || s.startsWith('h-')) return 'on-leave';
+  return 'absent';
+}
+let _teamTodayList = [];
+let _teamTodayTab = 'present';
+
+function setTeamTodayTab(tab) {
+  _teamTodayTab = tab;
+  ['present','absent','on-leave'].forEach(t => {
+    const el = document.getElementById('team-tab-' + t);
+    if (el) el.classList.toggle('active', t === tab);
+  });
+  renderTeamTodayList();
+}
+
 async function loadTeamToday() {
   const data = await api('GET', '/attendance/team-today');
   if (!data?.success) return;
   const list   = data.data || [];
+  _teamTodayList = list;
   const counts = list.reduce((a,e) => { a[e.status]=(a[e.status]||0)+1; return a; }, {});
 
   document.getElementById('team-summary').innerHTML = `
@@ -1006,9 +1027,23 @@ async function loadTeamToday() {
       <div class="team-stat-item ts-absent"><div class="team-stat-num">${counts['absent']||0}</div><div class="team-stat-lbl">Absent</div></div>
       <div class="team-stat-item ts-on-leave"><div class="team-stat-num">${counts['on-leave']||0}</div><div class="team-stat-lbl">On Leave</div></div>
       <div class="team-stat-item ts-late"><div class="team-stat-num">${counts['late']||0}</div><div class="team-stat-lbl">Late</div></div>
-    </div>`;
+    </div>
+    <div class="flex gap-2" id="team-today-tabs" style="margin-top:12px;padding:3px;background:var(--surface-2,#f1f5f9);border-radius:20px">
+      <div id="team-tab-present" class="team-today-tab active" onclick="setTeamTodayTab('present')" style="flex:1;text-align:center;padding:6px 0;border-radius:16px;font-size:12.5px;font-weight:700;cursor:pointer">Present</div>
+      <div id="team-tab-absent" class="team-today-tab" onclick="setTeamTodayTab('absent')" style="flex:1;text-align:center;padding:6px 0;border-radius:16px;font-size:12.5px;font-weight:700;cursor:pointer">Absent</div>
+      <div id="team-tab-on-leave" class="team-today-tab" onclick="setTeamTodayTab('on-leave')" style="flex:1;text-align:center;padding:6px 0;border-radius:16px;font-size:12.5px;font-weight:700;cursor:pointer">On Leave</div>
+    </div>
+    <style>
+      .team-today-tab.active { background:var(--primary); color:#fff; }
+      .team-today-tab:not(.active) { color:var(--text-muted,#64748b); }
+    </style>`;
 
-  const teamRows = list.map(e=>`
+  renderTeamTodayList();
+}
+
+function renderTeamTodayList() {
+  const list = _teamTodayList.filter(e => teamTodayBucket(e.status) === _teamTodayTab);
+  const teamRows = list.length ? list.map(e=>`
     <div class="flex-between team-today-row" style="padding:8px 0;border-bottom:1px solid var(--border)">
       <div class="flex gap-2" style="align-items:center">
         <div class="avatar" style="width:32px;height:32px;font-size:12px;flex-shrink:0">${e.employee_name?.[0]||'?'}</div>
@@ -1021,7 +1056,15 @@ async function loadTeamToday() {
         <span class="badge badge-${e.status||'absent'}" style="font-size:9.5px">${e.status||'absent'}</span>
         <div class="text-muted" style="font-size:10px;margin-top:2px">${e.punch_in?fmt.time(e.punch_in)+(e.punch_out?' → '+fmt.time(e.punch_out):''):''}</div>
       </div>
-    </div>`).join('');
+    </div>`).join('') : '';
+
+  if (!list.length) {
+    document.getElementById('team-today-list').innerHTML =
+      `<div class="text-muted" style="text-align:center;padding:24px 0;font-size:12.5px">
+        ${_teamTodayTab === 'present' ? 'No one present yet' : _teamTodayTab === 'absent' ? 'No one absent' : 'No one on leave today'}
+      </div>`;
+    return;
+  }
 
   document.getElementById('team-today-list').innerHTML =
     `<div id="team-scroll-wrap" style="max-height:320px;overflow:hidden;padding-right:4px;position:relative">
