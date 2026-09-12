@@ -89,7 +89,11 @@ const ROLE_DEFAULTS = {
   'tasks.html':             rowFor(F, R, R, R, R, R, O),
   'my-work.html':           rowFor(F, R, R, R, R, R, O),
   'work-tracker.html':      rowFor(F, R, R, R, R, R, O),
-  'documents.html':        rowFor(N, F, F, F, F, F, F),   // super_admin excluded
+  // Only hr/accounts get the employee-search picker (documents.html's HR_ROLES);
+  // everyone else — admin/manager/tl/employee included — is locked to their own
+  // record (currentEmployeeId = user.id). Verified against the real page logic,
+  // not assumed from the earlier (wrong) "Full for everyone" default.
+  'documents.html':        rowFor(N, F, F, O, O, O, O),   // super_admin excluded
   'send-documents.html':   rowFor(F, F, F, F, F, F, F),
   'form16.html':           rowFor(F, F, F, F, F, F, F),
   'it-declaration.html':   rowFor(F, F, F, F, F, F, F),
@@ -102,7 +106,10 @@ const ROLE_DEFAULTS = {
   'onboarding.html':       rowFor(F, F, N, N, N, N, N),
   'offer-letter.html':     rowFor(F, F, N, F, N, N, N),
   'relieving-letter.html': rowFor(F, F, N, F, N, N, N),
-  'separation.html':       rowFor(F, F, F, F, F, F, F),
+  // Verified against separation.html's real logic: isAdminOrHR()+accounts get
+  // "All Separations"; manager/tl only see a Pending-Approvals-scoped view
+  // (not literally everyone's); a plain employee only sees their own request.
+  'separation.html':       rowFor(F, F, F, F, R, R, O),
   'employees.html':        rowFor(F, F, F, R, R, R, N),
   'org-chart.html':        rowFor(F, F, F, F, F, F, F),
   'geofence.html':         rowFor(F, N, N, F, N, N, N),
