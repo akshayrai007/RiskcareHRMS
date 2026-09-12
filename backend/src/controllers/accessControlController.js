@@ -218,6 +218,21 @@ exports.getEffectiveForPage = getEffectiveForPage;
 // Self-check: any authenticated user can look up their OWN effective access
 // for one page — used by page guards (e.g. dashboard.html) so an HR-granted
 // override actually takes effect instead of a hardcoded role whitelist.
+// Middleware: allow through if the user's role is in `roles`, OR they have a
+// per-employee override granting 'full' access to `pageKey`. Use this instead
+// of a bare authorize(...roles) wherever an Access Control override on that
+// page should be able to widen access beyond the role default.
+exports.authorizeOrPageOverride = (pageKey, roles) => async (req, res, next) => {
+  if (roles.includes(req.user.role)) return next();
+  try {
+    const eff = await getEffectiveForPage(req.user.id, req.user.role, pageKey);
+    if (eff.level === 'full') return next();
+  } catch (err) {
+    console.error('[accessControl.authorizeOrPageOverride]', err.message);
+  }
+  return res.status(403).json({ success: false, message: 'Access denied' });
+};
+
 exports.getMyEffectiveForPage = async (req, res) => {
   try {
     const pageKey = req.params.pageKey;

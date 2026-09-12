@@ -13,6 +13,7 @@ const authCtrl       = require('../controllers/authController');
 const empCtrl        = require('../controllers/employeeController');
 const attCtrl        = require('../controllers/attendanceController');
 const leaveCtrl      = require('../controllers/leaveController');
+const accessCtrl     = require('../controllers/accessControlController');
 const advCtrl        = require('../controllers/advanceController');
 const payCtrl        = require('../controllers/payrollController');
 const geoCtrl        = require('../controllers/geofenceController');
@@ -217,8 +218,8 @@ router.put ('/leave/balance',         authenticate, authorize(...HR_ADMIN), leav
 router.post('/leave/monthly-accrual',        authenticate, authorize(...HR_ADMIN), leaveCtrl.monthlyAccrual);
 router.post('/leave/recalculate/:id',        authenticate, authorize(...HR_ADMIN), leaveCtrl.recalculateEmployee);
 router.get ('/leave/report',                 authenticate,                        leaveCtrl.getLeaveReport);
-router.get ('/leave/summary',                authenticate, authorize(...HR_ADMIN), leaveCtrl.getLeaveSummary);
-router.get ('/leave/transactions',           authenticate, authorize(...HR_ADMIN), leaveCtrl.getLeaveTransactions);
+router.get ('/leave/summary',                authenticate, accessCtrl.authorizeOrPageOverride('leaves.html', HR_ADMIN), leaveCtrl.getLeaveSummary);
+router.get ('/leave/transactions',           authenticate, accessCtrl.authorizeOrPageOverride('leaves.html', HR_ADMIN), leaveCtrl.getLeaveTransactions);
 router.post('/leave/import-balances',        authenticate, authorize(...HR_ADMIN), xlsxUpload.single('file'), leaveCtrl.importLeaveBalances);
 
 
@@ -1146,7 +1147,6 @@ router.put   ('/assets/:id',       authenticate, authorize(...HR_ADMIN), assetCt
 router.delete('/assets/:id',       authenticate, authorize(...HR_ADMIN), assetCtrl.deleteAsset);
 
 // ── Access Control (per-employee page/tab overrides — HR/Admin/Super Admin) ──
-const accessCtrl = require('../controllers/accessControlController');
 const ACCESS_ADMIN = ['hr','admin','super_admin'];
 router.get   ('/access-control/my-effective/:pageKey',   authenticate,                             accessCtrl.getMyEffectiveForPage);
 router.get   ('/access-control/catalog',                authenticate, authorize(...ACCESS_ADMIN), accessCtrl.getCatalog);

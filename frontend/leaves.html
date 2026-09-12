@@ -406,20 +406,18 @@ let leaveTypesData = [];
 let balanceData    = [];
 let holidayDates   = new Set();
 
-if (Role.is('admin','super_admin','hr','manager','tl','accounts')) document.getElementById('approvals-tab').style.display = '';
-if (Role.isAdminOrHR() || Role.is('accounts')) {
+function enableAllApplicationsTab() {
   document.getElementById('all-tab').style.display = '';
-  // accrual tab hidden — auto-runs via cron
 }
-if (Role.is('hr','super_admin')) {
+function enableHrLeaveView() {
   document.getElementById('summary-tab').style.display = '';
   document.getElementById('txn-tab').style.display = '';
   document.getElementById('import-leave-btn').style.display = '';
-  // Populate year dropdowns
+  // Populate year dropdowns (idempotent — skip if already populated)
   const curYr = new Date().getFullYear();
   ['summary-year','txn-year'].forEach(id => {
     const sel = document.getElementById(id);
-    if (!sel) return;
+    if (!sel || sel.options.length) return;
     for (let y = curYr; y >= curYr - 3; y--) {
       const o = document.createElement('option');
       o.value = y; o.textContent = y;
@@ -427,6 +425,22 @@ if (Role.is('hr','super_admin')) {
       sel.appendChild(o);
     }
   });
+}
+
+if (Role.is('admin','super_admin','hr','manager','tl','accounts')) document.getElementById('approvals-tab').style.display = '';
+if (Role.isAdminOrHR() || Role.is('accounts')) enableAllApplicationsTab();
+if (Role.is('hr','super_admin')) enableHrLeaveView();
+
+// An Access Control override (System > Access Control) can grant a role that
+// wouldn't normally get the HR view "Full" access to this page — honor it
+// the same way guardDashboard() now does, instead of only checking the role.
+if (!Role.is('admin','super_admin','hr','accounts')) {
+  api('GET', '/access-control/my-effective/leaves.html').then(res => {
+    if (res?.data?.level === 'full') {
+      enableAllApplicationsTab();
+      enableHrLeaveView();
+    }
+  }).catch(() => {});
 }
 
 if (Role.is('hr','super_admin','admin')) {
