@@ -1136,6 +1136,12 @@ router.get   ('/tickets/:id',          authenticate, ticketCtrl.getTicket);
 router.post  ('/tickets/:id/status',   authenticate, ticketCtrl.updateStatus);
 router.post  ('/tickets/:id/comments', authenticate, ticketCtrl.addComment);
 
+// ── Coming Late Notices — inform manager/HR/super_admin of a late arrival ────
+const lateNoticeCtrl = require('../controllers/lateNoticeController');
+router.post ('/late-notices',           authenticate, lateNoticeCtrl.createLateNotice);
+router.get  ('/late-notices',           authenticate, lateNoticeCtrl.listLateNotices);
+router.post ('/late-notices/:id/decide', authenticate, lateNoticeCtrl.decideLateNotice);
+
 // ── Asset Allocation ────────────────────────────────────────────────────────
 const assetCtrl = require('../controllers/assetController');
 router.get   ('/assets/my',        authenticate,                    assetCtrl.getMyAssets);

@@ -50,11 +50,15 @@ async function ensureTables() {
         due_date     DATE,
         raised_by    INT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
         assigned_to  INT REFERENCES employees(id) ON DELETE SET NULL,
+        team         VARCHAR(100),
+        supervisor_id INT REFERENCES employees(id) ON DELETE SET NULL,
         created_at   TIMESTAMP DEFAULT NOW(),
         updated_at   TIMESTAMP DEFAULT NOW(),
         resolved_at  TIMESTAMP
       )
     `);
+    await db.query(`ALTER TABLE work_tickets ADD COLUMN IF NOT EXISTS team VARCHAR(100)`);
+    await db.query(`ALTER TABLE work_tickets ADD COLUMN IF NOT EXISTS supervisor_id INT REFERENCES employees(id) ON DELETE SET NULL`);
     await db.query(`
       CREATE TABLE IF NOT EXISTS work_ticket_events (
         id          SERIAL PRIMARY KEY,
@@ -77,10 +81,12 @@ async function ensureTables() {
 const TICKET_SELECT = `
   SELECT t.*,
          CONCAT(a.first_name,' ',a.last_name) AS assigned_to_name, a.employee_code AS assigned_to_code,
-         CONCAT(r.first_name,' ',r.last_name) AS raised_by_name,   r.employee_code AS raised_by_code
+         CONCAT(r.first_name,' ',r.last_name) AS raised_by_name,   r.employee_code AS raised_by_code,
+         CONCAT(s.first_name,' ',s.last_name) AS supervisor_name
   FROM work_tickets t
   LEFT JOIN employees a ON a.id = t.assigned_to
   LEFT JOIN employees r ON r.id = t.raised_by
+  LEFT JOIN employees s ON s.id = t.supervisor_id
 `;
 
 // Who a ticket can be routed to:
@@ -124,10 +130,12 @@ exports.getAssignableEmployees = async (req, res) => {
 exports.listTickets = async (req, res) => {
   try {
     await ensureTables();
-    const { status, mine, assigned_to_me } = req.query;
+    const { status, mine, assigned_to_me, supervising } = req.query;
     const params = [];
     let where;
-    if (isSuperAdmin(req.user)) {
+    if (supervising === '1') {
+      params.push(req.user.id); where = `t.supervisor_id=$${params.length}`;
+    } else if (isSuperAdmin(req.user)) {
       where = '1=1';
     } else if (mine === '1') {
       params.push(req.user.id); where = `t.raised_by=$${params.length}`;
@@ -149,19 +157,23 @@ exports.createTicket = async (req, res) => {
   const client = await db.getClient();
   try {
     await ensureTables();
-    const { title, description, priority, due_date, assigned_to } = req.body;
+    const { title, description, priority, due_date, assigned_to, team, supervisor_id } = req.body;
     if (!title || !String(title).trim()) return res.status(400).json({ success: false, message: 'Title is required' });
     const ids = Array.isArray(assigned_to) ? assigned_to.filter(Boolean) : (assigned_to ? [assigned_to] : []);
     if (ids.length === 0) return res.status(400).json({ success: false, message: 'Select at least one assignee' });
     const pr = PRIORITIES.includes(priority) ? priority : 'medium';
+    const supervisorId = supervisor_id || null;
+    if (supervisorId && ids.includes(supervisorId)) {
+      return res.status(400).json({ success: false, message: "Supervisor can't also be an assignee" });
+    }
 
     await client.query('BEGIN');
     const created = [];
     for (const empId of ids) {
       const ins = await client.query(
-        `INSERT INTO work_tickets (title, description, priority, due_date, raised_by, assigned_to)
-         VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-        [title, description || null, pr, due_date || null, req.user.id, empId]
+        `INSERT INTO work_tickets (title, description, priority, due_date, raised_by, assigned_to, team, supervisor_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+        [title, description || null, pr, due_date || null, req.user.id, empId, team || null, supervisorId]
       );
       const ticketId = ins.rows[0].id;
       await client.query(

@@ -1190,6 +1190,50 @@ async function notifyRegularizationApplied(employeeId, date, reason, punchIn, pu
   } catch(err) { console.error('[Email] notifyRegularizationApplied:', err.message); }
 }
 
+// ── COMING LATE NOTICE — notify manager + HR ──────────────────────────────────
+async function notifyLateNotice(employeeId, expectedTime, reason) {
+  try {
+    const r = await db.query(
+      `SELECT e.first_name, e.last_name, e.employee_code,
+              m.first_name AS mgr_fname, m.last_name AS mgr_lname, m.email AS mgr_email
+       FROM employees e
+       LEFT JOIN employees m ON e.reporting_manager_id=m.id
+       WHERE e.id=$1`, [employeeId]
+    );
+    if (!r.rows.length) return;
+    const e = r.rows[0];
+
+    const html = `
+      <div style="font-size:22px;font-weight:800;color:#B45309;margin:0 0 8px;font-family:Arial,sans-serif;">🕒 Coming Late Today</div>
+      <div style="font-size:14px;color:#64748B;margin:0 0 20px;">${e.first_name} ${e.last_name} (${e.employee_code}) has informed they'll arrive late today.</div>
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border:1px solid #E5E7EB;border-radius:14px;border-collapse:collapse;">
+        <tr><td style="padding:20px;">
+          <div style="font-size:12px;color:#64748B;font-family:Arial,sans-serif;margin-bottom:2px;">Expected Arrival</div>
+          <div style="font-size:16px;color:#1E293B;font-weight:700;font-family:Arial,sans-serif;margin-bottom:12px;">${expectedTime}</div>
+          <div style="font-size:12px;color:#64748B;font-family:Arial,sans-serif;margin-bottom:2px;">Reason</div>
+          <div style="font-size:14px;color:#1E293B;font-weight:500;font-family:Arial,sans-serif;">${reason||'—'}</div>
+        </td></tr>
+      </table>
+      <p style="font-size:12px;color:#94A3B8;margin-top:14px;font-family:Arial,sans-serif;">Log in to HRMS → Work Tickets area or the app's Coming Late screen to approve or reject.</p>`;
+
+    const recipients = [];
+    if (e.mgr_email) recipients.push({ email: e.mgr_email, name: `${e.mgr_fname} ${e.mgr_lname}` });
+    const hr = await db.query(`SELECT email, first_name, last_name FROM employees WHERE role = 'hr' AND is_active=true AND email IS NOT NULL`);
+    for (const h of hr.rows) {
+      if (h.email !== e.mgr_email) recipients.push({ email: h.email, name: `${h.first_name} ${h.last_name}` });
+    }
+
+    for (const rec of recipients) {
+      await send({
+        to: rec.email, toName: rec.name,
+        subject: `🕒 Coming Late — ${e.first_name} ${e.last_name} (${expectedTime})`,
+        preview: `${e.first_name} will arrive late today at ${expectedTime}`,
+        html
+      });
+    }
+  } catch (err) { console.error('[Email] notifyLateNotice:', err.message); }
+}
+
 // ── REGULARIZATION ACTIONED — notify employee ─────────────────────────────────
 async function notifyRegularizationActioned(employeeId, date, action, remarks, reviewerId) {
   try {
@@ -1495,6 +1539,7 @@ module.exports = {
   notifyWFHActioned,
   notifyRegularizationApplied,
   notifyRegularizationActioned,
+  notifyLateNotice,
   notifySeparationInitiated,
   notifySeparationManagerAction,
   notifySeparationHRAction,

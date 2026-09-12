@@ -251,9 +251,17 @@
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="8" y1="8" x2="16" y2="16"/><line x1="16" y1="8" x2="8" y2="16"/></svg>
           Punch Out
         </button>
+        <button class="btn btn-outline btn-sm" onclick="openModal('late-notice-modal')">🕒 Coming Late</button>
       </div>
     </div>
 
+    <!-- LATE NOTICES (visible to manager / HR / admin / super_admin only — hidden if none apply) -->
+    <div id="late-notices-card" class="card" style="margin-bottom:16px;display:none">
+      <div class="card-header">
+        <div class="card-title">🕒 Coming Late — Today</div>
+      </div>
+      <div id="late-notices-list"></div>
+    </div>
 
     <!-- LEGEND PILLS -->
     <div class="flex gap-2 flex-wrap" style="margin-bottom:16px">
@@ -718,6 +726,31 @@
   </div>
 </div>
 
+<!-- COMING LATE MODAL -->
+<div class="modal-backdrop" id="late-notice-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🕒 Coming Late Today</div>
+      <button class="modal-close" onclick="closeModal('late-notice-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Expected Arrival Time</label>
+        <input id="late-notice-time" class="form-control" type="time">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason</label>
+        <textarea id="late-notice-reason" class="form-control" rows="3" placeholder="e.g. Doctor's appointment, traffic, etc."></textarea>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted)">Your manager and HR will be informed immediately. If they approve, your attendance today gets marked present with a 10:00 AM punch-in.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('late-notice-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitLateNotice()">Submit</button>
+    </div>
+  </div>
+</div>
+
 <!-- REGULARIZE MODAL -->
 <div class="modal-backdrop" id="reg-modal">
   <div class="modal">
@@ -840,6 +873,8 @@ let activeRegId = null;
 
 // Regularization tab — visible to EVERYONE (employees see own requests, managers see approval queue)
 document.getElementById('reg-tab').style.display = '';
+
+loadLateNotices();
 
 if (Role.isManagerUp() || Role.is('tl')) {
   document.getElementById('team-tab').style.display = '';
@@ -2785,6 +2820,53 @@ function showODWFHButtons() {
 
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── COMING LATE ──────────────────────────────────────────────────────────────
+async function submitLateNotice() {
+  const expected_time = document.getElementById('late-notice-time').value;
+  const reason = document.getElementById('late-notice-reason').value.trim();
+  if (!expected_time) return toast('Pick your expected arrival time', 'error');
+  if (!reason) return toast('Enter a reason', 'error');
+  const resp = await api('POST', '/late-notices', { expected_time, reason });
+  if (resp?.success) {
+    toast(resp.message || 'Submitted', 'success');
+    closeModal('late-notice-modal');
+    document.getElementById('late-notice-time').value = '';
+    document.getElementById('late-notice-reason').value = '';
+    loadLateNotices();
+  } else {
+    toast(resp?.message || 'Failed to submit', 'error');
+  }
+}
+
+async function loadLateNotices() {
+  const resp = await api('GET', '/late-notices');
+  const card = document.getElementById('late-notices-card');
+  const list = document.getElementById('late-notices-list');
+  const notices = resp?.data || [];
+  if (!resp?.success || notices.length === 0) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  list.innerHTML = notices.map(n => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-weight:600">${n.employee_name} <span class="text-muted" style="font-weight:400;font-size:12.5px">(${n.employee_code})</span></div>
+        <div style="font-size:12.5px;color:var(--muted)">Expected at ${n.expected_time} — ${n.reason}</div>
+      </div>
+      <div class="flex gap-2" style="align-items:center">
+        ${n.status === 'pending' ? `
+          <button class="btn btn-danger btn-sm" onclick="decideLateNotice(${n.id},'rejected')">Reject</button>
+          <button class="btn btn-success btn-sm" onclick="decideLateNotice(${n.id},'approved')">Approve</button>
+        ` : `<span class="badge ${n.status === 'approved' ? 'badge-present' : 'badge-absent'}">${n.status}</span>`}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function decideLateNotice(id, decision) {
+  const resp = await api('POST', `/late-notices/${id}/decide`, { decision });
+  if (resp?.success) { toast(resp.message, 'success'); loadLateNotices(); }
+  else toast(resp?.message || 'Failed', 'error');
+}
 
 // ── LOCATION MAP ─────────────────────────────────────────────────────────────
 let _locMap = null, _locMarkers = [], _locInfoWin = null;
