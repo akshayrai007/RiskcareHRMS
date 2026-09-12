@@ -896,8 +896,8 @@
 <script>
 
 Auth.guard();
-// Restricted to admin/super_admin per HR access review (hr removed).
-if (!['admin','super_admin'].includes(Auth.getUser()?.role)) { window.location.href = 'dashboard.html'; throw new Error('geofence.html restricted'); }
+// Admin only.
+if (Auth.getUser()?.role !== 'admin') { window.location.href = 'dashboard.html'; throw new Error('geofence.html restricted'); }
 buildSidebar('geofence.html');
 
 loadNotifBadge();

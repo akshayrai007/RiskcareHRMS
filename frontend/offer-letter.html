@@ -693,7 +693,7 @@ function showToast(msg) {
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 Auth.guard();
-if (!['hr','admin','super_admin'].includes(Auth.getUser()?.role)) {
+if (Auth.getUser()?.role !== 'hr') {
   window.location.href = 'dashboard.html';
 }
 buildSidebar('offer-letter.html');

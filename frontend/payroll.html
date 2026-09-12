@@ -255,10 +255,9 @@ document.getElementById('hint-emp-codes').textContent =
   `${window.CFG.permanentEmpCodePrefix}0001, ${window.CFG.contractualEmpCodePrefix}8989 etc.`;
 
 Auth.guard();
-// Payroll is confidential — only accounts and super_admin allowed to process
-// hr can view list only
+// Payroll is confidential — HR and Accounts only.
 const _userRole = Auth.getUser()?.role?.toLowerCase().trim();
-if (!['hr','accounts','super_admin'].includes(_userRole)) {
+if (!['hr','accounts'].includes(_userRole)) {
   window.location.href = 'attendance.html';
 }
 buildSidebar('payroll.html');

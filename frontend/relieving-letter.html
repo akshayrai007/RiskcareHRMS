@@ -152,6 +152,7 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
 Auth.guard();
+if (Auth.getUser()?.role !== 'hr') { window.location.href = 'dashboard.html'; throw new Error('relieving-letter.html is HR only'); }
 buildSidebar('relieving-letter.html');
 let employees=[];
 

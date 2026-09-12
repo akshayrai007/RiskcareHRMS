@@ -97,22 +97,22 @@ const ROLE_DEFAULTS = {
   'send-documents.html':   rowFor(F, F, F, F, F, F, F),
   'form16.html':           rowFor(F, F, F, F, F, F, F),
   'it-declaration.html':   rowFor(F, F, F, F, F, F, F),
-  'payroll.html':          rowFor(F, F, F, N, N, N, N),
+  'payroll.html':          rowFor(N, F, F, N, N, N, N),   // HR and Accounts only
   'payslip.html':          rowFor(F, F, F, F, F, F, F),
   'advance.html':          rowFor(F, F, F, F, F, F, F),
   'reimbursement.html':    rowFor(F, F, F, F, F, F, F),
   'provision.html':        rowFor(F, F, F, R, R, R, N),
   'employee-history.html': rowFor(F, F, F, R, N, N, N),
   'onboarding.html':       rowFor(F, F, N, N, N, N, N),
-  'offer-letter.html':     rowFor(F, F, N, F, N, N, N),
-  'relieving-letter.html': rowFor(F, F, N, F, N, N, N),
+  'offer-letter.html':     rowFor(N, F, N, N, N, N, N),   // HR only
+  'relieving-letter.html': rowFor(N, F, N, N, N, N, N),   // HR only
   // Verified against separation.html's real logic: isAdminOrHR()+accounts get
   // "All Separations"; manager/tl only see a Pending-Approvals-scoped view
   // (not literally everyone's); a plain employee only sees their own request.
   'separation.html':       rowFor(F, F, F, F, R, R, O),
   'employees.html':        rowFor(F, F, F, R, R, R, N),
   'org-chart.html':        rowFor(F, F, F, F, F, F, F),
-  'geofence.html':         rowFor(F, N, N, F, N, N, N),
+  'geofence.html':         rowFor(N, N, N, F, N, N, N),   // Admin only
   'ai-voice.html':         rowFor(F, F, F, F, F, F, F),
   'movement.html':         rowFor(N, N, N, N, N, N, N),   // hidden — no web equivalent
   'import_employees.html': rowFor(N, N, N, N, N, N, N),   // legacy, superseded by Employees > Import
