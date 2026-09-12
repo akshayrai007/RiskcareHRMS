@@ -140,9 +140,16 @@ app.use('/uploads/documents', require('express').static(require('path').join(__d
 
 app.use('/api', routes);  // /api/chat/files/:id served by chatFileController (DB + disk)
 
-// Health check
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '2.0.0' });
+// Health check — also pings the DB so Neon's own connection doesn't cold-start
+// separately from the web server (this is what keep-alive.yml calls every 10 min).
+app.get('/health', async (_req, res) => {
+  let dbStatus = 'ok';
+  try {
+    await db.query('SELECT 1');
+  } catch (err) {
+    dbStatus = 'error: ' + err.message;
+  }
+  res.json({ status: 'ok', db: dbStatus, timestamp: new Date().toISOString(), version: '2.0.0' });
 });
 
 // ── Redirect HTML page requests to Vercel frontend ────────────────────────────

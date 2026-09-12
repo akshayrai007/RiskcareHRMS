@@ -2,7 +2,7 @@ name: 🔁 Keep Render Backend Alive
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/10 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -10,13 +10,16 @@ jobs:
     name: Ping RiskCare Backend
     runs-on: ubuntu-latest
     steps:
-      - name: Ping /health endpoint
+      - name: Ping /health endpoint (also pings the DB)
         run: |
           echo "Pinging riskcarehrms.onrender.com/health ..."
-          STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://riskcarehrms.onrender.com/health)
+          BODY=$(curl -s -w "\n%{http_code}" https://riskcarehrms.onrender.com/health)
+          STATUS=$(echo "$BODY" | tail -n1)
+          RESPONSE=$(echo "$BODY" | sed '$d')
           echo "Response status: $STATUS"
+          echo "Response body: $RESPONSE"
           if [ "$STATUS" -eq 200 ]; then
-            echo "✅ Server is alive!"
+            echo "✅ Server + DB are alive!"
           else
             echo "⚠️ Server returned status $STATUS"
           fi
