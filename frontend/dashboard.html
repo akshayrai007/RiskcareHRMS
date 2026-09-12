@@ -1007,11 +1007,18 @@ let _teamTodayTab = 'present';
 
 function setTeamTodayTab(tab) {
   _teamTodayTab = tab;
+  styleTeamTodayTabs();
+  renderTeamTodayList();
+}
+
+function styleTeamTodayTabs() {
   ['present','absent','on-leave'].forEach(t => {
     const el = document.getElementById('team-tab-' + t);
-    if (el) el.classList.toggle('active', t === tab);
+    if (!el) return;
+    const active = t === _teamTodayTab;
+    el.style.background = active ? 'var(--primary)' : 'transparent';
+    el.style.color = active ? '#fff' : '#1e293b';
   });
-  renderTeamTodayList();
 }
 
 async function loadTeamToday() {
@@ -1028,16 +1035,13 @@ async function loadTeamToday() {
       <div class="team-stat-item ts-on-leave"><div class="team-stat-num">${counts['on-leave']||0}</div><div class="team-stat-lbl">On Leave</div></div>
       <div class="team-stat-item ts-late"><div class="team-stat-num">${counts['late']||0}</div><div class="team-stat-lbl">Late</div></div>
     </div>
-    <div class="flex gap-2" id="team-today-tabs" style="margin-top:12px;padding:3px;background:var(--surface-2,#f1f5f9);border-radius:20px">
-      <div id="team-tab-present" class="team-today-tab active" onclick="setTeamTodayTab('present')" style="flex:1;text-align:center;padding:6px 0;border-radius:16px;font-size:12.5px;font-weight:700;cursor:pointer">Present</div>
-      <div id="team-tab-absent" class="team-today-tab" onclick="setTeamTodayTab('absent')" style="flex:1;text-align:center;padding:6px 0;border-radius:16px;font-size:12.5px;font-weight:700;cursor:pointer">Absent</div>
-      <div id="team-tab-on-leave" class="team-today-tab" onclick="setTeamTodayTab('on-leave')" style="flex:1;text-align:center;padding:6px 0;border-radius:16px;font-size:12.5px;font-weight:700;cursor:pointer">On Leave</div>
-    </div>
-    <style>
-      .team-today-tab.active { background:var(--primary); color:#fff; }
-      .team-today-tab:not(.active) { color:var(--text-muted,#64748b); }
-    </style>`;
+    <div class="flex gap-2" id="team-today-tabs" style="margin-top:12px;padding:3px;background:#f1f5f9;border-radius:20px">
+      <div id="team-tab-present" onclick="setTeamTodayTab('present')" style="flex:1;text-align:center;padding:6px 0;border-radius:16px;font-size:12.5px;font-weight:700;cursor:pointer">Present</div>
+      <div id="team-tab-absent" onclick="setTeamTodayTab('absent')" style="flex:1;text-align:center;padding:6px 0;border-radius:16px;font-size:12.5px;font-weight:700;cursor:pointer">Absent</div>
+      <div id="team-tab-on-leave" onclick="setTeamTodayTab('on-leave')" style="flex:1;text-align:center;padding:6px 0;border-radius:16px;font-size:12.5px;font-weight:700;cursor:pointer">On Leave</div>
+    </div>`;
 
+  styleTeamTodayTabs();
   renderTeamTodayList();
 }
 
