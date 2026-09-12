@@ -1358,10 +1358,7 @@ exports.revoke = async (req, res) => {
 // ── HR: Get Leave Summary per Employee (EL, SL balance counts) ───────────────
 exports.getLeaveSummary = async (req, res) => {
   try {
-    const role = req.user.role;
-    if (!['hr','super_admin','admin','accounts'].includes(role))
-      return res.status(403).json({ success: false, message: 'Access denied' });
-
+    // Role/override gate already enforced by authorizeOrPageOverride on the route.
     const year = parseInt(req.query.year) || new Date().getFullYear();
     const search = req.query.search || ''; // name or employee_code
 
@@ -1415,10 +1412,7 @@ exports.getLeaveSummary = async (req, res) => {
 // ── HR: Leave Transaction — individual search by name or ID ─────────────────
 exports.getLeaveTransactions = async (req, res) => {
   try {
-    const role = req.user.role;
-    if (!['hr','super_admin','admin','accounts'].includes(role))
-      return res.status(403).json({ success: false, message: 'Access denied' });
-
+    // Role/override gate already enforced by authorizeOrPageOverride on the route.
     const year = parseInt(req.query.year) || new Date().getFullYear();
     const search = req.query.search || '';
     const employee_id = req.query.employee_id ? parseInt(req.query.employee_id) : null;
