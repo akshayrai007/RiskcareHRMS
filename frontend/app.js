@@ -50,7 +50,16 @@ const Auth = {
   guard:      () => { if (!Auth.getToken()) { window.location.href = 'login.html'; return false; } return true; },
   guardDashboard: () => {
     if (!Auth.getToken()) { window.location.href = 'login.html'; return false; }
-    if (!['admin','super_admin','hr','accounts'].includes(Auth.getUser()?.role)) { window.location.href = 'attendance.html'; return false; }
+    // Role defaults still gate immediately (no flash of the page for roles that
+    // never see Dashboard), but an HR-granted per-employee override (Access
+    // Control screen) can widen this — checked async so it isn't blocked on
+    // a network round-trip before anything renders.
+    if (!['admin','super_admin','hr','accounts'].includes(Auth.getUser()?.role)) {
+      api('GET', '/access-control/my-effective/dashboard.html').then(res => {
+        const level = res?.data?.level;
+        if (!level || level === 'none') window.location.href = 'attendance.html';
+      }).catch(() => { window.location.href = 'attendance.html'; });
+    }
     return true;
   },
   logout: () => { Auth.clear(); window.location.href = 'login.html'; },

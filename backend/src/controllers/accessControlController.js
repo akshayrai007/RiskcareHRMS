@@ -215,6 +215,21 @@ async function getEffectiveForPage(employeeId, role, pageKey) {
 }
 exports.getEffectiveForPage = getEffectiveForPage;
 
+// Self-check: any authenticated user can look up their OWN effective access
+// for one page — used by page guards (e.g. dashboard.html) so an HR-granted
+// override actually takes effect instead of a hardcoded role whitelist.
+exports.getMyEffectiveForPage = async (req, res) => {
+  try {
+    const pageKey = req.params.pageKey;
+    if (!pageKey) return res.status(400).json({ success: false, message: 'pageKey required' });
+    const result = await getEffectiveForPage(req.user.id, req.user.role, pageKey);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    console.error('[accessControl.getMyEffectiveForPage]', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 exports.setOverride = async (req, res) => {
   try {
     await ensureTables();
