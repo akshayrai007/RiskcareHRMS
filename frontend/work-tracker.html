@@ -209,15 +209,15 @@ async function renderMineForm() {
     </div>
     <div class="form-group" style="margin-top:12px">
       <label class="form-label">Today's Task — what are you working on? *</label>
-      <textarea id="pg-today" class="form-control" rows="3" placeholder="e.g. QC of 200 acreage records for the dataset">${cur.today_task || ''}</textarea>
+      <textarea id="pg-today" class="form-control" rows="3" placeholder="e.g. Followed up on 15 pending motor insurance claims">${cur.today_task || ''}</textarea>
     </div>
     <div class="form-group" style="margin-top:12px">
       <label class="form-label">This Week's Task / Goal (optional)</label>
-      <textarea id="pg-week" class="form-control" rows="2" placeholder="e.g. Finish QC by Friday">${cur.week_task || ''}</textarea>
+      <textarea id="pg-week" class="form-control" rows="2" placeholder="e.g. Close all pending renewal quotes by Friday">${cur.week_task || ''}</textarea>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-      <div class="form-group" style="margin:0"><label class="form-label">Blockers (optional)</label><textarea id="pg-blockers" class="form-control" rows="2" placeholder="e.g. Waiting on missing data">${cur.blockers || ''}</textarea></div>
-      <div class="form-group" style="margin:0"><label class="form-label">Remark (optional)</label><textarea id="pg-remark" class="form-control" rows="2" placeholder="e.g. Internet issues today">${cur.remark || ''}</textarea></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Blockers (optional)</label><textarea id="pg-blockers" class="form-control" rows="2" placeholder="e.g. Waiting on client documents">${cur.blockers || ''}</textarea></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Remark (optional)</label><textarea id="pg-remark" class="form-control" rows="2" placeholder="e.g. Client meeting ran long today">${cur.remark || ''}</textarea></div>
     </div>
     <button class="btn btn-primary" style="margin-top:14px" onclick="submitMine()">✅ ${cur.id ? 'Update' : 'Submit'} Today's Progress</button>
     ${cur.id ? '<div style="font-size:12px;color:#16a34a;margin-top:8px">✓ You have already submitted today — editing updates it.</div>' : ''}
