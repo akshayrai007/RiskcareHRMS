@@ -121,18 +121,17 @@ let isSuperAdmin = false; // resolved from the backend below
 document.getElementById('wt-date').value = new Date().toISOString().split('T')[0];
 
 (async function init() {
-  // can_manage_others is computed server-side from actual reportees in the
-  // org chart, not the role label — "manager" isn't always role='manager'.
+  // Matches KrishiHR exactly: ANY employee can submit/view their own log,
+  // always — no gating. can_manage_others (HR/Accounts/Admin/Super Admin,
+  // admin-tier only) additionally unlocks the manage/view-others panel.
   const status = await api('GET', '/work-tracker/my-status');
-  const required = !!status?.data?.required;
   const canManage = !!status?.data?.can_manage_others;
   isSuperAdmin = user.role === 'super_admin';
 
-  if (required) {
-    document.getElementById('submit-section').style.display = '';
-    document.getElementById('my-history-section').style.display = '';
-    loadMyHistory();
-  }
+  document.getElementById('submit-section').style.display = '';
+  document.getElementById('my-history-section').style.display = '';
+  loadMyHistory();
+
   if (canManage) {
     document.getElementById('manage-section').style.display = '';
     if (isSuperAdmin) {
@@ -141,9 +140,6 @@ document.getElementById('wt-date').value = new Date().toISOString().split('T')[0
     }
     loadRequiredList();
     loadLogs();
-  }
-  if (!required && !canManage) {
-    document.querySelector('.content').innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div><p>You have not been asked to fill a Work Tracker log.</p></div>';
   }
 })();
 

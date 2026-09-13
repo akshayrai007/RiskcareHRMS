@@ -1,30 +1,27 @@
 // src/controllers/workTrackerController.js
 // ── WORK TRACKER (daily work log) ────────────────────────────────────────────
-// A simple "what did you work on today" log. Unlike Tasks (assigned work with
-// a status), this is a self-reported daily entry. Only visible to an employee
-// once someone (their manager or Super Admin) has explicitly flagged them as
-// "required to fill" it — most employees never see this page at all.
+// A simple "what did you work on today" log — matches KrishiHR's model exactly:
+// ANY employee can submit their own daily log at any time, no gating. The
+// "required" flag is informational only (HR/Accounts/Admin/Super Admin can
+// mark someone required as a nudge) — it does NOT gate who can submit.
 //
-// Visibility / permission rules:
-//   - Manager can mark/unmark REQUIRED status only for their own direct
-//     reportees, and can view only those reportees' submitted logs.
-//   - Super Admin can mark/unmark anyone and view everyone's logs
-//     (optionally filtered by department).
-//   - An employee who has been marked required can see the page, submit their
-//     own daily log, and view their own history — nothing else.
+// Visibility / permission rules (mirrors KrishiHR's buildScope + COMP_ADMIN_ROLES):
+//   - Everyone can submit/view their own log — always, unconditionally.
+//   - HR/Accounts/Admin/Super Admin manage the "required" flag for anyone and
+//     view everyone's submitted logs.
+//   - A direct reporting manager (real org-chart reportees, not a role label)
+//     can VIEW their reportees' logs, but cannot toggle the "required" flag —
+//     that stays admin-tier only, same as KrishiHR's compulsory-list management.
 
 const db = require('../config/db');
 
-function isSuperAdmin(user) { return String(user.role || '').toLowerCase() === 'super_admin'; }
-// HR can assign/manage Work Tracker for anyone company-wide, same as Super Admin —
-// not just their own reportees.
-function isHR(user) { return String(user.role || '').toLowerCase() === 'hr'; }
-function isCompanyWideManager(user) { return isSuperAdmin(user) || isHR(user); }
+const ADMIN_TIER_ROLES = ['hr', 'accounts', 'admin', 'super_admin'];
+function isCompanyWideManager(user) { return ADMIN_TIER_ROLES.includes(String(user.role || '').toLowerCase()); }
 
-// "Manager" = anyone with actual reportees in the org chart, regardless of
-// their role label (accounts/admin/etc. can all have reportees) — EXCEPT a
-// literal 'employee' role, which never gets manager-level Work Tracker
-// access even if the org chart happens to route reportees to them.
+// "Manager" here is VIEW-ONLY scope (see reportees' logs), matching KrishiHR's
+// buildScope — anyone with actual reportees in the org chart, regardless of
+// role label, except the admin-tier roles (handled separately) and a literal
+// 'employee' role (never manager-level, even with stray reportee data).
 async function isManager(user) {
   if (isCompanyWideManager(user)) return false;
   if (String(user.role || '').toLowerCase() === 'employee') return false;
@@ -57,21 +54,23 @@ async function ensureTables() {
 }
 exports.ensureTables = ensureTables;
 
-// Is the caller allowed to manage (mark required / view logs of) this employee?
-async function canManage(user, employeeId) {
-  if (isCompanyWideManager(user)) return true;
-  if (String(user.role || '').toLowerCase() === 'employee') return false;
-  const r = await db.query(`SELECT 1 FROM employees WHERE id=$1 AND reporting_manager_id=$2`, [employeeId, user.id]);
-  return r.rows.length > 0;
+// Is the caller allowed to toggle "required" for this employee? Admin-tier
+// only (hr/accounts/admin/super_admin) — matches KrishiHR's COMP_ADMIN_ROLES,
+// which never lets a plain reportee-manager toggle the compulsory flag.
+function canManage(user) {
+  return isCompanyWideManager(user);
 }
 
 // ── Does the caller even get to see the Work Tracker page? ──────────────────
+// Always true now (everyone can submit their own log) — kept as an endpoint
+// so the client can still learn `required` (informational) and whether it
+// gets the admin-tier manage/view-others panel.
 exports.getMyStatus = async (req, res) => {
   try {
     await ensureTables();
     const r = await db.query(`SELECT work_tracker_required FROM employees WHERE id=$1`, [req.user.id]);
     const required = !!r.rows[0]?.work_tracker_required;
-    const canManageOthers = (await isManager(req.user)) || isCompanyWideManager(req.user);
+    const canManageOthers = isCompanyWideManager(req.user);
     res.json({ success: true, data: { required, can_manage_others: canManageOthers } });
   } catch (err) {
     console.error('[workTracker.getMyStatus]', err.message);
@@ -79,15 +78,16 @@ exports.getMyStatus = async (req, res) => {
   }
 };
 
-// ── Set/unset "required to fill" for one employee ────────────────────────────
+// ── Set/unset "required to fill" for one employee (informational nudge only —
+//    admin-tier only, matches KrishiHR's COMP_ADMIN_ROLES) ───────────────────
 exports.setRequired = async (req, res) => {
   try {
     await ensureTables();
     const employeeId = parseInt(req.body.employee_id);
     const required = !!req.body.required;
     if (!employeeId) return res.status(400).json({ success: false, message: 'employee_id required' });
-    if (!(await canManage(req.user, employeeId)))
-      return res.status(403).json({ success: false, message: 'You can only manage this for your own reportees' });
+    if (!canManage(req.user))
+      return res.status(403).json({ success: false, message: 'Only HR, Accounts, Admin, or Super Admin can manage this' });
 
     await db.query(`UPDATE employees SET work_tracker_required=$1 WHERE id=$2`, [required, employeeId]);
 
@@ -106,34 +106,24 @@ exports.setRequired = async (req, res) => {
   }
 };
 
-// ── List employees this caller can toggle "required" for (manager -> their
-//    reportees, super_admin -> everyone, optionally by department) ──────────
+// ── List employees this caller can toggle "required" for — admin-tier only
+//    (hr/accounts/admin/super_admin see everyone, optionally by department) ──
 exports.getRequiredList = async (req, res) => {
   try {
     await ensureTables();
-    if (isCompanyWideManager(req.user)) {
-      const { department_id } = req.query;
-      const params = [];
-      let q = `SELECT e.id, e.employee_code, CONCAT(e.first_name,' ',e.last_name) AS name,
-                      d.name AS department_name, e.work_tracker_required
-               FROM employees e LEFT JOIN departments d ON d.id = e.department_id
-               WHERE e.is_active=true`;
-      if (department_id) { params.push(parseInt(department_id)); q += ` AND e.department_id=$${params.length}`; }
-      q += ` ORDER BY d.name, e.first_name`;
-      const r = await db.query(q, params);
-      return res.json({ success: true, data: r.rows });
+    if (!canManage(req.user)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
-    if (await isManager(req.user)) {
-      const r = await db.query(
-        `SELECT e.id, e.employee_code, CONCAT(e.first_name,' ',e.last_name) AS name,
-                d.name AS department_name, e.work_tracker_required
-         FROM employees e LEFT JOIN departments d ON d.id = e.department_id
-         WHERE e.reporting_manager_id=$1 AND e.is_active=true ORDER BY e.first_name`,
-        [req.user.id]
-      );
-      return res.json({ success: true, data: r.rows });
-    }
-    res.status(403).json({ success: false, message: 'Access denied' });
+    const { department_id } = req.query;
+    const params = [];
+    let q = `SELECT e.id, e.employee_code, CONCAT(e.first_name,' ',e.last_name) AS name,
+                    d.name AS department_name, e.work_tracker_required
+             FROM employees e LEFT JOIN departments d ON d.id = e.department_id
+             WHERE e.is_active=true`;
+    if (department_id) { params.push(parseInt(department_id)); q += ` AND e.department_id=$${params.length}`; }
+    q += ` ORDER BY d.name, e.first_name`;
+    const r = await db.query(q, params);
+    res.json({ success: true, data: r.rows });
   } catch (err) {
     console.error('[workTracker.getRequiredList]', err.message);
     res.status(500).json({ success: false, message: 'Server error' });
@@ -141,13 +131,11 @@ exports.getRequiredList = async (req, res) => {
 };
 
 // ── Submit / update today's (or any date's) log ──────────────────────────────
+// Any authenticated employee can submit their own log at any time — matches
+// KrishiHR exactly, no "required" gate.
 exports.submitLog = async (req, res) => {
   try {
     await ensureTables();
-    const check = await db.query(`SELECT work_tracker_required FROM employees WHERE id=$1`, [req.user.id]);
-    if (!check.rows[0]?.work_tracker_required)
-      return res.status(403).json({ success: false, message: 'You have not been asked to fill a Work Tracker log' });
-
     const { log_date, summary, hours_spent } = req.body;
     if (!summary || !String(summary).trim())
       return res.status(400).json({ success: false, message: 'Summary is required' });

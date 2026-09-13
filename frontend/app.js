@@ -336,13 +336,14 @@ async function buildSidebar(activePage) {
   const u = document.getElementById('sidebar-user');
   if (u) u.innerHTML = `<div class="user-avatar">${(user.first_name?.[0]||'')}${(user.last_name?.[0]||'')}</div><div class="user-info" style="flex:1;min-width:0"><div class="user-name">${user.first_name} ${user.last_name}</div><div class="user-role" style="background:${Role.badge(user.role)}">${user.role.toUpperCase()}</div></div>`;
 
-  // Task Board / All Tasks (manager-only) and Work Tracker (manager/super
-  // admin, or an employee flagged required) all depend on whether this user
-  // is an actual "manager" — meaning they have real reportees in the org
-  // chart, NOT whether their role field literally says "manager" (reportees
-  // exist under accounts/admin/etc. too). That can only be determined by
-  // asking the backend, so these links start visible (marked "always" above)
-  // and get hidden here, fire-and-forget, once we know.
+  // Task Board / All Tasks (manager-only) depend on whether this user is an
+  // actual "manager" — meaning they have real reportees in the org chart,
+  // NOT whether their role field literally says "manager" (reportees exist
+  // under accounts/admin/etc. too). That can only be determined by asking
+  // the backend, so these links start visible (marked "always" above) and
+  // get hidden here, fire-and-forget, once we know.
+  // Work Tracker matches KrishiHR exactly: always visible to everyone —
+  // no gating — so it's left alone here.
   api('GET', '/tasks/am-i-manager').then(mgrData => {
     const isMgrOrAdmin = mgrData?.success && (mgrData.data.is_manager || mgrData.data.is_super_admin);
     if (!isMgrOrAdmin) {
@@ -350,14 +351,6 @@ async function buildSidebar(activePage) {
         const link = nav.querySelector(`a[href="${href}"]`);
         if (link) link.style.display = 'none';
       });
-      // Work Tracker: still show it if this employee has personally been
-      // flagged required, even though they don't manage anyone themselves.
-      api('GET', '/work-tracker/my-status').then(wtData => {
-        if (!wtData?.success || !wtData.data?.required) {
-          const link = nav.querySelector('a[href="work-tracker.html"]');
-          if (link) link.style.display = 'none';
-        }
-      }).catch(() => {});
     }
   }).catch(() => {});
 }

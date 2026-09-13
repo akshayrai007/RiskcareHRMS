@@ -88,7 +88,7 @@ const ROLE_DEFAULTS = {
   'board.html':            rowFor(F, R, R, R, R, R, O),
   'tasks.html':             rowFor(F, R, R, R, R, R, O),
   'my-work.html':           rowFor(F, R, R, R, R, R, O),
-  'work-tracker.html':      rowFor(F, R, R, R, R, R, O),
+  'work-tracker.html':      rowFor(F, F, F, F, R, R, O),
   // Only hr/accounts get the employee-search picker (documents.html's HR_ROLES);
   // everyone else — admin/manager/tl/employee included — is locked to their own
   // record (currentEmployeeId = user.id). Verified against the real page logic,
