@@ -22,9 +22,12 @@ function isHR(user) { return String(user.role || '').toLowerCase() === 'hr'; }
 function isCompanyWideManager(user) { return isSuperAdmin(user) || isHR(user); }
 
 // "Manager" = anyone with actual reportees in the org chart, regardless of
-// their role label (accounts/admin/etc. can all have reportees).
+// their role label (accounts/admin/etc. can all have reportees) — EXCEPT a
+// literal 'employee' role, which never gets manager-level Work Tracker
+// access even if the org chart happens to route reportees to them.
 async function isManager(user) {
   if (isCompanyWideManager(user)) return false;
+  if (String(user.role || '').toLowerCase() === 'employee') return false;
   const r = await db.query(
     `SELECT 1 FROM employees WHERE reporting_manager_id=$1 AND is_active=true LIMIT 1`,
     [user.id]
@@ -57,6 +60,7 @@ exports.ensureTables = ensureTables;
 // Is the caller allowed to manage (mark required / view logs of) this employee?
 async function canManage(user, employeeId) {
   if (isCompanyWideManager(user)) return true;
+  if (String(user.role || '').toLowerCase() === 'employee') return false;
   const r = await db.query(`SELECT 1 FROM employees WHERE id=$1 AND reporting_manager_id=$2`, [employeeId, user.id]);
   return r.rows.length > 0;
 }
