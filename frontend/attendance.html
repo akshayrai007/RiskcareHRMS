@@ -255,14 +255,6 @@
       </div>
     </div>
 
-    <!-- LATE NOTICES (visible to manager / HR / admin / super_admin only — hidden if none apply) -->
-    <div id="late-notices-card" class="card" style="margin-bottom:16px;display:none">
-      <div class="card-header">
-        <div class="card-title">🕒 Coming Late — Today</div>
-      </div>
-      <div id="late-notices-list"></div>
-    </div>
-
     <!-- LEGEND PILLS -->
     <div class="flex gap-2 flex-wrap" style="margin-bottom:16px">
       <span class="badge badge-present">Present</span>
@@ -281,6 +273,7 @@
       <button class="tab-btn" onclick="switchTab('summary')">📊 Summary</button>
       <button class="tab-btn" id="team-tab" style="display:none" onclick="switchTab('team')">👥 Team Today</button>
       <button class="tab-btn" id="reg-tab"  style="display:none" onclick="switchTab('regularize')">🔄 Regularizations</button>
+      <button class="tab-btn" id="late-tab" style="display:none" onclick="switchTab('late')">🕒 Coming Late</button>
       <button class="tab-btn" id="odwfh-tab" onclick="switchTab('odwfh')">🚗 My OD/WFH</button>
       <button class="tab-btn" id="download-tab" style="display:none" onclick="switchTab('download')">⬇ Download Attendance</button>
       <button class="tab-btn" id="absent-tab"   style="display:none" onclick="switchTab('absent-report')">📉 Absent Report</button>
@@ -517,6 +510,16 @@
 
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- COMING LATE APPROVALS TAB (manager / HR / admin / super_admin) -->
+    <div id="tab-late" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🕒 Coming Late — Today</div>
+        </div>
+        <div id="late-notices-list"><div class="empty-state"><div class="empty-icon">🕒</div><p>Loading…</p></div></div>
       </div>
     </div>
 
@@ -874,7 +877,11 @@ let activeRegId = null;
 // Regularization tab — visible to EVERYONE (employees see own requests, managers see approval queue)
 document.getElementById('reg-tab').style.display = '';
 
-loadLateNotices();
+// Coming Late Approvals tab — manager/TL/HR/admin/super_admin only (the API
+// itself scopes a manager to their own reportees vs. HR/admin seeing everyone).
+if (Role.isManagerUp() || Role.is('tl', 'hr', 'admin', 'super_admin')) {
+  document.getElementById('late-tab').style.display = '';
+}
 
 if (Role.isManagerUp() || Role.is('tl')) {
   document.getElementById('team-tab').style.display = '';
@@ -1711,7 +1718,7 @@ async function confirmPunch() {
 async function doPunch(type) { openMapPunch(type); }
 
 function switchTab(name) {
-  ['calendar','summary','team','regularize','download','absent-report','import','odwfh','mark'].forEach(t => {
+  ['calendar','summary','team','regularize','late','download','absent-report','import','odwfh','mark'].forEach(t => {
     const el = document.getElementById('tab-'+t);
     if (el) el.style.display = t === name ? '' : 'none';
 });
@@ -1721,6 +1728,7 @@ function switchTab(name) {
     'summary':  "switchTab('summary')",
     'team':     "switchTab('team')",
     'regularize':"switchTab('regularize')",
+    'late':     "switchTab('late')",
     'download': "switchTab('download')",
     'absent-report':"switchTab('absent-report')",
     'import':   "switchTab('import')",
@@ -1745,6 +1753,7 @@ function switchTab(name) {
     loadTeamToday();
   }
   if (name==='regularize') loadRegularizations();
+  if (name==='late') loadLateNotices();
   if (name==='import') initImportTab();
   if (name==='odwfh') loadMyODWFH();
   if (name==='mark') {
@@ -2841,11 +2850,12 @@ async function submitLateNotice() {
 
 async function loadLateNotices() {
   const resp = await api('GET', '/late-notices');
-  const card = document.getElementById('late-notices-card');
   const list = document.getElementById('late-notices-list');
   const notices = resp?.data || [];
-  if (!resp?.success || notices.length === 0) { card.style.display = 'none'; return; }
-  card.style.display = '';
+  if (!resp?.success || notices.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🕒</div><p>No coming-late requests today.</p></div>`;
+    return;
+  }
   list.innerHTML = notices.map(n => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
       <div>
