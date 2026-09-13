@@ -132,7 +132,9 @@ loadNotifBadge();
 
 const user = Auth.getUser();
 let canManage = false;
-const PROGRESS_TEAMS = ['Survey', 'QC', 'Development', 'Remote Sensing', 'Other'];
+// Real company departments (Marketing, HR, Operations, etc.) — not KrishiHR's
+// agri-survey teams, which don't apply here.
+let _wtDepartments = [];
 
 (async function init() {
   // Matches KrishiHR exactly: ANY employee can submit/view their own log,
@@ -144,6 +146,8 @@ const PROGRESS_TEAMS = ['Survey', 'QC', 'Development', 'Remote Sensing', 'Other'
     document.getElementById('wt-tab-manage').style.display = 'inline-block';
     loadDepartments();
   }
+  const deptRes = await api('GET', '/departments');
+  _wtDepartments = deptRes?.data || [];
 
   const todayStr = new Date().toISOString().slice(0,10);
   const weekAgo = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
@@ -184,8 +188,11 @@ async function renderMineForm() {
   wrap.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
       <div class="form-group" style="margin:0">
-        <label class="form-label">Team</label>
-        <select id="pg-team" class="form-control">${PROGRESS_TEAMS.map(t => `<option ${cur.team === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
+        <label class="form-label">Team (Department)</label>
+        <select id="pg-team" class="form-control">
+          <option value="">— select —</option>
+          ${_wtDepartments.map(d => `<option ${(cur.team ? cur.team === d.name : user.department_name === d.name) ? 'selected' : ''}>${d.name}</option>`).join('')}
+        </select>
       </div>
       <div class="form-group" style="margin:0">
         <label class="form-label">% Done Today</label>
