@@ -16,11 +16,15 @@
 const db = require('../config/db');
 
 function isSuperAdmin(user) { return String(user.role || '').toLowerCase() === 'super_admin'; }
+// HR can assign/manage Work Tracker for anyone company-wide, same as Super Admin —
+// not just their own reportees.
+function isHR(user) { return String(user.role || '').toLowerCase() === 'hr'; }
+function isCompanyWideManager(user) { return isSuperAdmin(user) || isHR(user); }
 
 // "Manager" = anyone with actual reportees in the org chart, regardless of
 // their role label (accounts/admin/etc. can all have reportees).
 async function isManager(user) {
-  if (isSuperAdmin(user)) return false;
+  if (isCompanyWideManager(user)) return false;
   const r = await db.query(
     `SELECT 1 FROM employees WHERE reporting_manager_id=$1 AND is_active=true LIMIT 1`,
     [user.id]
@@ -52,7 +56,7 @@ exports.ensureTables = ensureTables;
 
 // Is the caller allowed to manage (mark required / view logs of) this employee?
 async function canManage(user, employeeId) {
-  if (isSuperAdmin(user)) return true;
+  if (isCompanyWideManager(user)) return true;
   const r = await db.query(`SELECT 1 FROM employees WHERE id=$1 AND reporting_manager_id=$2`, [employeeId, user.id]);
   return r.rows.length > 0;
 }
@@ -63,7 +67,7 @@ exports.getMyStatus = async (req, res) => {
     await ensureTables();
     const r = await db.query(`SELECT work_tracker_required FROM employees WHERE id=$1`, [req.user.id]);
     const required = !!r.rows[0]?.work_tracker_required;
-    const canManageOthers = (await isManager(req.user)) || isSuperAdmin(req.user);
+    const canManageOthers = (await isManager(req.user)) || isCompanyWideManager(req.user);
     res.json({ success: true, data: { required, can_manage_others: canManageOthers } });
   } catch (err) {
     console.error('[workTracker.getMyStatus]', err.message);
@@ -103,7 +107,7 @@ exports.setRequired = async (req, res) => {
 exports.getRequiredList = async (req, res) => {
   try {
     await ensureTables();
-    if (isSuperAdmin(req.user)) {
+    if (isCompanyWideManager(req.user)) {
       const { department_id } = req.query;
       const params = [];
       let q = `SELECT e.id, e.employee_code, CONCAT(e.first_name,' ',e.last_name) AS name,
@@ -181,7 +185,7 @@ exports.listLogs = async (req, res) => {
     const params = [];
     const conds = [];
 
-    if (isSuperAdmin(req.user)) {
+    if (isCompanyWideManager(req.user)) {
       if (department_id) { params.push(parseInt(department_id)); conds.push(`e.department_id=$${params.length}`); }
     } else if (await isManager(req.user)) {
       params.push(req.user.id);
