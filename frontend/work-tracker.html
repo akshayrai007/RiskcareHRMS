@@ -5,13 +5,28 @@
 <title id="page-title">Work Tracker</title>
 <link rel="stylesheet" href="style.css">
 <style>
-.wt-log-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:10px}
-.wt-req-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border)}
-.wt-req-row:last-child{border-bottom:none}
-.wt-toggle{position:relative;width:42px;height:24px;border-radius:12px;background:#d1d5db;cursor:pointer;transition:background .15s;flex-shrink:0}
-.wt-toggle.on{background:#16a34a}
-.wt-toggle::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .15s}
-.wt-toggle.on::after{transform:translateX(18px)}
+.wt-tabs { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap }
+.wt-tab { padding:8px 16px; border-radius:20px; font-size:13px; font-weight:600; border:1.5px solid var(--border); background:#fff; cursor:pointer; transition:all .15s }
+.wt-tab.active { background:var(--accent); color:#fff; border-color:var(--accent) }
+/* Colorful Excel-style report, solid black gridlines — matches KrishiHR exactly */
+.wt-table { width:100%; border-collapse:collapse; font-size:12.5px; border:2px solid #0b0f19 }
+.wt-table th { background:#26a69a; color:#fff; text-align:center; padding:9px 10px; font-weight:700; border:1px solid #37474f; white-space:nowrap; text-transform:uppercase; font-size:10.5px; letter-spacing:.03em; position:sticky; top:0; z-index:2 }
+.wt-table td { padding:8px 10px; border:1px solid #37474f; vertical-align:middle; color:#263238 }
+.wt-table tr.wt-detail:nth-of-type(even) td { background:#f5f8fb }
+.wt-table tr.wt-detail:hover td { background:#fff8ec }
+.wt-table td.wt-c { text-align:center; white-space:nowrap }
+.wt-date-hdr td { background:#66bb6a; color:#fff; font-weight:800; cursor:pointer; padding:9px 12px; border:1px solid #37474f; user-select:none; font-size:13px; letter-spacing:.02em; text-shadow:0 1px 1px rgba(0,0,0,.15) }
+.wt-date-hdr:hover td { background:#57a75b }
+.wt-date-hdr .wt-caret { display:inline-block; width:14px; text-align:center; font-size:11px; margin-right:6px }
+.wt-date-hdr .wt-cnt { color:#bbf7d0; font-weight:600; font-size:11px; margin-left:10px }
+.wt-detail.collapsed { display:none }
+.wt-team { display:inline-block; padding:2px 10px; border-radius:6px; font-size:11px; font-weight:700; color:#fff; border:1px solid rgba(0,0,0,.25) }
+.wt-toggle { position:relative; width:40px; height:22px; border-radius:12px; background:#d1d5db; cursor:pointer; transition:background .15s; flex-shrink:0 }
+.wt-toggle.on { background:#16a34a }
+.wt-toggle .knob { position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#fff; transition:left .15s; box-shadow:0 1px 2px rgba(0,0,0,.2) }
+.wt-toggle.on .knob { left:20px }
+.wt-req-row { display:flex; align-items:center; justify-content:space-between; padding:9px 14px; border-bottom:1px solid var(--border) }
+.wt-req-row:last-child { border-bottom:none }
 </style>
 </head>
 <body>
@@ -40,7 +55,7 @@
   <div class="topbar">
     <div class="topbar-left">
       <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
-      <div class="topbar-title">Work Tracker</div>
+      <div class="topbar-title">📝 Work Tracker</div>
     </div>
     <div class="topbar-right">
       <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
@@ -50,54 +65,54 @@
 
   <div class="content fade-in">
 
-    <!-- SUBMIT MY LOG (only shown if required) -->
-    <div id="submit-section" style="display:none" class="card" style="padding:20px 22px;margin-bottom:20px">
-      <div class="card-title" style="margin-bottom:14px"><span class="card-title-icon">📝</span>Submit Today's Work Log</div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Date</label>
-          <input id="wt-date" class="form-control" type="date">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Hours Spent (optional)</label>
-          <input id="wt-hours" class="form-control" type="number" step="0.5" placeholder="e.g. 8">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">What did you work on? *</label>
-        <textarea id="wt-summary" class="form-control" rows="3" placeholder="Summary of today's work…"></textarea>
-      </div>
-      <button class="btn btn-primary" onclick="submitLog()">Submit Log</button>
+    <div class="wt-tabs" id="wt-tabs">
+      <button class="wt-tab" data-tab="mine" onclick="switchTab('mine')" id="wt-tab-mine">📝 My Report</button>
+      <button class="wt-tab" data-tab="team" onclick="switchTab('team')" id="wt-tab-team">📅 Team Reports</button>
+      <button class="wt-tab" data-tab="manage" onclick="switchTab('manage')" id="wt-tab-manage" style="display:none">👥 Manage</button>
     </div>
 
-    <!-- MY LOG HISTORY (only shown if required) -->
-    <div id="my-history-section" style="display:none">
-      <div class="section-title" style="margin-bottom:10px">My Log History</div>
-      <div id="my-history-list"><div class="loader"><div class="spinner"></div></div></div>
+    <!-- MY REPORT — self-submit, every employee -->
+    <div class="card" id="wt-mine-card" style="display:none">
+      <div class="card-header"><div class="section-title" style="margin:0">Submit Today's Work Report</div></div>
+      <div id="wt-mine-form" style="padding:18px 22px"></div>
     </div>
 
-    <!-- MANAGER/ADMIN: MANAGE REQUIRED LIST -->
-    <div id="manage-section" style="display:none;margin-top:24px">
-      <div class="card" style="padding:0;margin-bottom:20px">
+    <!-- TEAM REPORTS — date-grouped table, everyone sees own scope -->
+    <div id="wt-team-wrap" style="display:none">
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;align-items:flex-end">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">From Date</label>
+            <input type="date" id="wt-from" class="form-control">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">To Date</label>
+            <input type="date" id="wt-to" class="form-control">
+          </div>
+          <button class="btn btn-primary" onclick="loadTeamReports()">🔍 Search</button>
+          <button class="btn btn-outline" onclick="downloadReports()">⬇ Download Excel</button>
+        </div>
+      </div>
+      <div class="card">
+        <div style="overflow-x:auto">
+          <table class="wt-table" id="wt-table">
+            <thead><tr id="wt-thead-row"></tr></thead>
+            <tbody id="wt-tbody"><tr><td style="text-align:center;padding:24px;color:#9ca3af">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- MANAGE — admin-tier only: toggle who's flagged "required" -->
+    <div id="wt-manage-wrap" style="display:none">
+      <div class="card" style="padding:0">
         <div class="card-header" style="padding:16px 22px">
           <div class="card-title"><span class="card-title-icon">👥</span>Who Must Fill Work Tracker</div>
-          <select id="mgmt-dept-filter" class="form-control" style="width:180px;display:none" onchange="loadRequiredList()">
+          <select id="mgmt-dept-filter" class="form-control" style="width:180px" onchange="loadRequiredList()">
             <option value="">All Departments</option>
           </select>
         </div>
         <div id="required-list-content"><div class="loader"><div class="spinner"></div></div></div>
-      </div>
-
-      <div class="card" style="padding:0">
-        <div class="card-header" style="padding:16px 22px;flex-wrap:wrap;gap:10px">
-          <div class="card-title"><span class="card-title-icon">📋</span>Submitted Logs</div>
-          <div class="flex gap-2" style="flex-wrap:wrap">
-            <input id="logs-from" class="form-control" type="date" style="width:150px">
-            <input id="logs-to" class="form-control" type="date" style="width:150px">
-            <button class="btn btn-outline btn-sm" onclick="loadLogs()">Filter</button>
-          </div>
-        </div>
-        <div id="logs-content"><div class="loader"><div class="spinner"></div></div></div>
       </div>
     </div>
 
@@ -116,32 +131,44 @@ buildSidebar('work-tracker.html');
 loadNotifBadge();
 
 const user = Auth.getUser();
-let isSuperAdmin = false; // resolved from the backend below
-
-document.getElementById('wt-date').value = new Date().toISOString().split('T')[0];
+let canManage = false;
+const PROGRESS_TEAMS = ['Survey', 'QC', 'Development', 'Remote Sensing', 'Other'];
 
 (async function init() {
   // Matches KrishiHR exactly: ANY employee can submit/view their own log,
   // always — no gating. can_manage_others (HR/Accounts/Admin/Super Admin,
-  // admin-tier only) additionally unlocks the manage/view-others panel.
+  // admin-tier only) additionally unlocks Manage.
   const status = await api('GET', '/work-tracker/my-status');
-  const canManage = !!status?.data?.can_manage_others;
-  isSuperAdmin = user.role === 'super_admin';
-
-  document.getElementById('submit-section').style.display = '';
-  document.getElementById('my-history-section').style.display = '';
-  loadMyHistory();
-
+  canManage = !!status?.data?.can_manage_others;
   if (canManage) {
-    document.getElementById('manage-section').style.display = '';
-    if (isSuperAdmin) {
-      document.getElementById('mgmt-dept-filter').style.display = '';
-      loadDepartments();
-    }
-    loadRequiredList();
-    loadLogs();
+    document.getElementById('wt-tab-manage').style.display = 'inline-block';
+    loadDepartments();
   }
+
+  const todayStr = new Date().toISOString().slice(0,10);
+  const weekAgo = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
+  document.getElementById('wt-from').value = weekAgo;
+  document.getElementById('wt-to').value = todayStr;
+
+  switchTab('mine');
 })();
+
+function switchTab(tab) {
+  document.querySelectorAll('#wt-tabs .wt-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.getElementById('wt-mine-card').style.display = 'none';
+  document.getElementById('wt-team-wrap').style.display = 'none';
+  document.getElementById('wt-manage-wrap').style.display = 'none';
+  if (tab === 'mine') {
+    document.getElementById('wt-mine-card').style.display = 'block';
+    renderMineForm();
+  } else if (tab === 'manage') {
+    document.getElementById('wt-manage-wrap').style.display = 'block';
+    loadRequiredList();
+  } else {
+    document.getElementById('wt-team-wrap').style.display = 'block';
+    loadTeamReports();
+  }
+}
 
 async function loadDepartments() {
   const data = await api('GET', '/departments');
@@ -149,42 +176,157 @@ async function loadDepartments() {
   (data?.data || []).forEach(d => { sel.innerHTML += `<option value="${d.id}">${d.name}</option>`; });
 }
 
-async function submitLog() {
-  const summary = document.getElementById('wt-summary').value.trim();
-  if (!summary) { toast('Please enter a summary', 'error'); return; }
-  const body = {
-    log_date: document.getElementById('wt-date').value,
-    summary,
-    hours_spent: document.getElementById('wt-hours').value || null,
-  };
-  const data = await api('POST', '/work-tracker/submit', body);
-  if (data?.success) {
-    toast('Log submitted', 'success');
-    document.getElementById('wt-summary').value = '';
-    document.getElementById('wt-hours').value = '';
-    loadMyHistory();
-  } else {
-    toast(data?.message || 'Failed to submit', 'error');
-  }
-}
-
-async function loadMyHistory() {
-  const el = document.getElementById('my-history-list');
-  const data = await api('GET', '/work-tracker/my-logs');
-  if (!data?.success || !data.data?.length) {
-    el.innerHTML = '<div class="empty-state" style="padding:24px"><p style="color:var(--muted)">No logs submitted yet.</p></div>';
-    return;
-  }
-  el.innerHTML = data.data.map(l => `
-    <div class="wt-log-card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <span style="font-weight:700;font-size:13px">${fmt.date(l.log_date)}</span>
-        ${l.hours_spent ? `<span style="font-size:12px;color:var(--muted)">${l.hours_spent} hrs</span>` : ''}
+// ── My Report (self-submit, edit-in-place for today) ────────────────────────
+async function renderMineForm() {
+  const wrap = document.getElementById('wt-mine-form');
+  let cur = {};
+  try { const r = await api('GET', '/work-tracker/today'); cur = r?.data || {}; } catch (_) {}
+  wrap.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Team</label>
+        <select id="pg-team" class="form-control">${PROGRESS_TEAMS.map(t => `<option ${cur.team === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
       </div>
-      <div style="font-size:13px;color:var(--muted)">${l.summary}</div>
-    </div>`).join('');
+      <div class="form-group" style="margin:0">
+        <label class="form-label">% Done Today</label>
+        <input id="pg-done" class="form-control" type="number" min="0" max="100" value="${cur.percent_done ?? ''}" placeholder="e.g. 50" oninput="pgRemain()">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">% Remaining</label>
+        <input id="pg-remain" class="form-control" value="${cur.percent_remaining != null ? cur.percent_remaining + '%' : ''}" disabled>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Estimated Finish Date</label>
+        <input id="pg-est" class="form-control" type="date" value="${cur.est_finish_date ? String(cur.est_finish_date).slice(0,10) : ''}">
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label class="form-label">Today's Task — what are you working on? *</label>
+      <textarea id="pg-today" class="form-control" rows="3" placeholder="e.g. QC of 200 acreage records for the dataset">${cur.today_task || ''}</textarea>
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label class="form-label">This Week's Task / Goal (optional)</label>
+      <textarea id="pg-week" class="form-control" rows="2" placeholder="e.g. Finish QC by Friday">${cur.week_task || ''}</textarea>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+      <div class="form-group" style="margin:0"><label class="form-label">Blockers (optional)</label><textarea id="pg-blockers" class="form-control" rows="2" placeholder="e.g. Waiting on missing data">${cur.blockers || ''}</textarea></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Remark (optional)</label><textarea id="pg-remark" class="form-control" rows="2" placeholder="e.g. Internet issues today">${cur.remark || ''}</textarea></div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="submitMine()">✅ ${cur.id ? 'Update' : 'Submit'} Today's Progress</button>
+    ${cur.id ? '<div style="font-size:12px;color:#16a34a;margin-top:8px">✓ You have already submitted today — editing updates it.</div>' : ''}
+  `;
+  pgRemain();
+}
+function pgRemain() {
+  let d = parseInt(document.getElementById('pg-done')?.value);
+  if (isNaN(d)) { document.getElementById('pg-remain').value = ''; return; }
+  d = Math.max(0, Math.min(100, d));
+  document.getElementById('pg-remain').value = (100 - d) + '%';
 }
 
+async function submitMine() {
+  const today_task = document.getElementById('pg-today').value.trim();
+  if (!today_task) { toast("Describe today's task", 'error'); return; }
+  const res = await api('POST', '/work-tracker/submit', {
+    team: document.getElementById('pg-team').value,
+    today_task,
+    percent_done: document.getElementById('pg-done').value || 0,
+    week_task: document.getElementById('pg-week').value.trim() || null,
+    est_finish_date: document.getElementById('pg-est').value || null,
+    blockers: document.getElementById('pg-blockers').value.trim() || null,
+    remark: document.getElementById('pg-remark').value.trim() || null,
+  });
+  if (res?.success) {
+    toast('Progress submitted', 'success');
+    renderMineForm();
+  } else {
+    toast(res?.message || 'Failed to submit', 'error');
+  }
+}
+
+// ── Team Reports — date-grouped colourful table (matches KrishiHR exactly) ──
+async function loadTeamReports() {
+  const thead = document.getElementById('wt-thead-row');
+  thead.innerHTML = ['Date','Employee','Code','Team',"Today's Task",'% Done','% Remain','This Week','Est. Finish','Blockers','Remark', canManage ? 'Delete' : '']
+    .map(h => `<th>${h}</th>`).join('');
+  const tbody = document.getElementById('wt-tbody');
+  const colspan = canManage ? 12 : 11;
+  tbody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:#9ca3af">Loading…</td></tr>`;
+  const from = document.getElementById('wt-from').value;
+  const to = document.getElementById('wt-to').value;
+  let url = '/work-tracker/logs?';
+  if (from) url += `from_date=${from}&`;
+  if (to) url += `to_date=${to}&`;
+  const res = await api('GET', url);
+  if (!res?.success) { tbody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:#ef4444">Failed to load</td></tr>`; return; }
+  const rows = res.data || [];
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:#9ca3af">No reports found</td></tr>`; return; }
+
+  const groups = []; const gidx = new Map();
+  for (const r of rows) {
+    const key = fmt.date(r.log_date);
+    if (!gidx.has(key)) { gidx.set(key, groups.length); groups.push({ key, rows: [] }); }
+    groups[gidx.get(key)].rows.push(r);
+  }
+  const teamColor = (t) => { const k = (t || '').toLowerCase(); return k.includes('survey') ? '#42a5f5' : k.includes('qc') ? '#ab47bc' : k.includes('mis') ? '#26c6da' : '#26a69a'; };
+  const detailRow = (r, gid) => {
+    const p = Math.max(0, Math.min(100, parseInt(r.percent_done) || 0));
+    const rem = r.percent_remaining ?? (100 - p);
+    const doneBg = p >= 100 ? '#66bb6a' : p >= 50 ? '#42a5f5' : '#ffb74d';
+    const doneFg = p >= 50 ? '#fff' : '#7a4f01';
+    const remBg = rem <= 0 ? '#eceff1' : rem >= 50 ? '#ef5350' : '#ffb74d';
+    const remFg = rem <= 0 ? '#78909c' : rem >= 50 ? '#fff' : '#7a4f01';
+    return `<tr class="wt-detail" data-dg="${gid}">
+    <td class="wt-c" style="font-size:11.5px">${fmt.date(r.log_date)}</td>
+    <td style="font-weight:700;color:#263238">${r.employee_name || ''}</td>
+    <td class="wt-c" style="font-weight:600">${r.employee_code || ''}</td>
+    <td class="wt-c">${r.team ? `<span class="wt-team" style="background:${teamColor(r.team)}">${r.team}</span>` : '—'}</td>
+    <td style="max-width:260px;white-space:normal">${r.today_task || ''}</td>
+    <td class="wt-c" style="background:${doneBg};color:${doneFg};font-weight:800">${p}%</td>
+    <td class="wt-c" style="background:${remBg};color:${remFg};font-weight:700">${rem}%</td>
+    <td style="max-width:200px;white-space:normal">${r.week_task || '—'}</td>
+    <td class="wt-c" style="font-size:11.5px">${r.est_finish_date ? fmt.date(r.est_finish_date) : '—'}</td>
+    <td style="max-width:180px;white-space:normal">${r.blockers || '—'}</td>
+    <td style="max-width:180px;white-space:normal">${r.remark || '—'}</td>
+    ${canManage ? `<td class="wt-c"><button class="btn btn-outline btn-sm" style="color:#b91c1c;border-color:#fecaca" onclick="deleteLog(${r.id})">🗑</button></td>` : ''}
+  </tr>`;
+  };
+  tbody.innerHTML = groups.map((g, gi) => {
+    const gid = 'dg' + gi;
+    const n = g.rows.length;
+    const header = `<tr class="wt-date-hdr" onclick="toggleDate('${gid}',this)">
+      <td colspan="${colspan}"><span class="wt-caret">▾</span>${g.key}<span class="wt-cnt">${n} ${n === 1 ? 'entry' : 'entries'}</span></td>
+    </tr>`;
+    return header + g.rows.map(r => detailRow(r, gid)).join('');
+  }).join('');
+}
+
+function toggleDate(gid, el) {
+  const collapsed = el.classList.toggle('collapsed');
+  const caret = el.querySelector('.wt-caret');
+  if (caret) caret.textContent = collapsed ? '▸' : '▾';
+  document.querySelectorAll(`#wt-tbody tr.wt-detail[data-dg="${gid}"]`)
+    .forEach(tr => tr.classList.toggle('collapsed', collapsed));
+}
+
+async function deleteLog(id) {
+  if (!confirm('Delete this progress entry? This cannot be undone.')) return;
+  const res = await api('DELETE', `/work-tracker/${id}`);
+  if (res?.success) { toast('Deleted', 'success'); loadTeamReports(); }
+  else toast(res?.message || 'Failed to delete', 'error');
+}
+
+function downloadReports() {
+  const from = document.getElementById('wt-from').value;
+  const to = document.getElementById('wt-to').value;
+  let url = `${API_BASE}/work-tracker/export?`;
+  if (from) url += `from_date=${from}&`;
+  if (to) url += `to_date=${to}&`;
+  url += `token=${encodeURIComponent(Auth.getToken())}`;
+  window.open(url, '_blank');
+}
+
+// ── Manage — admin-tier: toggle "required" ──────────────────────────────────
 async function loadRequiredList() {
   const el = document.getElementById('required-list-content');
   el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
@@ -201,7 +343,7 @@ async function loadRequiredList() {
         <div style="font-weight:600;font-size:13px">${e.name} <span style="color:var(--muted);font-weight:400">(${e.employee_code})</span></div>
         ${e.department_name ? `<div style="font-size:11px;color:var(--muted)">${e.department_name}</div>` : ''}
       </div>
-      <div class="wt-toggle ${e.work_tracker_required ? 'on' : ''}" onclick="toggleRequired(${e.id}, ${!e.work_tracker_required}, this)"></div>
+      <div class="wt-toggle ${e.work_tracker_required ? 'on' : ''}" onclick="toggleRequired(${e.id}, ${!e.work_tracker_required}, this)"><div class="knob"></div></div>
     </div>`).join('');
 }
 
@@ -213,44 +355,6 @@ async function toggleRequired(employeeId, required, el) {
   } else {
     toast(data?.message || 'Failed to update', 'error');
   }
-}
-
-async function loadLogs() {
-  const el = document.getElementById('logs-content');
-  el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
-  const from = document.getElementById('logs-from')?.value || '';
-  const to   = document.getElementById('logs-to')?.value || '';
-  const deptId = document.getElementById('mgmt-dept-filter')?.value || '';
-  let qs = [];
-  if (from) qs.push('from_date=' + from);
-  if (to)   qs.push('to_date=' + to);
-  if (deptId) qs.push('department_id=' + deptId);
-  const data = await api('GET', '/work-tracker/logs' + (qs.length ? '?' + qs.join('&') : ''));
-  if (!data?.success || !data.data?.length) {
-    el.innerHTML = '<div class="empty-state" style="padding:24px"><p style="color:var(--muted)">No logs found.</p></div>';
-    return;
-  }
-  const XLH = `border:1px solid #e5e7eb;background:#f8fafc;font-weight:700;font-size:11px;padding:8px 10px;text-align:left`;
-  const XLD = `border:1px solid #e5e7eb;padding:7px 10px;font-size:12px`;
-  el.innerHTML = `
-    <div style="overflow-x:auto;padding:0 22px 16px">
-    <table style="border-collapse:collapse;width:100%">
-      <thead><tr>
-        <th style="${XLH}">Date</th><th style="${XLH}">Emp Code</th><th style="${XLH}">Name</th>
-        <th style="${XLH}">Department</th><th style="${XLH}">Hours</th><th style="${XLH}">Summary</th>
-      </tr></thead>
-      <tbody>
-        ${data.data.map((l,i) => `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
-          <td style="${XLD}">${fmt.date(l.log_date)}</td>
-          <td style="${XLD};font-weight:700;color:var(--accent)">${l.employee_code}</td>
-          <td style="${XLD}">${l.employee_name}</td>
-          <td style="${XLD};color:var(--muted)">${l.department_name||'—'}</td>
-          <td style="${XLD};text-align:center">${l.hours_spent||'—'}</td>
-          <td style="${XLD};color:var(--muted)">${l.summary}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>
-    </div>`;
 }
 </script>
 </body>

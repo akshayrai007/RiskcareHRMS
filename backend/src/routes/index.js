@@ -1124,7 +1124,10 @@ router.post  ('/work-tracker/set-required',   authenticate, workTrackerCtrl.setR
 router.get   ('/work-tracker/required-list',  authenticate, workTrackerCtrl.getRequiredList);
 router.post  ('/work-tracker/submit',         authenticate, workTrackerCtrl.submitLog);
 router.get   ('/work-tracker/my-logs',        authenticate, workTrackerCtrl.getMyLogs);
+router.get   ('/work-tracker/today',          authenticate, workTrackerCtrl.getMyToday);
+router.delete('/work-tracker/:id',            authenticate, workTrackerCtrl.deleteLog);
 router.get   ('/work-tracker/logs',           authenticate, workTrackerCtrl.listLogs);
+router.get   ('/work-tracker/export',         authenticate, workTrackerCtrl.exportLogs);
 router.delete('/send-documents/:id',          authenticate,                         sendDocsCtrl.deleteDoc);
 
 // ── Work Tickets (support/request tracker — separate from Task Assignment) ────
