@@ -104,7 +104,7 @@ async function loadBoard() {
   const data = await api('GET', `/tasks/board${qs}`);
   if (!data?.success) { el.innerHTML = '<div class="empty-state"><p>Failed to load board.</p></div>'; return; }
 
-  el.innerHTML = data.order.map(status => {
+  el.innerHTML = data.data.order.map(status => {
     const tasks = data.data.columns[status] || [];
     return `
     <div class="board-col">
@@ -127,6 +127,7 @@ function renderCard(t) {
       👤 ${t.assignee_name} (${t.assignee_code})${t.department_name ? ' · ' + t.department_name : ''}
       ${dueStr ? ' · Due ' + dueStr : ''}
     </div>
+    ${t.supervisor_name ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">🧑‍💼 Supervisor: ${t.supervisor_name}</div>` : ''}
   </div>`;
 }
 </script>

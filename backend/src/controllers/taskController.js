@@ -46,6 +46,8 @@ async function ensureTables() {
         description    TEXT,
         assigned_to    INT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
         assigned_by    INT REFERENCES employees(id) ON DELETE SET NULL,
+        supervisor_id  INT REFERENCES employees(id) ON DELETE SET NULL,
+        team           VARCHAR(60),
         priority       VARCHAR(10) DEFAULT 'medium' CHECK (priority IN ('low','medium','high')),
         status         VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending','in_progress','completed')),
         is_compulsory  BOOLEAN DEFAULT FALSE,
@@ -55,6 +57,8 @@ async function ensureTables() {
         updated_at     TIMESTAMP DEFAULT NOW()
       )
     `);
+    await db.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS supervisor_id INT REFERENCES employees(id) ON DELETE SET NULL`);
+    await db.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS team VARCHAR(60)`);
     await db.query(`CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to ON tasks(assigned_to)`);
     await db.query(`CREATE INDEX IF NOT EXISTS idx_tasks_assigned_by ON tasks(assigned_by)`);
   })().catch(err => { ready = null; throw err; });
@@ -64,21 +68,23 @@ exports.ensureTables = ensureTables;
 
 const TASK_SELECT = `
   t.id, t.title, t.description, t.priority, t.status, t.is_compulsory,
-  t.due_date, t.completed_at, t.created_at, t.updated_at,
+  t.due_date, t.completed_at, t.created_at, t.updated_at, t.team,
   t.assigned_to, CONCAT(a.first_name,' ',a.last_name) AS assignee_name, a.employee_code AS assignee_code,
   d.name AS department_name,
-  t.assigned_by, CONCAT(b.first_name,' ',b.last_name) AS assigner_name`;
+  t.assigned_by, CONCAT(b.first_name,' ',b.last_name) AS assigner_name,
+  t.supervisor_id, CONCAT(s.first_name,' ',s.last_name) AS supervisor_name`;
 const TASK_JOINS = `
   FROM tasks t
   JOIN employees a ON a.id = t.assigned_to
   LEFT JOIN departments d ON d.id = a.department_id
-  LEFT JOIN employees b ON b.id = t.assigned_by`;
+  LEFT JOIN employees b ON b.id = t.assigned_by
+  LEFT JOIN employees s ON s.id = t.supervisor_id`;
 
 // ── Create / Assign ───────────────────────────────────────────────────────────
 exports.createTask = async (req, res) => {
   try {
     await ensureTables();
-    const { title, description, assigned_to, priority, is_compulsory, due_date } = req.body;
+    const { title, description, assigned_to, supervisor_id, team, priority, is_compulsory, due_date } = req.body;
     if (!title || !String(title).trim())
       return res.status(400).json({ success: false, message: 'Title is required' });
     const assigneeId = parseInt(assigned_to);
@@ -86,6 +92,9 @@ exports.createTask = async (req, res) => {
       return res.status(400).json({ success: false, message: 'assigned_to is required' });
     if (priority && !PRIORITIES.includes(priority))
       return res.status(400).json({ success: false, message: 'Invalid priority' });
+    const supervisorId = supervisor_id ? parseInt(supervisor_id) : null;
+    if (supervisorId && supervisorId === assigneeId)
+      return res.status(400).json({ success: false, message: "Supervisor can't also be the assignee" });
 
     // Managers (anyone with actual reportees) may only assign to their own
     // direct reportees. Super Admin can assign to anyone.
@@ -103,9 +112,9 @@ exports.createTask = async (req, res) => {
     }
 
     const ins = await db.query(
-      `INSERT INTO tasks (title, description, assigned_to, assigned_by, priority, is_compulsory, due_date)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-      [String(title).trim(), description || null, assigneeId, req.user.id,
+      `INSERT INTO tasks (title, description, assigned_to, assigned_by, supervisor_id, team, priority, is_compulsory, due_date)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+      [String(title).trim(), description || null, assigneeId, req.user.id, supervisorId, (team || '').trim() || null,
        priority || 'medium', !!is_compulsory, due_date || null]
     );
     const taskId = ins.rows[0].id;
