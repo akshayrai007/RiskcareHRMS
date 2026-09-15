@@ -1694,7 +1694,7 @@ async function loadPunchStatus() {
       statusEl.textContent = `✅ Punched in at ${fmtTime(today.punch_in)} · out at ${fmtTime(today.punch_out)}`;
       btnEl.style.display = 'none';
     } else if (today?.punch_in) {
-      statusEl.textContent = `🟢 Punched in at ${fmtTime(today.punch_in)} — still working`;
+      statusEl.textContent = `🟢 Punched in at ${fmtTime(today.punch_in)} · working for ${elapsedSince(today.punch_in)}`;
       btnEl.textContent = '🔓 Punch Out';
       btnEl.style.display = 'inline-flex';
     } else {
@@ -1707,6 +1707,14 @@ async function loadPunchStatus() {
     btnEl.textContent = 'Go to Attendance';
     btnEl.style.display = 'inline-flex';
   }
+}
+function elapsedSince(hhmmss) {
+  const [h, m] = hhmmss.split(':').map(Number);
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: window.CFG.timezone }));
+  const start = new Date(now); start.setHours(h, m, 0, 0);
+  let mins = Math.max(0, Math.round((now - start) / 60000));
+  const hrs = Math.floor(mins / 60); mins %= 60;
+  return hrs ? `${hrs}h ${mins}m` : `${mins}m`;
 }
 function fmtTime(t) {
   if (!t) return '';
