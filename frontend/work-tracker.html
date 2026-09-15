@@ -67,7 +67,7 @@
 
     <div class="wt-tabs" id="wt-tabs">
       <button class="wt-tab" data-tab="mine" onclick="switchTab('mine')" id="wt-tab-mine">📝 My Report</button>
-      <button class="wt-tab" data-tab="team" onclick="switchTab('team')" id="wt-tab-team">📅 Team Reports</button>
+      <button class="wt-tab" data-tab="team" onclick="switchTab('team')" id="wt-tab-team" style="display:none">📅 Team Reports</button>
       <button class="wt-tab" data-tab="manage" onclick="switchTab('manage')" id="wt-tab-manage" style="display:none">👥 Manage</button>
     </div>
 
@@ -143,6 +143,7 @@ let _wtDepartments = [];
   const status = await api('GET', '/work-tracker/my-status');
   canManage = !!status?.data?.can_manage_others;
   if (canManage) {
+    document.getElementById('wt-tab-team').style.display = 'inline-block';
     document.getElementById('wt-tab-manage').style.display = 'inline-block';
     loadDepartments();
   }
