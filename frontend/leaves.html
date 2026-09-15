@@ -228,14 +228,14 @@
       </div>
       <div class="form-group">
         <label class="form-label">Leave Type *</label>
-        <select id="fl-type" class="form-control">
+        <select id="fl-type" class="form-control" onchange="flAutoCalcML()">
           <option value="">Select…</option>
         </select>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">From Date *</label>
-          <input id="fl-from" type="date" class="form-control">
+          <input id="fl-from" type="date" class="form-control" onchange="flAutoCalcML()">
         </div>
         <div class="form-group">
           <label class="form-label">To Date *</label>
@@ -582,6 +582,17 @@ function updateAvailable() {
   if (bal) el.textContent = `✓ Available: ${fmt.num(bal.available)} days`;
   else el.textContent = '';
   updateHalfDayBadge(); // refresh H-CL / H-EL etc. badge when type changes
+
+  // Maternity Leave: if a From Date is already picked, auto-fill To Date
+  // as 6 months (26 weeks) later — still editable.
+  const fromVal = document.getElementById('apply-from').value;
+  if (code === 'ML' && fromVal && !_isHalfDay) {
+    const d = new Date(fromVal + 'T00:00:00');
+    d.setMonth(d.getMonth() + 6);
+    d.setDate(d.getDate() - 1);
+    document.getElementById('apply-to').value = d.toISOString().slice(0, 10);
+    calcDays();
+  }
 }
 
 function isNthSaturday(date, n) {
@@ -865,6 +876,18 @@ function onDateChange() {
   if (_isHalfDay) {
     const fromVal = document.getElementById('apply-from').value;
     document.getElementById('apply-to').value = fromVal;
+  } else {
+    // Maternity Leave: auto-fill To Date as 6 months (26 weeks) from the
+    // start date — still editable in case HR needs to adjust it.
+    const sel  = document.getElementById('apply-type');
+    const code = sel.options[sel.selectedIndex]?.dataset?.code;
+    const fromVal = document.getElementById('apply-from').value;
+    if (code === 'ML' && fromVal) {
+      const d = new Date(fromVal + 'T00:00:00');
+      d.setMonth(d.getMonth() + 6);
+      d.setDate(d.getDate() - 1); // inclusive end date, matches a 26-week span
+      document.getElementById('apply-to').value = d.toISOString().slice(0, 10);
+    }
   }
   calcDays();
 }
@@ -1297,7 +1320,7 @@ async function openForceLeaveModal() {
   empSel.innerHTML = '<option value="">Select employee…</option>' +
     (emps?.data||[]).map(e => `<option value="${e.id}">${e.first_name} ${e.last_name} (${e.employee_code})</option>`).join('');
   typSel.innerHTML = '<option value="">Select leave type…</option>' +
-    (types?.data||[]).map(t => `<option value="${t.id}">${t.name} (${t.code})</option>`).join('');
+    (types?.data||[]).map(t => `<option value="${t.id}" data-code="${t.code}">${t.name} (${t.code})</option>`).join('');
 
   // Default dates to today
   const today = new Date().toISOString().split('T')[0];
@@ -1305,6 +1328,20 @@ async function openForceLeaveModal() {
   document.getElementById('fl-to').value   = today;
   document.getElementById('fl-reason').value = '';
   openModal('force-leave-modal');
+}
+
+// Maternity Leave: auto-fill To Date as 6 months (26 weeks) from the start
+// date whenever the type or From Date changes — still editable afterward.
+function flAutoCalcML() {
+  const typSel = document.getElementById('fl-type');
+  const code = typSel.options[typSel.selectedIndex]?.dataset?.code;
+  const fromVal = document.getElementById('fl-from').value;
+  if (code === 'ML' && fromVal) {
+    const d = new Date(fromVal + 'T00:00:00');
+    d.setMonth(d.getMonth() + 6);
+    d.setDate(d.getDate() - 1);
+    document.getElementById('fl-to').value = d.toISOString().slice(0, 10);
+  }
 }
 
 async function submitForceLeave() {
