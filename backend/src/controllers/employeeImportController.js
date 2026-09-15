@@ -628,21 +628,29 @@ exports.downloadImportTemplate = async (req, res) => {
     // HR sees the expected format rather than guessing — never written back
     // if this row is left in the sheet by mistake (Emp Code will already
     // exist, so the import simply skips it as a duplicate).
-    const sampleRes = await db.query(`
-      SELECT e.employee_code, e.first_name, e.last_name, e.email, e.phone, e.gender,
-             d.name AS department, des.title AS designation, e.role,
-             e.employee_category, e.level, e.employment_type,
-             COALESCE(e.saturday_policy,'2nd_4th_off') AS saturday_policy,
-             m.employee_code AS manager_code, tl.employee_code AS tl_code,
-             e.city, e.state
-      FROM employees e
-      LEFT JOIN departments d ON e.department_id = d.id
-      LEFT JOIN designations des ON e.designation_id = des.id
-      LEFT JOIN employees m ON e.reporting_manager_id = m.id
-      LEFT JOIN employees tl ON e.team_leader_id = tl.id
-      WHERE e.is_active = true
-      ORDER BY e.id LIMIT 1`);
-    const ex = sampleRes.rows[0] || {};
+    // Best-effort — if this query fails for any reason (a column mismatch on
+    // an older schema, etc.), fall back to the hardcoded defaults below
+    // rather than 500ing the whole template download.
+    let ex = {};
+    try {
+      const sampleRes = await db.query(`
+        SELECT e.employee_code, e.first_name, e.last_name, e.email, e.phone, e.gender,
+               d.name AS department, des.title AS designation, e.role,
+               e.employee_category, e.level, e.employment_type,
+               COALESCE(e.saturday_policy,'2nd_4th_off') AS saturday_policy,
+               m.employee_code AS manager_code, tl.employee_code AS tl_code,
+               e.city, e.state
+        FROM employees e
+        LEFT JOIN departments d ON e.department_id = d.id
+        LEFT JOIN designations des ON e.designation_id = des.id
+        LEFT JOIN employees m ON e.reporting_manager_id = m.id
+        LEFT JOIN employees tl ON e.team_leader_id = tl.id
+        WHERE e.is_active = true
+        ORDER BY e.id LIMIT 1`);
+      ex = sampleRes.rows[0] || {};
+    } catch (sampleErr) {
+      console.error('[downloadImportTemplate] sample row skipped:', sampleErr.message);
+    }
 
     const sampleRow = [
       'E999 (SAMPLE — DELETE THIS ROW)', '', 'John', 'Doe',
