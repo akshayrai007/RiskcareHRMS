@@ -156,10 +156,11 @@ router.get('/leave-types', authenticate, async (req, res) => {
 
     // Determine if this employee is currently on provisional period
     const empRes = await db.query(
-      `SELECT employee_category, provision_end_date, joining_date FROM employees WHERE id=$1`,
+      `SELECT employee_category, provision_end_date, joining_date, gender FROM employees WHERE id=$1`,
       [empId]
     );
     const emp = empRes.rows[0];
+    const isFemale = String(emp?.gender || '').toLowerCase().startsWith('f');
     const now = new Date();
 
     // Contractual: provisional if still within 6 months of joining
@@ -176,12 +177,14 @@ router.get('/leave-types', authenticate, async (req, res) => {
       isContractualProvisional ||
       (emp?.employee_category === 'provision' && provisionEndDate && provisionEndDate > now);
 
-    // Provisional employees: only PL. Confirmed employees: everything except PL.
-    // 'ML' (Maternity Leave) is never self-service — HR logs it directly via
-    // the "Apply on Behalf" flow, so it's excluded from the employee dropdown here.
+    // Provisional employees: only PL. Confirmed employees: everything except
+    // PL — including ML for female employees (self-service, with the 6-month
+    // auto-calc on the apply form), matching the balance card they already see.
     const codeFilter = isProvisional
       ? `AND code = 'PL'`
-      : `AND code NOT IN ('PL','ML')`;
+      : isFemale
+        ? `AND code != 'PL'`
+        : `AND code NOT IN ('PL','ML')`;
 
     const r = await db.query(
       `SELECT id, name, code, days_allowed, monthly_accrual,
