@@ -839,13 +839,24 @@
       <button class="modal-close" onclick="closeModal('assign-modal')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="search-wrap">
-        <input class="search-input" id="assign-search" placeholder="Search employees…" oninput="filterAssignList()">
+      <div style="display:flex;gap:8px">
+        <div class="search-wrap" style="flex:1">
+          <input class="search-input" id="assign-search" placeholder="Search employees…" oninput="filterAssignList()">
+        </div>
+        <select id="assign-branch-filter" class="search-input" style="max-width:200px" onchange="filterAssignList()">
+          <option value="">All Branches</option>
+        </select>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
+      <div style="display:flex;gap:8px;margin:12px 0">
         <button class="btn btn-ghost btn-sm" onclick="selectAllAssign()">Select All</button>
         <button class="btn btn-ghost btn-sm" onclick="clearAllAssign()">Clear All</button>
         <span id="assign-sel-count" style="font-size:12px;color:var(--g-muted);align-self:center"></span>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;padding:8px 10px;background:var(--g-green-l,#eaf4ee);border-radius:8px">
+        <label style="font-size:12px;color:var(--g-slate);display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="assign-bulk-universal" style="accent-color:var(--accent)"> Universal
+        </label>
+        <button class="btn btn-outline btn-sm" onclick="applyRuleToSelected()">Apply rule to selected</button>
       </div>
       <div id="assign-emp-list" style="max-height:380px;overflow-y:auto"></div>
     </div>
@@ -1655,6 +1666,7 @@ async function openAssignModal(locId) {
   const loc = _allLocations.find(l => l.id === locId);
   document.getElementById('assign-modal-title').textContent = `👥 Assign Employees — ${loc?.name || ''}`;
   document.getElementById('assign-search').value = '';
+  document.getElementById('assign-bulk-universal').checked = false;
 
   // Get currently assigned
   const data = await api('GET', `/geofence/locations/${locId}/employees`);
@@ -1662,18 +1674,23 @@ async function openAssignModal(locId) {
   const assignedIds = new Set(assigned.map(e => e.id));
   const isGlobalLoc = (loc?.radius_meters || 0) >= 10000;
 
+  // Branch filter dropdown — distinct branches across all employees
+  const branchSel = document.getElementById('assign-branch-filter');
+  const branches = [...new Set(_allEmployees.map(e => (e.branch || '').trim()).filter(Boolean))].sort();
+  branchSel.innerHTML = `<option value="">All Branches</option>` + branches.map(b => `<option value="${b}">${b}</option>`).join('');
+
   document.getElementById('assign-emp-list').innerHTML = _allEmployees.map(e => {
     const isChecked   = assignedIds.has(e.id);
     // For already-assigned employees use saved flag; for new ones default to Office for office locations, Universal for global zones
     const existingAssign = assigned.find(a => a.id === e.id);
     const isUniversal = existingAssign ? existingAssign.is_universal : isGlobalLoc;
-    return `<div class="asgn-row" id="arow-${e.id}" data-name="${(e.first_name+' '+e.last_name+' '+e.employee_code).toLowerCase()}">
+    return `<div class="asgn-row" id="arow-${e.id}" data-name="${(e.first_name+' '+e.last_name+' '+e.employee_code).toLowerCase()}" data-branch="${(e.branch||'').trim()}">
       <div style="display:flex;align-items:center;gap:8px">
         <input type="checkbox" id="acheck-${e.id}" ${isChecked?'checked':''} onchange="updateAssignCount()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent)">
         <div class="avatar" style="width:26px;height:26px;font-size:10px;flex-shrink:0">${e.first_name?.[0]||'?'}</div>
         <div>
           <div style="font-size:12.5px;font-weight:600">${e.first_name} ${e.last_name}</div>
-          <div style="font-size:11px;color:var(--muted)">${e.employee_code} · ${e.city||'—'}</div>
+          <div style="font-size:11px;color:var(--muted)">${e.employee_code} · ${e.branch || e.city || '—'}</div>
         </div>
       </div>
       <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer">
@@ -1691,12 +1708,40 @@ function updateAssignCount() {
 }
 function filterAssignList() {
   const q = document.getElementById('assign-search').value.toLowerCase();
+  const branch = document.getElementById('assign-branch-filter').value;
   document.querySelectorAll('[id^="arow-"]').forEach(row => {
-    row.style.display = !q || row.dataset.name.includes(q) ? '' : 'none';
+    const matchesQ = !q || row.dataset.name.includes(q);
+    const matchesBranch = !branch || row.dataset.branch === branch;
+    row.style.display = (matchesQ && matchesBranch) ? '' : 'none';
   });
 }
-function selectAllAssign() { document.querySelectorAll('[id^="acheck-"]').forEach(cb => cb.checked = true); updateAssignCount(); }
-function clearAllAssign()  { document.querySelectorAll('[id^="acheck-"]').forEach(cb => cb.checked = false); updateAssignCount(); }
+function selectAllAssign() {
+  document.querySelectorAll('[id^="arow-"]').forEach(row => {
+    if (row.style.display === 'none') return;
+    const cb = row.querySelector('[id^="acheck-"]');
+    if (cb) cb.checked = true;
+  });
+  updateAssignCount();
+}
+function clearAllAssign() {
+  document.querySelectorAll('[id^="arow-"]').forEach(row => {
+    if (row.style.display === 'none') return;
+    const cb = row.querySelector('[id^="acheck-"]');
+    if (cb) cb.checked = false;
+  });
+  updateAssignCount();
+}
+// Applies the "Universal" checkbox state to every currently-selected (checked) employee row
+function applyRuleToSelected() {
+  const makeUniversal = document.getElementById('assign-bulk-universal').checked;
+  let count = 0;
+  document.querySelectorAll('[id^="acheck-"]:checked').forEach(cb => {
+    const id = cb.id.replace('acheck-', '');
+    const univCb = document.getElementById(`auniv-${id}`);
+    if (univCb) { univCb.checked = makeUniversal; count++; }
+  });
+  toast(count ? `Applied ${makeUniversal ? 'Universal' : 'Office'} rule to ${count} selected` : 'No employees selected');
+}
 
 async function saveAssignments() {
   const checked = [], unchecked = [];
@@ -1995,22 +2040,32 @@ async function openAssignModal(locId) {
   const loc = _allLocations.find(l => l.id === locId);
   document.getElementById('assign-modal-title').textContent = `Assign Employees — ${loc?.name || ''}`;
   document.getElementById('assign-search').value = '';
+  const bulkUniv = document.getElementById('assign-bulk-universal');
+  if (bulkUniv) bulkUniv.checked = false;
   const data = await api('GET', `/geofence/locations/${locId}/employees`);
   const assigned = data?.data || [];
   const assignedIds = new Set(assigned.map(e => e.id));
   const isGlobalLoc = (loc?.radius_meters || 0) >= 10000;
+
+  // Branch filter dropdown — distinct branches across all employees
+  const branchSel = document.getElementById('assign-branch-filter');
+  if (branchSel) {
+    const branches = [...new Set(_allEmployees.map(e => (e.branch || '').trim()).filter(Boolean))].sort();
+    branchSel.innerHTML = `<option value="">All Branches</option>` + branches.map(b => `<option value="${b}">${b}</option>`).join('');
+  }
+
   document.getElementById('assign-emp-list').innerHTML = _allEmployees.map(e => {
     const isChecked   = assignedIds.has(e.id);
     // For already-assigned employees use saved flag; for new ones default to Office for office locations, Universal for global zones
     const existingAssign = assigned.find(a => a.id === e.id);
     const isUniversal = existingAssign ? existingAssign.is_universal : isGlobalLoc;
-    return `<div class="g-asgn-row" id="arow-${e.id}" data-name="${(e.first_name+' '+e.last_name+' '+e.employee_code).toLowerCase()}">
+    return `<div class="g-asgn-row" id="arow-${e.id}" data-name="${(e.first_name+' '+e.last_name+' '+e.employee_code).toLowerCase()}" data-branch="${(e.branch||'').trim()}">
       <div style="display:flex;align-items:center;gap:10px">
         <input type="checkbox" id="acheck-${e.id}" ${isChecked?'checked':''} onchange="updateAssignCount()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--g-green)">
         <div class="g-avatar" style="width:28px;height:28px;font-size:10.5px">${e.first_name?.[0]||'?'}</div>
         <div>
           <div style="font-size:13px;font-weight:600;color:var(--g-slate)">${e.first_name} ${e.last_name}</div>
-          <div style="font-size:11px;color:var(--g-muted)">${e.employee_code} · ${e.city||'—'}</div>
+          <div style="font-size:11px;color:var(--g-muted)">${e.employee_code} · ${e.branch || e.city || '—'}</div>
         </div>
       </div>
       <label style="font-size:11.5px;color:var(--g-muted);display:flex;align-items:center;gap:5px;cursor:pointer">
