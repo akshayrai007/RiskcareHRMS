@@ -896,8 +896,9 @@
 <script>
 
 Auth.guard();
-// Admin only.
-if (Auth.getUser()?.role !== 'admin') { window.location.href = 'dashboard.html'; throw new Error('geofence.html restricted'); }
+// Admin + Super Admin only — never lock out Super Admin from a page a
+// regular Admin can reach.
+if (!['admin','super_admin'].includes(Auth.getUser()?.role)) { window.location.href = 'dashboard.html'; throw new Error('geofence.html restricted'); }
 buildSidebar('geofence.html');
 
 loadNotifBadge();

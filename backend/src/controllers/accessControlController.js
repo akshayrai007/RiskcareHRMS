@@ -112,7 +112,7 @@ const ROLE_DEFAULTS = {
   'separation.html':       rowFor(F, F, F, F, R, R, O),
   'employees.html':        rowFor(F, F, F, R, R, R, N),
   'org-chart.html':        rowFor(F, F, F, F, F, F, F),
-  'geofence.html':         rowFor(N, N, N, F, N, N, N),   // Admin only
+  'geofence.html':         rowFor(F, N, N, F, N, N, N),   // Admin + Super Admin only — never lock out Super Admin
   'ai-voice.html':         rowFor(F, F, F, F, F, F, F),
   'movement.html':         rowFor(N, N, N, N, N, N, N),   // hidden — no web equivalent
   'import_employees.html': rowFor(N, N, N, N, N, N, N),   // legacy, superseded by Employees > Import
