@@ -1910,7 +1910,10 @@ function empSubRow(locId) {
 
   const rows = emps.map(e => {
     const rule     = _allRules.find(r => r.id == e.id);
-    const rt       = rule?.rule_type || '';
+    // These employees are already known to be assigned to this specific
+    // office (came from the location's own employee list), so a missing
+    // buffer-rule row still means "Office", not "—".
+    const rt       = rule?.rule_type || (isGlobalLoc ? '' : 'office');
     const boundary = rt === 'district' ? `${rule.district}, ${rule.state}`
                    : rt === 'state'    ? rule.state
                    : rt === 'office'   ? 'Office radius'
@@ -2148,7 +2151,11 @@ function renderEmpTable() {
 
   const emps = _allEmployees.filter(e => {
     const rule = _allRules.find(r => r.id == e.id);
-    const rt   = rule?.rule_type || 'none';
+    // rule_type only covers district/state/universal buffer rules -- a
+    // direct office assignment (employee_geofence) has office_location_id
+    // set but no rule_type row, so without this fallback every directly
+    // assigned employee showed as "None" here despite having an office.
+    const rt   = rule?.rule_type || (rule?.office_location_id ? 'office' : 'none');
     if (filter && filter !== rt) return false;
     const name = (e.first_name + ' ' + e.last_name + ' ' + e.employee_code + ' ' + (e.city||'')).toLowerCase();
     if (q && !name.includes(q)) return false;
@@ -2168,7 +2175,7 @@ function renderEmpTable() {
 
 function empCard(e) {
   const rule = _allRules.find(r => r.id == e.id);
-  const rt   = rule?.rule_type || '';
+  const rt   = rule?.rule_type || (rule?.office_location_id ? 'office' : '');
 
   // Badge
   const badgeMap = {
@@ -2206,7 +2213,7 @@ function openEmpDrawer(empId, event) {
   _drawerEmpId = empId;
   const e    = _allEmployees.find(x => x.id === empId);
   const rule = _allRules.find(r => r.id == empId);
-  const rt   = rule?.rule_type || 'universal';
+  const rt   = rule?.rule_type || (rule?.office_location_id ? 'office' : 'universal');
   if (!e) return;
 
   // Header
@@ -2234,7 +2241,7 @@ function openEmpDrawer(empId, event) {
   _allLocations.filter(l => l.radius_meters < 10000 && l.is_active).forEach(l => {
     const opt = document.createElement('option');
     opt.value = l.id; opt.textContent = l.name;
-    if (rule?.rule_type === 'office' && rule?.office_location_id == l.id) opt.selected = true;
+    if (rt === 'office' && rule?.office_location_id == l.id) opt.selected = true;
     osel.appendChild(opt);
   });
 
