@@ -1715,11 +1715,24 @@ async function loadPunchStatus() {
 
 // Geofence verification (with the map UI) is only required on a phone — a
 // desktop has no GPS to trust anyway and the backend skips the check for
-// it too (see isMobileRequest() in attendanceController.js). So punch
-// in/out straight from Home on desktop; on mobile, send them to
-// attendance.html where the map/GPS verification flow lives.
+// it too (see attendanceController.js — geofence is now coordinate-gated,
+// not device-gated). Native mobile still goes through attendance.html's
+// full map UI; on a laptop/desktop we just ask the browser for a location
+// fix here — a laptop that grants it gets verified against office bounds,
+// a bare desktop with no location hardware gets no fix and punches through
+// with no check, same as before.
 function isMobileClient() {
   return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+function getBrowserLocation() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { timeout: 8000, enableHighAccuracy: true }
+    );
+  });
 }
 async function handleHomePunch() {
   const btnEl = document.getElementById('ann-punch-btn');
@@ -1730,10 +1743,15 @@ async function handleHomePunch() {
   try {
     const ist = new Date().toLocaleString('en-GB', { timeZone: window.CFG.timezone, hour12: false });
     const punch_time = ist.split(', ')[1];
-    const res = await api('POST', `/attendance/punch-${action}`, { punch_time });
+    const loc = await getBrowserLocation();
+    const body = { punch_time };
+    if (loc) { body.location_lat = loc.lat; body.location_lng = loc.lng; }
+    const res = await api('POST', `/attendance/punch-${action}`, body);
     if (res?.success) {
       toast?.(res.message || (action === 'in' ? 'Punched in' : 'Punched out'));
       await loadPunchStatus();
+    } else if (res?.outside_boundary) {
+      toast?.(res.message || 'Outside office location', 'error');
     } else {
       toast?.(res?.message || 'Punch failed', 'error');
     }
