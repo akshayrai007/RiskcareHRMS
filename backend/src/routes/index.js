@@ -54,6 +54,9 @@ router.get   ('/employees/export-master',        authenticate, authorize(...EMP_
 router.get   ('/attendance/export-register',     authenticate, authorize('hr','accounts','super_admin'), empCtrl.exportAttendanceRegister);
 router.get   ('/employees/code-preview',  authenticate, authorize(...EMP_MGMT), empCtrl.previewNextCode);
 router.get   ('/employees/contacts',      authenticate,                          empCtrl.getContacts);
+// Must stay above '/employees/:id' — otherwise Express matches "import-template"
+// as :id and this never reaches downloadImportTemplate at all.
+router.get   ('/employees/import-template', authenticate, authorize('hr'), empImportCtrl.downloadImportTemplate);
 router.get   ('/employees/:id',           authenticate,                          empCtrl.getOne);
 router.get   ('/employees/:id/designation-history', authenticate,                 empCtrl.getDesignationHistory);
 
@@ -84,7 +87,10 @@ router.post('/provision/monthly-accrual', authenticate, authorize('hr','admin','
 // Bulk import (template download, upload, master update) is HR-only — not
 // the broader EMP_MGMT set (accounts/admin/super_admin), since this can
 // create/overwrite employee records wholesale.
-router.get ('/employees/import-template', authenticate, authorize('hr'), empImportCtrl.downloadImportTemplate);
+// NOTE: the GET template-download route is registered earlier, above
+// '/employees/:id' — Express matches routes in order, and ':id' would
+// otherwise swallow "import-template" as an id and 500 with the wrong
+// handler's generic error.
 router.post('/employees/import',
   authenticate, authorize('hr'),
   empImportCtrl.uploadMiddleware,
