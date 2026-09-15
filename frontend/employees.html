@@ -1219,10 +1219,10 @@ let empData = [];
 let assignEmpData = [];
 
 // ── ISSUE 7 FIX ───────────────────────────────────────────────────────────────
-// Block 1: Import tab — HR + Accounts only
+// Block 1: Import tab — HR only
 // (The Separated tab was removed from here — separated/resigned employees
 // are now managed on the dedicated Separation / Resignation page instead.)
-if (Role.is('hr', 'accounts')) {
+if (Role.is('hr')) {
   document.getElementById('import-tab').style.display    = '';
 }
 

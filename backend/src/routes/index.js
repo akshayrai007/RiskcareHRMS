@@ -81,14 +81,17 @@ router.post('/provision/:id/approve',    authenticate, authorize(...PROVISION_AP
 router.post('/provision/monthly-accrual', authenticate, authorize('hr','admin','super_admin'), provCtrl.runMonthlyAccrual);
 
 // ── Employee Bulk Import (Excel) ──────────────────────────────────────────────
-router.get ('/employees/import-template', authenticate, authorize(...EMP_MGMT), empImportCtrl.downloadImportTemplate);
+// Bulk import (template download, upload, master update) is HR-only — not
+// the broader EMP_MGMT set (accounts/admin/super_admin), since this can
+// create/overwrite employee records wholesale.
+router.get ('/employees/import-template', authenticate, authorize('hr'), empImportCtrl.downloadImportTemplate);
 router.post('/employees/import',
-  authenticate, authorize(...EMP_MGMT),
+  authenticate, authorize('hr'),
   empImportCtrl.uploadMiddleware,
   empImportCtrl.importEmployees
 );
 router.post('/employees/master-update',
-  authenticate, authorize(...EMP_MGMT),
+  authenticate, authorize('hr'),
   empImportCtrl.uploadMiddleware,
   empImportCtrl.masterUpdate
 );
