@@ -65,15 +65,27 @@ exports.getLocations = async (req, res) => {
            GROUP BY ol.id, e.first_name, e.last_name
            ORDER BY ol.name`;
     } else {
-      q = `SELECT DISTINCT ol.*,
+      // Same visible-locations filter as before, but now also computes
+      // assigned_count (was missing here, so the location card always
+      // showed "0 employees" for non-admin roles like HR even when
+      // employees were actually assigned).
+      q = `SELECT ol.*,
+                  COUNT(DISTINCT eg_emp.id) AS assigned_count,
                   CONCAT(e.first_name,' ',e.last_name) AS created_by_name
            FROM office_locations ol
            LEFT JOIN employee_geofence eg ON ol.id = eg.office_location_id
+           LEFT JOIN employees eg_emp ON eg_emp.id = eg.employee_id AND eg_emp.is_active = TRUE
            LEFT JOIN employees e ON ol.created_by = e.id
            WHERE ol.is_active = true
-             AND (eg.is_universal = true OR eg.employee_id IN (
-               SELECT id FROM employees WHERE team_leader_id=$1 OR reporting_manager_id=$1
-             ) OR ol.created_by=$1)
+             AND ol.id IN (
+               SELECT eg2.office_location_id FROM employee_geofence eg2
+               WHERE eg2.is_universal = true OR eg2.employee_id IN (
+                 SELECT id FROM employees WHERE team_leader_id=$1 OR reporting_manager_id=$1
+               )
+               UNION
+               SELECT id FROM office_locations WHERE created_by=$1
+             )
+           GROUP BY ol.id, e.first_name, e.last_name
            ORDER BY ol.name`;
       params = [userId];
     }
