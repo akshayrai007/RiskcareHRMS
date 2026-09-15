@@ -23,7 +23,13 @@ exports.getLocations = async (req, res) => {
     const userId = req.user.id;
 
     let q, params = [];
-    if (['admin','super_admin'].includes(role)) {
+    // HR/Accounts get the same full visibility as admin/super_admin (they
+    // already have full route-level access to every geofence write action
+    // via authorizeOrPageOverride) — the scoped branch below is for
+    // managers/TLs who should only see their own team's locations, and was
+    // wrongly also catching HR, hiding any newly-created location with no
+    // employees assigned to it yet.
+    if (['admin','super_admin','hr','accounts'].includes(role)) {
       q = `SELECT ol.*,
                   -- Count employees from employee_geofence (office/universal assignments)
                   -- PLUS employees from employee_buffer_rules whose district/state matches
