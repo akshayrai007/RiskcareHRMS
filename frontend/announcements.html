@@ -206,7 +206,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
             <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Today's Attendance</div>
             <div id="ann-punch-status" style="font-size:14px;font-weight:600;color:var(--text)">Loading…</div>
           </div>
-          <button id="ann-punch-btn" class="btn" style="background:linear-gradient(135deg,var(--cfg-primary),var(--cfg-accent));color:#fff;display:none" onclick="location.href='attendance.html'"></button>
+          <button id="ann-punch-btn" class="btn" style="background:linear-gradient(135deg,var(--cfg-primary),var(--cfg-accent));color:#fff;display:none" onclick="handleHomePunch()"></button>
         </div>
 
         <!-- Thought of Day -->
@@ -1693,19 +1693,54 @@ async function loadPunchStatus() {
     if (today?.punch_in && today?.punch_out) {
       statusEl.textContent = `✅ Punched in at ${fmtTime(today.punch_in)} · out at ${fmtTime(today.punch_out)}`;
       btnEl.style.display = 'none';
+      delete btnEl.dataset.action;
     } else if (today?.punch_in) {
       statusEl.textContent = `🟢 Punched in at ${fmtTime(today.punch_in)} · working for ${elapsedSince(today.punch_in)}`;
       btnEl.textContent = '🔓 Punch Out';
+      btnEl.dataset.action = 'out';
       btnEl.style.display = 'inline-flex';
     } else {
       statusEl.textContent = "You haven't punched in yet today";
       btnEl.textContent = '🟢 Punch In';
+      btnEl.dataset.action = 'in';
       btnEl.style.display = 'inline-flex';
     }
   } catch (e) {
     statusEl.textContent = 'Go to Attendance to punch in/out';
     btnEl.textContent = 'Go to Attendance';
+    delete btnEl.dataset.action;
     btnEl.style.display = 'inline-flex';
+  }
+}
+
+// Geofence verification (with the map UI) is only required on a phone — a
+// desktop has no GPS to trust anyway and the backend skips the check for
+// it too (see isMobileRequest() in attendanceController.js). So punch
+// in/out straight from Home on desktop; on mobile, send them to
+// attendance.html where the map/GPS verification flow lives.
+function isMobileClient() {
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+async function handleHomePunch() {
+  const btnEl = document.getElementById('ann-punch-btn');
+  const action = btnEl.dataset.action;
+  if (!action || isMobileClient()) { location.href = 'attendance.html'; return; }
+
+  btnEl.disabled = true;
+  try {
+    const ist = new Date().toLocaleString('en-GB', { timeZone: window.CFG.timezone, hour12: false });
+    const punch_time = ist.split(', ')[1];
+    const res = await api('POST', `/attendance/punch-${action}`, { punch_time });
+    if (res?.success) {
+      toast?.(res.message || (action === 'in' ? 'Punched in' : 'Punched out'));
+      await loadPunchStatus();
+    } else {
+      toast?.(res?.message || 'Punch failed', 'error');
+    }
+  } catch (e) {
+    toast?.('Punch failed — try again', 'error');
+  } finally {
+    btnEl.disabled = false;
   }
 }
 function elapsedSince(hhmmss) {
