@@ -1765,6 +1765,7 @@ async function showEmpDetail(id) {
   const canDanger = Role.is('admin', 'hr', 'accounts');
   const hrButtons = canManage ? `
     <button class="btn btn-outline btn-sm" id="btn-reset-pwd">🔑 Reset Password</button>
+    ${e.device_token ? `<button class="btn btn-outline btn-sm" id="btn-reset-device" title="${(e.last_login_device||'Unknown device')} · last login ${e.last_login_at ? new Date(e.last_login_at).toLocaleString() : '—'}">📱 Reset Device</button>` : ''}
     <button class="btn btn-outline btn-sm" id="btn-toggle-wfh" style="${e.is_wfh_permanent ? 'background:#e0f2fe;color:#0369a1;border-color:#7dd3fc' : ''}">
       ${e.is_wfh_permanent ? '🏠 Disable Permanent WFH' : '🏠 Enable Permanent WFH'}
     </button>
@@ -1784,6 +1785,7 @@ async function showEmpDetail(id) {
   footer.querySelector('#btn-close-detail').onclick = () => closeModal('emp-detail-modal');
   if (canManage) {
     footer.querySelector('#btn-reset-pwd').onclick    = () => resetPassword(e.id, e.email);
+    footer.querySelector('#btn-reset-device')?.addEventListener('click', () => resetDevice(e.id, `${e.first_name} ${e.last_name}`));
     footer.querySelector('#btn-toggle-wfh').onclick   = () => toggleWFH(e.id, e.is_wfh_permanent);
     footer.querySelector('#btn-edit-emp').onclick     = (ev) => { ev.stopPropagation(); openEditEmp(e.id); };
   }
@@ -1813,6 +1815,16 @@ async function resetPassword(id, email) {
   const newPw = prompt(`Reset password for ${email}. Leave blank for default:`) || (window.CFG?.defaultPassword || 'Admin@1234');
   const data = await api('POST', '/employees/reset-password', { employee_id: id, new_password: newPw });
   if (data?.success) toast(`Password reset to: ${newPw}`);
+  else toast(data?.message || 'Failed', 'error');
+}
+
+// Clears the Android single-device lock so the employee's next login from
+// a different phone isn't rejected (device_token/last_login_device on the
+// employees row — see "Single-device enforcement" in authController.js).
+async function resetDevice(id, name) {
+  if (!confirm(`Reset the registered device for ${name}?\n\nThey will be able to log in from a new phone. The current device will be logged out on its next request.`)) return;
+  const data = await api('POST', `/employees/${id}/reset-device`);
+  if (data?.success) { toast(data.message || 'Device reset'); closeModal('emp-detail-modal'); }
   else toast(data?.message || 'Failed', 'error');
 }
 

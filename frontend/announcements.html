@@ -1754,9 +1754,16 @@ function elapsedSince(hhmmss) {
 function fmtTime(t) {
   if (!t) return '';
   // punch_in/out come back as plain "HH:MM:SS" time strings, not full
-  // datetimes — new Date(t) on those is Invalid Date, so just slice.
-  if (/^\d{1,2}:\d{2}/.test(t)) return t.substring(0, 5);
-  try { return new Date(t).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: window.CFG.timezone }); }
+  // datetimes — new Date(t) on those is Invalid Date, so build a 12hr
+  // AM/PM string from the parts directly instead of slicing 24hr.
+  const m = /^(\d{1,2}):(\d{2})/.exec(t);
+  if (m) {
+    let h = parseInt(m[1], 10);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}:${m[2]} ${ampm}`;
+  }
+  try { return new Date(t).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: window.CFG.timezone }); }
   catch { return t; }
 }
 loadPunchStatus();

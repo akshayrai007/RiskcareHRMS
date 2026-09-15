@@ -109,6 +109,7 @@ exports.getAll = async (req, res) => {
          e.employee_category, e.provision_end_date, e.confirmed_date,
          e.saturday_policy, e.emergency_contact_phone,
          e.branch, e.personal_mobile, e.personal_email,
+         e.device_token, e.last_login_device, e.last_login_at,
          e.department_id, e.designation_id, e.reporting_manager_id, e.team_leader_id,
          e.basic_salary, e.ctc, e.city,
          e.separation_date, e.separation_type, e.separation_reason,
@@ -545,6 +546,27 @@ exports.resetPassword = async (req, res) => {
     await db.query(`UPDATE employees SET password_hash=$1 WHERE id=$2`, [hash, employee_id]);
     res.json({ success: true, message: 'Password reset successfully' });
   } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// Clear the Android single-device lock (device_token/last_login_device) so
+// the employee can log in from a new phone. See "Single-device enforcement"
+// in authController.js — device_token is set on Android login and any
+// request with a different device_id is rejected until this is cleared.
+exports.resetDevice = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: 'Invalid employee ID' });
+    const r = await db.query(
+      `UPDATE employees SET device_token=NULL, last_login_device=NULL WHERE id=$1
+       RETURNING employee_code, first_name, last_name`,
+      [id]
+    );
+    if (!r.rows.length) return res.status(404).json({ success: false, message: 'Employee not found' });
+    res.json({ success: true, message: `Device reset for ${r.rows[0].employee_code} — they can now log in from a new phone` });
+  } catch (err) {
+    console.error('[resetDevice error]', err.message);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

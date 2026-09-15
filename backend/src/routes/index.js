@@ -70,6 +70,7 @@ router.put   ('/employees/:id',           authenticate, authorize(...EMP_MGMT), 
 router.patch ('/employees/:id',           authenticate, authorize(...EMP_MGMT),  empCtrl.update);
 router.delete('/employees/:id',           authenticate, authorize(...EMP_MGMT),  empCtrl.deleteEmployee);
 router.post  ('/employees/reset-password',authenticate, authorize(...EMP_MGMT), empCtrl.resetPassword);
+router.post  ('/employees/:id/reset-device', authenticate, authorize(...EMP_MGMT), empCtrl.resetDevice);
 router.post  ('/employees/:id/separate',  authenticate, authorize(...EMP_MGMT), (req,res)=>res.json({success:false,message:'Not implemented'}));
 
 // ── Provision Confirmation Workflow ───────────────────────────────────────────
