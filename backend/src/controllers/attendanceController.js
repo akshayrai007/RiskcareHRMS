@@ -15,6 +15,20 @@ function getISTDate() {
   }).format(now); // returns "YYYY-MM-DD"
 }
 
+// ── Mobile vs Desktop detection ──────────────────────────────────────────────
+// Geofence/location verification is only required from a phone — the native
+// Android app (which sends its own User-Agent) AND mobile Chrome/Safari.
+// A PC/laptop punch (no GPS hardware, easy to fake anyway) just punches
+// straight through with no location check.
+function isMobileRequest(req) {
+  // Native Android app: explicit header (OkHttp's default User-Agent doesn't
+  // reliably contain "Android"). Mobile web browser (Chrome/Safari on a
+  // phone): sniff the standard UA mobile markers.
+  if (req.headers['x-client-platform'] === 'android') return true;
+  const ua = req.headers['user-agent'] || '';
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
+}
+
 function getISTTimeParts() {
   const now = new Date();
   const parts = {};
@@ -52,14 +66,18 @@ exports.punchIn = async (req, res) => {
     if (existing.rows.length && existing.rows[0].punch_in)
       return res.status(400).json({ success: false, message: 'Already punched in today' });
 
-    // ── Geo-boundary validation ───────────────────────────────────────────────
-    const geoCheck = await validateEmployeeBuffer(empId, location_lat, location_lng);
-    if (!geoCheck.valid) {
-      return res.status(403).json({
-        success: false,
-        outside_boundary: true,
-        message: geoCheck.message
-      });
+    // ── Geo-boundary validation — phones only. A PC/laptop has no GPS
+    // hardware to verify in the first place (and coordinates from a browser
+    // are trivially fakeable), so desktop punches skip this check entirely. ──
+    if (isMobileRequest(req)) {
+      const geoCheck = await validateEmployeeBuffer(empId, location_lat, location_lng);
+      if (!geoCheck.valid) {
+        return res.status(403).json({
+          success: false,
+          outside_boundary: true,
+          message: geoCheck.message
+        });
+      }
     }
 
     // ── FIX: Use IST time — Render server runs on UTC ─────────────────────────
@@ -115,14 +133,16 @@ exports.punchOut = async (req, res) => {
     if (existing.rows[0].punch_out)
       return res.status(400).json({ success: false, message: 'Already punched out today' });
 
-    // ── Geo-boundary validation ───────────────────────────────────────────────
-    const geoCheck = await validateEmployeeBuffer(empId, location_lat, location_lng);
-    if (!geoCheck.valid) {
-      return res.status(403).json({
-        success: false,
-        outside_boundary: true,
-        message: geoCheck.message
-      });
+    // ── Geo-boundary validation — phones only, see punchIn for why. ────────────
+    if (isMobileRequest(req)) {
+      const geoCheck = await validateEmployeeBuffer(empId, location_lat, location_lng);
+      if (!geoCheck.valid) {
+        return res.status(403).json({
+          success: false,
+          outside_boundary: true,
+          message: geoCheck.message
+        });
+      }
     }
 
     // ── FIX: Validate punch_time from frontend — reject stale/UTC times ────────
