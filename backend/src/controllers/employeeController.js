@@ -571,6 +571,59 @@ exports.resetDevice = async (req, res) => {
   }
 };
 
+// Device Security Logs — one row per active employee with their Android
+// single-device lock state (device_token/last_login_device/last_login_at).
+// No violation/mock-GPS/multi-device tracking exists yet (that needs matching
+// Android-app changes to report it) — this only covers what the app already
+// writes on login.
+exports.getDeviceLogs = async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim();
+    const params = [];
+    let where = `WHERE e.is_active = true`;
+    if (q) {
+      params.push(`%${q}%`);
+      const p = params.length;
+      where += ` AND (e.first_name ILIKE $${p} OR e.last_name ILIKE $${p} OR e.employee_code ILIKE $${p}
+                      OR e.phone ILIKE $${p} OR e.device_token ILIKE $${p})`;
+    }
+    const rows = (await db.query(
+      `SELECT e.id, CONCAT(e.first_name,' ',e.last_name) AS name, e.role, e.phone,
+              e.employee_code, e.device_token AS locked_device_id, e.last_login_device,
+              TO_CHAR(e.last_login_at,'DD/MM/YYYY HH24:MI:SS') AS last_login,
+              d.name AS department_name
+         FROM employees e
+         LEFT JOIN departments d ON d.id = e.department_id
+         ${where}
+         ORDER BY (e.device_token IS NOT NULL) DESC, e.first_name`,
+      params
+    )).rows;
+    const summary = {
+      total_employees: rows.length,
+      device_locked: rows.filter(r => r.locked_device_id).length
+    };
+    res.json({ success: true, data: rows, summary });
+  } catch (err) {
+    console.error('[getDeviceLogs]', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// Clear every active employee's device lock in one go (fresh start after an
+// app rollout, or bulk cleanup). Same effect as resetDevice, applied to all.
+exports.resetAllDevices = async (req, res) => {
+  try {
+    const r = await db.query(
+      `UPDATE employees SET device_token=NULL, last_login_device=NULL
+       WHERE is_active = true AND device_token IS NOT NULL`
+    );
+    res.json({ success: true, count: r.rowCount, message: `Reset ${r.rowCount} device lock(s) — everyone re-registers their device on next login` });
+  } catch (err) {
+    console.error('[resetAllDevices]', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // Hard-delete employee (admin/hr/accounts only)
 exports.deleteEmployee = async (req, res) => {
   try {

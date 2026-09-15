@@ -71,6 +71,8 @@ router.patch ('/employees/:id',           authenticate, authorize(...EMP_MGMT), 
 router.delete('/employees/:id',           authenticate, authorize(...EMP_MGMT),  empCtrl.deleteEmployee);
 router.post  ('/employees/reset-password',authenticate, authorize(...EMP_MGMT), empCtrl.resetPassword);
 router.post  ('/employees/:id/reset-device', authenticate, authorize(...EMP_MGMT), empCtrl.resetDevice);
+router.get   ('/security/device-logs',      authenticate, authorize(...EMP_MGMT), empCtrl.getDeviceLogs);
+router.post  ('/security/reset-all-devices',authenticate, authorize(...EMP_MGMT), empCtrl.resetAllDevices);
 router.post  ('/employees/:id/separate',  authenticate, authorize(...EMP_MGMT), (req,res)=>res.json({success:false,message:'Not implemented'}));
 
 // ── Provision Confirmation Workflow ───────────────────────────────────────────

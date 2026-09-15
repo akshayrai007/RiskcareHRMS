@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="page-title">Device Security</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+.sec-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+.sec-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px}
+.sec-card .sc-val{font-size:26px;font-weight:800;line-height:1.1}
+.sec-card .sc-lbl{font-size:12px;color:var(--muted);font-weight:600;margin-top:4px}
+.sec-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow-x:auto}
+table.sec{width:100%;border-collapse:collapse;font-size:13px;min-width:820px}
+table.sec th{background:#1e293b;color:#fff;text-align:left;padding:10px 12px;font-size:12px;font-weight:700;white-space:nowrap;border:1px solid #334155}
+table.sec td{padding:9px 12px;border:1px solid var(--border);vertical-align:middle}
+table.sec tr:nth-child(even) td{background:var(--surface2)}
+table.sec tr:hover td{background:rgba(99,102,241,.07)}
+.dev-id{font-family:ui-monospace,monospace;font-size:11px;background:rgba(99,102,241,.12);color:#6366f1;padding:2px 7px;border-radius:6px;word-break:break-all}
+.muted{color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.pill.ok{background:rgba(16,185,129,.14);color:#10b981}
+.pill.off{background:rgba(107,114,128,.14);color:#6b7280}
+.act-btn{border:none;border-radius:8px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
+.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-reset{background:rgba(239,68,68,.12);color:#ef4444}
+.sec-search{width:100%;max-width:420px;padding:10px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;box-sizing:border-box;margin-bottom:16px}
+.sec-tool-btn{border:1.5px solid var(--border);background:var(--surface);color:var(--muted);border-radius:10px;padding:8px 16px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark">
+      <svg class="logo-mark-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div><div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div></div></div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+      <div class="topbar-title">🔒 Device Security</div>
+    </div>
+    <div class="topbar-right">
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+
+  <div class="content fade-in">
+    <p class="muted" style="margin:0 0 16px;font-size:13px">Every employee's registered Android device — one device per employee. Reset here if they get a new phone.</p>
+    <div class="sec-cards" id="secCards"></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <input class="sec-search" id="secSearch" style="margin-bottom:0" placeholder="Search by name, code, phone or device ID…">
+      <button class="sec-tool-btn" style="margin-bottom:16px;border-color:#ef4444;color:#ef4444" onclick="resetAll()">↻ Reset All Devices</button>
+    </div>
+    <div class="sec-table-wrap">
+      <table class="sec">
+        <thead><tr>
+          <th>#&nbsp;Employee</th><th>Phone</th><th>Emp Code</th><th>Department</th>
+          <th>Locked Device ID</th><th>Last Login Device</th><th>Last Login (IST)</th><th>Reset</th>
+        </tr></thead>
+        <tbody id="secBody"><tr><td colspan="8" class="muted" style="text-align:center;padding:24px">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+if (!Auth.guard()) { }
+buildSidebar('device-security.html');
+
+let ROWS = [];
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function renderCards(sum){
+  const c = [
+    ['👥', sum.total_employees, 'Total Employees', '#6366f1'],
+    ['🔒', sum.device_locked,   'Device Locked',   '#6366f1'],
+    ['🔓', (sum.total_employees||0) - (sum.device_locked||0), 'Not Yet Registered', '#6b7280'],
+  ];
+  document.getElementById('secCards').innerHTML = c.map(([ic,v,l,col])=>
+    `<div class="sec-card"><div style="font-size:20px">${ic}</div><div class="sc-val" style="color:${col}">${v||0}</div><div class="sc-lbl">${l}</div></div>`).join('');
+}
+
+function renderRows(rows){
+  if (!rows.length){ document.getElementById('secBody').innerHTML = '<tr><td colspan="8" class="muted" style="text-align:center;padding:24px">No employees found</td></tr>'; return; }
+  document.getElementById('secBody').innerHTML = rows.map((r,i)=>`
+    <tr>
+      <td><b>${i+1}. ${esc(r.name)}</b><br><span class="muted" style="font-size:11px">${esc(r.role)}</span></td>
+      <td>${esc(r.phone)||'—'}</td>
+      <td>${esc(r.employee_code)||'—'}</td>
+      <td>${esc(r.department_name)||'—'}</td>
+      <td>${r.locked_device_id?`<span class="dev-id">${esc(r.locked_device_id)}</span>`:'<span class="pill off">Not set</span>'}</td>
+      <td>${r.last_login_device?esc(r.last_login_device):'<span class="muted">—</span>'}</td>
+      <td>${r.last_login?esc(r.last_login):'<span class="muted">—</span>'}</td>
+      <td><button class="act-btn btn-reset" onclick="doReset(${r.id},'${esc(r.name).replace(/'/g,"\\'")}')" ${r.locked_device_id?'':'disabled'}>Reset</button></td>
+    </tr>`).join('');
+}
+
+async function load(){
+  const q = document.getElementById('secSearch').value.trim();
+  try {
+    const res = await api('GET', '/security/device-logs' + (q ? '?q=' + encodeURIComponent(q) : ''));
+    if (!res?.success) { document.getElementById('secBody').innerHTML = `<tr><td colspan="8" class="muted" style="text-align:center;padding:24px">${esc(res?.message || 'Access denied')}</td></tr>`; return; }
+    ROWS = res.data || [];
+    renderCards(res.summary || {});
+    renderRows(ROWS);
+  } catch(e){
+    document.getElementById('secBody').innerHTML = '<tr><td colspan="8" class="muted" style="text-align:center;padding:24px">Failed to load</td></tr>';
+  }
+}
+
+async function doReset(id, name){
+  if (!confirm(`Reset the registered device for ${name}?\n\nThey will be able to log in from a new phone. The current device will be logged out on its next request.`)) return;
+  const res = await api('POST', `/employees/${id}/reset-device`);
+  if (res?.success) { toast(res.message || 'Device reset'); load(); }
+  else toast(res?.message || 'Failed', 'error');
+}
+
+async function resetAll(){
+  if (!confirm('Reset ALL registered devices?\n\nThis clears every device lock. Everyone re-registers their device on next login.')) return;
+  const res = await api('POST', '/security/reset-all-devices');
+  if (res?.success) { toast(res.message || 'Reset done'); load(); }
+  else toast(res?.message || 'Failed', 'error');
+}
+
+let searchT;
+document.getElementById('secSearch').addEventListener('input', ()=>{ clearTimeout(searchT); searchT=setTimeout(load, 350); });
+
+load();
+</script>
+</body>
+</html>

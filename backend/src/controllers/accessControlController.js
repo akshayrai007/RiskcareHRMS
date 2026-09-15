@@ -60,6 +60,7 @@ const PAGE_CATALOG = [
     tabs: [ { key:'import', label:'Import tab' }, { key:'geofence', label:'Geofence tab' }, { key:'logs', label:'Logs tab' }, { key:'reshuffle', label:'Reshuffle tab' }, { key:'compensation', label:'Compensation panel' }, { key:'manage', label:'Edit/Reset/WFH actions' }, { key:'danger', label:'Deactivate/Delete actions' } ] },
   { key: 'org-chart.html',        label: 'Org Chart' },
   { key: 'geofence.html',         label: 'Geofence' },
+  { key: 'device-security.html',  label: 'Device Security' },
   { key: 'ai-voice.html',         label: 'Voice Assistant' },
   { key: 'movement.html',         label: 'Movement (hidden — no web equivalent)' },
   { key: 'import_employees.html',label: 'Import Employees (legacy — superseded)' },
@@ -113,6 +114,7 @@ const ROLE_DEFAULTS = {
   'employees.html':        rowFor(F, F, F, R, R, R, N),
   'org-chart.html':        rowFor(F, F, F, F, F, F, F),
   'geofence.html':         rowFor(F, N, N, F, N, N, N),   // Admin + Super Admin only — never lock out Super Admin
+  'device-security.html': rowFor(F, F, F, F, N, N, N),   // HR/Accounts/Admin/Super Admin — matches EMP_MGMT backend authorize()
   'ai-voice.html':         rowFor(F, F, F, F, F, F, F),
   'movement.html':         rowFor(N, N, N, N, N, N, N),   // hidden — no web equivalent
   'import_employees.html': rowFor(N, N, N, N, N, N, N),   // legacy, superseded by Employees > Import

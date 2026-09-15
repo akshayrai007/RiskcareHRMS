@@ -239,6 +239,7 @@ const NAV_GROUPS = [
     label: 'System',
     items: [
       { href:'geofence.html', icon: ICONS.geofence, label:'Geofence', roles:['admin','super_admin'] },
+      { href:'device-security.html', icon: '🔒', label:'Device Security', roles:['hr','accounts','admin','super_admin'] },
       { href:'ai-voice.html',       icon: ICONS.aivoice,      label:'Voice Assistant',  always:true },
       { href:'access-control.html', icon: '🔐',              label:'Access Control',   roles:['hr','admin','super_admin'] },
     ]
