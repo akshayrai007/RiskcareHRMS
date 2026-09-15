@@ -225,13 +225,13 @@ async function doLogin(){
       localStorage.setItem(TOKEN_KEY,data.data.token);
       localStorage.setItem(USER_KEY,JSON.stringify(data.data.employee));
       const role = data.data.employee.role;
-      window.location.href = ['admin','super_admin','hr','accounts'].includes(role) ? 'dashboard.html' : 'attendance.html';
+      window.location.href = ['admin','super_admin','hr','accounts'].includes(role) ? 'dashboard.html' : 'announcements.html';
     }else{showErr(data.message||'Invalid email or password');}
   }catch(e){showErr('Cannot connect to server. Make sure backend is running on port 3000.');}
   finally{btn.disabled=false;document.getElementById('btn-text').textContent='Sign In';document.getElementById('spinner').style.display='none';}
 }
 function showErr(msg){const e=document.getElementById('error-box');e.innerHTML='⚠ '+msg;e.style.display='flex';}
-if(localStorage.getItem(TOKEN_KEY)){const u=JSON.parse(localStorage.getItem(USER_KEY)||'{}');window.location.href=['admin','super_admin','hr','accounts'].includes(u.role)?'dashboard.html':'attendance.html';}
+if(localStorage.getItem(TOKEN_KEY)){const u=JSON.parse(localStorage.getItem(USER_KEY)||'{}');window.location.href=['admin','super_admin','hr','accounts'].includes(u.role)?'dashboard.html':'announcements.html';}
 </script>
 </body>
 </html>
