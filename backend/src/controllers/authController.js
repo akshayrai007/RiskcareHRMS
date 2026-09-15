@@ -57,9 +57,10 @@ exports.login = async (req, res) => {
       updateQuery += ` WHERE id=$2`;
       await db.query(updateQuery, updateFields);
     } else {
-      // Web login — just track version/time if provided
+      // Web login — separate column from the Android device's last_login_at,
+      // so the two don't clobber each other on the Device Security page.
       await db.query(
-        `UPDATE employees SET last_login_at=NOW() WHERE id=$1`,
+        `UPDATE employees SET last_web_login_at=NOW() WHERE id=$1`,
         [emp.id]
       );
     }

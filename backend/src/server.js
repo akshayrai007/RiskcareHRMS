@@ -883,6 +883,15 @@ async function start() {
           ALTER TABLE employees
           ADD COLUMN IF NOT EXISTS deactivation_remark TEXT DEFAULT NULL
         `).catch(() => {});
+        // ── Separate web login timestamp — last_login_at was being
+        // overwritten by BOTH web and Android logins, making it impossible
+        // to tell "last time this account was used on its locked device" vs
+        // "last time someone signed in from a browser/PC" on the Device
+        // Security page. Web logins now write here instead. ─────────────────
+        await db.query(`
+          ALTER TABLE employees
+          ADD COLUMN IF NOT EXISTS last_web_login_at TIMESTAMPTZ DEFAULT NULL
+        `).catch(() => {});
         // ── Reporting Officer (free-text) — used by the bulk Separation/
         // Resigned import so legacy HR data (former manager's name) can be
         // captured even when that manager no longer exists as an active

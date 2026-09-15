@@ -591,6 +591,7 @@ exports.getDeviceLogs = async (req, res) => {
       `SELECT e.id, CONCAT(e.first_name,' ',e.last_name) AS name, e.role, e.phone,
               e.employee_code, e.device_token AS locked_device_id, e.last_login_device,
               TO_CHAR(e.last_login_at,'DD/MM/YYYY HH24:MI:SS') AS last_login,
+              TO_CHAR(e.last_web_login_at,'DD/MM/YYYY HH24:MI:SS') AS last_web_login,
               d.name AS department_name
          FROM employees e
          LEFT JOIN departments d ON d.id = e.department_id

@@ -70,9 +70,10 @@ table.sec tr:hover td{background:rgba(99,102,241,.07)}
       <table class="sec">
         <thead><tr>
           <th>#&nbsp;Employee</th><th>Phone</th><th>Emp Code</th><th>Department</th>
-          <th>Locked Device ID</th><th>Last Login Device</th><th>Last Login (IST)</th><th>Reset</th>
+          <th>Locked Device ID</th><th>Device Model</th><th>Last Android Login</th>
+          <th>Last Web/PC Login</th><th>Reset</th>
         </tr></thead>
-        <tbody id="secBody"><tr><td colspan="8" class="muted" style="text-align:center;padding:24px">Loading…</td></tr></tbody>
+        <tbody id="secBody"><tr><td colspan="9" class="muted" style="text-align:center;padding:24px">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -97,7 +98,7 @@ function renderCards(sum){
 }
 
 function renderRows(rows){
-  if (!rows.length){ document.getElementById('secBody').innerHTML = '<tr><td colspan="8" class="muted" style="text-align:center;padding:24px">No employees found</td></tr>'; return; }
+  if (!rows.length){ document.getElementById('secBody').innerHTML = '<tr><td colspan="9" class="muted" style="text-align:center;padding:24px">No employees found</td></tr>'; return; }
   document.getElementById('secBody').innerHTML = rows.map((r,i)=>`
     <tr>
       <td><b>${i+1}. ${esc(r.name)}</b><br><span class="muted" style="font-size:11px">${esc(r.role)}</span></td>
@@ -107,6 +108,7 @@ function renderRows(rows){
       <td>${r.locked_device_id?`<span class="dev-id">${esc(r.locked_device_id)}</span>`:'<span class="pill off">Not set</span>'}</td>
       <td>${r.last_login_device?esc(r.last_login_device):'<span class="muted">—</span>'}</td>
       <td>${r.last_login?esc(r.last_login):'<span class="muted">—</span>'}</td>
+      <td>${r.last_web_login?esc(r.last_web_login):'<span class="muted">—</span>'}</td>
       <td><button class="act-btn btn-reset" onclick="doReset(${r.id},'${esc(r.name).replace(/'/g,"\\'")}')" ${r.locked_device_id?'':'disabled'}>Reset</button></td>
     </tr>`).join('');
 }
@@ -115,12 +117,12 @@ async function load(){
   const q = document.getElementById('secSearch').value.trim();
   try {
     const res = await api('GET', '/security/device-logs' + (q ? '?q=' + encodeURIComponent(q) : ''));
-    if (!res?.success) { document.getElementById('secBody').innerHTML = `<tr><td colspan="8" class="muted" style="text-align:center;padding:24px">${esc(res?.message || 'Access denied')}</td></tr>`; return; }
+    if (!res?.success) { document.getElementById('secBody').innerHTML = `<tr><td colspan="9" class="muted" style="text-align:center;padding:24px">${esc(res?.message || 'Access denied')}</td></tr>`; return; }
     ROWS = res.data || [];
     renderCards(res.summary || {});
     renderRows(ROWS);
   } catch(e){
-    document.getElementById('secBody').innerHTML = '<tr><td colspan="8" class="muted" style="text-align:center;padding:24px">Failed to load</td></tr>';
+    document.getElementById('secBody').innerHTML = '<tr><td colspan="9" class="muted" style="text-align:center;padding:24px">Failed to load</td></tr>';
   }
 }
 

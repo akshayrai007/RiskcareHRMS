@@ -546,6 +546,7 @@ async function runAllMigrations() {
     await addCol('employees', 'app_version',       'VARCHAR(30) DEFAULT NULL');
     await addCol('employees', 'last_login_at',     'TIMESTAMPTZ DEFAULT NULL');
     await addCol('employees', 'last_login_device', 'VARCHAR(255) DEFAULT NULL');
+    await addCol('employees', 'last_web_login_at', 'TIMESTAMPTZ DEFAULT NULL');
 
     // ── Fix 1: Announcement likes & comments ──────────────────────────────────
     await client.query(`CREATE TABLE IF NOT EXISTS announcement_likes (
