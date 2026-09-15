@@ -2530,14 +2530,6 @@ async function openEditEmp(id) {
   document.getElementById('edit-lwf').checked         = !!s.lwf_applicable;
   document.getElementById('edit-tds').checked         = !!s.tds_applicable;
   document.getElementById('edit-pf-basis').value      = s.pf_wage_basis === 'actual' ? 'actual' : 'capped';
-  document.getElementById('edit-pf-emp-amt').value    = s.pf_employee  || '';
-  document.getElementById('edit-pf-emr-amt').value    = s.pf_employer  || '';
-  document.getElementById('edit-esi-emp-amt').value   = s.esi_employee || '';
-  document.getElementById('edit-esi-emr-amt').value   = s.esi_employer || '';
-  document.getElementById('edit-pt-amt').value        = s.pt_amount    || '';
-  document.getElementById('edit-lwf-amt').value       = s.lwf_amount   || '';
-  document.getElementById('edit-tds-amt').value       = s.tds_monthly  || '';
-  document.getElementById('edit-tds-annual').value    = s.tds_amount   || '';
   document.getElementById('edit-sal-notes').value     = s.notes || '';
 
   // Bank tab
