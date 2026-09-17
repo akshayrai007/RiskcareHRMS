@@ -763,12 +763,15 @@
               <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:var(--accent)">
                 <input type="checkbox" id="edit-pf" style="accent-color:var(--accent);width:15px;height:15px" onchange="recalcSalaryPreview()"> PF (Provident Fund)
               </label>
-              <div style="font-size:11px;color:var(--muted)">12% of Basic (Employee + Employer), auto-calculated</div>
+              <div style="font-size:11px;color:var(--muted)">12% of Basic — Employee A/c-1, Employer A/c-1+A/c-10 — plus 1% admin/EDLI (A/c-2 + A/c-21), auto-calculated</div>
               <div style="margin-top:8px"><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">PF BASIS</div>
                 <select id="edit-pf-basis" class="form-control" style="padding:6px 10px;font-size:12px" onchange="recalcSalaryPreview()">
                   <option value="capped">Capped (min Basic, ₹15,000)</option>
                   <option value="actual">Actual (full Basic, uncapped)</option>
                 </select></div>
+              <label style="display:flex;align-items:center;gap:7px;margin-top:8px;cursor:pointer;font-size:11px">
+                <input type="checkbox" id="edit-eps" style="accent-color:var(--accent);width:14px;height:14px"> EPS applicable (A/c-10, 8.33% of employer's 12% share)
+              </label>
             </div>
             <!-- ESI -->
             <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
@@ -2525,6 +2528,7 @@ async function openEditEmp(id) {
   document.getElementById('edit-gratuity').value    = s.gratuity    || '';
   document.getElementById('edit-food-coupon').value = s.food_coupon || '';
   document.getElementById('edit-pf').checked          = !!s.pf_applicable;
+  document.getElementById('edit-eps').checked         = !!s.eps_applicable;
   document.getElementById('edit-esi').checked         = !!s.esi_applicable;
   document.getElementById('edit-pt').checked          = !!s.pt_applicable;
   document.getElementById('edit-lwf').checked         = !!s.lwf_applicable;
@@ -2629,6 +2633,8 @@ function recalcSalaryPreview() {
   const pfBase  = pfBasis === 'actual' ? basic : Math.min(basic, 15000);
   const pfEmp   = document.getElementById('edit-pf').checked  ? Math.round(pfBase * 0.12) : 0;
   const pfEmr   = document.getElementById('edit-pf').checked  ? Math.round(pfBase * 0.12) : 0;
+  // PF Admin A/c-2 (0.5%) + EDLI A/c-21 (0.5%) + EDLI Admin A/c-22 (0%) — see PF card note
+  const pfAdmin = document.getElementById('edit-pf').checked  ? Math.round(pfBase * 0.01) : 0;
   const esiEmp  = document.getElementById('edit-esi').checked && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
   const esiEmr  = document.getElementById('edit-esi').checked && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
   const state   = document.getElementById('edit-state')?.value || '';
@@ -2636,7 +2642,7 @@ function recalcSalaryPreview() {
   const lwf     = document.getElementById('edit-lwf').checked ? 6 : 0;
   const totalDed = pfEmp + esiEmp + pt + lwf;
   const net      = gross - totalDed;
-  const ctc      = gross + pfEmr + esiEmr;
+  const ctc      = gross + pfEmr + esiEmr + pfAdmin;
 
   const fmt2 = n => '₹' + Math.round(n).toLocaleString('en-IN');
   document.getElementById('prev-gross').textContent   = fmt2(gross);
@@ -2737,6 +2743,7 @@ async function saveEmployeeEdit() {
       food_coupon: parseFloat(document.getElementById('edit-food-coupon').value) || 0,
       pf_wage_basis:  document.getElementById('edit-pf-basis').value || 'capped',
       pf_applicable:  document.getElementById('edit-pf').checked,
+      eps_applicable: document.getElementById('edit-eps').checked,
       esi_applicable: document.getElementById('edit-esi').checked,
       pt_applicable:  document.getElementById('edit-pt').checked,
       lwf_applicable: document.getElementById('edit-lwf').checked,
