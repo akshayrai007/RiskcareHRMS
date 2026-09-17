@@ -775,6 +775,13 @@ async function start() {
         // ── Food Coupon — optional fixed monthly meal-voucher benefit, only
         // applicable to select employees (defaults to 0 for everyone else) ──
         await db.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS food_coupon NUMERIC(12,2) DEFAULT 0`);
+        // ── EPS (A/c-10) is a per-employee choice within the employer's PF
+        // share, not everyone's — some employees (e.g. UAN created after
+        // 1 Sep 2014 with wages already above ceiling on joining, or already
+        // past EPS eligibility) don't get EPS at all, and their full 12%
+        // employer share stays in EPF A/c-1 instead of splitting into EPS. ──
+        await db.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS eps_applicable BOOLEAN DEFAULT TRUE`);
+        await db.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS pf_eps NUMERIC(12,2) DEFAULT 0`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS separation_date DATE DEFAULT NULL`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS separation_type VARCHAR(50) DEFAULT NULL`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS separation_reason TEXT DEFAULT NULL`);

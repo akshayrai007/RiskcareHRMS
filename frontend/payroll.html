@@ -985,6 +985,7 @@ async function openSalaryEdit(empId) {
   // the ₹ amount is always auto-calculated server-side, never typed in.
   document.getElementById('se-pf').checked     = r.pf_applicable !== false;
   document.getElementById('se-pf-basis').value = r.pf_wage_basis === 'actual' ? 'actual' : 'capped';
+  document.getElementById('se-eps').checked    = r.eps_applicable !== false;
   document.getElementById('se-esi').checked    = r.esi_applicable !== false;
   document.getElementById('se-pt').checked     = r.pt_applicable !== false;
   document.getElementById('se-lwf').checked    = r.lwf_applicable !== false;
@@ -1058,6 +1059,7 @@ async function saveSalaryStructure() {
     food_coupon:      v('se-other'),
     pf_wage_basis:    document.getElementById('se-pf-basis')?.value || 'capped',
     pf_applicable:    document.getElementById('se-pf').checked,
+    eps_applicable:   document.getElementById('se-eps').checked,
     esi_applicable:   document.getElementById('se-esi').checked,
     pt_applicable:    document.getElementById('se-pt').checked,
     lwf_applicable:   document.getElementById('se-lwf').checked,
@@ -1107,8 +1109,9 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
       <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px">
         <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:700"><input type="checkbox" id="se-pf"> PF (Provident Fund)</label>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px">12% of Basic (Employee + Employer) + ₹150 admin</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">12% of Basic — Employee A/c-1, Employer A/c-1+A/c-10 — plus 1% admin/EDLI (A/c-2 + A/c-21)</div>
         <select id="se-pf-basis" class="form-control" style="margin-top:6px;font-size:12px;padding:6px 10px"><option value="capped">Capped (min Basic, ₹15,000)</option><option value="actual">Actual (full Basic, uncapped)</option></select>
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;margin-top:8px"><input type="checkbox" id="se-eps"> EPS applicable (A/c-10, 8.33% of employer's 12% share)</label>
       </div>
       <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px">
         <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:700"><input type="checkbox" id="se-esi"> ESI</label>

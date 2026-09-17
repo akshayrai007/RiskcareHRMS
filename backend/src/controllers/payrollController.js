@@ -96,7 +96,8 @@ async function computeAndSaveSalaryStructure(queryable, employeeId, fields, upda
     basic = 0, hra = 0, conveyance = 0, special_allowance = 0,
     gratuity = 0, food_coupon = 0, pf_applicable = true, esi_applicable = true,
     pt_applicable = true, lwf_applicable = true, tds_applicable = false, notes,
-    pf_wage_basis = 'capped' // 'capped' = PF on min(basic,15000); 'actual' = PF on full basic
+    pf_wage_basis = 'capped', // 'capped' = PF on min(basic,15000); 'actual' = PF on full basic
+    eps_applicable = true     // EPS (A/c-10) doesn't apply to every PF member — see column comment
   } = fields;
 
   const empStateRes = await queryable.query(`SELECT state FROM employees WHERE id=$1`, [employeeId]);
@@ -104,9 +105,21 @@ async function computeAndSaveSalaryStructure(queryable, employeeId, fields, upda
 
   const gross        = parseFloat(basic) + parseFloat(hra) + parseFloat(conveyance) + parseFloat(special_allowance) + parseFloat(gratuity) + parseFloat(food_coupon);
   const pfBase       = pf_wage_basis === 'actual' ? parseFloat(basic) : Math.min(parseFloat(basic), 15000);
+  // Statutory PF/EPS/EDLI breakup (employer's 12% share splits into EPS +
+  // EPF A/c-1 only when EPS applies to this employee; otherwise the whole
+  // 12% stays in EPF A/c-1). pf_employer is kept as the COMBINED employer
+  // PF cost (A/c-1 + A/c-10) so total_employer_cost/CTC math is unaffected
+  // by the split — pf_eps is stored separately just for the A/c-10 figure.
+  //   Employee EPF A/c-1        12.00%
+  //   Employer EPF A/c-1         3.67%  (12% if EPS not applicable)
+  //   EPS A/c-10                 8.33%  (0% if EPS not applicable)
+  //   EPF Admin Charges A/c-2    0.50%
+  //   EDLI A/c-21                0.50%
+  //   EDLI Admin Charges A/c-22  0.00%
   const pf_employee  = pf_applicable  ? Math.round(pfBase * 0.12)  : 0;
   const pf_employer  = pf_applicable  ? Math.round(pfBase * 0.12)  : 0;
-  const pf_admin     = pf_applicable  ? 150 : 0;  // Fixed ₹150 (EPFO minimum admin charge)
+  const pf_eps       = pf_applicable && eps_applicable ? Math.round(pfBase * 0.0833) : 0;
+  const pf_admin     = pf_applicable  ? Math.round(pfBase * 0.01)  : 0;  // A/c-2 (0.5%) + A/c-21 (0.5%) + A/c-22 (0%)
   const esi_employee = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
   const esi_employer = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
   const pt           = pt_applicable  ? calcPT(gross, empState) : 0;
@@ -125,20 +138,23 @@ async function computeAndSaveSalaryStructure(queryable, employeeId, fields, upda
         pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
         pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
         professional_tax, lwf, total_employer_cost,
-        total_deductions, net_salary, ctc_monthly, ctc_annual, notes, pf_wage_basis, updated_by, updated_at)
-     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,NOW())
+        total_deductions, net_salary, ctc_monthly, ctc_annual, notes, pf_wage_basis,
+        eps_applicable, pf_eps, updated_by, updated_at)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,NOW())
      ON CONFLICT(employee_id) DO UPDATE SET
        basic=$2, hra=$3, conveyance=$4, special_allowance=$5, gratuity=$6, food_coupon=$7, gross_salary=$8,
        pf_applicable=$9, esi_applicable=$10, pt_applicable=$11, lwf_applicable=$12, tds_applicable=$13,
        pf_employee=$14, pf_employer=$15, pf_admin=$16, esi_employee=$17, esi_employer=$18,
        professional_tax=$19, lwf=$20, total_employer_cost=$21,
        total_deductions=$22, net_salary=$23, ctc_monthly=$24, ctc_annual=$25, notes=$26, pf_wage_basis=$27,
-       updated_by=$28, updated_at=NOW()`,
+       eps_applicable=$28, pf_eps=$29,
+       updated_by=$30, updated_at=NOW()`,
     [employeeId, basic, hra, conveyance, special_allowance, gratuity, food_coupon, gross,
      pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
      pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
      pt, lwf, total_employer_cost,
-     total_ded, net, ctc_monthly, ctc_annual, notes || null, pf_wage_basis, updatedBy]
+     total_ded, net, ctc_monthly, ctc_annual, notes || null, pf_wage_basis,
+     eps_applicable, pf_eps, updatedBy]
   );
 
   return { gross, net, ctc: ctc_monthly };
@@ -608,11 +624,15 @@ exports.getPayslip = async (req, res) => {
     const ps = result.rows[0];
     ps.month_name = MONTH_NAMES[ps.month - 1];
 
-    // Derive pf_employer, pf_admin if not stored in DB
+    // Derive pf_employer, pf_admin if not stored in DB (the monthly `payroll`
+    // table only ever stores pf_employee -- see computePayroll above -- so
+    // this fallback always fires for the payslip's employer-side display).
+    // pf_admin = EPF Admin A/c-2 (0.5%) + EDLI A/c-21 (0.5%) + EDLI Admin
+    // A/c-22 (0%) = 1% of PF wages; pfEmp is 12% of PF wages, so 1%/12% of it.
     const pfEmp = parseFloat(ps.pf_employee || 0);
     if (pfEmp > 0) {
       if (!parseFloat(ps.pf_employer)) ps.pf_employer = pfEmp;
-      if (!parseFloat(ps.pf_admin))    ps.pf_admin    = Math.round(pfEmp * 0.005 / 0.12);
+      if (!parseFloat(ps.pf_admin))    ps.pf_admin    = Math.round(pfEmp * 0.01 / 0.12);
     }
     const gross = parseFloat(ps.gross_salary || 0);
     if (!parseFloat(ps.professional_tax)) ps.professional_tax = calcPT(gross, ps.state);
@@ -731,6 +751,9 @@ exports.getAllSalaryStructures = async (req, res) => {
          COALESCE(ess.ctc_annual,0)        AS ctc_annual,
          COALESCE(ess.pf_wage_basis,'capped') AS pf_wage_basis,
          COALESCE(ess.pf_applicable,true)   AS pf_applicable,
+         COALESCE(ess.eps_applicable,true)  AS eps_applicable,
+         COALESCE(ess.pf_eps,0)             AS pf_eps,
+         COALESCE(ess.pf_admin,0)           AS pf_admin,
          COALESCE(ess.esi_applicable,true)  AS esi_applicable,
          COALESCE(ess.pt_applicable,true)   AS pt_applicable,
          COALESCE(ess.lwf_applicable,true)  AS lwf_applicable,
@@ -1152,7 +1175,8 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
              COALESCE(s.pt_applicable,true)  AS pt_applicable,
              COALESCE(s.lwf_applicable,false) AS lwf_applicable,
              COALESCE(s.tds_applicable,false) AS tds_applicable,
-             COALESCE(s.pf_wage_basis,'capped') AS pf_wage_basis
+             COALESCE(s.pf_wage_basis,'capped') AS pf_wage_basis,
+             COALESCE(s.eps_applicable,true) AS eps_applicable
       FROM employees e
       LEFT JOIN departments  d   ON e.department_id  = d.id
       LEFT JOIN designations des ON e.designation_id = des.id
@@ -1164,7 +1188,7 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
       'Emp Code', 'Full Name', 'Department', 'Designation',
       'Bank', 'Branch', 'Account No.', 'IFSC',
       'Basic', 'HRA', 'Conveyance', 'Defray Allowance', 'Gratuity', 'Food Coupon',
-      'PF Applicable (Y/N)', 'PF Basis (Capped/Actual)',
+      'PF Applicable (Y/N)', 'PF Basis (Capped/Actual)', 'EPS Applicable (Y/N)',
       'ESI Applicable (Y/N)', 'PT Applicable (Y/N)',
       'LWF Applicable (Y/N)', 'TDS Applicable (Y/N)'
     ];
@@ -1180,7 +1204,7 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
         e.bank_name || '', e.bank_branch || '', e.bank_account || '', e.bank_ifsc || '',
         parseFloat(e.basic) || 0, parseFloat(e.hra) || 0, parseFloat(e.conveyance) || 0,
         parseFloat(e.special_allowance) || 0, parseFloat(e.gratuity) || 0, parseFloat(e.food_coupon) || 0,
-        yn(e.pf_applicable), e.pf_wage_basis === 'actual' ? 'Actual' : 'Capped',
+        yn(e.pf_applicable), e.pf_wage_basis === 'actual' ? 'Actual' : 'Capped', yn(e.eps_applicable),
         yn(e.esi_applicable), yn(e.pt_applicable),
         yn(e.lwf_applicable), yn(e.tds_applicable)
       ])
@@ -1215,6 +1239,7 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
       ['Food Coupon',      'Monthly meal-voucher/food coupon benefit in ₹ — only applicable to select employees, leave 0 for everyone else'],
       ['PF Applicable',    'Y if Provident Fund applies to this employee, else N'],
       ['PF Basis',         'Capped = PF calculated on min(Basic, ₹15,000), the statutory PF wage ceiling (default). Actual = PF calculated on the FULL Basic, uncapped — for employees who opted out of the ceiling.'],
+      ['EPS Applicable',   'Y if the employer\'s 12% PF share splits into EPS (A/c-10, 8.33%) + EPF (A/c-1, 3.67%), which is the default for most employees. N if EPS does not apply to this employee — their full 12% employer share stays in EPF A/c-1 instead.'],
       ['ESI Applicable',   'Y if ESI applies (only relevant when gross ≤ ₹21,000), else N'],
       ['PT Applicable',    'Y if Professional Tax applies, else N'],
       ['LWF Applicable',   'Y if Labour Welfare Fund applies, else N'],
@@ -1299,6 +1324,10 @@ exports.bulkUploadSalaryStructure = async (req, res) => {
       const gratuity           = parseFloat(row['Gratuity']) || 0;
       const food_coupon        = parseFloat(row['Food Coupon']) || 0;
       const pf_applicable      = isYes(row['PF Applicable (Y/N)']);
+      // EPS (A/c-10) doesn't apply to every PF member -- if the column is
+      // absent from an older template, default to applicable (previous
+      // behaviour: full 12% employer share, just now correctly split).
+      const eps_applicable     = row['EPS Applicable (Y/N)'] !== undefined ? isYes(row['EPS Applicable (Y/N)']) : true;
       const esi_applicable     = isYes(row['ESI Applicable (Y/N)']);
       const pt_applicable      = isYes(row['PT Applicable (Y/N)']);
       const lwf_applicable     = isYes(row['LWF Applicable (Y/N)']);
@@ -1316,9 +1345,14 @@ exports.bulkUploadSalaryStructure = async (req, res) => {
 
       const gross        = basic + hra + conveyance + special_allowance + gratuity + food_coupon;
       const pfBase        = pf_wage_basis === 'actual' ? basic : Math.min(basic, 15000);
+      // Same statutory breakup as computeAndSaveSalaryStructure() above:
+      // employer 12% = EPS A/c-10 (8.33%) + EPF A/c-1 (3.67%) when EPS
+      // applies, else the full 12% stays in EPF A/c-1. pf_admin = EPF Admin
+      // A/c-2 (0.5%) + EDLI A/c-21 (0.5%) + EDLI Admin A/c-22 (0%).
       const pf_employee    = pf_applicable  ? Math.round(pfBase * 0.12) : 0;
       const pf_employer    = pf_applicable  ? Math.round(pfBase * 0.12) : 0;
-      const pf_admin       = pf_applicable  ? 150 : 0;
+      const pf_eps         = pf_applicable && eps_applicable ? Math.round(pfBase * 0.0833) : 0;
+      const pf_admin       = pf_applicable  ? Math.round(pfBase * 0.01) : 0;
       const esi_employee   = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
       const esi_employer   = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
       const pt             = pt_applicable  ? calcPT(gross, empStateMap[empCode]) : 0;
@@ -1338,19 +1372,22 @@ exports.bulkUploadSalaryStructure = async (req, res) => {
               pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
               pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
               professional_tax, lwf, total_employer_cost,
-              total_deductions, net_salary, ctc_monthly, ctc_annual, pf_wage_basis, updated_by, updated_at)
-           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,NOW())
+              total_deductions, net_salary, ctc_monthly, ctc_annual, pf_wage_basis,
+              eps_applicable, pf_eps, updated_by, updated_at)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,NOW())
            ON CONFLICT(employee_id) DO UPDATE SET
              basic=$2, hra=$3, conveyance=$4, special_allowance=$5, gratuity=$6, food_coupon=$7, gross_salary=$8,
              pf_applicable=$9, esi_applicable=$10, pt_applicable=$11, lwf_applicable=$12, tds_applicable=$13,
              pf_employee=$14, pf_employer=$15, pf_admin=$16, esi_employee=$17, esi_employer=$18,
              professional_tax=$19, lwf=$20, total_employer_cost=$21,
              total_deductions=$22, net_salary=$23, ctc_monthly=$24, ctc_annual=$25, pf_wage_basis=$26,
-             updated_by=$27, updated_at=NOW()`,
+             eps_applicable=$27, pf_eps=$28,
+             updated_by=$29, updated_at=NOW()`,
           [empId, basic, hra, conveyance, special_allowance, gratuity, food_coupon, gross,
            pf_applicable, esi_applicable, pt_applicable, lwf_applicable, tds_applicable,
            pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
-           pt, lwf, total_employer_cost, total_ded, net, ctc_monthly, ctc_annual, pf_wage_basis, req.user.id]
+           pt, lwf, total_employer_cost, total_ded, net, ctc_monthly, ctc_annual, pf_wage_basis,
+           eps_applicable, pf_eps, req.user.id]
         );
         await client.query(`RELEASE SAVEPOINT ${sp}`);
 
