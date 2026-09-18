@@ -36,6 +36,16 @@ function toLocalDateString(date) {
   }).format(new Date(date));
 }
 
+// Parses "HH:MM" or "HH:MM:SS" (or a full timestamp containing one) into
+// seconds-of-day. Defensive so a malformed/missing value never produces NaN
+// and silently defeats the punch-out cooldown check below.
+function timeToSecondsOfDay(val) {
+  if (!val) return null;
+  const m = String(val).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) return null;
+  return (+m[1]) * 3600 + (+m[2]) * 60 + (+(m[3] || 0));
+}
+
 // ── Punch In ──────────────────────────────────────────────────────────────────
 exports.punchIn = async (req, res) => {
   try {
@@ -120,6 +130,23 @@ exports.punchOut = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No punch-in found for today' });
     if (existing.rows[0].punch_out)
       return res.status(400).json({ success: false, message: 'Already punched out today' });
+
+    // ── 5-minute cooldown: prevent punch-out within 5 minutes of punch-in ────
+    // Same rule as KrishiHR — stops an instant punch-in/punch-out pair.
+    const punchInTotalSecs = timeToSecondsOfDay(existing.rows[0].punch_in);
+    const serverTotalSecs  = timeToSecondsOfDay(getISTTimeParts().timeStr);
+    if (punchInTotalSecs !== null && serverTotalSecs !== null) {
+      const diffSecs = serverTotalSecs - punchInTotalSecs;
+      // diffSecs < 0 => clock crossed midnight since punch-in; not a real
+      // sub-5-minute case, so don't falsely block.
+      if (diffSecs >= 0 && diffSecs < 300) {
+        const remaining = Math.ceil((300 - diffSecs) / 60);
+        return res.status(400).json({
+          success: false,
+          message: `Please wait ${remaining} more minute${remaining > 1 ? 's' : ''} before punching out`
+        });
+      }
+    }
 
     // ── Geo-boundary validation — see punchIn for why this is coordinate-gated
     // rather than device-gated. ────────────────────────────────────────────────
