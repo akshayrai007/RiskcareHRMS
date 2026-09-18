@@ -809,9 +809,9 @@ async function showDetail(id) {
     <div class="divider"></div>
     <div class="section-title">Approval</div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      ${a.status === 'pending' && a.current_approver_code
-        ? renderApprovalStep('Manager', a.current_approver_code, 'pending', '', null)
-        : renderApprovalStep('Manager', a.current_approver_code || '—', a.status, a.remarks, a.actioned_at)
+      ${a.l1_approver_code || a.current_approver_code
+        ? renderApprovalStep('MD', a.l1_name || a.current_approver_code, a.l1_status || a.status || 'pending', a.status !== 'pending' ? a.remarks : '', a.status !== 'pending' ? a.actioned_at : null)
+        : renderApprovalStep('—', 'Auto-approved', 'approved', '', a.applied_at)
       }
     </div>
     <div class="divider"></div>
@@ -829,14 +829,17 @@ async function showDetail(id) {
 }
 
 function renderApprovalStep(level, name, status, remarks, actionAt) {
+  const s = status || 'pending';
+  const statusIcon = s === 'approved' ? '✓' : s === 'rejected' ? '✗' : '⏳';
+  const statusLabel = s.charAt(0).toUpperCase() + s.slice(1);
   return `<div class="approval-step">
     <div class="approval-level">${level}</div>
-    <div style="flex:1">
-      <div style="font-weight:600;font-size:13px">${name||'Not assigned'}</div>
-      ${remarks?`<div class="text-muted" style="margin-top:2px">${remarks}</div>`:''}
-      ${actionAt?`<div class="text-muted2" style="margin-top:2px">${fmt.ago(actionAt)}</div>`:''}
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:700;font-size:13px">${name||'Not assigned'}</div>
+      ${remarks?`<div class="text-muted" style="margin-top:3px;font-size:12px">💬 ${remarks}</div>`:''}
+      ${actionAt?`<div class="text-muted2" style="margin-top:2px;font-size:11px">${fmt.ago(actionAt)}</div>`:''}
     </div>
-    <span class="badge badge-${status||'pending'}">${status||'pending'}</span>
+    <span class="badge badge-${s}" style="flex-shrink:0;white-space:nowrap">${statusIcon} ${statusLabel}</span>
   </div>`;
 }
 
