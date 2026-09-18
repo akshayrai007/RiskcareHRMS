@@ -233,8 +233,11 @@ router.put ('/leave/balance',         authenticate, authorize(...HR_ADMIN), leav
 router.post('/leave/monthly-accrual',        authenticate, authorize(...HR_ADMIN), leaveCtrl.monthlyAccrual);
 router.post('/leave/recalculate/:id',        authenticate, authorize(...HR_ADMIN), leaveCtrl.recalculateEmployee);
 router.get ('/leave/report',                 authenticate,                        leaveCtrl.getLeaveReport);
-router.get ('/leave/summary',                authenticate, accessCtrl.authorizeOrPageOverride('leaves.html', HR_ADMIN), leaveCtrl.getLeaveSummary);
-router.get ('/leave/transactions',           authenticate, accessCtrl.authorizeOrPageOverride('leaves.html', HR_ADMIN), leaveCtrl.getLeaveTransactions);
+// Company-wide leave summary/transactions is a hard role rule, not something
+// a per-employee Access Control "full" override should unlock -- see
+// leaveController.requireLeaveSummaryAccess for why.
+router.get ('/leave/summary',                authenticate, leaveCtrl.requireLeaveSummaryAccess, leaveCtrl.getLeaveSummary);
+router.get ('/leave/transactions',           authenticate, leaveCtrl.requireLeaveSummaryAccess, leaveCtrl.getLeaveTransactions);
 router.post('/leave/import-balances',        authenticate, authorize(...HR_ADMIN), xlsxUpload.single('file'), leaveCtrl.importLeaveBalances);
 
 

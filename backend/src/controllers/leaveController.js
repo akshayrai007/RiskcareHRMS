@@ -1332,15 +1332,30 @@ exports.revoke = async (req, res) => {
 };
 
 // ── HR: Get Leave Summary per Employee (EL, SL balance counts) ───────────────
+// Company-wide leave visibility rule (hard rule, not Access-Control-overridable
+// — this is aggregate reporting across every employee's leave, not a page a
+// per-employee override should be able to unlock): full-access roles (HR,
+// accounts, super_admin) see everyone; scoped managers (manager, TL, admin)
+// see only themselves + their direct reports; a plain employee gets nothing
+// here at all (they already see their own balance elsewhere on the page).
+exports.requireLeaveSummaryAccess = (req, res, next) => {
+  const role = req.user.role;
+  if (scope.hasFullAccess(role) || scope.isScopedManager(role)) return next();
+  return res.status(403).json({ success: false, message: 'You do not have access to company-wide leave summary/transactions.' });
+};
+
 exports.getLeaveSummary = async (req, res) => {
   try {
-    // Role/override gate already enforced by authorizeOrPageOverride on the route.
     const year = parseInt(req.query.year) || new Date().getFullYear();
     const search = req.query.search || ''; // name or employee_code
 
     let empWhere = `WHERE e.is_active = true`;
     let empParams = [year];
     let idx = 2;
+    // Scoped managers (manager/tl/admin) only ever see themselves + direct
+    // reports — hasFullAccess roles get no extra restriction here.
+    const empScope = scope.buildEmployeeScope(req.user, 'e', idx);
+    if (empScope.clause) { empWhere += ` AND ${empScope.clause}`; empParams.push(...empScope.params); idx = empScope.nextIdx; }
     if (search) {
       empWhere += ` AND (LOWER(CONCAT(e.first_name,' ',e.last_name)) LIKE $${idx} OR LOWER(e.employee_code) LIKE $${idx})`;
       empParams.push(`%${search.toLowerCase()}%`);
@@ -1388,7 +1403,8 @@ exports.getLeaveSummary = async (req, res) => {
 // ── HR: Leave Transaction — individual search by name or ID ─────────────────
 exports.getLeaveTransactions = async (req, res) => {
   try {
-    // Role/override gate already enforced by authorizeOrPageOverride on the route.
+    // Role/override gate enforced by requireLeaveSummaryAccess on the route;
+    // scoped managers are additionally restricted to self + direct reports below.
     const year = parseInt(req.query.year) || new Date().getFullYear();
     const search = req.query.search || '';
     const employee_id = req.query.employee_id ? parseInt(req.query.employee_id) : null;
@@ -1399,6 +1415,9 @@ exports.getLeaveTransactions = async (req, res) => {
     let conds = [`EXTRACT(YEAR FROM lr.from_date) = $1`];
     let params = [year];
     let idx = 2;
+
+    const empScope = scope.buildEmployeeScope(req.user, 'e', idx);
+    if (empScope.clause) { conds.push(empScope.clause); params.push(...empScope.params); idx = empScope.nextIdx; }
 
     if (month) { conds.push(`EXTRACT(MONTH FROM lr.from_date) = $${idx++}`); params.push(month); }
     if (employee_id) {

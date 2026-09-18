@@ -409,10 +409,14 @@ let holidayDates   = new Set();
 function enableAllApplicationsTab() {
   document.getElementById('all-tab').style.display = '';
 }
-function enableHrLeaveView() {
+// withImport=true also reveals the Import Leave button — only for roles the
+// backend actually authorizes on POST /leave/import-balances (hr/admin/
+// super_admin/accounts). Manager/TL get Summary + Transactions (scoped to
+// their own reports by the backend) but never the bulk-import action.
+function enableHrLeaveView(withImport = true) {
   document.getElementById('summary-tab').style.display = '';
   document.getElementById('txn-tab').style.display = '';
-  document.getElementById('import-leave-btn').style.display = '';
+  if (withImport) document.getElementById('import-leave-btn').style.display = '';
   // Populate year dropdowns (idempotent — skip if already populated)
   const curYr = new Date().getFullYear();
   ['summary-year','txn-year'].forEach(id => {
@@ -429,16 +433,24 @@ function enableHrLeaveView() {
 
 if (Role.is('admin','super_admin','hr','manager','tl','accounts')) document.getElementById('approvals-tab').style.display = '';
 if (Role.isAdminOrHR() || Role.is('accounts')) enableAllApplicationsTab();
-if (Role.is('hr','super_admin')) enableHrLeaveView();
+// Company-wide Leave Summary/Transactions is a hard role rule enforced by
+// the backend (requireLeaveSummaryAccess) — NOT Access-Control-overridable,
+// since it's aggregate reporting across every employee, not a page a
+// per-employee override should be able to unlock. HR/super_admin/accounts
+// get the full view with bulk Import; manager/TL get the same tabs but the
+// backend scopes the data to their own direct reports only, and they never
+// get the Import button (import-balances stays HR/admin/accounts-only).
+if (Role.is('hr','super_admin','accounts')) enableHrLeaveView(true);
+else if (Role.is('manager','tl')) enableHrLeaveView(false);
 
 // An Access Control override (System > Access Control) can grant a role that
-// wouldn't normally get the HR view "Full" access to this page — honor it
-// the same way guardDashboard() now does, instead of only checking the role.
+// wouldn't normally get the "All Applications" list view — this one's just a
+// filtered list of leave requests, not aggregate company data, so it's fine
+// to leave delegable. (Leave Summary/Transactions above is not part of this.)
 if (!Role.is('admin','super_admin','hr','accounts')) {
   api('GET', '/access-control/my-effective/leaves.html').then(res => {
     if (res?.data?.level === 'full') {
       enableAllApplicationsTab();
-      enableHrLeaveView();
     }
   }).catch(() => {});
 }
