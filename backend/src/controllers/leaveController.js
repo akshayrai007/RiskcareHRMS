@@ -510,10 +510,15 @@ exports.getRequests = async (req, res) => {
     else if (userRole === 'super_admin' || userRole === 'accounts') {
       // super_admin / accounts see everything
     } else if (userRole === 'hr') {
-      // HR sees all requests for non-pending views (history, reports).
-      // For the pending queue, scope to requests where HR is the current
-      // approver OR the employee's reporting manager — leaves they can act on.
-      if (status === 'pending') {
+      // HR sees all requests for non-pending views (history, reports) and
+      // whenever scope=all is explicit (the "All Applications" tab — that's
+      // the whole point of that view, not just what HR can personally act
+      // on). Only the DEFAULT/no-scope pending case is narrowed to requests
+      // HR is the current approver or reporting manager for — leaves now
+      // always route to the MD, so HR is rarely that anyway, but scope=all
+      // must never be affected by this or "All Applications" silently loses
+      // every pending leave, which is what was happening.
+      if (status === 'pending' && scope !== 'all') {
         conds.push(
           `(lr.current_approver_code=$${idx++}
             OR EXISTS (
