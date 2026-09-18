@@ -891,12 +891,20 @@ exports.getRegularizations = async (req, res) => {
   try {
     const userId = req.user.id;
     const role   = req.user.role;
-    const { status = 'pending' } = req.query;
+    const { status = 'pending', mine } = req.query;
 
     let scopeCond = '';
     let params    = [status];
 
-    if (role === 'super_admin') {
+    // mine=1 → always just the caller's own submitted requests, regardless
+    // of role. Without this, a manager/admin/TL calling this endpoint always
+    // got their team's requests (their role-based scope below), never their
+    // own personal ones -- so a page section meant to show "my requests"
+    // silently displayed the same rows as the approval queue instead.
+    if (mine === '1' || mine === 'true') {
+      scopeCond = `AND e.id=$2`;
+      params.push(userId);
+    } else if (role === 'super_admin') {
       scopeCond = ''; // Oversight — sees everything, same as HR
     } else if (role === 'hr') {
       scopeCond = ''; // HR sees all — both stages of the 2-step chain, from creation
