@@ -2272,7 +2272,9 @@ async function loadRegularizations() {
         const s  = r.status || 'pending';
         const sc = s==='approved' ? '#16a34a' : s==='rejected' ? '#dc2626' : '#d97706';
         const sb = s==='approved' ? '#dcfce7'  : s==='rejected' ? '#fee2e2'  : '#fef3c7';
-        const si = s==='approved' ? '✅ Approved' : s==='rejected' ? '❌ Rejected' : '⏳ Pending';
+        // 2-step chain: manager approves first, then HR gives final approval.
+        const si = s==='approved' ? '✅ Approved' : s==='rejected' ? '❌ Rejected'
+                 : r.stage === 'hr' ? '⏳ Pending HR (manager approved)' : '⏳ Pending Manager';
         const canAction = s === 'pending';
         return `
         <div class="req-card" style="border-left:4px solid ${sc};margin-bottom:10px">
@@ -2288,6 +2290,7 @@ async function loadRegularizations() {
               <div class="req-meta">${r.dept||'—'} · ${fmt.date(r.date)}</div>
               <div class="req-meta" style="margin-top:4px">Reason: ${r.regularization_reason||r.reason||'—'}</div>
               ${r.punch_in ? `<div class="req-meta">Requested: ${r.punch_in} → ${r.punch_out||'—'}</div>` : ''}
+              ${r.regularization_manager_remarks ? `<div class="req-meta" style="color:#0369a1">👤 Manager: ${r.regularization_manager_remarks}</div>` : ''}
               ${r.regularization_remarks ? `<div class="req-meta" style="color:#7c3aed">💬 ${r.regularization_remarks}</div>` : ''}
             </div>
             <span class="badge" style="background:${sb};color:${sc};border:1px solid ${sc};flex-shrink:0">${si}</span>
@@ -2397,7 +2400,7 @@ function openApproveReg(id,name,date,reason,pIn,pOut) {
 async function actionReg(action) {
   const remarks = document.getElementById('reg-action-remarks')?.value || '';
   const data = await api('POST','/attendance/regularize/action',{attendance_id:activeRegId,action,remarks});
-  if (data?.success) { toast(`Regularization ${action}d`); closeModal('approve-reg-modal'); loadRegularizations(); }
+  if (data?.success) { toast(data?.message || `Regularization ${action}d`); closeModal('approve-reg-modal'); loadRegularizations(); }
   else toast(data?.message||'Failed','error');
 }
 

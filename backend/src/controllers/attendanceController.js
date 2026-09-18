@@ -799,21 +799,29 @@ exports.requestRegularization = async (req, res) => {
     if (regType === 'missing_punch_out' && !punch_out)
       return res.status(400).json({ success: false, message: 'punch_out time is required for missing punch-out regularization' });
 
-    // Upsert the attendance row (may not exist for missed punch days)
+    // Upsert the attendance row (may not exist for missed punch days).
+    // regularization_stage='manager' starts the 2-step chain — Reporting
+    // Manager approves first, then HR gives the final approval.
     await client.query(
-      `INSERT INTO attendance(employee_id, date, status, regularization_status, regularization_reason,
+      `INSERT INTO attendance(employee_id, date, status, regularization_status, regularization_stage, regularization_reason,
                               regularization_punch_in, regularization_punch_out, regularization_requested_at)
-       VALUES($1,$2,COALESCE((SELECT status FROM attendance WHERE employee_id=$1 AND date=$2),'absent'),'pending',$3,$4,$5,NOW())
+       VALUES($1,$2,COALESCE((SELECT status FROM attendance WHERE employee_id=$1 AND date=$2),'absent'),'pending','manager',$3,$4,$5,NOW())
        ON CONFLICT(employee_id, date) DO UPDATE
          SET regularization_status      = 'pending',
+             regularization_stage       = 'manager',
              regularization_reason      = EXCLUDED.regularization_reason,
              regularization_punch_in    = EXCLUDED.regularization_punch_in,
              regularization_punch_out   = EXCLUDED.regularization_punch_out,
-             regularization_requested_at= NOW()`,
+             regularization_requested_at= NOW(),
+             regularization_manager_actioned_by = NULL,
+             regularization_manager_actioned_at = NULL,
+             regularization_manager_remarks     = NULL`,
       [empId, date, reason, punch_in || null, punch_out || null]
     );
 
-    // Notify reporting manager
+    // Notify BOTH the reporting manager AND HR as soon as the request is
+    // raised — the 2-step approval (manager, then HR) is sequential, but
+    // visibility into a new request is immediate for both.
     const manager = await client.query(
       `SELECT m.id, CONCAT(m.first_name,' ',m.last_name) AS name
        FROM employees e
@@ -821,15 +829,9 @@ exports.requestRegularization = async (req, res) => {
        WHERE e.id=$1`, [empId]
     );
     const notifyIds = new Set();
-    if (req.user.employee_code === CONFIG.cooEmployeeCode) {
-      // KC718 (COO) → notify super_admin (KC01/MD) only
-      const mdRows = await client.query(`SELECT id FROM employees WHERE role = 'super_admin' AND is_active=true`);
-      mdRows.rows.forEach(r => notifyIds.add(r.id));
-    } else {
-      // Only notify the reporting manager
-      // HR gets notified ONLY if HR is the reporting manager of this employee
-      if (manager.rows.length) notifyIds.add(manager.rows[0].id);
-    }
+    if (manager.rows.length) notifyIds.add(manager.rows[0].id);
+    const hrRows = await client.query(`SELECT id FROM employees WHERE role = 'hr' AND is_active=true`);
+    hrRows.rows.forEach(r => notifyIds.add(r.id));
 
     const notifMsg = `${req.user.first_name} ${req.user.last_name} has requested attendance regularization for ${date}. Reason: ${reason}`;
     for (const recipientId of notifyIds) {
@@ -863,10 +865,9 @@ exports.getRegularizations = async (req, res) => {
     let params    = [status];
 
     if (role === 'super_admin') {
-      // MD only sees KC718 (COO) regularizations
-      scopeCond = `AND e.employee_code = CONFIG.cooEmployeeCode`;
+      scopeCond = ''; // Oversight — sees everything, same as HR
     } else if (role === 'hr') {
-      scopeCond = ''; // HR sees all
+      scopeCond = ''; // HR sees all — both stages of the 2-step chain, from creation
     } else if (['admin', 'manager'].includes(role)) {
       // Admin/manager see direct reports (reporting_manager) + team_leader assignments
       scopeCond = `AND (e.reporting_manager_id=$2 OR e.team_leader_id=$2)`;
@@ -888,15 +889,20 @@ exports.getRegularizations = async (req, res) => {
               e.employee_code,
               d.name                                                   AS dept,
               a.regularization_status                                  AS status,
+              a.regularization_stage                                   AS stage,
               a.regularization_reason                                  AS reason,
               TO_CHAR(a.regularization_punch_in,'HH24:MI')            AS punch_in,
               TO_CHAR(a.regularization_punch_out,'HH24:MI')           AS punch_out,
               a.regularization_requested_at,
               a.regularization_remarks,
+              a.regularization_manager_actioned_at,
+              a.regularization_manager_remarks,
+              CONCAT(mgr.first_name,' ',mgr.last_name)                 AS manager_actioned_by_name,
               a.status                                                 AS attendance_status
        FROM attendance a
        JOIN employees   e ON e.id = a.employee_id
        LEFT JOIN departments d ON d.id = e.department_id
+       LEFT JOIN employees mgr ON mgr.id = a.regularization_manager_actioned_by
        WHERE a.regularization_status = $1 ${scopeCond}
        ORDER BY a.regularization_requested_at DESC`,
       params
@@ -928,7 +934,7 @@ exports.actionRegularization = async (req, res) => {
       return res.status(400).json({ success: false, message: 'attendance_id and action (approve/reject) are required' });
 
     const rec = await client.query(
-      `SELECT a.*, e.reporting_manager_id,
+      `SELECT a.*, e.reporting_manager_id, e.team_leader_id,
               CONCAT(e.first_name,' ',e.last_name) AS emp_name
        FROM attendance a
        JOIN employees e ON e.id = a.employee_id
@@ -950,17 +956,66 @@ exports.actionRegularization = async (req, res) => {
       });
     }
 
-    // KC01 (MD / super_admin) may only action regularizations belonging to KC718 (COO)
-    if (req.user.role === 'super_admin') {
-      const empCheck = await client.query(
-        `SELECT employee_code FROM employees WHERE id = $1`,
-        [att.employee_id]
-      );
-      if (empCheck.rows[0]?.employee_code !== CONFIG.cooEmployeeCode) {
+    // ── 2-step approval: Reporting Manager, then HR ──────────────────────────
+    // regularization_stage is set for every employee-initiated request
+    // ('manager' first, then 'hr'). Older rows / HR-forced regularizations
+    // with no stage set keep the previous single-approver behaviour.
+    const isManagerOfEmployee = req.user.id === att.reporting_manager_id || req.user.id === att.team_leader_id;
+    const isHR = req.user.role === 'hr' || req.user.role === 'super_admin';
+
+    if (att.regularization_stage === 'manager') {
+      if (action === 'approve' && !isManagerOfEmployee) {
         return res.status(403).json({
           success: false,
-          message: 'MD can only approve regularizations for the COO (KC718).'
+          message: isHR
+            ? 'Waiting for the reporting manager\'s approval first — HR gives the final approval after that.'
+            : 'Only the reporting manager can give the first approval for this request.'
         });
+      }
+      if (action === 'reject' && !isManagerOfEmployee && !isHR) {
+        return res.status(403).json({ success: false, message: 'You are not authorized to act on this request.' });
+      }
+      if (action === 'approve') {
+        // Manager's approval advances the request to HR — no attendance
+        // changes applied yet, that happens on HR's final approval.
+        await client.query(
+          `UPDATE attendance
+           SET regularization_stage = 'hr',
+               regularization_manager_actioned_by = $1,
+               regularization_manager_actioned_at = NOW(),
+               regularization_manager_remarks     = $2
+           WHERE id=$3`,
+          [reviewerId, remarks || null, attendance_id]
+        );
+        const hrRows = await client.query(`SELECT id FROM employees WHERE role='hr' AND is_active=true`);
+        for (const hr of hrRows.rows) {
+          await client.query(
+            `INSERT INTO notifications(employee_id, title, message, type, reference_id, reference_type)
+             VALUES($1,'📋 Regularization — Manager Approved',$2,'regularization',$3,'attendance_regularization')`,
+            [hr.id, `${att.emp_name}'s regularization for ${att.date} was approved by their manager and now needs your final approval.`, attendance_id]
+          );
+        }
+        await client.query(
+          `INSERT INTO notifications(employee_id, title, message, type, reference_id, reference_type)
+           VALUES($1,'📋 Regularization — Manager Approved',$2,'regularization',$3,'attendance_regularization')`,
+          [att.employee_id, `Your manager approved your regularization request for ${att.date}. It now awaits HR's final approval.`, attendance_id]
+        );
+        await client.query('COMMIT');
+        return res.json({ success: true, message: 'Approved. Forwarded to HR for final approval.' });
+      }
+      // reject falls through to the shared reject branch below
+    } else if (att.regularization_stage === 'hr') {
+      if (!isHR) {
+        return res.status(403).json({
+          success: false,
+          message: 'This request already has manager approval and is now waiting on HR.'
+        });
+      }
+      // falls through — HR approve/reject below applies the final outcome
+    } else {
+      // No stage set (legacy row / HR-forced) — previous single-approver rule
+      if (!isManagerOfEmployee && !isHR) {
+        return res.status(403).json({ success: false, message: 'You are not authorized to act on this request.' });
       }
     }
 

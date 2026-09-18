@@ -15,34 +15,24 @@ function toLocalDateString(d) {
 }
 
 // ── Approval chain helper ─────────────────────────────────────────────────────
-// Leave: Employee → Reporting Manager (single-level approval).
-// The reporting_manager_id is the single source of truth for who approves.
-// Anyone with subordinates (manager, TL) is set as reporting_manager_id for
-// their team — so their approval queue fills automatically.
+// Leave: Employee → MD (single-level approval). Every leave request, from
+// every employee regardless of their reporting manager, goes straight to the
+// MD (Sunil Prakash) — this is a deliberate policy, not a reporting-line
+// derived chain like Regularization below.
 // Returns ordered array of approver employee_codes.
 async function getLeaveApprovalChain(employeeId) {
   const emp = await db.query(
-    `SELECT e.employee_code, e.reporting_manager_id,
-            m.employee_code AS manager_code, m.role AS manager_role
-     FROM employees e
-     LEFT JOIN employees m ON e.reporting_manager_id = m.id
-     WHERE e.id=$1`, [employeeId]
+    `SELECT employee_code FROM employees WHERE id=$1`, [employeeId]
   );
   if (!emp.rows.length) return [];
-  const { employee_code, manager_code, manager_role } = emp.rows[0];
+  const { employee_code } = emp.rows[0];
 
   const MD_CODE = CONFIG.mdEmployeeCode;
 
-  // MD / super_admin applies → no approver needed (auto-approved)
+  // MD applies → no approver needed (auto-approved)
   if (employee_code === MD_CODE) return [];
 
-  // KC718 (COO) → MD (KC01) is their approver
-  if (manager_role === 'super_admin') return [manager_code];
-
-  // Everyone else → their direct reporting manager
-  if (manager_code) return [manager_code];
-
-  return [];
+  return [MD_CODE];
 }
 
 // ── Apply for Leave ───────────────────────────────────────────────────────────
@@ -301,26 +291,12 @@ exports.action = async (req, res) => {
     } else { chain = []; }
     const currentCode  = leave.current_approver_code;
 
-    // Verify actor is allowed to act
-    const isSuperAdmin      = actorRole === 'super_admin';
-    // NOTE: `admin` is NO LONGER a blanket approver. Admins are scoped to their
-    // own direct reports, so they must pass the reporting-manager/team-leader
-    // check below just like a manager. Only super_admin keeps a special path.
+    // Verify actor is allowed to act. Every leave request's approval chain
+    // routes to the MD, so isCurrentApprover (actorCode === currentCode) is
+    // what actually gates this — only the specific employee coded as MD can
+    // act, not every super_admin, and `admin` is not a blanket approver either.
     const isAdmin           = false;
     const isCurrentApprover = actorCode === currentCode;
-
-    // super_admin (KC01/MD) may only action leave for KC718 (COO)
-    if (isSuperAdmin) {
-      const empCheck = await client.query(
-        `SELECT employee_code FROM employees WHERE id = $1`, [leave.employee_id]
-      );
-      if (empCheck.rows[0]?.employee_code !== CONFIG.cooEmployeeCode) {
-        return res.status(403).json({
-          success: false,
-          message: 'MD can only approve or reject leave for the COO (KC718). All other leave is managed by the reporting manager.'
-        });
-      }
-    }
 
     // Block self-approval — NO role can approve their own leave, not even admin
     if (leave.employee_id === req.user.id)

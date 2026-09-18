@@ -775,6 +775,16 @@ async function start() {
         // ── Food Coupon — optional fixed monthly meal-voucher benefit, only
         // applicable to select employees (defaults to 0 for everyone else) ──
         await db.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS food_coupon NUMERIC(12,2) DEFAULT 0`);
+        // ── Regularization 2-step approval: Reporting Manager, then HR.
+        // regularization_stage tracks whose turn it currently is; the
+        // existing regularization_actioned_by/at/remarks columns are reused
+        // for whichever step is CURRENTLY pending (the manager's decision
+        // gets archived into the _manager_ columns below when they approve
+        // and the request moves on to HR). ──────────────────────────────────
+        await db.query(`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS regularization_stage VARCHAR(10) DEFAULT NULL CHECK (regularization_stage IN ('manager','hr') OR regularization_stage IS NULL)`);
+        await db.query(`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS regularization_manager_actioned_by INT REFERENCES employees(id) ON DELETE SET NULL`);
+        await db.query(`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS regularization_manager_actioned_at TIMESTAMPTZ DEFAULT NULL`);
+        await db.query(`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS regularization_manager_remarks TEXT DEFAULT NULL`);
         // ── EPS (A/c-10) is a per-employee choice within the employer's PF
         // share, not everyone's — some employees (e.g. UAN created after
         // 1 Sep 2014 with wages already above ceiling on joining, or already

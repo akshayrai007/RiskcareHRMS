@@ -90,7 +90,7 @@ const CONFIG = {
   employeeCodePrefix:   "RC",
   employerTAN:          "",         // Set Riskcare employer TAN for Form 16
   cooEmployeeCode:      "RC001",
-  mdEmployeeCode:       "RC01",
+  mdEmployeeCode:       "E008",  // Sunil Prakash — was the stale placeholder "RC01", which matched no employee
   accountsEmployeeCode: "RC002",
   directToCooEmployeeCodes: [],
 
