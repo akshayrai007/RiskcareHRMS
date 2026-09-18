@@ -477,7 +477,14 @@ exports.action = async (req, res) => {
 // ── Get Leave Requests ────────────────────────────────────────────────────────
 exports.getRequests = async (req, res) => {
   try {
-    const { status, employee_id, from_date, to_date, scope } = req.query;
+    // NOTE: named scopeParam, NOT `scope` -- this file also has
+    // `const scope = require('../utils/scope')` at the top, and destructuring
+    // req.query.scope as `scope` here shadowed that module for the rest of
+    // this function. Any scope.hasFullAccess()/scope.isScopedManager() call
+    // below was silently calling those methods on the query STRING instead,
+    // throwing a TypeError (500) for any request carrying a scope param whose
+    // branch touched those calls -- confirmed live via console errors.
+    const { status, employee_id, from_date, to_date, scope: scopeParam } = req.query;
     const userId   = req.user.id;
     const userRole = req.user.role;
     const userCode = req.user.employee_code;
@@ -485,12 +492,12 @@ exports.getRequests = async (req, res) => {
     let conds = [], params = [], idx = 1;
 
     // scope=mine → only own requests (My Leaves tab)
-    if (scope === 'mine') {
+    if (scopeParam === 'mine') {
       conds.push(`lr.employee_id=$${idx++}`);
       params.push(userId);
     }
     // scope=approvals → only requests needing this user's approval
-    else if (scope === 'approvals') {
+    else if (scopeParam === 'approvals') {
       conds.push(`lr.status='pending'`);
       conds.push(`lr.employee_id != $${idx++}`);
       params.push(userId);
@@ -518,7 +525,7 @@ exports.getRequests = async (req, res) => {
       // always route to the MD, so HR is rarely that anyway, but scope=all
       // must never be affected by this or "All Applications" silently loses
       // every pending leave, which is what was happening.
-      if (status === 'pending' && scope !== 'all') {
+      if (status === 'pending' && scopeParam !== 'all') {
         conds.push(
           `(lr.current_approver_code=$${idx++}
             OR EXISTS (
@@ -572,11 +579,13 @@ exports.getRequests = async (req, res) => {
               lt.name AS leave_type_name, lt.code AS leave_type_code,
               CONCAT(e.first_name,' ',e.last_name) AS employee_name,
               e.employee_code, d.name AS department_name,
-              e.id AS employee_id
+              e.id AS employee_id,
+              CONCAT(mgr.first_name,' ',mgr.last_name) AS reporting_manager_name
        FROM leave_requests lr
        JOIN employees e  ON lr.employee_id = e.id
        JOIN leave_types lt ON lr.leave_type_id = lt.id
        LEFT JOIN departments d ON e.department_id = d.id
+       LEFT JOIN employees mgr ON mgr.id = e.reporting_manager_id
        ${where}
        ORDER BY lr.created_at DESC`, params
     );

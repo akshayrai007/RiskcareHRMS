@@ -2339,7 +2339,7 @@ async function loadRegularizations() {
                 onchange="updateRegBulkBar()">
             </div>` : '<div style="width:28px"></div>'}
             <div style="flex:1;cursor:${canAction?'pointer':'default'}"
-              ${canAction ? `onclick="openApproveReg(${r.id},'${(r.emp_name||'').replace(/'/g,"\\'")}','${r.date}','${(r.regularization_reason||r.reason||'').replace(/'/g,"\\'")}','${r.punch_in||''}','${r.punch_out||''}')"` : ''}>
+              ${canAction ? `onclick="openApproveReg(${r.id},'${(r.emp_name||'').replace(/'/g,"\\'")}','${r.date}','${(r.regularization_reason||r.reason||'').replace(/'/g,"\\'")}','${r.punch_in||''}','${r.punch_out||''}','${(r.reporting_manager_name||'').replace(/'/g,"\\'")}')"` : ''}>
               <div class="req-name">${r.emp_name} <span class="text-muted fs-sm">(${r.employee_code})</span></div>
               <div class="req-meta">${r.dept||'—'} · ${fmt.date(r.date)}</div>
               <div class="req-meta" style="margin-top:4px">Reason: ${r.regularization_reason||r.reason||'—'}</div>
@@ -2433,13 +2433,14 @@ async function submitReg() {
   else toast(data?.message||'Failed','error');
 }
 
-function openApproveReg(id,name,date,reason,pIn,pOut) {
+function openApproveReg(id,name,date,reason,pIn,pOut,reportingManagerName) {
   activeRegId = id;
   document.getElementById('approve-reg-content').innerHTML = `
     <div class="form-row">
       <div><div class="form-label">Employee</div><b>${name}</b></div>
-      <div><div class="form-label">Date</div>${fmt.date(date)}</div>
+      <div><div class="form-label">Reporting Manager</div>${reportingManagerName?.trim() || '—'}</div>
     </div>
+    <div class="form-group mt-2"><div class="form-label">Date</div>${fmt.date(date)}</div>
     <div class="form-group mt-2"><div class="form-label">Reason</div>${reason||'—'}</div>
     <div class="form-row">
       <div><div class="form-label">Requested Punch In</div>${pIn||'Not provided'}</div>

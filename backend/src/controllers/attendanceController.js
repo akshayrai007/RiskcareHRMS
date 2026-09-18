@@ -930,11 +930,13 @@ exports.getRegularizations = async (req, res) => {
               a.regularization_manager_actioned_at,
               a.regularization_manager_remarks,
               CONCAT(mgr.first_name,' ',mgr.last_name)                 AS manager_actioned_by_name,
+              CONCAT(rmgr.first_name,' ',rmgr.last_name)               AS reporting_manager_name,
               a.status                                                 AS attendance_status
        FROM attendance a
        JOIN employees   e ON e.id = a.employee_id
        LEFT JOIN departments d ON d.id = e.department_id
        LEFT JOIN employees mgr ON mgr.id = a.regularization_manager_actioned_by
+       LEFT JOIN employees rmgr ON rmgr.id = e.reporting_manager_id
        WHERE a.regularization_status = $1 ${scopeCond}
        ORDER BY a.regularization_requested_at DESC`,
       params

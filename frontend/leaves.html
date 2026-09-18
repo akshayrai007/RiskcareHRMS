@@ -797,6 +797,9 @@ async function showDetail(id) {
       <div><div class="form-label">Department</div>${a.department_name||'—'}</div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div><div class="form-label">Reporting Manager</div>${a.reporting_manager_name?.trim() || '—'}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
       <div><div class="form-label">Leave Type</div><span class="badge" style="background:var(--accent-l);color:var(--accent)">${a.leave_type_name} (${a.leave_type_code})</span></div>
       <div><div class="form-label">Category</div>${a.leave_category}${a.is_half_day ? ` &nbsp;<span class="badge" style="background:#f5d0fe;color:#7e22ce">½ H-${a.leave_type_code} — 0.5 day</span>` : ''}</div>
     </div>
