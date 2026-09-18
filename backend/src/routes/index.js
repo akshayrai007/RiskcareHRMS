@@ -126,6 +126,7 @@ router.get ('/attendance/summary',          authenticate, attCtrl.getSummary);
 router.get ('/attendance/team-today',       authenticate, attCtrl.getTeamToday);
 router.get ('/attendance/punch-locations',  authenticate, attCtrl.getPunchLocations);
 router.post('/attendance/regularize',       authenticate, attCtrl.requestRegularization);
+router.post('/attendance/regularize/cancel',authenticate, attCtrl.cancelRegularization);
 router.get ('/attendance/regularizations',  authenticate, attCtrl.getRegularizations);
 router.post('/attendance/regularize/action',authenticate, attCtrl.actionRegularization);
 router.post('/attendance/force-regularize', authenticate, authorize('hr','super_admin'), attCtrl.forceRegularization);

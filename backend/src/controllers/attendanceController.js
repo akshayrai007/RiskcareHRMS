@@ -854,6 +854,38 @@ exports.requestRegularization = async (req, res) => {
   } finally { client.release(); }
 };
 
+// ── Cancel Regularization (employee withdraws their own pending request) ────
+exports.cancelRegularization = async (req, res) => {
+  try {
+    const attendance_id = req.body.attendance_id || req.body.id;
+    if (!attendance_id) return res.status(400).json({ success: false, message: 'attendance_id required' });
+
+    const rec = await db.query(`SELECT employee_id, regularization_status, date FROM attendance WHERE id=$1`, [attendance_id]);
+    if (!rec.rows.length) return res.status(404).json({ success: false, message: 'Attendance record not found' });
+    const att = rec.rows[0];
+
+    if (att.employee_id !== req.user.id)
+      return res.status(403).json({ success: false, message: 'You can only cancel your own regularization request.' });
+    if (att.regularization_status !== 'pending')
+      return res.status(400).json({ success: false, message: 'Only a pending request can be cancelled.' });
+
+    await db.query(
+      `UPDATE attendance
+       SET regularization_status = NULL, regularization_stage = NULL,
+           regularization_reason = NULL, regularization_punch_in = NULL, regularization_punch_out = NULL,
+           regularization_requested_at = NULL,
+           regularization_manager_actioned_by = NULL, regularization_manager_actioned_at = NULL, regularization_manager_remarks = NULL
+       WHERE id=$1`,
+      [attendance_id]
+    );
+
+    res.json({ success: true, message: 'Regularization request cancelled' });
+  } catch (err) {
+    console.error('[cancelRegularization]', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // ── List Regularizations (manager / HR view) ─────────────────────────────────
 exports.getRegularizations = async (req, res) => {
   try {

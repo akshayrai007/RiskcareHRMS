@@ -193,6 +193,19 @@
   .modal-footer .btn { flex: 1 !important; }
 
 }
+/* ── Regularization approval pipeline (Manager → HR) — same visual
+   language as advance.html's pipeline, so every approval flow in the
+   app reads the same way. Visible to the requester, the manager, and
+   HR, all from the same markup. ── */
+.reg-pipeline { display: flex; align-items: center; gap: 4px; margin-top: 10px; flex-wrap: wrap; }
+.reg-pipeline-step { display: flex; flex-direction: column; align-items: center; min-width: 80px; position: relative; }
+.reg-pipeline-step:not(:last-child)::after { content: '→'; position: absolute; right: -8px; top: 12px; color: var(--muted); font-size: 13px; }
+.reg-pipeline-bubble { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; border: 2px solid var(--border); background: var(--bg,#fff); color: var(--muted); margin-bottom: 3px; }
+.reg-pipeline-bubble.done     { background: #d1fae5; border-color: #16a34a; color: #16a34a; }
+.reg-pipeline-bubble.active   { background: #fef9c3; border-color: #d97706; color: #b45309; }
+.reg-pipeline-bubble.rejected { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
+.reg-pipeline-label { font-size: 10px; color: var(--muted); text-align: center; font-weight: 600; }
+.reg-pipeline-who { font-size: 9.5px; color: var(--text); text-align: center; margin-top: 1px; }
 </style>
 </head>
 <body>
@@ -2209,6 +2222,41 @@ function renderTeam(list) {
     </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">No records</td></tr>';
 }
 
+// 2-step pipeline: Manager → HR. `r` is a row from GET /attendance/regularizations
+// (status, stage, regularization_manager_remarks, regularization_manager_actioned_at all present).
+function regPipelineHTML(r) {
+  const steps = [
+    { lvl: 1, label: 'Manager', icon: '👤' },
+    { lvl: 2, label: 'HR',      icon: '🏢' },
+  ];
+  // Was it rejected while still at the manager step, or after manager had
+  // already approved (i.e. rejected by HR)? regularization_manager_actioned_at
+  // is only ever set when the manager APPROVES (moves it to HR), so its
+  // absence on a rejected request means the manager rejected it directly.
+  const managerApproved = !!r.regularization_manager_actioned_at;
+  const rejected = r.status === 'rejected';
+  const rejectedAtManager = rejected && !managerApproved;
+  const rejectedAtHR      = rejected && managerApproved;
+
+  const stepsHTML = steps.map((s, i) => {
+    let cls = '', icon = s.lvl, who = '';
+    if (s.lvl === 1) {
+      if (rejectedAtManager)      { cls = 'rejected'; icon = '✗'; who = ''; }
+      else if (managerApproved || r.status === 'approved') { cls = 'done'; icon = '✓'; }
+      else if (r.status === 'pending' && r.stage !== 'hr')  { cls = 'active'; }
+    } else {
+      if (rejectedAtHR)                  { cls = 'rejected'; icon = '✗'; }
+      else if (r.status === 'approved')  { cls = 'done'; icon = '✓'; }
+      else if (r.status === 'pending' && r.stage === 'hr') { cls = 'active'; }
+    }
+    return `<div class="reg-pipeline-step">
+      <div class="reg-pipeline-bubble ${cls}">${icon}</div>
+      <div class="reg-pipeline-label">${s.icon} ${s.label}</div>
+    </div>`;
+  }).join('');
+  return `<div class="reg-pipeline">${stepsHTML}</div>`;
+}
+
 async function loadRegularizations() {
   const isApprover = Role.isManagerUp() || Role.is('tl','hr','admin','super_admin');
 
@@ -2226,6 +2274,9 @@ async function loadRegularizations() {
         if (mySection) mySection.style.display = 'none';
       } else {
         if (mySection) mySection.style.display = '';
+        // 2-step chain: show which bucket (Manager/HR) this is currently
+        // waiting in, so the requester knows exactly where it stands —
+        // same badge the approvers see on their side.
         myEl.innerHTML = myData.data.map(r => `
           <div class="req-card" style="margin-bottom:10px;border-left:4px solid #d97706">
             <div class="req-top">
@@ -2233,9 +2284,12 @@ async function loadRegularizations() {
                 <div class="req-name" style="font-weight:700">${fmt.date(r.date)}</div>
                 <div class="req-meta">Reason: ${r.regularization_reason||r.reason||'—'}</div>
                 ${r.punch_in ? `<div class="req-meta">Requested: ${r.punch_in} → ${r.punch_out||'—'}</div>` : ''}
+                ${r.regularization_manager_remarks ? `<div class="req-meta" style="color:#0369a1">👤 Manager: ${r.regularization_manager_remarks}</div>` : ''}
               </div>
-              <span class="badge" style="background:#fef3c7;color:#d97706;border:1px solid #d97706">⏳ Pending</span>
+              <span class="badge" style="background:#fef3c7;color:#d97706;border:1px solid #d97706">${r.stage === 'hr' ? '⏳ Pending HR' : '⏳ Pending Manager'}</span>
             </div>
+            ${regPipelineHTML(r)}
+            <button class="btn btn-outline btn-sm" style="margin-top:8px;color:#dc2626;border-color:#dc2626" onclick="cancelMyRegularization(${r.id})">✕ Cancel Request</button>
           </div>`).join('');
       }
     } catch(e) {
@@ -2292,6 +2346,7 @@ async function loadRegularizations() {
               ${r.punch_in ? `<div class="req-meta">Requested: ${r.punch_in} → ${r.punch_out||'—'}</div>` : ''}
               ${r.regularization_manager_remarks ? `<div class="req-meta" style="color:#0369a1">👤 Manager: ${r.regularization_manager_remarks}</div>` : ''}
               ${r.regularization_remarks ? `<div class="req-meta" style="color:#7c3aed">💬 ${r.regularization_remarks}</div>` : ''}
+              ${regPipelineHTML(r)}
             </div>
             <span class="badge" style="background:${sb};color:${sc};border:1px solid ${sc};flex-shrink:0">${si}</span>
           </div>
@@ -2402,6 +2457,13 @@ async function actionReg(action) {
   const data = await api('POST','/attendance/regularize/action',{attendance_id:activeRegId,action,remarks});
   if (data?.success) { toast(data?.message || `Regularization ${action}d`); closeModal('approve-reg-modal'); loadRegularizations(); }
   else toast(data?.message||'Failed','error');
+}
+
+async function cancelMyRegularization(attendanceId) {
+  if (!confirm('Cancel this regularization request?')) return;
+  const data = await api('POST', '/attendance/regularize/cancel', { attendance_id: attendanceId });
+  if (data?.success) { toast(data.message || 'Request cancelled'); loadRegularizations(); }
+  else toast(data?.message || 'Failed', 'error');
 }
 
 // ── HR Bulk Force Regularization ─────────────────────────────────────────────
