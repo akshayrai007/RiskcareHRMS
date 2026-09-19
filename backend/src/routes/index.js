@@ -82,6 +82,7 @@ router.get ('/provision',                authenticate, authorize(...PROVISION_AP
 router.get ('/provision/accrual-log',    authenticate, authorize('hr','admin','super_admin'), provCtrl.getAccrualLog);
 router.get ('/provision/:id/status',     authenticate, authorize(...PROVISION_APPROVERS), provCtrl.getConfirmationStatus);
 // Workflow actions
+router.get ('/provision/:id/confirmation-letter', authenticate, authorize('hr','admin','super_admin'), provCtrl.confirmationLetter);
 router.post('/provision/:id/initiate',   authenticate, authorize('hr','admin','super_admin'), provCtrl.initiateConfirmation);
 router.post('/provision/:id/approve',    authenticate, authorize(...PROVISION_APPROVERS),    provCtrl.approveConfirmation);
 // Monthly accrual (run 1st of each month, or manually)

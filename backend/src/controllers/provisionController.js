@@ -546,3 +546,57 @@ exports.getAccrualLog = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+// ── Employee Confirmation Letter (approved Word format) ───────────────────────
+const dmyC = (d) => { const x = new Date(d); return isNaN(x) ? '' : `${String(x.getDate()).padStart(2,'0')}/${String(x.getMonth()+1).padStart(2,'0')}/${x.getFullYear()}`; };
+const escC = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+function buildConfirmationLetterHTML(e) {
+  const co = CONFIG.companyFullName;
+  const name = `${e.first_name} ${e.last_name || ''}`.trim();
+  const title = /^(f|female)/i.test(e.gender || '') ? 'Ms.' : 'Mr.';
+  const surname = e.last_name || e.first_name;
+  const eff = dmyC(e.confirmed_date || new Date());
+  const pStart = dmyC(e.joining_date);
+  const pEnd = dmyC(e.provision_end_date || e.confirmed_date);
+  const desig = escC(e.designation || '');
+  const dept = escC(e.department || '');
+  const loc = escC(CONFIG.companyCity || 'Mumbai');
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+  @page { size: A4; margin: 36mm 15mm 18mm 15mm; }
+  body { font-family:'Calibri','Carlito','Arial',sans-serif; font-size:13px; line-height:1.6; color:#000; margin:0; }
+  p { margin:0 0 12px; text-align:justify; }
+</style></head><body data-appt-letter="1">
+<p style="margin-top:14px"><b>Date:</b> ${dmyC(new Date())}</p>
+<p>To,<br><b>${title} ${escC(name)}</b><br>Employee ID: ${escC(e.employee_code)}<br>${desig}<br>${dept}<br>${loc}</p>
+<p><b>Subject: Confirmation of Employment</b></p>
+<p>Dear ${title} ${escC(surname)},</p>
+<p>We are pleased to inform you that based on your performance and conduct during your probationary period, your employment with <b>${escC(co)}</b> is hereby confirmed with effect from <b>${eff}</b>.</p>
+<p>You were appointed as <b>${desig}</b> in the ${dept} at our ${loc} and have successfully completed your probationary period from <b>${pStart}</b> to <b>${pEnd}</b>.</p>
+<p>With effect from <b>${eff}</b>, you will continue as a confirmed employee of ${escC(co)}, subject to the terms and conditions of your appointment letter and the applicable company policies and procedures.</p>
+<p>We appreciate your contributions during your probationary period and look forward to your continued commitment and contribution to the growth and success of the organization.</p>
+<p>We wish you continued success in your career with ${escC(co)}.</p>
+<p style="margin-top:24px">Sincerely,<br><b>For ${escC(co)}</b></p>
+<p style="margin-top:60px">Authorized Signatory<br>Name:<br>Designation:</p>
+</body></html>`;
+}
+
+exports.confirmationLetter = async (req, res) => {
+  try {
+    const r = await db.query(
+      `SELECT e.first_name, e.last_name, e.employee_code, e.gender, e.joining_date, e.provision_end_date, e.confirmed_date,
+              des.title AS designation, d.name AS department
+       FROM employees e
+       LEFT JOIN designations des ON des.id = e.designation_id
+       LEFT JOIN departments d ON d.id = e.department_id
+       WHERE e.id = $1`, [parseInt(req.params.id)]);
+    if (!r.rows.length) return res.status(404).json({ success: false, message: 'Employee not found' });
+    const pdf = await require('./offerLetterController').htmlToPdf(buildConfirmationLetterHTML(r.rows[0]));
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Confirmation_Letter_${r.rows[0].employee_code}.pdf"`);
+    res.send(pdf);
+  } catch (err) {
+    console.error('[confirmationLetter]', err.message);
+    res.status(500).json({ success: false, message: `Server error: ${err.message}` });
+  }
+};

@@ -70,6 +70,17 @@ function buildRelievingLetterHTML(emp, sig1Image, sig2Image) {
   const hisOrHer      = gender === 'female' ? 'her' : 'his';
   const mrOrMs        = gender === 'female' ? 'Ms.' : 'Mr.';
   const st            = emp.separation_type || emp.sep_type || 'resignation';
+  // dd/mm/yyyy and "24th January, 2026" styles used by the approved format
+  const dmy = (d) => { if (!d) return '__/__/____'; const x = new Date(d); return isNaN(x) ? '__/__/____' : String(x.getDate()).padStart(2,'0') + '/' + String(x.getMonth()+1).padStart(2,'0') + '/' + x.getFullYear(); };
+  const longDate = (d) => { const x = d ? new Date(d) : null; if (!x || isNaN(x)) return ''; const day = x.getDate(); const sup = [, 'st', 'nd', 'rd'][day % 10 > 3 || (day >= 11 && day <= 13) ? 0 : day % 10] || 'th'; return day + '<sup>' + sup + '</sup> ' + ['January','February','March','April','May','June','July','August','September','October','November','December'][x.getMonth()] + ', ' + x.getFullYear(); };
+  const surname       = (emp.last_name || '').trim() || (emp.first_name || '').trim();
+  const permAddress   = [emp.permanent_address, emp.permanent_state].filter(Boolean).join(', ') || [emp.address_line1, emp.city, emp.state, emp.pincode].filter(Boolean).join(', ') || '';
+  const branchName    = emp.branch || emp.city || emp.location || CONFIG.companyCity;
+  const joiningDateNum     = dmy(emp.joining_date);
+  const relievingDateNum   = dmy(emp.separation_date || emp.last_working_date);
+  const resignationDateNum = dmy(emp.resignation_date || emp.notice_date);
+  const relievingDateLong  = longDate(emp.separation_date || emp.last_working_date);
+  const todayDateLong      = longDate(new Date());
 
   // ── RiskCare Letterhead Header ─────────────────────────────────────────────
   const hdr = `
@@ -141,28 +152,29 @@ function buildRelievingLetterHTML(emp, sig1Image, sig2Image) {
 <div class="page">
   ${hdr}
 
-  <div class="date-row">${todayDate}</div>
+  <div class="date-row" style="text-align:left;font-weight:normal;">Date: ${todayDateLong}</div>
 
-  <p style="text-align:center;font-weight:bold;font-size:14px;margin:20px 0;text-decoration:underline;">To Whomsoever It May Concern,</p>
+  <p style="margin:14px 0 0 0;">To,</p>
+  <p style="margin:0;text-align:left;">${mrOrMs} ${fullName}</p>
+  <p style="margin:0;text-align:left;">Emp Code: ${emp.employee_code || 'N/A'}</p>
+  <p style="margin:0 0 0 0;text-align:left;">${permAddress}</p>
 
-  <p style="text-align:center;font-weight:bold;font-size:13px;margin-bottom:16px;">Sub: Relieving Letter &ndash; ${mrOrMs} ${fullName} (${emp.employee_code || 'N/A'})</p>
+  <p style="text-align:right;font-weight:bold;margin:6px 0;">Without Prejudice</p>
 
-  <p>This is to certify that <strong>${mrOrMs} ${fullName}</strong> (Employee Code: <strong>${emp.employee_code || 'N/A'}</strong>) was employed with <strong>${CONFIG.companyFullName}</strong> from <strong>${joiningDate}</strong> to <strong>${relievingDate}</strong>. ${heOrShe} was designated as <strong>&ldquo;${designation}&rdquo;</strong> in the <strong>${department}</strong> department, based at our <strong>${emp.city || emp.location || CONFIG.companyCity}</strong> office.</p>
+  <p style="text-align:left;margin:14px 0;"><strong>Subject: Relieving Letter</strong></p>
 
-  <p>${heOrShe} has been relieved from ${hisOrHer} duties and responsibilities with effect from <strong>${relievingDate}</strong>, consequent upon ${hisOrHer} ${(st || 'resignation').toLowerCase()} from the services of the company.</p>
+  <p style="text-align:left;">Dear ${mrOrMs} ${surname},</p>
 
-  <p>During ${hisOrHer} tenure with the organization, ${mrOrMs} ${fullName} has discharged ${hisOrHer} duties with sincerity, integrity and dedication. ${heOrShe} has demonstrated a high standard of professional conduct and has been a valued member of the team.</p>
+  <p>This letter is to certify that you were employed with M/S <strong>${CONFIG.companyFullName}</strong> as <strong>${designation}</strong> &ndash; <strong>${department}</strong> at our <strong>${branchName}</strong> branch from <strong>${joiningDateNum}</strong> till <strong>${relievingDateNum}</strong>.</p>
 
-  <p>${heOrShe} has completed all necessary formalities including handing over of company assets, documents, and any other materials entrusted to ${hisOrHer} during the course of employment. ${heOrShe} has no outstanding dues, liabilities or obligations towards the company as on the date of relieving.</p>
+  <p>We received your ${(st || 'resignation').toLowerCase()} on <strong>${resignationDateNum}</strong> and you were subsequently relieved from the services of the company with effect from <strong>${relievingDateLong}</strong>.</p>
 
-  <p>The full and final settlement of ${hisOrHer} account shall be processed as per the company&rsquo;s policies and applicable statutory requirements.</p>
+  <p>Kindly note that there are no pending dues from the company towards you.</p>
 
-  <p>We appreciate ${hisOrHer} contributions during ${hisOrHer} association with the company and wish ${mrOrMs} ${fullName} all the very best in ${hisOrHer} future professional endeavours.</p>
-
-  <p>This certificate is being issued at ${hisOrHer} request and for any legitimate purpose it may serve. It does not constitute a recommendation.</p>
+  <p>We appreciate your contributions during your tenure with the company and wish you all the very best in your future endeavours.</p>
 
   <div class="sig-block">
-    <p>Yours truly,</p>
+    <p>Yours Sincerely,</p>
     <p>For <strong>${CONFIG.companyFullName},</strong></p>
     <div class="dual-signature">
       <div class="sig-left">
@@ -213,7 +225,7 @@ exports.preview = async (req, res) => {
     const empId = parseInt(req.params.id);
     const result = await db.query(`
       SELECT e.*, d.name AS department_name, des.title AS designation_title,
-             s.last_working_date
+             s.last_working_date, s.notice_date AS resignation_date
       FROM employees e
       LEFT JOIN departments d ON e.department_id = d.id
       LEFT JOIN designations des ON e.designation_id = des.id
@@ -290,7 +302,7 @@ exports.sendRelievingLetter = async (req, res) => {
     const empId = parseInt(req.params.id);
     const result = await db.query(`
       SELECT e.*, d.name AS department_name, des.title AS designation_title,
-             s.last_working_date
+             s.last_working_date, s.notice_date AS resignation_date
       FROM employees e
       LEFT JOIN departments d ON e.department_id = d.id
       LEFT JOIN designations des ON e.designation_id = des.id
@@ -384,7 +396,7 @@ exports.bulkSend = async (req, res) => {
 
     const result = await db.query(`
       SELECT e.*, d.name AS department_name, des.title AS designation_title,
-             s.last_working_date
+             s.last_working_date, s.notice_date AS resignation_date
       FROM employees e
       LEFT JOIN departments d ON e.department_id = d.id
       LEFT JOIN designations des ON e.designation_id = des.id
@@ -527,7 +539,7 @@ exports.bulkSendExcel = async (req, res) => {
         let empResult;
         if (empCode) {
           empResult = await db.query(`
-            SELECT e.*, d.name AS department_name, des.title AS designation_title, s.last_working_date
+            SELECT e.*, d.name AS department_name, des.title AS designation_title, s.last_working_date, s.notice_date AS resignation_date
             FROM employees e
             LEFT JOIN departments d ON e.department_id = d.id
             LEFT JOIN designations des ON e.designation_id = des.id
@@ -536,7 +548,7 @@ exports.bulkSendExcel = async (req, res) => {
           `, [empCode]);
         } else {
           empResult = await db.query(`
-            SELECT e.*, d.name AS department_name, des.title AS designation_title, s.last_working_date
+            SELECT e.*, d.name AS department_name, des.title AS designation_title, s.last_working_date, s.notice_date AS resignation_date
             FROM employees e
             LEFT JOIN departments d ON e.department_id = d.id
             LEFT JOIN designations des ON e.designation_id = des.id

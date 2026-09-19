@@ -56,6 +56,9 @@ exports.initTables = async () => {
     await db.query(`ALTER TABLE offer_letters ADD COLUMN IF NOT EXISTS employment_type VARCHAR(20) DEFAULT 'permanent'`);
     await db.query(`ALTER TABLE offer_letters ADD COLUMN IF NOT EXISTS contract_months INT DEFAULT 0`);
     await db.query(`ALTER TABLE offer_letters ADD COLUMN IF NOT EXISTS employee_code VARCHAR(50)`);
+    await db.query(`ALTER TABLE offer_letters ADD COLUMN IF NOT EXISTS department VARCHAR(200)`);
+    await db.query(`ALTER TABLE offer_letters ADD COLUMN IF NOT EXISTS reporting_authority VARCHAR(200)`);
+    await db.query(`ALTER TABLE offer_letters ADD COLUMN IF NOT EXISTS variable_pay_monthly NUMERIC(12,2) DEFAULT 0`);
     console.log('✅ Offer letter signature columns ready');
   } catch (err) {
     console.error('❌ Offer letter table init error:', err.message);
@@ -100,7 +103,14 @@ async function htmlToPdf(htmlString, browser) {
   try {
     const page = await browser.newPage();
     await page.setContent(htmlString, { waitUntil: 'networkidle0' });
-    const pdfBuffer = await page.pdf({
+    const isAppt = htmlString.includes('data-appt-letter');
+    const pdfBuffer = await page.pdf(isAppt ? {
+      format: 'A4',
+      printBackground: true,
+      preferCSSPageSize: true,
+      displayHeaderFooter: true,
+      ...apptHeaderFooter()
+    } : {
       format: 'A4',
       printBackground: true,
       margin: { top: 0, right: 0, bottom: 0, left: 0 }
@@ -112,261 +122,220 @@ async function htmlToPdf(htmlString, browser) {
   }
 }
 
-// ── Build Offer Letter HTML ────────────────────────────────────────────────────
+// ── Build Appointment Letter HTML (approved "Appointment Letter" format) ────────
+// Body clauses live in ../data/appointmentClauses.json (extracted verbatim from
+// the approved Word document, with its numbering). Header/footer are drawn per
+// page by Puppeteer (see htmlToPdf: data-appt-letter marker + apptHeaderFooter).
+const APPT_CLAUSES = require('../data/appointmentClauses.json');
+
+function apptLogoB64() {
+  try { return 'data:image/png;base64,' + fs.readFileSync(path.join(__dirname, '../../../frontend/Logo.png')).toString('base64'); }
+  catch (e) { console.error('Logo not found:', e.message); return ''; }
+}
+
+function apptHeaderFooter() {
+  const logo = apptLogoB64();
+  const headerTemplate = `
+    <div style="width:100%;padding:0 15mm;font-family:Arial,sans-serif;">
+      <table style="width:100%;border-bottom:1.5px solid #000;border-collapse:collapse;padding-bottom:4px;">
+        <tr>
+          <td style="width:75px;vertical-align:middle;"><img src="${logo}" style="width:66px;height:auto;"></td>
+          <td style="text-align:center;vertical-align:middle;">
+            <div style="font-size:14px;font-weight:bold;color:#000;">${CONFIG.companyFullName}</div>
+            <div style="font-size:8px;color:#444;"><b>Registered Office:</b> ${CONFIG.companyOfficeAddr}</div>
+            <div style="font-size:8px;color:#444;">Phone: ${CONFIG.companyTel} &nbsp;|&nbsp; Email: ${CONFIG.supportEmail} &nbsp;|&nbsp; Website: ${CONFIG.websiteUrl}</div>
+          </td>
+        </tr>
+      </table>
+    </div>`;
+  const footerTemplate = `
+    <div style="width:100%;padding:0 15mm;font-family:Arial,sans-serif;font-size:9px;font-weight:bold;text-align:center;">
+      <div style="border-top:1px solid #000;padding-top:3px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span> &nbsp;|&nbsp; CIN: ${CONFIG.companyCIN}</div>
+    </div>`;
+  return { headerTemplate, footerTemplate };
+}
+
 function buildOfferLetterHTML(ol) {
-  const basic    = parseFloat(ol.basic_monthly || 0);
-  const hra      = parseFloat(ol.hra_monthly || 0);
-  const conv     = parseFloat(ol.conveyance_monthly || 0);
-  const other    = parseFloat(ol.other_allowance_monthly || 0);
-  const gratuity = parseFloat(ol.gratuity_monthly || 0);
-  const pfEmp    = parseFloat(ol.pf_employee_monthly || 0);
-  const pfEmpr   = parseFloat(ol.pf_employer_monthly || 0);
-  const pfAdmin  = parseFloat(ol.pf_admin_monthly || 0);
-  const pt       = parseFloat(ol.professional_tax_monthly || 0);
+  const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const num = (v) => parseFloat(v || 0) || 0;
+  const basic = num(ol.basic_monthly), hra = num(ol.hra_monthly), conv = num(ol.conveyance_monthly),
+        other = num(ol.other_allowance_monthly), gratuity = num(ol.gratuity_monthly),
+        pfEmpr = num(ol.pf_employer_monthly), pfAdmin = num(ol.pf_admin_monthly),
+        variable = num(ol.variable_pay_monthly);
 
-  const gross      = basic + hra + conv + other + gratuity;
-  const totalDed   = pfEmp + pt;
-  const netSalary  = gross - totalDed;
-  const ctcMonthly = gross + pfEmpr + pfAdmin;
-  const ctcAnnual  = parseFloat(ol.ctc_annual || (ctcMonthly * 12));
+  // Annexure A structure: A = fixed pay, B = provident fund (employer), C = company
+  // contribution to PF (admin/EDLI charges), D = variable pay.
+  const fixedA   = basic + hra + conv + other + gratuity;
+  const retirals = pfEmpr + pfAdmin;
+  const fixedPay = fixedA + retirals;
+  const totalMonthly = fixedPay + variable;
+  const ctcAnnual = num(ol.ctc_annual) || totalMonthly * 12;
+  const fmtV = (v) => Number(Math.round(v)).toLocaleString('en-IN');
+  const dash = (v) => (v > 0 ? fmtV(v) : '&ndash;');
 
-  const fmtV = v => Number(Math.round(v)).toLocaleString('en-IN');
+  const probWords = { 1: 'one', 2: 'two', 3: 'three', 6: 'six', 12: 'twelve' };
+  const probStr = probWords[ol.probation_months] || String(ol.probation_months || 3);
 
-  const probWords   = { 3: 'three', 6: 'six', 12: 'twelve' };
-  const noticeWords = { 1: 'one', 2: 'two', 3: 'three', 6: 'six' };
-  const probStr     = probWords[ol.probation_months] || `${ol.probation_months || 6}`;
-  const noticeStr   = noticeWords[ol.notice_period_months] || `${ol.notice_period_months || 3}`;
+  const ordDate = (d) => {
+    const dt = d ? new Date(d) : new Date();
+    const day = dt.getDate();
+    const sup = (day >= 11 && day <= 13) ? 'th' : ([, 'st', 'nd', 'rd'][day % 10] || 'th');
+    return day + '<sup>' + sup + '</sup> ' + ['January','February','March','April','May','June','July','August','September','October','November','December'][dt.getMonth()] + ', ' + dt.getFullYear();
+  };
+  const fyOf = (d) => { const dt = d ? new Date(d) : new Date(); const y = dt.getMonth() >= 3 ? dt.getFullYear() : dt.getFullYear() - 1; return y + '-' + String((y + 1) % 100).padStart(2, '0'); };
 
+  const designation = esc(ol.designation || '');
+  const department  = esc(ol.department || '');
+  const posLabel    = department ? designation + ' - ' + department : designation;
+  const location    = esc(ol.location || CONFIG.companyCity);
+  const surname     = ((ol.candidate_name || '').replace(/^(mr|ms|mrs|miss)\.?\s+/i, '').trim().split(/\s+/).slice(-1)[0]) || '';
   const empType = (ol.employment_type || 'permanent').toLowerCase();
   const contractMonths = parseInt(ol.contract_months) || 0;
-  let empTypeLabel = '';
-  if (empType === 'contract' && contractMonths > 0) {
-    empTypeLabel = ' on a <strong>Contract basis for ' + contractMonths + ' months</strong>';
-  } else if (empType === 'contract') {
-    empTypeLabel = ' on a <strong>Contract basis</strong>';
-  } else if (empType === 'provision') {
-    empTypeLabel = ' on a <strong>Provisional basis</strong>';
-  } else {
-    empTypeLabel = '';
-  }
+  const typeSentence = empType === 'contract'
+    ? `<p>This appointment is on a <strong>Contract basis${contractMonths > 0 ? ' for ' + contractMonths + ' months' : ''}</strong>${ol.joining_date ? ', commencing <strong>' + ordDate(ol.joining_date) + '</strong>' : ''}.</p>`
+    : empType === 'provision'
+      ? `<p>This appointment is on a <strong>Provisional basis</strong>${ol.joining_date ? ', commencing <strong>' + ordDate(ol.joining_date) + '</strong>' : ''}.</p>`
+      : (ol.joining_date ? `<p>Your date of joining will be <strong>${ordDate(ol.joining_date)}</strong>.</p>` : '');
 
-  function joiningDateHTML(d) {
-    if (!d) return '';
-    const dt = new Date(d);
-    const day = dt.getDate();
-    const sup = [, 'st', 'nd', 'rd'][day] || 'th';
-    const months = ['January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'];
-    return day + '<sup>' + sup + '</sup> ' + months[dt.getMonth()] + ' ' + dt.getFullYear();
-  }
+  // ── Body clauses with the original numbering ─────────────────────────────
+  const counters = {};
+  const label = (kind, n, paren) => {
+    let s;
+    if (kind === '1') s = String(n);
+    else if (kind === 'a') s = String.fromCharCode(96 + n);
+    else if (kind === 'A') s = String.fromCharCode(64 + n);
+    else s = '&bull;';
+    if (kind === '•') return s;
+    return paren ? '(' + s + ')' : s + '.';
+  };
+  const subst = (t) => {
+    let x = esc(t);
+    x = x.replace(/[“"]?Designation - Department[”"]?/i, '<strong>&ldquo;' + posLabel + '&rdquo;</strong>');
+    x = x.replace(/[“"]?_{3,}[”"]?/, '<strong>&ldquo;' + location + '&rdquo;</strong>');
+    if (/probation/i.test(x)) x = x.replace(/three months/gi, probStr + ' months');
+    return x;
+  };
+  const bodyHtml = APPT_CLAUSES.slice(1).map((c) => {
+    if (c.kind) { counters[c.num] = (counters[c.num] || 0) + 1; }
+    const text = subst(c.t);
+    if (c.heading) return `<p class="clause-h"><span class="lab">${label(c.kind, counters[c.num])}</span><strong>${text}</strong></p>`;
+    if (c.kind) return `<p class="clause ${c.num === '2' ? 'top' : ''}"><span class="lab">${label(c.kind, counters[c.num], c.paren)}</span><span class="txt">${text}</span></p>`;
+    return `<p class="plain">${text}</p>`;
+  }).join('\n');
 
-  // ── Logo: direct PNG from frontend folder ──────────────────────────────────
-  const LOGO_PATH = path.join(__dirname, '../../../frontend/Logo.png');
-  let LOGO_B64 = '';
-  try {
-    const logoBuf = fs.readFileSync(LOGO_PATH);
-    LOGO_B64 = 'data:image/png;base64,' + logoBuf.toString('base64');
-  } catch (e) {
-    console.error('Logo file not found at', LOGO_PATH, e.message);
-  }
+  const sig1HTML = ol.sig1_image ? '<img src="' + ol.sig1_image + '" style="height:44px;display:block;margin-bottom:4px;" alt="">' : '<div style="height:44px;"></div>';
+  const sig2HTML = ol.sig2_image ? '<img src="' + ol.sig2_image + '" style="height:44px;display:block;margin-bottom:4px;" alt="">' : '';
+  const additionalTerms = ol.custom_clauses ? `<p class="plain"><strong><u>ADDITIONAL TERMS:</u></strong><br>${esc(ol.custom_clauses).replace(/\n/g, '<br>')}</p>` : '';
 
-  // ── Signature images ───────────────────────────────────────────────────────
-  const sig1HTML = ol.sig1_image
-    ? '<img src="' + ol.sig1_image + '" style="height:44px;display:block;margin-bottom:4px;" alt="">'
-    : '<div style="height:44px;"></div>';
-  const sig2HTML = ol.sig2_image
-    ? '<img src="' + ol.sig2_image + '" style="height:44px;display:block;margin-left:auto;margin-bottom:4px;" alt="">'
-    : '<div style="height:44px;"></div>';
-
-  // ── RiskCare Letterhead Header ─────────────────────────────────────────────
-  const hdr = `
-    <table class="header-table">
-      <tr>
-        <td style="width:120px;vertical-align:middle;">
-          <img src="${LOGO_B64}" style="width:110px;height:auto;display:block;">
-        </td>
-        <td style="text-align:center;vertical-align:middle;">
-          <div style="font-family:Arial,sans-serif;font-size:20px;font-weight:bold;color:#000;margin-bottom:4px;">${CONFIG.companyFullName}</div>
-          <div style="font-family:Arial,sans-serif;font-size:11px;color:#444;"><strong>Registered Office:</strong> ${CONFIG.companyOfficeAddr}</div>
-          <div style="font-family:Arial,sans-serif;font-size:11px;color:#444;margin-top:2px;">Phone: ${CONFIG.companyTel} &nbsp;|&nbsp; Email: ${CONFIG.supportEmail} &nbsp;|&nbsp; Website: ${CONFIG.websiteUrl}</div>
-        </td>
-      </tr>
-    </table>`;
-
-  // ── RiskCare Footer ────────────────────────────────────────────────────────
-  const ftr = `
-    <div class="footer">
-      CIN: ${CONFIG.companyCIN}
-    </div>`;
-
-  const convRow = conv > 0 ? `<tr>
-    <td class="col-sr">2a</td>
-    <td class="col-part">Conveyance Allowances</td>
-    <td class="col-num">${fmtV(conv)}</td>
-    <td class="col-num">${fmtV(conv * 12)}</td>
-  </tr>` : '';
-
-  const additionalTerms = ol.custom_clauses ? `
-    <p><u><strong>ADDITIONAL TERMS:</strong></u><br>${ol.custom_clauses}</p>` : '';
+  const rows = [];
+  let sr = 0;
+  const row = (name, m, cls) => { sr += 1; rows.push(`<tr class="${cls || ''}"><td class="c">${sr}</td><td>${name}</td><td class="n">${dash(m)}</td><td class="n">${dash(m * 12)}</td></tr>`); };
+  row('Fixed Basic', basic);
+  row('HRA', hra);
+  if (conv > 0) row('Conveyance Allowance', conv);
+  row('Defray Allowances', other);
+  row('Gratuity', gratuity);
+  row('Total Fixed Pay (A)', fixedA, 'hl');
+  row('Provident Fund (B)', pfEmpr);
+  row('Company Contribution to Provident Fund (C)', pfAdmin);
+  row('Total Retirals (B+C)', retirals, 'hl');
+  row('FIXED PAY (A+B+C)', fixedPay, 'hl');
+  row('Variable Pay (D)', variable);
+  rows.push(`<tr class="hl"><td class="c">${sr + 1}</td><td>Total Compensation Package (A+B+C+D)</td><td class="n">${fmtV(totalMonthly)}</td><td class="n">${fmtV(ctcAnnual)}</td></tr>`);
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="appt-letter" content="1">
 <style>
+  @page { size: A4; margin: 36mm 15mm 18mm 15mm; }
   * { box-sizing: border-box; }
-  body {
-    font-family: 'Georgia','Times New Roman',Times,serif;
-    color: #000; line-height: 1.4; margin: 0;
-    background-color: #525659; padding: 20px 0;
-    -webkit-print-color-adjust: exact; print-color-adjust: exact;
-  }
-  .page {
-    width: 210mm; height: 297mm; position: relative;
-    margin: 0 auto 20px auto; background: #fff;
-    box-shadow: 0 0 10px rgba(0,0,0,.5);
-    padding: 15mm 15mm 30mm 15mm;
-    page-break-after: always; overflow: hidden;
-  }
-  .header-table {
-    width: 100%; border-bottom: 2px solid #000;
-    padding-bottom: 10px; margin-bottom: 20px;
-    border-collapse: collapse;
-  }
-  .footer {
-    position: absolute; bottom: 10mm; left: 15mm; right: 15mm;
-    text-align: center; font-size: 10px; color: #000;
-    border-top: 1px solid #000; padding-top: 5px;
-    font-family: 'Arial',sans-serif; font-weight: bold;
-  }
-  .date-row { text-align: right; font-weight: bold; font-size: 13.5px; margin-top: 58px; margin-bottom: 15px; }
-  .candidate-info { margin-bottom: 15px; font-size: 14px; line-height: 1.3; }
-  .subject-line { text-align: center; font-weight: bold; text-decoration: underline; margin: 15px 0; font-size: 14.5px; }
-  p { margin: 8px 0; text-align: justify; font-size: 13px; }
-  ul { margin-top: 0; padding-left: 25px; }
-  li { margin-bottom: 5px; text-align: justify; font-size: 13px; }
-  .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-family: 'Arial',sans-serif; border: 1px solid #000; }
-  .data-table th, .data-table td { border: 1px solid #000; padding: 8px 8px; font-size: 12px; }
-  .data-table th { background-color: ${CONFIG.primaryColor}; color: #fff; font-weight: bold; text-transform: uppercase; }
-  .col-sr { width: 8%; text-align: center; }
-  .col-part { width: 48%; text-align: left; }
-  .col-num { width: 22%; text-align: right; }
-  .data-table tr.highlight td { font-weight: bold; background-color: #f2f2f2; }
-  .main-signature-block { margin-top: 20px; font-size: 14px; }
-  .dual-signature { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; }
-  .sig-left { text-align: left; }
-  .sig-right { text-align: right; }
-  @media print {
-    body { background-color: #fff; padding: 0; margin: 0; }
-    .page { box-shadow: none; margin: 0; border: none; width: 210mm; height: 296mm; page-break-inside: avoid; }
-    .page:last-child { page-break-after: auto; }
-    @page { size: A4; margin: 0; }
-  }
+  body { font-family: 'Calibri','Carlito','Arial',sans-serif; color:#000; margin:0; font-size:11.5px; line-height:1.45; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  p { margin: 6px 0; text-align: justify; }
+  .head-line { font-weight:bold; margin:2px 0; }
+  .clause-h { margin: 12px 0 4px; display:flex; text-align:left; page-break-after: avoid; }
+  .clause { display:flex; gap:0; margin: 5px 0; }
+  .clause .lab, .clause-h .lab { width: 26px; flex-shrink:0; }
+  .clause .txt { text-align: justify; flex:1; }
+  .clause:not(.top) { margin-left: 26px; }
+  .plain { margin-left: 26px; }
+  h3.annex { text-align:center; text-decoration:underline; font-size:14px; margin: 0 0 8px; }
+  table.data { width:100%; border-collapse:collapse; margin-top:8px; }
+  table.data th, table.data td { border:1px solid #000; padding:5px 8px; font-size:11px; }
+  table.data th { background:#1e293b; color:#fff; text-transform:uppercase; }
+  table.data td.c { width:8%; text-align:center; } table.data td.n { text-align:right; width:22%; }
+  table.data tr.hl td { font-weight:bold; background:#f2f2f2; }
+  .sigrow { display:flex; justify-content:space-between; align-items:flex-end; margin-top:20px; }
+  .avoid { page-break-inside: avoid; }
+  .kv { margin: 2px 0; }
 </style>
 </head>
-<body>
+<body data-appt-letter="1">
 
-<!-- PAGE 1 -->
-<div class="page">
-  ${hdr}
-  <div class="date-row">${joiningDateHTML(ol.offer_date || new Date())}</div>
-  <div class="candidate-info">
-    <strong>${ol.candidate_name || ''}</strong><br>
-    ${ol.candidate_address || ''}<br><br>
-    <strong>Mob &ndash; ${ol.candidate_mobile || ''}</strong><br>
-    <strong>Email &ndash; ${ol.candidate_email || ''}</strong>
-  </div>
-  <p>Dear ${(ol.candidate_name || '').split(' ')[0]},</p>
-  <div class="subject-line">Sub: Letter of offer/Appointment for the position of &ldquo;${ol.designation || ''}&rdquo;</div>
-  <p>In reference to our discussions, we are pleased to offer you the position of <strong>&ldquo;${ol.designation || ''}&rdquo;</strong> in ${CONFIG.companyFullName}${empTypeLabel}, to be based at our <strong>${ol.location || CONFIG.companyCity} Office${ol.joining_date ? ' as from <strong>' + joiningDateHTML(ol.joining_date) + '</strong>' : ''}.</strong></p>
-  <p>The offer letter is valid for <strong>${ol.offer_valid_days || 7} days</strong> by which time we must be informed of your decision; the said offer letter shall stand cancelled after the above-mentioned date.</p>
-  <p>We are pleased to issue this letter of offer on the following terms &amp; conditions:</p>
-  <p><u><strong>EMOLUMENTS:</strong></u><br>
-  Your compensation on a cost to company basis will be <strong>Rs. ${Number(ctcAnnual).toLocaleString('en-IN')}/- PA (Rupees ${numberToWords(Math.round(ctcAnnual))} Only)</strong>. The remuneration has taken into consideration the status and responsibility of the appointment, and it is inclusive of all taxable and non-taxable emoluments, allowances and statutory contributions.</p>
-  <p><u><strong>RESPONSIBILITIES:</strong></u><br>
-  You will work as &ldquo;${ol.designation || ''}&rdquo; of the Company and will be responsible for carrying out the operations of the Company as directed to you by the management. A detailed responsibility statement will be provided to you upon your joining.</p>
-  ${empType !== 'contract' ? '<p><u><strong>PROBATION PERIOD:</strong></u><br>You will be on a probationary period of <strong>' + probStr + ' months</strong> during which the services can be terminated from employer without giving any reason and any time for notice of termination of services. The company may regularize your services subject to satisfactory completion of probationary period.</p>' : ''}
-  <p><u><strong>SEPERATION OF SERVICES:</strong></u><br>
-  Severance of relationship can be done by giving <strong>${noticeStr} month</strong> written notice. If you are unable to complete this notice period you will be liable to compensate the company <strong>${noticeStr} month${parseInt(ol.notice_period_months || 3) > 1 ? 's' : ''}</strong> of salary or for the period not served.</p>
-  <p><u><strong>OTHER RULES AND REGULATION:</strong></u></p>
-  <ul>
-    <li>The company will expect you to work in the Section / Department in which you are placed with a high standard of initiative, morality and economy.</li>
-    <li>You will, in all respects, be governed by the company&rsquo;s rules and regulations.</li>
-    <li>You will devote full time to the work of the Company and will not undertake any direct/ indirect outside business or work, honorary or remunerative except with the prior written consent of the Management.</li>
-    <li>You will abide by Leave Rules of company.</li>
-  </ul>
-  ${ftr}
+<p class="head-line" style="text-align:left;">Date: ${ordDate(ol.offer_date)}</p>
+<p class="head-line" style="text-align:left;margin-top:10px;">${esc(ol.candidate_name || '')}</p>
+<p style="text-align:left;margin:0;">Add: ${esc(ol.candidate_address || '')}</p>
+${ol.candidate_mobile ? `<p style="text-align:left;margin:0;">Mob: ${esc(ol.candidate_mobile)}</p>` : ''}
+${ol.candidate_email ? `<p style="text-align:left;margin:0;">Email: ${esc(ol.candidate_email)}</p>` : ''}
+<p style="text-align:left;margin-top:12px;">Dear ${/^(mr|ms|mrs|miss)/i.test(ol.candidate_name || '') ? '' : 'Mr./Ms. '}${esc(surname)},</p>
+
+<p>${subst(APPT_CLAUSES[0].t)}</p>
+${typeSentence}
+
+${bodyHtml}
+
+${additionalTerms}
+
+<div class="avoid">
+  <p><strong>Please sign and return a copy of this communication in acknowledgement of receipt and acceptance</strong></p>
+  <p>We take this opportunity to welcome you to the organization and look forward to having you on board soon as a part of the team.</p>
+  <p style="margin-top:14px;"><strong>For ${String(CONFIG.companyFullName).toUpperCase()}</strong></p>
+  <div class="sigrow"><div>${sig1HTML}<strong>Authorized Signatory</strong></div><div>${sig2HTML}</div></div>
 </div>
 
-<!-- PAGE 2 -->
-<div class="page">
-  ${hdr}
-  <ul style="margin-top:40px;">
-    <li>You have been engaged on the presumption that the particulars furnished by you in your application are correct. In case the said particular are found to be incorrect or that you have concealed or withheld information or the relevant facts, the services can be terminated from the company without giving any reason and any time for notice of termination of services. The company may regularize your services subject to satisfactory completion of period.</li>
-    <li>You will not, either during the period of your services of thereafter, disclose divulge or communicate to any other person or group or company any strategic information of the organization or its clients.</li>
-    <li>All correspondence addressed to you by the company including press and other copies of such correspondence and all vouchers, books, records, including all note books containing notes or records of business or prices or other market data, samples and/or other papers belonging to the company, circulars and all other relevant papers and documents of any nature whatsoever relating to the company&rsquo;s business, which shall come into your possession in the course of your employment shall be the absolute property of the company and you shall, at any time during your employment or upon termination there for any reason whatsoever, deliver the same to the company and without claiming any lien thereon.</li>
-    <li>You will be responsible for the safe keeping and for returning in good condition and order, all on your own the company&rsquo;s property which may be in your use, custody, care or charge. The company shall have the right to deduct the monetary value of all such things from any amounts payable to you and to take such actions as may be deemed proper in the event of your failure to account for such property to the satisfaction of the management.</li>
-    <li>You will keep us informed of your residential (mailing &amp; permanent) address. Any change in the same should be notified in writing within one week. Failure to do so will be treated as willful withholding of information and appropriate action as deemed fit by management would be taken against you.</li>
-  </ul>
-  ${additionalTerms}
-  <p><strong>If you are willing to accept this offer for the said position, we request you to submit 3 copies of your latest coloured Passport Size photograph, Self-attested Copy of your academic qualification, Self-attested copy of your PAN Card, Self-attested copy of your Aadhar Card, Self-attested Copy of Address Proof, and last 3 month Pay Slip / Form 16 from your previous employer. In addition, upon joining, you will have to submit a copy of your relieving letter from your previous employer.</strong></p>
-  <p>As a token of your acceptance and in confirmation of the terms and conditions of this offer, please sign the duplicate copy of this letter and return to us at the earliest duly intimating when you are going to join.</p>
-  <div class="main-signature-block">
-    <p>Yours truly,<br>From <strong>${CONFIG.companyFullName},</strong></p>
-    <div class="dual-signature">
-      <div class="sig-left">${sig1HTML}Authorized Signatory</div>
-      <div class="sig-right">${sig2HTML}(Authorized Signatory)<br><br>Human Resource</div>
-    </div>
-  </div>
-  ${ftr}
+<div class="avoid" style="margin-top:18px;">
+  <p><strong>Acknowledgement and Acceptance</strong></p>
+  <p>I have gone through all the terms and conditions mentioned in this offer letter/appointment letter.  I hereby declare that I have fully understood these terms and agree that they shall remain binding.  As a token of acceptance I have hereby signed the duplicate of this letter.</p>
+  <p style="line-height:2.2;"><strong>Signature:</strong> ______________________________<br><strong>Name:</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_______________________________<br><strong>Date:</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_______________________________</p>
 </div>
 
-<!-- PAGE 3: ANNEXURE -->
-<div class="page">
-  ${hdr}
-  <h3 style="text-align:center;text-decoration:underline;margin-top:35px;font-size:16px;">Annexure I (Annual Cost to Company and Other Benefits)</h3>
-  <p style="margin-top:10px;font-size:13px;">
-    <strong>Name:</strong> ${ol.candidate_name || ''}<br>
-    <strong>Designation:</strong> ${ol.designation || ''}<br>
-    <strong>Location:</strong> ${ol.location || CONFIG.companyCity}<br>
-    <strong>Annual Cost to Company:</strong> Rs.${Number(ctcAnnual).toLocaleString('en-IN')} (Rupees ${numberToWords(Math.round(ctcAnnual))} Only)
-  </p>
-  <table class="data-table">
-    <thead>
-      <tr>
-        <th class="col-sr">SR. NO.</th>
-        <th class="col-part">PARTICULARS</th>
-        <th class="col-num">MONTHLY</th>
-        <th class="col-num">YEARLY</th>
-      </tr>
-    </thead>
+<!-- ANNEXURE A -->
+<div style="page-break-before: always;">
+  <h3 class="annex">Annexure A (Annual Cost to Company &amp; Other Benefits)</h3>
+  <p class="kv"><strong>Name:</strong> ${esc(ol.candidate_name || '')}</p>
+  <p class="kv"><strong>Designation:</strong> ${designation}</p>
+  <p class="kv"><strong>Department:</strong> ${department}</p>
+  <p class="kv"><strong>Office of Posting:</strong> ${location}</p>
+  <p class="kv"><strong>Reporting Authority:</strong> ${esc(ol.reporting_authority || '')}</p>
+  <p class="kv"><strong>Annual Compensation Package &ndash; Rs. ${Number(Math.round(ctcAnnual)).toLocaleString('en-IN')}/- ; Rupees: ${numberToWords(Math.round(ctcAnnual))} per annum only.</strong></p>
+  <table class="data">
+    <thead><tr><th>Sr. No.</th><th style="text-align:left">Particulars</th><th>Monthly</th><th>Yearly</th></tr></thead>
+    <tbody>${rows.join('')}</tbody>
+  </table>
+  <p><strong>A.&nbsp; Personal Pay Package:</strong> Each team member is free to exercise his choice of apportionment of personal benefit package subject to total limit given above and individual limits as mentioned against each. The above selection of the team member shall be taxable / non-taxable as provided for under the income tax act and the rules made thereunder and amended from time to time.</p>
+  <p><strong>B.&nbsp; Fixed Pay:</strong> Your Fixed Pay is effective from date of joining, and the amount includes components like Basic Pay, House Rent Allowance, Other Allowances &amp; Provident Fund.</p>
+  <p><strong>C.&nbsp; Your Benefits Coverage:</strong></p>
+  <p style="text-align:center;"><strong>Your Benefits Coverage &ndash; ${fyOf(ol.joining_date || ol.offer_date)}</strong></p>
+  <table class="data avoid">
+    <thead><tr><th style="text-align:left">Leave Benefit (Paid Time Off)</th><th>Days</th><th style="text-align:left">Health &amp; Welfare/Other Benefits</th><th>Sum Assured p.a.</th></tr></thead>
     <tbody>
-      <tr><td class="col-sr">1</td><td class="col-part">Fixed Basic</td><td class="col-num">${fmtV(basic)}</td><td class="col-num">${fmtV(basic * 12)}</td></tr>
-      <tr><td class="col-sr">2</td><td class="col-part">HRA</td><td class="col-num">${fmtV(hra)}</td><td class="col-num">${fmtV(hra * 12)}</td></tr>
-      ${convRow}
-      <tr><td class="col-sr">3</td><td class="col-part">Defray Allowance</td><td class="col-num">${fmtV(other)}</td><td class="col-num">${fmtV(other * 12)}</td></tr>
-      <tr><td class="col-sr">4</td><td class="col-part">Gratuity</td><td class="col-num">${fmtV(gratuity)}</td><td class="col-num">${fmtV(gratuity * 12)}</td></tr>
-      <tr class="highlight"><td class="col-sr">5</td><td class="col-part">Gross Pay</td><td class="col-num">${fmtV(gross)}</td><td class="col-num">${fmtV(gross * 12)}</td></tr>
-      <tr><td class="col-sr">6</td><td class="col-part">Provident Fund</td><td class="col-num">${pfEmp > 0 ? fmtV(pfEmp) : ''}</td><td class="col-num">${pfEmp > 0 ? fmtV(pfEmp * 12) : ''}</td></tr>
-      <tr><td class="col-sr">7</td><td class="col-part">Professional Tax</td><td class="col-num">${pt > 0 ? fmtV(pt) : ''}</td><td class="col-num">${pt > 0 ? fmtV(pt * 12) : ''}</td></tr>
-      <tr class="highlight"><td class="col-sr">8</td><td class="col-part">Total Deduction</td><td class="col-num">${totalDed > 0 ? fmtV(totalDed) : ''}</td><td class="col-num">${totalDed > 0 ? fmtV(totalDed * 12) : ''}</td></tr>
-      <tr class="highlight"><td class="col-sr">9</td><td class="col-part">Net Salary (Gross - Total Deduction)</td><td class="col-num">${fmtV(netSalary)}</td><td class="col-num">${fmtV(netSalary * 12)}</td></tr>
-      <tr><td class="col-sr">10</td><td class="col-part">Employer PF contribution</td><td class="col-num">${pfEmpr > 0 ? fmtV(pfEmpr) : ''}</td><td class="col-num">${pfEmpr > 0 ? fmtV(pfEmpr * 12) : ''}</td></tr>
-      <tr><td class="col-sr">11</td><td class="col-part">Employer PF contribution Admin charges</td><td class="col-num">${pfAdmin > 0 ? fmtV(pfAdmin) : ''}</td><td class="col-num">${pfAdmin > 0 ? fmtV(pfAdmin * 12) : ''}</td></tr>
-      <tr class="highlight"><td class="col-sr">12</td><td class="col-part">Total Compensation Package</td><td class="col-num">${fmtV(ctcMonthly)}</td><td class="col-num">${fmtV(ctcAnnual)}</td></tr>
+      <tr><td>Earned Leave</td><td class="c">18</td><td>Group Medical Insurance - Family Floater</td><td>Under Review</td></tr>
+      <tr><td>Sick/Casual Leave</td><td class="c">12</td><td>Group Personal Accidental Insurance</td><td>INR 10 Lakhs and above</td></tr>
+      <tr><td>Holidays</td><td class="c">15</td><td>Group Term Life - Self Minimum</td><td>INR 5 Lakhs and above</td></tr>
+      <tr class="hl"><td>Total paid Time Off :</td><td class="c">45</td><td colspan="2"></td></tr>
     </tbody>
   </table>
-  <div style="margin-top:15px;">
-    <h4 style="margin-bottom:5px;font-size:14px;text-decoration:underline;">Acknowledgement &amp; Acceptance</h4>
-    <p style="margin-top:0;font-size:13px;">I have read understood, agree to the above terms and conditions, and hereby sign my acceptance of the same.</p>
-    <div style="margin-top:15px;font-size:14px;line-height:2.0;font-weight:bold;">
-      Signature: _____________________________________________________<br>
-      Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_____________________________________________________<br>
-      Date: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_____________________________________________________<br>
-      Location: &nbsp;&nbsp;&nbsp;&nbsp;_____________________________________________________
-    </div>
+  <p><strong>Benefits cannot be claimed as reimbursement/cash/perquisites. For Benefits, details please refer to the HR Policy.</strong></p>
+  <p><strong>D.&nbsp; Reimbursements:</strong> Reimbursement of travel, telephone and petrol expenses incurred for official work visits as per HR rules of the company.</p>
+  <p><strong>E.&nbsp; The next salary revision will happen as per company norms.</strong></p>
+  <p><strong>All future ex-gratia variable pay/performance pay would include prospective / retrospectively increased or additional statutory payments liable to be paid by the company because of the changes in the statues. In addition, the company reserves the right to adjust/ recover such increased/ additional statutory payments from the total compensation package. Further, the company will not be liable to pay any amount over and above the total compensation package, which includes all statutory payments applicable. Company reserves the right to change your salary structure at any time by treating this as required notice, if any, under any law &amp; without any separate / further notice/intimation. This is basis the fact that the total compensation package is inclusive of all liability/ compensation obligations of the company (whether towards statutory payment as well as towards basic pay and other components of pay) as mentioned in this annexure.</strong></p>
+  <div class="avoid">
+    <div class="sigrow"><div>${sig1HTML}<strong>Authorized Signatory</strong></div><div></div></div>
+    <p style="margin-top:14px;"><strong>Acknowledgement &amp; Acceptance</strong></p>
+    <p>I have read and understood and agree to the above terms and conditions and hereby give my acceptance of the same.</p>
+    <p style="line-height:2.2;"><strong>Signature:</strong> ____________________ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>Date:</strong> ____________________<br><strong>Name:</strong> ______________________ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>Location:</strong> ________________</p>
   </div>
-  ${ftr}
 </div>
 
 </body>
@@ -454,6 +423,11 @@ exports.create = async (req, res) => {
        probation_months, notice_period_months, custom_clauses || null, sig1_image || null, sig2_image || null,
        employment_type || 'permanent', contract_months || 0, req.user.id]
     );
+    if (req.body.department || req.body.reporting_authority || req.body.variable_pay_monthly) {
+      await db.query(`UPDATE offer_letters SET department=$2, reporting_authority=$3, variable_pay_monthly=$4 WHERE id=$1`,
+        [result.rows[0].id, req.body.department || null, req.body.reporting_authority || null, req.body.variable_pay_monthly || 0]);
+      Object.assign(result.rows[0], { department: req.body.department || null, reporting_authority: req.body.reporting_authority || null });
+    }
     res.json({ success: true, data: result.rows[0], message: 'Offer letter created!' });
   } catch (err) {
     console.error('[offerLetter.create]', err.message);
@@ -469,7 +443,7 @@ exports.update = async (req, res) => {
       'gratuity_monthly', 'pf_employee_monthly', 'pf_employer_monthly', 'pf_admin_monthly',
       'professional_tax_monthly', 'employee_code',
       'probation_months', 'notice_period_months', 'custom_clauses', 'sig1_image', 'sig2_image',
-      'employment_type', 'contract_months'];
+      'employment_type', 'contract_months', 'department', 'reporting_authority', 'variable_pay_monthly'];
     const sets = [], params = [];
     fields.forEach(f => {
       if (req.body[f] !== undefined) {
@@ -736,3 +710,5 @@ exports.bulkSend = async (req, res) => {
     res.status(500).json({ success: false, message: `Server error: ${err.message}` });
   }
 };
+
+exports.htmlToPdf = htmlToPdf;

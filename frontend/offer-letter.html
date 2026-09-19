@@ -172,6 +172,14 @@
               <input type="text" id="ol-designation" placeholder='e.g. Manager-Remote Sensing and GIS'>
             </div>
             <div class="form-group">
+              <label>Department</label>
+              <input type="text" id="ol-department" placeholder="e.g. Operations">
+            </div>
+            <div class="form-group">
+              <label>Reporting Authority</label>
+              <input type="text" id="ol-reporting-authority" placeholder="e.g. Name (Manager)">
+            </div>
+            <div class="form-group">
               <label>Location</label>
               <input type="text" id="ol-location" value="Mumbai" placeholder="Mumbai">
             </div>
@@ -474,6 +482,8 @@ async function loadForm(id) {
   document.getElementById('ol-address').value      = ol.candidate_address || '';
   document.getElementById('ol-designation').value  = ol.designation;
   document.getElementById('ol-location').value     = ol.location || 'Mumbai';
+  document.getElementById('ol-department').value  = ol.department || '';
+  document.getElementById('ol-reporting-authority').value = ol.reporting_authority || '';
   document.getElementById('ol-offer-date').value   = ol.offer_date?.split('T')[0] || '';
   document.getElementById('ol-joining-date').value = ol.joining_date?.split('T')[0] || '';
   document.getElementById('ol-valid-days').value   = ol.offer_valid_days || 7;
@@ -519,6 +529,8 @@ async function saveOL() {
     candidate_address:        document.getElementById('ol-address').value.trim() || null,
     designation:              desig,
     location:                 document.getElementById('ol-location').value.trim() || 'Mumbai',
+    department:               document.getElementById('ol-department').value.trim() || null,
+    reporting_authority:      document.getElementById('ol-reporting-authority').value.trim() || null,
     offer_date:               document.getElementById('ol-offer-date').value || null,
     joining_date:             document.getElementById('ol-joining-date').value || null,
     offer_valid_days:         parseInt(document.getElementById('ol-valid-days').value) || 7,
@@ -651,7 +663,7 @@ async function deleteOL() {
 function resetForm() {
   document.getElementById('ol-id').value = '';
   document.getElementById('form-title').textContent = '📝 Create Offer Letter';
-  ['ol-name','ol-email','ol-mobile','ol-address','ol-designation','ol-joining-date','ol-clauses','ol-email-msg','ol-contract-months',
+  ['ol-name','ol-email','ol-mobile','ol-address','ol-designation','ol-department','ol-reporting-authority','ol-joining-date','ol-clauses','ol-email-msg','ol-contract-months',
    'ol-ctc','ol-basic','ol-hra','ol-other','ol-gratuity','ol-pf-emp','ol-pf-er','ol-pf-admin'].forEach(id => {
     document.getElementById(id).value = '';
   });
