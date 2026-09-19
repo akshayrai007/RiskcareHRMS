@@ -839,7 +839,11 @@
         </div>
 
         <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:18px 20px">
-          <div class="form-group" style="margin:0"><label class="form-label">Notes</label><input id="edit-sal-notes" class="form-control" type="text" placeholder="Optional notes…"></div>
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px">
+            <div class="form-group" style="margin:0"><label class="form-label">Salary Effective Date</label><input id="edit-sal-effective" class="form-control" type="date"></div>
+            <div class="form-group" style="margin:0"><label class="form-label">Revision Comments</label><input id="edit-sal-comments" class="form-control" type="text" placeholder="e.g. Annual appraisal, promotion to AVP…"></div>
+          </div>
+          <div class="form-group" style="margin:12px 0 0"><label class="form-label">Notes</label><input id="edit-sal-notes" class="form-control" type="text" placeholder="Optional notes…"></div>
         </div>
       </div>
 
@@ -2536,6 +2540,9 @@ async function openEditEmp(id) {
   document.getElementById('edit-tds').checked         = !!s.tds_applicable;
   document.getElementById('edit-pf-basis').value      = s.pf_wage_basis === 'actual' ? 'actual' : 'capped';
   document.getElementById('edit-sal-notes').value     = s.notes || '';
+  document.getElementById('edit-sal-effective').value = '';
+  document.getElementById('edit-sal-comments').value = '';
+  window._annualCtc = null;
 
   // Bank tab
   document.getElementById('edit-bank-name').value   = e.bank_name    || '';
@@ -2652,7 +2659,8 @@ function recalcSalaryPreview() {
   document.getElementById('prev-pf-emp').textContent  = fmt2(pfEmp);
   document.getElementById('prev-esi-emp').textContent = fmt2(esiEmp);
   document.getElementById('prev-esi-detail').textContent = esiEmp || esiEmr ? `Earning ${fmt2(gross)} · Empr ${fmt2(esiEmr)}` : 'not applicable';
-  document.getElementById('prev-ctc').textContent     = fmt2(ctc);
+  window._annualCtc = Math.round(ctc * 12);
+  document.getElementById('prev-ctc').textContent     = fmt2(ctc * 12);
   document.getElementById('salary-preview').style.display = '';
 }
 
@@ -2704,6 +2712,9 @@ async function saveEmployeeEdit() {
     gratuity:            parseFloat(document.getElementById('edit-gratuity').value)     || 0,
     conveyance:          parseFloat(document.getElementById('edit-conveyance').value)   || 0,
     travel_allowance:    parseFloat(document.getElementById('edit-conveyance').value)   || 0,
+    ...(window._annualCtc ? { ctc: window._annualCtc } : {}),
+    salary_effective_date: document.getElementById('edit-sal-effective').value || null,
+    salary_remarks:        document.getElementById('edit-sal-comments').value.trim() || null,
     reporting_manager_id: document.getElementById('edit-manager').value ? parseInt(document.getElementById('edit-manager').value) : null,
     team_leader_id:       document.getElementById('edit-tl').value       ? parseInt(document.getElementById('edit-tl').value)      : null,
     present_state_code:    document.getElementById('edit-present-state-code').value.trim()    || null,

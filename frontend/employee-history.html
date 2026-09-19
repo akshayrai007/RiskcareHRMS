@@ -101,7 +101,7 @@
 
 <!-- Popup: full history for one employee -->
 <div class="modal-backdrop" id="hist-detail-modal">
-  <div class="modal modal-lg" style="max-height:88vh">
+  <div class="modal modal-lg" style="max-height:88vh;width:min(1150px,96vw);max-width:96vw">
     <div class="modal-header">
       <div class="modal-title" id="hist-detail-title">Employee History</div>
       <button class="modal-close" onclick="closeModal('hist-detail-modal')">✕</button>
@@ -217,72 +217,90 @@ async function openEmployeeHistory(empId) {
     return;
   }
 
-  const { employee: e, timeline } = res.data;
+  const { employee: e, salary_history, promotion_history } = res.data;
   const name = `${e.first_name||''} ${e.last_name||''}`.trim();
   title.textContent = `${name} — ${e.employee_code||''}`;
 
   try {
     const header = `
-      <div style="padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface2)">
-        <div style="display:flex;flex-wrap:wrap;gap:18px;font-size:12px;color:var(--muted)">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface2)">
+        <div style="display:flex;flex-wrap:wrap;gap:22px;font-size:12px;color:var(--muted);align-items:center">
           <div><b style="color:var(--text)">Department:</b> ${e.department_name||'—'}</div>
           <div><b style="color:var(--text)">Designation:</b> ${e.designation_title||'—'}</div>
           <div><b style="color:var(--text)">Level:</b> ${e.level||'—'}</div>
-          <div><b style="color:var(--text)">Current CTC:</b> <span class="ccy-sym"></span>${fmt.money(e.ctc)}</div>
+          <div><b style="color:var(--text)">Current Annual CTC:</b> ${fmt.money(e.ctc)}</div>
+          <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="downloadHistoryExcel()">⬇ Download Excel</button>
         </div>
       </div>`;
 
-    if (!timeline || !timeline.length) {
-      body.innerHTML = header + '<div class="empty-state">No salary changes or promotions recorded yet.</div>';
+    const rowsData = salary_history || [];
+    if (!rowsData.length) {
+      body.innerHTML = header + '<div class="empty-state">No salary changes recorded yet.</div>';
       return;
     }
 
-    const items = timeline.map(item => {
-    if (item.type === 'salary') {
-      const chips = [];
-      const pairs = [
-        ['CTC', item.old_ctc, item.new_ctc],
-        ['Basic', item.old_basic_salary, item.new_basic_salary],
-        ['HRA', item.old_hra, item.new_hra],
-        ['Defray Allowance', item.old_special_allowance, item.new_special_allowance],
-        ['Travel Allowance', item.old_travel_allowance, item.new_travel_allowance],
-      ];
-      pairs.forEach(([label, oldV, newV]) => {
-        if (oldV === newV) return;
-        chips.push(`<span class="tl-chip"><span class="lbl">${label}:</span> <span class="old">${fmt.money(oldV)}</span> → <span class="new">${fmt.money(newV)}</span></span>`);
-      });
-      return `
-        <div class="tl-item">
-          <div class="tl-dot salary">💰</div>
-          <div class="tl-body">
-            <div class="tl-title">Salary Revised</div>
-            <div class="tl-date">${fmt.date(item.effective_date)}</div>
-            <div class="tl-diff">${chips.join('') || '<span class="tl-chip">No numeric change recorded</span>'}</div>
-            ${item.remarks ? `<div class="tl-remarks">"${item.remarks}"</div>` : ''}
-            <div class="tl-by">Updated by ${item.changed_by_name?.trim() || 'System'}</div>
-          </div>
-        </div>`;
-    } else {
-      const desigChanged = item.old_designation !== item.new_designation;
-      const levelChanged = item.old_level !== item.new_level;
-      const chips = [];
-      if (desigChanged) chips.push(`<span class="tl-chip"><span class="lbl">Designation:</span> <span class="old">${item.old_designation||'—'}</span> → <span class="new">${item.new_designation||'—'}</span></span>`);
-      if (levelChanged) chips.push(`<span class="tl-chip"><span class="lbl">Level:</span> <span class="old">${item.old_level||'—'}</span> → <span class="new">${item.new_level||'—'}</span></span>`);
-      return `
-        <div class="tl-item">
-          <div class="tl-dot promotion">⭐</div>
-          <div class="tl-body">
-            <div class="tl-title">Promotion / Role Change</div>
-            <div class="tl-date">${fmt.date(item.effective_date)}</div>
-            <div class="tl-diff">${chips.join('')}</div>
-            ${item.remarks ? `<div class="tl-remarks">"${item.remarks}"</div>` : ''}
-            <div class="tl-by">Updated by ${item.changed_by_name?.trim() || 'System'}</div>
-          </div>
-        </div>`;
-    }
-  }).join('');
+    // Designation held on each revision's effective date: the newest promotion
+    // on/before that date; if none yet, the designation before the first
+    // promotion (or the current one when there have been no promotions).
+    const promos = [...(promotion_history || [])].sort((a, b) => new Date(a.effective_date) - new Date(b.effective_date));
+    const desigOn = (dt) => {
+      const d = new Date(dt);
+      let cur = promos.length ? (promos[0].old_designation || e.designation_title) : e.designation_title;
+      promos.forEach(pr => { if (new Date(pr.effective_date) <= d && pr.new_designation) cur = pr.new_designation; });
+      return cur || '—';
+    };
+    const dt2 = (v) => v ? new Date(v).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true }) : '—';
+    const M = (v) => (v === null || v === undefined || v === '') ? '—' : fmt.money(v);
 
-  body.innerHTML = header + `<div style="padding:16px 20px">${items}</div>`;
+    window._histExport = { name, code: e.employee_code, rows: [] };
+    const TH = 'background:#1e293b;color:#fff;font-size:11px;font-weight:700;padding:8px 10px;border:1px solid #475569;white-space:nowrap;text-align:left';
+    const TD = 'font-size:12px;padding:7px 10px;border:1px solid #cbd5e1;white-space:nowrap';
+    const rowsHtml = rowsData.map((r, idx) => {
+      const bg = idx % 2 ? '#f8fafc' : '#fff';
+      const desig = desigOn(r.effective_date);
+      const by = r.changed_by_name?.trim() || 'System';
+      window._histExport.rows.push([
+        String(r.effective_date || '').slice(0, 10), dt2(r.changed_at), desig, r.new_ctc ?? '', r.new_basic_salary ?? '',
+        r.new_hra ?? '', r.new_special_allowance ?? '', r.new_travel_allowance ?? '', r.remarks || '', by
+      ]);
+      const chg = (o, n) => (o !== null && n !== null && Number(o) !== Number(n)) ? `<div style="font-size:10px;color:#b91c1c;text-decoration:line-through">${M(o)}</div>` : '';
+      return `<tr style="background:${bg}">
+        <td style="${TD};text-align:center;color:#64748b">${idx + 1}</td>
+        <td style="${TD};font-weight:600">${fmt.date(r.effective_date)}</td>
+        <td style="${TD};color:#475569">${dt2(r.changed_at)}</td>
+        <td style="${TD}">${desig}</td>
+        <td style="${TD};text-align:right;font-weight:700;color:#166534;background:#f0fdf4">${chg(r.old_ctc, r.new_ctc)}${M(r.new_ctc)}</td>
+        <td style="${TD};text-align:right">${chg(r.old_basic_salary, r.new_basic_salary)}${M(r.new_basic_salary)}</td>
+        <td style="${TD};text-align:right">${chg(r.old_hra, r.new_hra)}${M(r.new_hra)}</td>
+        <td style="${TD};text-align:right">${chg(r.old_special_allowance, r.new_special_allowance)}${M(r.new_special_allowance)}</td>
+        <td style="${TD};text-align:right">${chg(r.old_travel_allowance, r.new_travel_allowance)}${M(r.new_travel_allowance)}</td>
+        <td style="${TD};white-space:normal;min-width:180px;color:#334155">${r.remarks ? r.remarks : '<span style="color:#94a3b8">—</span>'}</td>
+        <td style="${TD};color:#64748b">${by}</td>
+      </tr>`;
+    }).join('');
+
+    body.innerHTML = header + `
+      <div style="padding:16px 20px;overflow-x:auto">
+        <table style="border-collapse:collapse;width:100%;min-width:1000px">
+          <thead>
+            <tr>
+              <th style="${TH};text-align:center">#</th>
+              <th style="${TH}">Effective Date</th>
+              <th style="${TH}">CTC Uploaded Date</th>
+              <th style="${TH}">Designation</th>
+              <th style="${TH};background:#166534;text-align:right">Annual CTC</th>
+              <th style="${TH};background:#334155;text-align:right">Basic</th>
+              <th style="${TH};background:#334155;text-align:right">HRA</th>
+              <th style="${TH};background:#334155;text-align:right">Defray Allowance</th>
+              <th style="${TH};background:#334155;text-align:right">Travel Allowance</th>
+              <th style="${TH}">Comments</th>
+              <th style="${TH}">Updated By</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">Struck-through amounts are the previous value.</div>
+      </div>`;
   } catch (renderErr) {
     console.error('[openEmployeeHistory render]', renderErr);
     body.innerHTML = `
@@ -291,6 +309,18 @@ async function openEmployeeHistory(empId) {
         <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="openEmployeeHistory(${empId})">🔄 Retry</button>
       </div>`;
   }
+}
+
+// Opens in Excel: CSV with the same columns as the table.
+function downloadHistoryExcel() {
+  const d = window._histExport; if (!d) return;
+  const head = ['Effective Date','CTC Uploaded Date','Designation','Annual CTC','Basic','HRA','Defray Allowance','Travel Allowance','Comments','Updated By'];
+  const q = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const csv = '\ufeff' + [head, ...d.rows].map(r => r.map(q).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = `Salary_History_${d.code || d.name}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
 }
 
 loadEmployeeHistoryList();
