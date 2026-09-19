@@ -1114,7 +1114,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       'Gross Salary',
       'PF (Employee)', 'ESI Earning (Wages)', 'ESI (Employee)', 'ESI (Employer)', 'Prof Tax', 'LWF', 'TDS',
       'GTL Deduction', 'Late Mark Deduction',
-      'Salary Advance Recovery (Loan/EMI)', 'EMI Progress', 'Total Deductions',
+      'Salary Advance Recovery (Loan/EMI)', 'Total Deductions',
       'Net Pay', 'Payment Status', 'Remarks'
     ];
 
@@ -1172,9 +1172,6 @@ exports.downloadPayrollTemplate = async (req, res) => {
           tds,
           0, 0,              // GTL, Late Mark deductions (one-time)
           parseFloat(activeEMI ? activeEMI.monthly_emi : 0),
-          activeEMI
-            ? (parseInt(activeEMI.installments_paid||0)+1) + '/' + activeEMI.total_installments
-            : '',
           totalDed,
           net,
           'Paid',    // Payment Status default
@@ -1193,7 +1190,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       {wch:14},{wch:14},{wch:9},{wch:10},{wch:12},{wch:14},{wch:12},
       {wch:12},{wch:14},{wch:12},{wch:12},{wch:9},{wch:6},{wch:8},
       {wch:12},{wch:14},
-      {wch:20},{wch:12},{wch:14},
+      {wch:20},{wch:14},
       {wch:10},{wch:14},{wch:20}
     ];
 
