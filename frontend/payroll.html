@@ -278,13 +278,12 @@ const NOW = new Date();
     sel.innerHTML += `<option value="${y}" ${y===NOW.getFullYear()?'selected':''}>${y}</option>`;
 });
 
-// HR: List only (view payroll, no process/upload)
+// HR: same as Accounts (Upload + Process + List) plus Salary Structures
 if (user && user.role === 'hr') {
+  document.getElementById('upload-tab').style.display = '';
+  document.getElementById('process-tab').style.display = '';
   document.getElementById('list-tab').style.display = '';
-  document.getElementById('upload-tab').style.display = 'none';
-  document.getElementById('process-tab').style.display = 'none';
   document.getElementById('struct-tab').style.display = '';
-  switchTab('list');
 }
 
 // Accounts: Full access — Upload + Process + List (Salary Structures is HR-only)
@@ -432,7 +431,7 @@ async function loadPayslip(empId) {
     el.innerHTML = `<div class="empty-state">
       <div class="empty-icon">📄</div>
       <p>No payslip for ${MONTHS[month-1]} ${year}.</p>
-      ${['accounts','super_admin'].includes(user?.role)?'<p style="margin-top:10px"><button class="btn btn-primary btn-sm" onclick="switchTab(\'process\')">Process Payroll First</button></p>':
+      ${['accounts','hr','super_admin'].includes(user?.role)?'<p style="margin-top:10px"><button class="btn btn-primary btn-sm" onclick="switchTab(\'process\')">Process Payroll First</button></p>':
       '<p class="text-muted" style="margin-top:8px">Payroll may not have been processed yet. Please contact HR.</p>'}
     </div>`;
     return;

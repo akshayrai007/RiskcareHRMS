@@ -287,14 +287,14 @@ router.get ('/my/payslip-months',    authenticate, async (req, res) => {
   );
   res.json({ success: true, data: r.rows });
 });
-router.post('/payroll/process',      authenticate, authorize(...ACCOUNTS), async (req, res) => {
+router.post('/payroll/process',      authenticate, authorize(...ACCOUNTS,'hr'), async (req, res) => {
   res.json({ success: true, message: 'Use /payroll/upload to process payroll via Excel upload.' });
 });
-router.get ('/payroll/uploads',                   authenticate, authorize(...ACCOUNTS), payCtrl.getUploads);
+router.get ('/payroll/uploads',                   authenticate, authorize(...ACCOUNTS,'hr'), payCtrl.getUploads);
 router.get ('/payroll/salary-structures',         authenticate, authorize('hr'),        payCtrl.getAllSalaryStructures);
 router.get ('/payroll/salary-structure/:employee_id', authenticate, authorize('hr'),    payCtrl.getSalaryStructure);
 router.post('/payroll/salary-structure',          authenticate, authorize('hr'),        payCtrl.upsertSalaryStructure);
-router.post('/payroll/upload',                    authenticate, authorize('accounts'), payCtrl.uploadMiddleware, payCtrl.uploadPayroll);
+router.post('/payroll/upload',                    authenticate, authorize('accounts','hr'), payCtrl.uploadMiddleware, payCtrl.uploadPayroll);
 router.get ('/payroll/template',                  authenticate, authorize('accounts','hr','super_admin'), payCtrl.downloadPayrollTemplate);
 router.get ('/payroll/salary-structure-template',  authenticate, authorize('hr'),                   payCtrl.downloadSalaryStructureTemplate);
 router.post('/payroll/salary-structure-bulk',      authenticate, authorize('hr'), xlsxUpload.single('file'), payCtrl.bulkUploadSalaryStructure);
