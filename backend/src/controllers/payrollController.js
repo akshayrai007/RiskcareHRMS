@@ -342,7 +342,7 @@ exports.uploadPayroll = async (req, res) => {
 
       // Find employee — try emp code first, then full name
       let emp;
-      if (empCodeOrName.startsWith('KC')) {
+      if (/^(KC|E|Cont|C-)\d+/i.test(empCodeOrName)) {
         emp = await client.query(
           `SELECT id, state FROM employees WHERE employee_code=$1 AND is_active=true`, 
           [empCodeOrName]

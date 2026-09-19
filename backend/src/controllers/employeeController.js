@@ -1,7 +1,7 @@
 const CONFIG = require('../Main_file');
 // src/controllers/employeeController.js
 // UPDATED: provision/contractual/permanent support + dual employee code series
-// KC10000+  -> permanent & provision employees
+// E001+ (next: highest E-number + 1, min E554) -> permanent & provision employees
 // Cont0001+ -> contractual employees
 const bcrypt = require('bcryptjs');
 
@@ -40,15 +40,14 @@ async function generateEmployeeCode(client, employeeCategory) {
     }
     return `Cont${String(nextNum).padStart(4, '0')}`;
   } else {
+    // Permanent & provision employees use the E-series (E001, E554, ...).
+    // Next code = highest existing E-number + 1 (never below E554).
     const res = await client.query(
-      `SELECT employee_code FROM employees WHERE employee_code ILIKE '${CONFIG.permanentEmpCodePrefix}%' ORDER BY id DESC LIMIT 1`
+      `SELECT COALESCE(MAX(regexp_replace(employee_code,'[^0-9]','','g')::int), 0) AS mx
+       FROM employees WHERE employee_code ~ '^E[0-9]+$'`
     );
-    let nextNum = 10000;
-    if (res.rows.length) {
-      const m = res.rows[0].employee_code.match(/\d+/);
-      if (m) nextNum = Math.max(parseInt(m[0]) + 1, 10000);
-    }
-    return `KC${nextNum}`;
+    const nextNum = Math.max((res.rows[0]?.mx || 0) + 1, 554);
+    return `E${String(nextNum).padStart(3, '0')}`;
   }
 }
 
