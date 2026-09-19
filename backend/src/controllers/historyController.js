@@ -145,3 +145,20 @@ exports.getOrgChart = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+// PATCH /api/history/salary/:id  { remarks }
+// Add or edit the comment on an existing salary revision (HR/Accounts/Admin).
+exports.updateSalaryRemarks = async (req, res) => {
+  try {
+    const remarks = String(req.body.remarks || '').trim() || null;
+    const r = await db.query(
+      `UPDATE employee_salary_history SET remarks=$1 WHERE id=$2 RETURNING id`,
+      [remarks, parseInt(req.params.id)]
+    );
+    if (!r.rows.length) return res.status(404).json({ success: false, message: 'Revision not found' });
+    res.json({ success: true, message: 'Comment saved' });
+  } catch (err) {
+    console.error('[historyController.updateSalaryRemarks]', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

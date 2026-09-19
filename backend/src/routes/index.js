@@ -64,6 +64,7 @@ router.get   ('/employees/:id/designation-history', authenticate,               
 const historyCtrl = require('../controllers/historyController');
 router.get('/history/employees',      authenticate, authorize(...EMP_MGMT), historyCtrl.listEmployees);
 router.get('/history/employees/:id',  authenticate, authorize(...EMP_MGMT), historyCtrl.getEmployeeHistory);
+router.patch('/history/salary/:id',   authenticate, authorize(...EMP_MGMT), historyCtrl.updateSalaryRemarks);
 router.get('/org-chart',              authenticate,                        historyCtrl.getOrgChart);
 router.post  ('/employees',               authenticate, authorize(...EMP_MGMT),  empCtrl.create);
 router.put   ('/employees/:id',           authenticate, authorize(...EMP_MGMT),  empCtrl.update);

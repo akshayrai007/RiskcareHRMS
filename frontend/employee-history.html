@@ -254,7 +254,7 @@ async function openEmployeeHistory(empId) {
     const dt2 = (v) => v ? new Date(v).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true }) : '—';
     const M = (v) => (v === null || v === undefined || v === '') ? '—' : fmt.money(v);
 
-    window._histExport = { name, code: e.employee_code, rows: [] };
+    window._histExport = { name, code: e.employee_code, rows: [], remarksById: Object.fromEntries(rowsData.map(r => [r.id, r.remarks || ''])) };
     const TH = 'background:#1e293b;color:#fff;font-size:11px;font-weight:700;padding:8px 10px;border:1px solid #475569;white-space:nowrap;text-align:left';
     const TD = 'font-size:12px;padding:7px 10px;border:1px solid #cbd5e1;white-space:nowrap';
     const rowsHtml = rowsData.map((r, idx) => {
@@ -276,7 +276,7 @@ async function openEmployeeHistory(empId) {
         <td style="${TD};text-align:right">${chg(r.old_hra, r.new_hra)}${M(r.new_hra)}</td>
         <td style="${TD};text-align:right">${chg(r.old_special_allowance, r.new_special_allowance)}${M(r.new_special_allowance)}</td>
         <td style="${TD};text-align:right">${chg(r.old_travel_allowance, r.new_travel_allowance)}${M(r.new_travel_allowance)}</td>
-        <td style="${TD};white-space:normal;min-width:180px;color:#334155">${r.remarks ? r.remarks : '<span style="color:#94a3b8">—</span>'}</td>
+        <td style="${TD};white-space:normal;min-width:200px;color:#334155;cursor:pointer" title="Click to add / edit comment" onclick="editRevisionComment(${r.id}, ${empId})">${r.remarks ? r.remarks : '<span style="color:#94a3b8">＋ Add comment</span>'}</td>
         <td style="${TD};color:#64748b">${by}</td>
       </tr>`;
     }).join('');
@@ -311,6 +311,15 @@ async function openEmployeeHistory(empId) {
         <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="openEmployeeHistory(${empId})">🔄 Retry</button>
       </div>`;
   }
+}
+
+async function editRevisionComment(revId, empId) {
+  const cur = (window._histExport?.remarksById || {})[revId] || '';
+  const text = prompt('Comment for this salary revision:', cur);
+  if (text === null) return;
+  const res = await api('PATCH', `/history/salary/${revId}`, { remarks: text });
+  if (res?.success) { toast('Comment saved'); openEmployeeHistory(empId); }
+  else toast(res?.message || 'Failed', 'error');
 }
 
 // Opens in Excel: CSV with the same columns as the table.
