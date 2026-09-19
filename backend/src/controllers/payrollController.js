@@ -307,7 +307,6 @@ exports.uploadPayroll = async (req, res) => {
     const iPerfBon  = colEx('performance bonus');
     const iGTL      = colEx('gtl');
     const iLateMark = colEx('late mark');
-    const iGMS      = colEx('gms');
 
     if (iEmpCode === -1 || iNetPay === -1) {
       console.warn('[uploadPayroll] Column mapping failed:');
@@ -405,7 +404,7 @@ exports.uploadPayroll = async (req, res) => {
       const rd = (i) => i >= 0 ? n(row[i]) : 0;
       const extraWorkSal = rd(iExtraWk), bonusAmt = rd(iBonus), incentive = rd(iIncent),
             otherEarning = rd(iOtherEr), perfBonus = rd(iPerfBon), foodAdj = rd(iFoodAdj);
-      const gtlDed = rd(iGTL), lateMarkDed = rd(iLateMark), gmsDed = rd(iGMS);
+      const gtlDed = rd(iGTL), lateMarkDed = rd(iLateMark);
 
       // Statutory deductions recomputed on the EARNED (prorated) figures —
       // PF/ESI scale with actual earned wage; PT/LWF are flat monthly slabs
@@ -435,7 +434,7 @@ exports.uploadPayroll = async (req, res) => {
       const pt       = struct.pt_applicable  ? calcPT(gross, empState) : 0;
       const lwf      = struct.lwf_applicable ? 6 : 0;
 
-      const totalDed = pfEmp + esiEmp + pt + lwf + tds + loanEmi + gtlDed + lateMarkDed + gmsDed;
+      const totalDed = pfEmp + esiEmp + pt + lwf + tds + loanEmi + gtlDed + lateMarkDed;
       const netPay   = Math.round((gross - totalDed) * 100) / 100;
 
       // Upsert payroll record. Food Coupon is stored in the pre-existing
@@ -462,11 +461,11 @@ exports.uploadPayroll = async (req, res) => {
       await client.query(
         `UPDATE payroll SET bonus=$3, extra_working_salary=$4, incentive=$5, other_earning=$6,
                 performance_bonus=$7, food_coupon_adjustment=$8, gtl_deduction=$9,
-                late_mark_deduction=$10, gms_deduction=$11, lop_reversal=$12,
-                lop_days=GREATEST(0, lop_days - $12)
-         WHERE employee_id=$1 AND month=$2 AND year=$13`,
+                late_mark_deduction=$10, lop_reversal=$11,
+                lop_days=GREATEST(0, lop_days - $11)
+         WHERE employee_id=$1 AND month=$2 AND year=$12`,
         [empId, monthNum, bonusAmt, extraWorkSal, incentive, otherEarning, perfBonus, foodAdj,
-         gtlDed, lateMarkDed, gmsDed, lopReversal, yearNum]
+         gtlDed, lateMarkDed, lopReversal, yearNum]
       );
       // ESI Earning (wage) + employer contribution for this month's payroll
       const esiApplies = struct.esi_applicable && gross <= 21000;
@@ -1114,7 +1113,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       'Food Coupon Adjustment', 'Extra Working Salary', 'Bonus', 'Incentive', 'Other Earning', 'Performance Bonus',
       'Gross Salary',
       'PF (Employee)', 'ESI Earning (Wages)', 'ESI (Employee)', 'ESI (Employer)', 'Prof Tax', 'LWF', 'TDS',
-      'GTL Deduction', 'Late Mark Deduction', 'GMS Deduction',
+      'GTL Deduction', 'Late Mark Deduction',
       'Salary Advance Recovery (Loan/EMI)', 'EMI Progress', 'Total Deductions',
       'Net Pay', 'Payment Status', 'Remarks'
     ];
@@ -1123,7 +1122,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       // Row 0: Title
       [`HRMS — Payroll Input Template | ${monthName} ${y} | Total Working Days: ${daysInMonth}`],
       // Row 1: Instructions
-      [`⚠️  Present/LOP Days are PRE-FILLED from ${monthName} ${y} attendance & leave - review and edit. One-time monthly items (LOP Reversal, Food Coupon Adjustment, Extra Working Salary, Bonus, Incentive, Other Earning, Performance Bonus, GTL / Late Mark / GMS Deduction, Salary Advance Recovery) apply to THIS month only. Net Pay is recalculated on upload. Payment Status: Paid / Hold / Pending`],
+      [`⚠️  Present/LOP Days are PRE-FILLED from ${monthName} ${y} attendance & leave - review and edit. One-time monthly items (LOP Reversal, Food Coupon Adjustment, Extra Working Salary, Bonus, Incentive, Other Earning, Performance Bonus, GTL / Late Mark Deduction, Salary Advance Recovery) apply to THIS month only. Net Pay is recalculated on upload. Payment Status: Paid / Hold / Pending`],
       // Row 2: Empty spacer
       [],
       // Row 3: Headers
@@ -1171,7 +1170,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
           pt,
           lwf,
           tds,
-          0, 0, 0,           // GTL, Late Mark, GMS deductions (one-time)
+          0, 0,              // GTL, Late Mark deductions (one-time)
           parseFloat(activeEMI ? activeEMI.monthly_emi : 0),
           activeEMI
             ? (parseInt(activeEMI.installments_paid||0)+1) + '/' + activeEMI.total_installments
@@ -1193,7 +1192,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       {wch:10},{wch:8},{wch:10},{wch:14},{wch:9},
       {wch:14},{wch:14},{wch:9},{wch:10},{wch:12},{wch:14},{wch:12},
       {wch:12},{wch:14},{wch:12},{wch:12},{wch:9},{wch:6},{wch:8},
-      {wch:12},{wch:14},{wch:12},
+      {wch:12},{wch:14},
       {wch:20},{wch:12},{wch:14},
       {wch:10},{wch:14},{wch:20}
     ];
@@ -1221,7 +1220,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       ['LOP Reversal (Days)','Days of LOP to credit back this month (paid for those days; LOP Days reduces by the same)'],
       ['Food Coupon Adjustment','One-time +/- adjustment to this month food coupon (base amount comes from salary structure)'],
       ['Extra Working Salary / Bonus / Incentive / Other Earning / Performance Bonus','One-time earnings for THIS month only - not prorated, not part of the salary structure'],
-      ['GTL / Late Mark / GMS Deduction','One-time deductions for THIS month only'],
+      ['GTL / Late Mark Deduction','One-time deductions for THIS month only'],
       ['Salary Advance Recovery','Monthly advance/loan EMI recovery (pre-filled from active advance; reduces the advance balance)'],
       ['Payment Status',    'Paid / Hold / Pending'],
       ['Remarks',           'Any note e.g. "Full & Final", "Bonus included", etc.'],
