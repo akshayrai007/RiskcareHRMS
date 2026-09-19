@@ -894,6 +894,8 @@ async function start() {
           remarks TEXT
         )`);
         await db.query(`CREATE INDEX IF NOT EXISTS idx_salary_history_emp ON employee_salary_history(employee_id)`);
+        // Designation held when each revision was made (snapshot, so history stays right after later promotions)
+        await db.query(`ALTER TABLE employee_salary_history ADD COLUMN IF NOT EXISTS designation_title VARCHAR(150)`);
         await db.query(`CREATE INDEX IF NOT EXISTS idx_desig_history_emp ON employee_designation_history(employee_id)`);
         await offerCtrl.initTables();
         await itDeclCtrl.initTables();

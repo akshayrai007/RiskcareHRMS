@@ -509,19 +509,26 @@ exports.update = async (req, res) => {
           if (touched.includes(f) && Number(oldVal || 0) !== Number(newVal || 0)) changed = true;
         }
         if (changed) {
+          // Snapshot the designation this revision applies to (new one if it is
+          // being changed in this same save, otherwise the current one).
+          const desigRes = await db.query(
+            `SELECT title FROM designations WHERE id = COALESCE($2, (SELECT designation_id FROM employees WHERE id=$1))`,
+            [id, req.body.designation_id ? parseInt(req.body.designation_id) : null]
+          );
+          const designationTitle = desigRes.rows[0]?.title || null;
           await db.query(
             `INSERT INTO employee_salary_history
                (employee_id, old_ctc, new_ctc, old_basic_salary, new_basic_salary,
                 old_hra, new_hra, old_special_allowance, new_special_allowance,
-                old_travel_allowance, new_travel_allowance, changed_by, effective_date, remarks)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, COALESCE($13, CURRENT_DATE), $14)`,
+                old_travel_allowance, new_travel_allowance, changed_by, effective_date, remarks, designation_title)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, COALESCE($13, CURRENT_DATE), $14, $15)`,
             [id,
              cols.old.ctc, cols.new.ctc,
              cols.old.basic_salary, cols.new.basic_salary,
              cols.old.hra, cols.new.hra,
              cols.old.special_allowance, cols.new.special_allowance,
              cols.old.travel_allowance, cols.new.travel_allowance,
-             req.user?.id || null, req.body.salary_effective_date || null, req.body.salary_remarks || null]
+             req.user?.id || null, req.body.salary_effective_date || null, req.body.salary_remarks || null, designationTitle]
           );
         }
       }
