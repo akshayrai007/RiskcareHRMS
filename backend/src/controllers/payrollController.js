@@ -290,6 +290,19 @@ exports.uploadPayroll = async (req, res) => {
     const iNetPay     = col('net');
     const iStatus     = col('payment');
     const iRemarks    = col('remarks');
+    // One-time monthly adjustments (exact header match so they never collide
+    // with the fuzzy column lookups above)
+    const colEx = (name) => headers.findIndex(h => h.startsWith(name));
+    const iLopRev   = colEx('lop reversal');
+    const iFoodAdj  = colEx('food coupon adj');
+    const iExtraWk  = colEx('extra working');
+    const iBonus    = colEx('bonus');
+    const iIncent   = colEx('incentive');
+    const iOtherEr  = colEx('other earning');
+    const iPerfBon  = colEx('performance bonus');
+    const iGTL      = colEx('gtl');
+    const iLateMark = colEx('late mark');
+    const iGMS      = colEx('gms');
 
     if (iEmpCode === -1 || iNetPay === -1) {
       console.warn('[uploadPayroll] Column mapping failed:');
@@ -375,11 +388,19 @@ exports.uploadPayroll = async (req, res) => {
       // Excel's Gross/Net columns — computes the actual earned salary using
       // the real day-count of this month as the divisor.
       const totalDaysInMonth = new Date(yearNum, monthNum, 0).getDate();
-      const earnedBasic      = proratedAmount(basic,      presentDays, totalDaysInMonth);
-      const earnedHRA        = proratedAmount(hra,         presentDays, totalDaysInMonth);
-      const earnedConveyance = proratedAmount(conveyance,  presentDays, totalDaysInMonth);
-      const earnedOtherAllow = proratedAmount(otherAllow,  presentDays, totalDaysInMonth);
-      const earnedGratuity   = proratedAmount(gratuity,    presentDays, totalDaysInMonth);
+      // LOP Reversal credits LOP days back as paid days (capped at the month).
+      const lopReversal = iLopRev >= 0 ? Math.min(n(row[iLopRev]), lopDays) : 0;
+      const effPresent  = Math.min(presentDays + lopReversal, totalDaysInMonth);
+      const earnedBasic      = proratedAmount(basic,      effPresent, totalDaysInMonth);
+      const earnedHRA        = proratedAmount(hra,         effPresent, totalDaysInMonth);
+      const earnedConveyance = proratedAmount(conveyance,  effPresent, totalDaysInMonth);
+      const earnedOtherAllow = proratedAmount(otherAllow,  effPresent, totalDaysInMonth);
+      const earnedGratuity   = proratedAmount(gratuity,    effPresent, totalDaysInMonth);
+      // One-time monthly payments / deductions from the sheet (not in salary structure)
+      const rd = (i) => i >= 0 ? n(row[i]) : 0;
+      const extraWorkSal = rd(iExtraWk), bonusAmt = rd(iBonus), incentive = rd(iIncent),
+            otherEarning = rd(iOtherEr), perfBonus = rd(iPerfBon), foodAdj = rd(iFoodAdj);
+      const gtlDed = rd(iGTL), lateMarkDed = rd(iLateMark), gmsDed = rd(iGMS);
 
       // Statutory deductions recomputed on the EARNED (prorated) figures —
       // PF/ESI scale with actual earned wage; PT/LWF are flat monthly slabs
@@ -394,9 +415,11 @@ exports.uploadPayroll = async (req, res) => {
          FROM employee_salary_structure WHERE employee_id=$1`, [empId]
       );
       const struct = structRes.rows[0] || { pf_applicable: true, esi_applicable: false, pt_applicable: true, lwf_applicable: false, pf_wage_basis: 'capped', food_coupon: 0 };
-      const foodCoupon = parseFloat(struct.food_coupon) || 0;
+      // Structure food coupon + this month's one-time adjustment (can be negative)
+      const foodCoupon = (parseFloat(struct.food_coupon) || 0) + foodAdj;
+      const oneTimeEarnings = extraWorkSal + bonusAmt + incentive + otherEarning + perfBonus;
 
-      const gross = Math.round((earnedBasic + earnedHRA + earnedConveyance + earnedOtherAllow + earnedGratuity + foodCoupon) * 100) / 100;
+      const gross = Math.round((earnedBasic + earnedHRA + earnedConveyance + earnedOtherAllow + earnedGratuity + foodCoupon + oneTimeEarnings) * 100) / 100;
 
       // PF ceiling (₹15,000) applies unless this employee opted for PF on
       // actual basic — either way, applied to the EARNED (prorated) basic
@@ -407,7 +430,7 @@ exports.uploadPayroll = async (req, res) => {
       const pt       = struct.pt_applicable  ? calcPT(gross, empState) : 0;
       const lwf      = struct.lwf_applicable ? 6 : 0;
 
-      const totalDed = pfEmp + esiEmp + pt + lwf + tds + loanEmi;
+      const totalDed = pfEmp + esiEmp + pt + lwf + tds + loanEmi + gtlDed + lateMarkDed + gmsDed;
       const netPay   = Math.round((gross - totalDed) * 100) / 100;
 
       // Upsert payroll record. Food Coupon is stored in the pre-existing
@@ -430,6 +453,15 @@ exports.uploadPayroll = async (req, res) => {
          totalDed, netPay, status,
          status === 'paid' ? `${yearNum}-${String(monthNum).padStart(2,'0')}-28` : null,
          uploadId]
+      );
+      await client.query(
+        `UPDATE payroll SET bonus=$3, extra_working_salary=$4, incentive=$5, other_earning=$6,
+                performance_bonus=$7, food_coupon_adjustment=$8, gtl_deduction=$9,
+                late_mark_deduction=$10, gms_deduction=$11, lop_reversal=$12,
+                lop_days=GREATEST(0, lop_days - $12)
+         WHERE employee_id=$1 AND month=$2 AND year=$13`,
+        [empId, monthNum, bonusAmt, extraWorkSal, incentive, otherEarning, perfBonus, foodAdj,
+         gtlDed, lateMarkDed, gmsDed, lopReversal, yearNum]
       );
 
       // Auto-deduct loan EMI if any
@@ -1016,16 +1048,60 @@ exports.downloadPayrollTemplate = async (req, res) => {
 
     const employees = empResult.rows;
 
+    // ── Pre-fill THIS month's attendance: paid days / LOP days per employee ──
+    // Present Days here = paid days (present + weekly offs + holidays + paid
+    // leave), because salary is prorated over calendar days on upload.
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const mStart = `${y}-${pad2(m)}-01`, mEnd = `${y}-${pad2(m)}-${pad2(daysInMonth)}`;
+    const [attR, lvR, holR, empMetaR] = await Promise.all([
+      db.query(`SELECT employee_id, TO_CHAR(date,'YYYY-MM-DD') AS d, status FROM attendance WHERE date BETWEEN $1 AND $2`, [mStart, mEnd]),
+      db.query(`SELECT lr.employee_id, TO_CHAR(lr.from_date,'YYYY-MM-DD') AS f, TO_CHAR(lr.to_date,'YYYY-MM-DD') AS t, lt.code
+                FROM leave_requests lr JOIN leave_types lt ON lt.id=lr.leave_type_id
+                WHERE lr.status='approved' AND lr.from_date <= $2 AND lr.to_date >= $1`, [mStart, mEnd]),
+      db.query(`SELECT TO_CHAR(date,'YYYY-MM-DD') AS d FROM holidays WHERE date BETWEEN $1 AND $2`, [mStart, mEnd]),
+      db.query(`SELECT id, saturday_policy, TO_CHAR(joining_date,'YYYY-MM-DD') AS jd FROM employees WHERE is_active=true`)
+    ]);
+    const attMap = {}; attR.rows.forEach(r => { (attMap[r.employee_id] = attMap[r.employee_id] || {})[r.d] = (r.status || '').toLowerCase(); });
+    const lvMap = {}; lvR.rows.forEach(r => { (lvMap[r.employee_id] = lvMap[r.employee_id] || []).push(r); });
+    const holSet = new Set(holR.rows.map(r => r.d));
+    const metaMap = {}; empMetaR.rows.forEach(r => { metaMap[r.id] = r; });
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const monthAttendance = (empId) => {
+      const meta = metaMap[empId] || {};
+      let paid = 0, lop = 0;
+      for (let day = 1; day <= daysInMonth; day++) {
+        const ds = `${y}-${pad2(m)}-${pad2(day)}`;
+        const dow = new Date(y, m - 1, day).getDay();
+        if (meta.jd && ds < meta.jd) { lop += 1; continue; }                   // before joining
+        const satOff = dow === 6 && meta.saturday_policy !== 'all_working' && [2, 4].includes(Math.ceil(day / 7));
+        const off = dow === 0 || satOff || holSet.has(ds);
+        const st = (attMap[empId] || {})[ds];
+        const lv = (lvMap[empId] || []).find(l => ds >= l.f && ds <= l.t);
+        if (st === 'absent' || st === 'lwp') { lop += 1; continue; }
+        if (st === 'h-lwp') { lop += 0.5; paid += 0.5; continue; }
+        if (st === 'half-day') { paid += 0.5; lop += 0.5; continue; }
+        if (st) { paid += 1; continue; }                                        // present/late/od/wfh/leave/h-*/etc.
+        if (off) { paid += 1; continue; }
+        if (ds > todayStr) { paid += 1; continue; }                             // future unmarked day
+        if (lv && lv.code !== 'LWP') { paid += 1; continue; }                   // approved paid leave, no attendance row
+        lop += 1;
+      }
+      return { paid, lop };
+    };
+
     // ── Build Excel ───────────────────────────────────────────────────────
     const wb = XLSX.utils.book_new();
 
     // ── Sheet 1: Payroll Input Template ───────────────────────────────────
     const HEADERS = [
       'Emp Code', 'Full Name', 'Department', 'Designation', 'Category',
-      'Working Days', 'Present Days', 'LOP Days', 'Paid Days',
-      'Basic', 'HRA', 'Conveyance', 'Defray Allowance', 'Gratuity', 'Gross Salary',
+      'Working Days', 'Present Days', 'LOP Days', 'LOP Reversal (Days)', 'Paid Days',
+      'Basic', 'HRA', 'Conveyance', 'Defray Allowance', 'Gratuity',
+      'Food Coupon Adjustment', 'Extra Working Salary', 'Bonus', 'Incentive', 'Other Earning', 'Performance Bonus',
+      'Gross Salary',
       'PF (Employee)', 'ESI (Employee)', 'Prof Tax', 'LWF', 'TDS',
-      'Loan/EMI Deduction (Active EMI)', 'EMI Progress', 'Total Deductions',
+      'GTL Deduction', 'Late Mark Deduction', 'GMS Deduction',
+      'Salary Advance Recovery (Loan/EMI)', 'EMI Progress', 'Total Deductions',
       'Net Pay', 'Payment Status', 'Remarks'
     ];
 
@@ -1033,7 +1109,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       // Row 0: Title
       [`HRMS — Payroll Input Template | ${monthName} ${y} | Total Working Days: ${daysInMonth}`],
       // Row 1: Instructions
-      [`⚠️  FILL ONLY: Working Days, Present Days, LOP Days, Loan/EMI Deduction, Remarks. Salary figures are pre-filled from salary structures. Net Pay = auto-calculated. Payment Status: Paid / Hold / Pending`],
+      [`⚠️  Present/LOP Days are PRE-FILLED from ${monthName} ${y} attendance & leave - review and edit. One-time monthly items (LOP Reversal, Food Coupon Adjustment, Extra Working Salary, Bonus, Incentive, Other Earning, Performance Bonus, GTL / Late Mark / GMS Deduction, Salary Advance Recovery) apply to THIS month only. Net Pay is recalculated on upload. Payment Status: Paid / Hold / Pending`],
       // Row 2: Empty spacer
       [],
       // Row 3: Headers
@@ -1048,6 +1124,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
            WHERE employee_id=$1 AND status='disbursed' AND installments_paid < total_installments
            ORDER BY approved_at ASC LIMIT 1`, [e.id]);
         const activeEMI = emiRes.rows[0] || null;
+        const monthAtt = monthAttendance(e.id);
         const pf      = parseFloat(e.pf_employee)    || 0;
         const esi     = parseFloat(e.esi_employee)   || 0;
         const pt      = parseFloat(e.professional_tax) || 0;
@@ -1061,21 +1138,24 @@ exports.downloadPayrollTemplate = async (req, res) => {
           e.department  || '',
           e.designation || '',
           e.employee_category || '',
-          daysInMonth,       // Working Days — pre-filled, accounts can adjust
-          '',                // Present Days — FILL THIS
-          '',                // LOP Days — FILL THIS
-          '',                // Paid Days — calculated by system on upload
+          daysInMonth,       // Working Days
+          monthAtt.paid,     // Present Days (paid days) - pre-filled from attendance
+          monthAtt.lop,      // LOP Days - pre-filled from attendance
+          0,                 // LOP Reversal (Days) - credit LOP days back
+          monthAtt.paid,     // Paid Days
           parseFloat(e.basic)             || 0,
           parseFloat(e.hra)               || 0,
           parseFloat(e.conveyance)        || 0,
           parseFloat(e.special_allowance) || 0,
           parseFloat(e.gratuity)          || 0,
+          0, 0, 0, 0, 0, 0,  // Food Coupon Adj, Extra Working Salary, Bonus, Incentive, Other Earning, Performance Bonus (one-time)
           gross,
           pf,
           esi,
           pt,
           lwf,
           tds,
+          0, 0, 0,           // GTL, Late Mark, GMS deductions (one-time)
           parseFloat(activeEMI ? activeEMI.monthly_emi : 0),
           activeEMI
             ? (parseInt(activeEMI.installments_paid||0)+1) + '/' + activeEMI.total_installments
@@ -1093,10 +1173,12 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // Column widths
     ws1['!cols'] = [
       {wch:10},{wch:24},{wch:16},{wch:22},{wch:12},
-      {wch:11},{wch:11},{wch:9},{wch:9},
-      {wch:10},{wch:8},{wch:10},{wch:14},{wch:9},{wch:12},
+      {wch:11},{wch:11},{wch:9},{wch:12},{wch:9},
+      {wch:10},{wch:8},{wch:10},{wch:14},{wch:9},
+      {wch:14},{wch:14},{wch:9},{wch:10},{wch:12},{wch:14},{wch:12},
       {wch:12},{wch:12},{wch:9},{wch:6},{wch:8},
-      {wch:16},{wch:12},{wch:14},
+      {wch:12},{wch:14},{wch:12},
+      {wch:20},{wch:12},{wch:14},
       {wch:10},{wch:14},{wch:20}
     ];
 
@@ -1118,9 +1200,13 @@ exports.downloadPayrollTemplate = async (req, res) => {
       ['COLUMNS TO FILL (highlighted in template):'],
       ['Column', 'What to Enter'],
       ['Working Days',      `Total working days in ${monthName} ${y} (pre-filled as ${daysInMonth})`],
-      ['Present Days',      'Actual days employee was present (from attendance register)'],
-      ['LOP Days',          'Loss of Pay days (absent without approved leave)'],
-      ['Loan/EMI Deduction','Monthly loan EMI deduction if any (else leave 0)'],
+      ['Present Days',      'Paid days for the month (present + weekly offs + holidays + paid leave) - PRE-FILLED from attendance, edit if needed'],
+      ['LOP Days',          'Loss of Pay days - PRE-FILLED from attendance (absent / unpaid leave / before joining)'],
+      ['LOP Reversal (Days)','Days of LOP to credit back this month (paid for those days; LOP Days reduces by the same)'],
+      ['Food Coupon Adjustment','One-time +/- adjustment to this month food coupon (base amount comes from salary structure)'],
+      ['Extra Working Salary / Bonus / Incentive / Other Earning / Performance Bonus','One-time earnings for THIS month only - not prorated, not part of the salary structure'],
+      ['GTL / Late Mark / GMS Deduction','One-time deductions for THIS month only'],
+      ['Salary Advance Recovery','Monthly advance/loan EMI recovery (pre-filled from active advance; reduces the advance balance)'],
       ['Payment Status',    'Paid / Hold / Pending'],
       ['Remarks',           'Any note e.g. "Full & Final", "Bonus included", etc.'],
       [''],

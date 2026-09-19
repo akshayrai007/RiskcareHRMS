@@ -772,6 +772,11 @@ async function start() {
         // min(basic,15000), the statutory ceiling) or 'actual' (PF on full
         // basic, uncapped, for employees who opted out of the ceiling) ─────
         await db.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS pf_wage_basis VARCHAR(10) DEFAULT 'capped' CHECK (pf_wage_basis IN ('capped','actual'))`);
+        // ── One-time monthly payroll adjustments (entered in the monthly payroll
+        // sheet, NOT part of the recurring salary structure) ──────────────────
+        for (const c of ['extra_working_salary','incentive','other_earning','performance_bonus','food_coupon_adjustment','gtl_deduction','late_mark_deduction','gms_deduction'])
+          await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS ${c} NUMERIC(12,2) DEFAULT 0`);
+        await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS lop_reversal NUMERIC(5,2) DEFAULT 0`);
         // ── Food Coupon — optional fixed monthly meal-voucher benefit, only
         // applicable to select employees (defaults to 0 for everyone else) ──
         await db.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS food_coupon NUMERIC(12,2) DEFAULT 0`);
