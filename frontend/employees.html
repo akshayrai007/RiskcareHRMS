@@ -829,6 +829,7 @@
             <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">
               <div style="font-size:10px;color:rgba(255,255,255,.6);font-weight:600;margin-bottom:3px">ESI (Employee)</div>
               <b id="prev-esi-emp" style="font-size:14px;color:#fff">₹0</b>
+              <div id="prev-esi-detail" style="font-size:9px;color:#a7f3d0;margin-top:3px"></div>
             </div>
             <div style="background:rgba(255,255,255,.15);border-radius:10px;padding:10px;text-align:center;border:1px solid rgba(255,255,255,.3)">
               <div style="font-size:10px;color:rgba(255,255,255,.7);font-weight:700;margin-bottom:3px;text-transform:uppercase">Annual CTC</div>
@@ -2650,6 +2651,7 @@ function recalcSalaryPreview() {
   document.getElementById('prev-net').textContent     = fmt2(net);
   document.getElementById('prev-pf-emp').textContent  = fmt2(pfEmp);
   document.getElementById('prev-esi-emp').textContent = fmt2(esiEmp);
+  document.getElementById('prev-esi-detail').textContent = esiEmp || esiEmr ? `Earning ${fmt2(gross)} · Empr ${fmt2(esiEmr)}` : 'not applicable';
   document.getElementById('prev-ctc').textContent     = fmt2(ctc);
   document.getElementById('salary-preview').style.display = '';
 }

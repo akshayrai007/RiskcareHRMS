@@ -156,6 +156,11 @@ async function computeAndSaveSalaryStructure(queryable, employeeId, fields, upda
      total_ded, net, ctc_monthly, ctc_annual, notes || null, pf_wage_basis,
      eps_applicable, pf_eps, updatedBy]
   );
+  // ESI Earning = the wage ESI is charged on (gross, only while it is within the ESI ceiling)
+  await queryable.query(
+    `UPDATE employee_salary_structure SET esi_wages=$2 WHERE employee_id=$1`,
+    [employeeId, esi_applicable && gross <= 21000 ? gross : 0]
+  );
 
   return { gross, net, ctc: ctc_monthly };
 }
@@ -462,6 +467,12 @@ exports.uploadPayroll = async (req, res) => {
          WHERE employee_id=$1 AND month=$2 AND year=$13`,
         [empId, monthNum, bonusAmt, extraWorkSal, incentive, otherEarning, perfBonus, foodAdj,
          gtlDed, lateMarkDed, gmsDed, lopReversal, yearNum]
+      );
+      // ESI Earning (wage) + employer contribution for this month's payroll
+      const esiApplies = struct.esi_applicable && gross <= 21000;
+      await client.query(
+        `UPDATE payroll SET esi_wages=$3, esi_employer=$4 WHERE employee_id=$1 AND month=$2 AND year=$5`,
+        [empId, monthNum, esiApplies ? gross : 0, esiApplies ? Math.round(gross * 0.0325) : 0, yearNum]
       );
 
       // Auto-deduct loan EMI if any
@@ -773,6 +784,7 @@ exports.getAllSalaryStructures = async (req, res) => {
          COALESCE(ess.gross_salary,0)      AS gross_salary,
          COALESCE(ess.pf_employee,0)       AS pf_employee,
          COALESCE(ess.pf_employer,0)       AS pf_employer,
+         COALESCE(ess.esi_wages,0)         AS esi_wages,
          COALESCE(ess.esi_employee,0)      AS esi_employee,
          COALESCE(ess.esi_employer,0)      AS esi_employer,
          COALESCE(ess.professional_tax,0)  AS professional_tax,
@@ -1033,7 +1045,9 @@ exports.downloadPayrollTemplate = async (req, res) => {
              COALESCE(s.gratuity,                              0) AS gratuity,
              COALESCE(s.gross_salary,                          0) AS gross_salary,
              COALESCE(s.pf_employee,                           0) AS pf_employee,
+             COALESCE(s.esi_wages,                             0) AS esi_wages,
              COALESCE(s.esi_employee,                          0) AS esi_employee,
+             COALESCE(s.esi_employer,                          0) AS esi_employer,
              COALESCE(s.professional_tax,                      0) AS professional_tax,
              COALESCE(s.lwf,                                   0) AS lwf,
              COALESCE(s.tds,                                   0) AS tds,
@@ -1099,7 +1113,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       'Basic', 'HRA', 'Conveyance', 'Defray Allowance', 'Gratuity',
       'Food Coupon Adjustment', 'Extra Working Salary', 'Bonus', 'Incentive', 'Other Earning', 'Performance Bonus',
       'Gross Salary',
-      'PF (Employee)', 'ESI (Employee)', 'Prof Tax', 'LWF', 'TDS',
+      'PF (Employee)', 'ESI Earning (Wages)', 'ESI (Employee)', 'ESI (Employer)', 'Prof Tax', 'LWF', 'TDS',
       'GTL Deduction', 'Late Mark Deduction', 'GMS Deduction',
       'Salary Advance Recovery (Loan/EMI)', 'EMI Progress', 'Total Deductions',
       'Net Pay', 'Payment Status', 'Remarks'
@@ -1151,7 +1165,9 @@ exports.downloadPayrollTemplate = async (req, res) => {
           0, 0, 0, 0, 0, 0,  // Food Coupon Adj, Extra Working Salary, Bonus, Incentive, Other Earning, Performance Bonus (one-time)
           gross,
           pf,
+          parseFloat(e.esi_wages) || 0,
           esi,
+          parseFloat(e.esi_employer) || 0,
           pt,
           lwf,
           tds,
@@ -1176,7 +1192,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       {wch:11},{wch:11},{wch:9},{wch:12},{wch:9},
       {wch:10},{wch:8},{wch:10},{wch:14},{wch:9},
       {wch:14},{wch:14},{wch:9},{wch:10},{wch:12},{wch:14},{wch:12},
-      {wch:12},{wch:12},{wch:9},{wch:6},{wch:8},
+      {wch:12},{wch:14},{wch:12},{wch:12},{wch:9},{wch:6},{wch:8},
       {wch:12},{wch:14},{wch:12},
       {wch:20},{wch:12},{wch:14},
       {wch:10},{wch:14},{wch:20}
@@ -1474,6 +1490,10 @@ exports.bulkUploadSalaryStructure = async (req, res) => {
            pf_employee, pf_employer, pf_admin, esi_employee, esi_employer,
            pt, lwf, total_employer_cost, total_ded, net, ctc_monthly, ctc_annual, pf_wage_basis,
            eps_applicable, pf_eps, req.user.id]
+        );
+        await client.query(
+          `UPDATE employee_salary_structure SET esi_wages=$2 WHERE employee_id=$1`,
+          [empId, esi_applicable && gross <= 21000 ? gross : 0]
         );
         await client.query(`RELEASE SAVEPOINT ${sp}`);
 

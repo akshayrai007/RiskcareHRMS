@@ -777,6 +777,10 @@ async function start() {
         for (const c of ['extra_working_salary','incentive','other_earning','performance_bonus','food_coupon_adjustment','gtl_deduction','late_mark_deduction','gms_deduction'])
           await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS ${c} NUMERIC(12,2) DEFAULT 0`);
         await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS lop_reversal NUMERIC(5,2) DEFAULT 0`);
+        // ESI Earning (ESI wages) — the wage ESI is calculated on, shown next to the
+        // employee/employer contributions on the structure and the monthly payroll.
+        await db.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS esi_wages NUMERIC(12,2) DEFAULT 0`);
+        await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS esi_wages NUMERIC(12,2) DEFAULT 0`);
         // ── Food Coupon — optional fixed monthly meal-voucher benefit, only
         // applicable to select employees (defaults to 0 for everyone else) ──
         await db.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS food_coupon NUMERIC(12,2) DEFAULT 0`);
