@@ -297,6 +297,13 @@
           </span>
         </label>
       </div>
+      <div id="half-day-part-group" class="form-group" style="display:none;margin-bottom:14px">
+        <label class="form-label">Which half are you taking off?</label>
+        <select id="half-day-part" class="form-control">
+          <option value="first">1st half off (I'll come in after lunch — late only after 2:00 PM)</option>
+          <option value="second">2nd half off (I'll work the morning — late after 10:30 AM)</option>
+        </select>
+      </div>
       <div id="days-count" style="font-size:13px;font-weight:600;margin-bottom:14px;padding:8px 12px;border-radius:6px;display:none"></div>
       <div class="form-group">
         <label class="form-label">Category</label>
@@ -876,6 +883,7 @@ function toggleHalfDay() {
   toggle.style.background = _isHalfDay ? 'var(--accent)' : '#cbd5e1';
   knob.style.left = _isHalfDay ? '22px' : '2px';
   hint.style.display = _isHalfDay ? '' : 'none';
+  const partGrp = document.getElementById('half-day-part-group'); if (partGrp) partGrp.style.display = _isHalfDay ? '' : 'none';
   updateHalfDayBadge();
   // If half day, lock To = From
   if (_isHalfDay) {
@@ -921,7 +929,7 @@ async function submitLeave() {
   if (!leave_type_id || !from_date || !to_date || !reason) { toast('All fields are required','error'); return; }
   const btn = document.getElementById('apply-btn');
   btn.disabled = true; btn.textContent = 'Submitting…';
-  const data = await api('POST','/leave/apply',{leave_type_id,from_date,to_date,reason,leave_category,is_half_day});
+  const data = await api('POST','/leave/apply',{leave_type_id,from_date,to_date,reason,leave_category,is_half_day,half_day_type: is_half_day ? (document.getElementById('half-day-part')?.value || 'first') : null});
   btn.disabled = false; btn.textContent = 'Submit Application';
   if (data?.success) {
     toast(data.message,'success');

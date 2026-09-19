@@ -41,6 +41,8 @@ exports.apply = async (req, res) => {
   try {
     await client.query('BEGIN');
     const { leave_type_id, from_date, to_date, reason, is_half_day, employee_id, force_apply } = req.body;
+    // Which half is taken: 'first' = morning off (comes in after lunch), 'second' = afternoon off.
+    const half_day_type = is_half_day ? (req.body.half_day_type === 'second' ? 'second' : 'first') : null;
 
     // ── HR "Apply on Behalf" (force_apply) ─────────────────────────────────
     // Only HR/admin/super_admin can log leave on someone else's behalf, and
@@ -191,13 +193,13 @@ exports.apply = async (req, res) => {
     const result = await client.query(
       `INSERT INTO leave_requests
          (employee_id, leave_type_id, from_date, to_date, days_requested,
-          reason, is_half_day, approval_chain, current_approver_code, status,
+          reason, is_half_day, half_day_type, approval_chain, current_approver_code, status,
           actioned_by, actioned_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$13,$8,$9,$10,$11,$12)
        RETURNING id`,
       [empId, leave_type_id, from_date, to_date, days, reason || null,
        is_half_day || false, JSON.stringify(chain), chain[0] || null, status,
-       actionedFields.actioned_by, actionedFields.actioned_at]
+       actionedFields.actioned_by, actionedFields.actioned_at, half_day_type]
     );
 
     await client.query('COMMIT');

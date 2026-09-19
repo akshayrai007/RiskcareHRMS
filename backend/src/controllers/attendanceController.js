@@ -46,6 +46,22 @@ function timeToSecondsOfDay(val) {
   return (+m[1]) * 3600 + (+m[2]) * 60 + (+(m[3] || 0));
 }
 
+
+// ── Late cutoff rule (half-day aware) ─────────────────────────────────────────
+// Normal day: late after 10:30. If the employee has a half-day leave for the
+// day (approved or still pending) the cutoff shifts: 1st-half leave (morning
+// off) -> late only after 14:00; 2nd-half leave -> normal 10:30 (they're in the
+// morning). A person on approved half-day leave must not be marked late for the
+// half they aren't working.
+async function getLateCutoffMins(queryable, empId, dateStr) {
+  const r = await queryable.query(
+    `SELECT half_day_type FROM leave_requests
+     WHERE employee_id=$1 AND is_half_day=true AND status IN ('approved','pending')
+       AND from_date <= $2::date AND to_date >= $2::date
+     ORDER BY (status='approved') DESC LIMIT 1`, [empId, dateStr]);
+  return r.rows[0]?.half_day_type === 'first' ? 14 * 60 : 10 * 60 + 30;
+}
+
 // ── Punch In ──────────────────────────────────────────────────────────────────
 exports.punchIn = async (req, res) => {
   try {
@@ -80,7 +96,8 @@ exports.punchIn = async (req, res) => {
 
     // ── FIX: Use IST time — Render server runs on UTC ─────────────────────────
     const ist = getISTTimeParts();
-    const isLate = ist.hour > 10 || (ist.hour === 10 && ist.minute > 30);
+    const lateCutoff = await getLateCutoffMins(db, empId, today);
+    const isLate = (ist.hour * 60 + ist.minute) > lateCutoff;
     const status = isLate ? 'late' : 'present';
 
     const locStr = punch_in_location ||
@@ -201,6 +218,8 @@ exports.punchOut = async (req, res) => {
     // Absent   = ≤3h30m
     const [outHH, outMM] = punchOutTime.slice(0, 5).split(':').map(Number);
     const punchOutTotalMins = outHH * 60 + outMM;
+    // "Always Present" shortcut stays tied to the normal 10:30 cutoff: a half-day
+    // leave day worked from 14:00 is a half day of attendance, not a full present.
     const onTimeIn  = inMins  <= (10 * 60 + 30);  // punch-in at or before 10:30
     const onTimeOut = punchOutTotalMins >= (18 * 60 + 30); // punch-out at or after 18:30
 
@@ -1111,7 +1130,7 @@ exports.actionRegularization = async (req, res) => {
         }
         hoursWorked = (outMins - inMins) / 60;
 
-        const isLate = inH > 10 || (inH === 10 && inM > 30);
+        const isLate = (inH * 60 + inM) > (await getLateCutoffMins(client, att.employee_id, toLocalDateString(att.date)));
         const regOnTimeIn  = inMins <= (10 * 60 + 30);
         const regOnTimeOut = outMins >= (18 * 60 + 30);
         if (regOnTimeIn && regOnTimeOut) {
