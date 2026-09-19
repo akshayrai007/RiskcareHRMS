@@ -378,7 +378,10 @@ exports.uploadPayroll = async (req, res) => {
       const paidDays    = n(row[iPaidDays])   || presentDays;
       const basic       = n(row[iBasic]);
       const hra         = n(row[iHRA]);
-      const conveyance  = n(row[iConveyance]);
+      // Conveyance is no longer a column in the monthly sheet; if the salary
+      // structure still carries an amount, keep paying it from there.
+      const conveyance  = iConveyance >= 0 ? n(row[iConveyance])
+        : parseFloat((await client.query('SELECT conveyance FROM employee_salary_structure WHERE employee_id=$1', [empId])).rows[0]?.conveyance) || 0;
       const otherAllow  = n(row[iOtherAllow]);
       const gratuity    = n(row[iGratuity]);
       const tds         = iTDS >= 0 ? n(row[iTDS]) : 0;
@@ -1109,7 +1112,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
     const HEADERS = [
       'Emp Code', 'Full Name', 'Department', 'Designation', 'Category',
       'Working Days', 'Present Days', 'LOP Days', 'LOP Reversal (Days)', 'Paid Days',
-      'Basic', 'HRA', 'Conveyance', 'Defray Allowance', 'Gratuity',
+      'Basic', 'HRA', 'Defray Allowance', 'Gratuity',
       'Food Coupon Adjustment', 'Extra Working Salary', 'Bonus', 'Incentive', 'Other Earning', 'Performance Bonus',
       'Gross Salary',
       'PF (Employee)', 'ESI Earning (Wages)', 'ESI (Employee)', 'ESI (Employer)', 'Prof Tax', 'LWF', 'TDS',
@@ -1158,7 +1161,6 @@ exports.downloadPayrollTemplate = async (req, res) => {
           monthAtt.paid,     // Paid Days
           parseFloat(e.basic)             || 0,
           parseFloat(e.hra)               || 0,
-          parseFloat(e.conveyance)        || 0,
           parseFloat(e.special_allowance) || 0,
           parseFloat(e.gratuity)          || 0,
           0, 0, 0, 0, 0, 0,  // Food Coupon Adj, Extra Working Salary, Bonus, Incentive, Other Earning, Performance Bonus (one-time)
@@ -1186,7 +1188,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
     ws1['!cols'] = [
       {wch:10},{wch:24},{wch:16},{wch:22},{wch:12},
       {wch:11},{wch:11},{wch:9},{wch:12},{wch:9},
-      {wch:10},{wch:8},{wch:10},{wch:14},{wch:9},
+      {wch:10},{wch:8},{wch:14},{wch:9},
       {wch:14},{wch:14},{wch:9},{wch:10},{wch:12},{wch:14},{wch:12},
       {wch:12},{wch:14},{wch:12},{wch:12},{wch:9},{wch:6},{wch:8},
       {wch:12},{wch:14},
@@ -1224,7 +1226,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       [''],
       ['COLUMNS PRE-FILLED (do not change unless needed):'],
       ['Column', 'Source'],
-      ['Basic, HRA, Conveyance, etc.', 'From employee salary structure in system'],
+      ['Basic, HRA, etc.', 'From employee salary structure in system'],
       ['Gross Salary',      'Sum of all earnings'],
       ['PF, ESI, PT, TDS',  'From salary structure'],
       ['Total Deductions',  'Sum of all deductions'],
