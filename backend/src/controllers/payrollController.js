@@ -91,6 +91,44 @@ exports.getSalaryStructure = async (req, res) => {
 // to write this inside its own transaction (hence the `queryable` param —
 // pass a pg Pool/`db` for standalone calls, or a transaction `client` when
 // called from inside one).
+// Records the FULL salary structure (every component, incl. auto-calculated
+// PF/EPF/EPS/ESI/PT etc.) against the salary-history row for this revision.
+// If a history row was just created by the employee save (same Save click),
+// the snapshot is attached to it; otherwise (e.g. only PF/ESI applicability
+// changed, so the 5 headline fields didn't move) a new revision row is added
+// when the structure actually differs from the last snapshot.
+async function recordStructureSnapshot(queryable, employeeId, updatedBy) {
+  try {
+    const st = (await queryable.query(`SELECT * FROM employee_salary_structure WHERE employee_id=$1`, [employeeId])).rows[0];
+    if (!st) return;
+    const snap = {};
+    ['basic','hra','conveyance','special_allowance','gratuity','food_coupon','gross_salary',
+     'pf_employee','pf_employer','pf_eps','pf_admin','esi_wages','esi_employee','esi_employer',
+     'professional_tax','lwf','total_deductions','net_salary','ctc_monthly','ctc_annual',
+     'pf_applicable','esi_applicable','eps_applicable','pf_wage_basis'].forEach(k => { snap[k] = st[k] ?? null; });
+    const recent = (await queryable.query(
+      `SELECT id FROM employee_salary_history WHERE employee_id=$1 AND changed_at > NOW() - INTERVAL '3 minutes'
+       ORDER BY changed_at DESC LIMIT 1`, [employeeId])).rows[0];
+    if (recent) {
+      await queryable.query(`UPDATE employee_salary_history SET structure_snapshot=$2 WHERE id=$1`, [recent.id, JSON.stringify(snap)]);
+      return;
+    }
+    const last = (await queryable.query(
+      `SELECT structure_snapshot FROM employee_salary_history WHERE employee_id=$1 AND structure_snapshot IS NOT NULL
+       ORDER BY changed_at DESC LIMIT 1`, [employeeId])).rows[0]?.structure_snapshot;
+    if (last && JSON.stringify(last) === JSON.stringify(snap)) return;
+    const des = (await queryable.query(
+      `SELECT des.title FROM employees e LEFT JOIN designations des ON des.id=e.designation_id WHERE e.id=$1`, [employeeId])).rows[0]?.title || null;
+    await queryable.query(
+      `INSERT INTO employee_salary_history
+         (employee_id, new_ctc, new_basic_salary, new_hra, new_special_allowance, new_travel_allowance,
+          changed_by, effective_date, designation_title, structure_snapshot)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,CURRENT_DATE,$8,$9)`,
+      [employeeId, st.ctc_annual, st.basic, st.hra, st.special_allowance, st.conveyance, updatedBy || null, des, JSON.stringify(snap)]
+    );
+  } catch (e) { console.error('[recordStructureSnapshot]', e.message); }
+}
+
 async function computeAndSaveSalaryStructure(queryable, employeeId, fields, updatedBy) {
   const {
     basic = 0, hra = 0, conveyance = 0, special_allowance = 0,
@@ -161,6 +199,7 @@ async function computeAndSaveSalaryStructure(queryable, employeeId, fields, upda
     `UPDATE employee_salary_structure SET esi_wages=$2 WHERE employee_id=$1`,
     [employeeId, esi_applicable && gross <= 21000 ? gross : 0]
   );
+  await recordStructureSnapshot(queryable, employeeId, updatedBy);
 
   return { gross, net, ctc: ctc_monthly };
 }

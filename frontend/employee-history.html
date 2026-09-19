@@ -254,28 +254,56 @@ async function openEmployeeHistory(empId) {
     const dt2 = (v) => v ? new Date(v).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true }) : '—';
     const M = (v) => (v === null || v === undefined || v === '') ? '—' : fmt.money(v);
 
-    window._histExport = { name, code: e.employee_code, rows: [], remarksById: Object.fromEntries(rowsData.map(r => [r.id, r.remarks || ''])) };
+    // Every salary-structure component, in payslip order. Snapshot-backed
+    // (older revisions that predate snapshots only have the 5 headline fields).
+    const COLS = [
+      ['Annual CTC',        r => r.new_ctc,                 r => r.old_ctc,                  '#166534'],
+      ['Monthly CTC',       r => r.snap?.ctc_monthly,       r => r.prevSnap?.ctc_monthly,    '#166534'],
+      ['Basic',             r => r.snap?.basic ?? r.new_basic_salary, r => r.prevSnap?.basic ?? r.old_basic_salary, '#334155'],
+      ['HRA',               r => r.snap?.hra ?? r.new_hra,  r => r.prevSnap?.hra ?? r.old_hra, '#334155'],
+      ['Conveyance/Travel', r => r.snap?.conveyance ?? r.new_travel_allowance, r => r.prevSnap?.conveyance ?? r.old_travel_allowance, '#334155'],
+      ['Defray Allowance',  r => r.snap?.special_allowance ?? r.new_special_allowance, r => r.prevSnap?.special_allowance ?? r.old_special_allowance, '#334155'],
+      ['Gratuity',          r => r.snap?.gratuity,          r => r.prevSnap?.gratuity,       '#334155'],
+      ['Food Coupon',       r => r.snap?.food_coupon,       r => r.prevSnap?.food_coupon,    '#334155'],
+      ['Gross',             r => r.snap?.gross_salary,      r => r.prevSnap?.gross_salary,   '#15803d'],
+      ['PF (Employee)',     r => r.snap?.pf_employee,       r => r.prevSnap?.pf_employee,    '#9f1239'],
+      ['EPF (Employer A/c-1)', r => r.snap ? (Number(r.snap.pf_employer||0) - Number(r.snap.pf_eps||0)) : null, r => r.prevSnap ? (Number(r.prevSnap.pf_employer||0) - Number(r.prevSnap.pf_eps||0)) : null, '#9f1239'],
+      ['EPS (A/c-10)',      r => r.snap?.pf_eps,            r => r.prevSnap?.pf_eps,         '#9f1239'],
+      ['PF Admin + EDLI',   r => r.snap?.pf_admin,          r => r.prevSnap?.pf_admin,       '#9f1239'],
+      ['ESI Earning',       r => r.snap?.esi_wages,         r => r.prevSnap?.esi_wages,      '#0f766e'],
+      ['ESI (Employee)',    r => r.snap?.esi_employee,      r => r.prevSnap?.esi_employee,   '#0f766e'],
+      ['ESI (Employer)',    r => r.snap?.esi_employer,      r => r.prevSnap?.esi_employer,   '#0f766e'],
+      ['Prof. Tax',         r => r.snap?.professional_tax,  r => r.prevSnap?.professional_tax, '#b45309'],
+      ['LWF',               r => r.snap?.lwf,               r => r.prevSnap?.lwf,            '#b45309'],
+      ['Total Deductions',  r => r.snap?.total_deductions,  r => r.prevSnap?.total_deductions, '#b91c1c'],
+      ['Net Salary',        r => r.snap?.net_salary,        r => r.prevSnap?.net_salary,     '#15803d'],
+    ];
+    // rowsData is newest-first, so the previous revision is the next row.
+    rowsData.forEach((r, i) => { r.snap = r.structure_snapshot || null; r.prevSnap = rowsData[i + 1]?.structure_snapshot || null; });
+
+    window._histExport = { name, code: e.employee_code, rows: [], head: ['Effective Date','CTC Uploaded Date','Designation', ...COLS.map(c => c[0]), 'Comments','Updated By'],
+      remarksById: Object.fromEntries(rowsData.map(r => [r.id, r.remarks || ''])) };
     const TH = 'background:#1e293b;color:#fff;font-size:11px;font-weight:700;padding:8px 10px;border:1px solid #475569;white-space:nowrap;text-align:left';
     const TD = 'font-size:12px;padding:7px 10px;border:1px solid #cbd5e1;white-space:nowrap';
+    const num = (v) => (v === null || v === undefined || v === '') ? null : Number(v);
     const rowsHtml = rowsData.map((r, idx) => {
       const bg = idx % 2 ? '#f8fafc' : '#fff';
       const desig = desigOn(r);
       const by = r.changed_by_name?.trim() || 'System';
+      const cells = COLS.map(([label, getNew, getOld, color]) => {
+        const nv = num(getNew(r)), ov = num(getOld(r));
+        const changed = nv !== null && ov !== null && nv !== ov;
+        return { label, nv, html: `<td style="${TD};text-align:right;color:${color}${label==='Annual CTC'?';font-weight:700;background:#f0fdf4':''}">${changed ? `<div style="font-size:10px;color:#b91c1c;text-decoration:line-through">${M(ov)}</div>` : ''}${M(nv)}</td>` };
+      });
       window._histExport.rows.push([
-        String(r.effective_date || '').slice(0, 10), dt2(r.changed_at), desig, r.new_ctc ?? '', r.new_basic_salary ?? '',
-        r.new_hra ?? '', r.new_special_allowance ?? '', r.new_travel_allowance ?? '', r.remarks || '', by
+        String(r.effective_date || '').slice(0, 10), dt2(r.changed_at), desig, ...cells.map(c => c.nv ?? ''), r.remarks || '', by
       ]);
-      const chg = (o, n) => (o !== null && n !== null && Number(o) !== Number(n)) ? `<div style="font-size:10px;color:#b91c1c;text-decoration:line-through">${M(o)}</div>` : '';
       return `<tr style="background:${bg}">
         <td style="${TD};text-align:center;color:#64748b">${idx + 1}</td>
         <td style="${TD};font-weight:600">${fmt.date(r.effective_date)}</td>
         <td style="${TD};color:#475569">${dt2(r.changed_at)}</td>
         <td style="${TD}">${desig}</td>
-        <td style="${TD};text-align:right;font-weight:700;color:#166534;background:#f0fdf4">${chg(r.old_ctc, r.new_ctc)}${M(r.new_ctc)}</td>
-        <td style="${TD};text-align:right">${chg(r.old_basic_salary, r.new_basic_salary)}${M(r.new_basic_salary)}</td>
-        <td style="${TD};text-align:right">${chg(r.old_hra, r.new_hra)}${M(r.new_hra)}</td>
-        <td style="${TD};text-align:right">${chg(r.old_special_allowance, r.new_special_allowance)}${M(r.new_special_allowance)}</td>
-        <td style="${TD};text-align:right">${chg(r.old_travel_allowance, r.new_travel_allowance)}${M(r.new_travel_allowance)}</td>
+        ${cells.map(c => c.html).join('')}
         <td style="${TD};white-space:normal;min-width:200px;color:#334155;cursor:pointer" title="Click to add / edit comment" onclick="editRevisionComment(${r.id}, ${empId})">${r.remarks ? r.remarks : '<span style="color:#94a3b8">＋ Add comment</span>'}</td>
         <td style="${TD};color:#64748b">${by}</td>
       </tr>`;
@@ -283,25 +311,21 @@ async function openEmployeeHistory(empId) {
 
     body.innerHTML = header + `
       <div style="padding:16px 20px;overflow-x:auto">
-        <table style="border-collapse:collapse;width:100%;min-width:1000px">
+        <table style="border-collapse:collapse;width:100%;min-width:2000px">
           <thead>
             <tr>
               <th style="${TH};text-align:center">#</th>
               <th style="${TH}">Effective Date</th>
               <th style="${TH}">CTC Uploaded Date</th>
               <th style="${TH}">Designation</th>
-              <th style="${TH};background:#166534;text-align:right">Annual CTC</th>
-              <th style="${TH};background:#334155;text-align:right">Basic</th>
-              <th style="${TH};background:#334155;text-align:right">HRA</th>
-              <th style="${TH};background:#334155;text-align:right">Defray Allowance</th>
-              <th style="${TH};background:#334155;text-align:right">Travel Allowance</th>
+              ${COLS.map(c => `<th style="${TH};background:${c[3]};text-align:right">${c[0]}</th>`).join('')}
               <th style="${TH}">Comments</th>
               <th style="${TH}">Updated By</th>
             </tr>
           </thead>
           <tbody>${rowsHtml}</tbody>
         </table>
-        <div style="font-size:11px;color:var(--muted);margin-top:8px">Struck-through amounts are the previous value.</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">Struck-through amounts are the previous value. Auto-calculated items (PF/EPF/EPS/ESI/PT/LWF, gross, net) come from the salary structure saved with each revision; revisions made before this was tracked show only the headline amounts.</div>
       </div>`;
   } catch (renderErr) {
     console.error('[openEmployeeHistory render]', renderErr);
@@ -325,7 +349,7 @@ async function editRevisionComment(revId, empId) {
 // Opens in Excel: CSV with the same columns as the table.
 function downloadHistoryExcel() {
   const d = window._histExport; if (!d) return;
-  const head = ['Effective Date','CTC Uploaded Date','Designation','Annual CTC','Basic','HRA','Defray Allowance','Travel Allowance','Comments','Updated By'];
+  const head = d.head;
   const q = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
   const csv = '\ufeff' + [head, ...d.rows].map(r => r.map(q).join(',')).join('\r\n');
   const a = document.createElement('a');
