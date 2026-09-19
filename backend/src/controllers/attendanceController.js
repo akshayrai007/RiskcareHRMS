@@ -53,13 +53,16 @@ function timeToSecondsOfDay(val) {
 // off) -> late only after 14:00; 2nd-half leave -> normal 10:30 (they're in the
 // morning). A person on approved half-day leave must not be marked late for the
 // half they aren't working.
-async function getLateCutoffMins(queryable, empId, dateStr) {
+async function getHalfDayType(queryable, empId, dateStr) {
   const r = await queryable.query(
     `SELECT half_day_type FROM leave_requests
      WHERE employee_id=$1 AND is_half_day=true AND status IN ('approved','pending')
        AND from_date <= $2::date AND to_date >= $2::date
      ORDER BY (status='approved') DESC LIMIT 1`, [empId, dateStr]);
-  return r.rows[0]?.half_day_type === 'first' ? 14 * 60 : 10 * 60 + 30;
+  return r.rows[0]?.half_day_type || null;
+}
+async function getLateCutoffMins(queryable, empId, dateStr) {
+  return (await getHalfDayType(queryable, empId, dateStr)) === 'first' ? 14 * 60 : 10 * 60 + 30;
 }
 
 // ── Punch In ──────────────────────────────────────────────────────────────────
@@ -163,6 +166,14 @@ exports.punchOut = async (req, res) => {
           message: `Please wait ${remaining} more minute${remaining > 1 ? 's' : ''} before punching out`
         });
       }
+    }
+
+    // ── 2nd-half leave: the morning is worked, the afternoon is leave — so
+    // punch-out is not allowed before the 2:00 PM half boundary.
+    if ((await getHalfDayType(db, empId, today)) === 'second') {
+      const nowIst = getISTTimeParts();
+      if (nowIst.hour * 60 + nowIst.minute < 14 * 60)
+        return res.status(400).json({ success: false, message: 'You have 2nd-half leave today — you can punch out from 2:00 PM.' });
     }
 
     // ── Geo-boundary validation — see punchIn for why this is coordinate-gated
