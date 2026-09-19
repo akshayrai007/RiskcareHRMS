@@ -40,10 +40,9 @@ async function ensureTable() {
   return ready;
 }
 
-// Can this actor act on this employee's notice? HR/admin/super_admin: anyone.
-// Otherwise: only that employee's own reporting manager.
+// Only the employee's own reporting manager can approve/reject a coming-late
+// notice. HR (and admin/super_admin) are notified and can view, but not decide.
 async function canActOn(user, employeeId) {
-  if (isSupportRole(user)) return true;
   const r = await db.query(
     `SELECT 1 FROM employees WHERE id=$1 AND reporting_manager_id=$2 AND is_active=true LIMIT 1`,
     [employeeId, user.id]
@@ -127,13 +126,16 @@ exports.listLateNotices = async (req, res) => {
     const r = await db.query(
       `SELECT t.id, t.employee_id, t.notice_date, t.expected_time, t.reason, t.status, t.created_at,
               CONCAT(e.first_name,' ',e.last_name) AS employee_name, e.employee_code,
-              CONCAT(a.first_name,' ',a.last_name) AS approved_by_name
+              CONCAT(a.first_name,' ',a.last_name) AS approved_by_name,
+              (e.reporting_manager_id = $${params.length + 1}) AS can_decide,
+              CONCAT(rm.first_name,' ',rm.last_name) AS reporting_manager_name
        FROM late_notices t
        JOIN employees e ON e.id = t.employee_id
        LEFT JOIN employees a ON a.id = t.approved_by
+       LEFT JOIN employees rm ON rm.id = e.reporting_manager_id
        WHERE ${where}
        ORDER BY t.created_at DESC`,
-      params
+      [...params, req.user.id]
     );
     res.json({ success: true, data: r.rows });
   } catch (err) {
@@ -159,7 +161,7 @@ exports.decideLateNotice = async (req, res) => {
     const notice = r.rows[0];
     if (notice.status !== 'pending') return res.status(400).json({ success: false, message: 'Already decided' });
     if (!(await canActOn(req.user, notice.employee_id))) {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
+      return res.status(403).json({ success: false, message: 'Only the reporting manager can approve or reject a coming-late request.' });
     }
 
     await db.query(

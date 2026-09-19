@@ -2927,10 +2927,10 @@ async function loadLateNotices() {
         <div style="font-size:12.5px;color:var(--muted)">Expected at ${n.expected_time} — ${n.reason}</div>
       </div>
       <div class="flex gap-2" style="align-items:center">
-        ${n.status === 'pending' ? `
+        ${n.status === 'pending' ? (n.can_decide ? `
           <button class="btn btn-danger btn-sm" onclick="decideLateNotice(${n.id},'rejected')">Reject</button>
           <button class="btn btn-success btn-sm" onclick="decideLateNotice(${n.id},'approved')">Approve</button>
-        ` : `<span class="badge ${n.status === 'approved' ? 'badge-present' : 'badge-absent'}">${n.status}</span>`}
+        ` : `<span class="badge badge-pending" title="Only the reporting manager approves this; you are notified only">⏳ Awaiting ${n.reporting_manager_name?.trim() || 'reporting manager'}</span>`) : `<span class="badge ${n.status === 'approved' ? 'badge-present' : 'badge-absent'}">${n.status}</span>`}
       </div>
     </div>
   `).join('');
