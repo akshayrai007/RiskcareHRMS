@@ -233,10 +233,6 @@
               <input type="number" id="ol-hra" placeholder="12500" oninput="calcGross()">
             </div>
             <div class="form-group">
-              <label>Conveyance (monthly) ₹</label>
-              <input type="number" id="ol-conv" value="0" oninput="calcGross()">
-            </div>
-            <div class="form-group">
               <label>Defray Allowance (monthly) ₹</label>
               <input type="number" id="ol-other" placeholder="63515" oninput="calcGross()">
             </div>
@@ -409,7 +405,7 @@ function autoCalcSalary() { /* disabled — all fields are manual */ }
 
 function calcGross() {
   const n = id => parseFloat(document.getElementById(id).value) || 0;
-  const basic = n('ol-basic'), hra = n('ol-hra'), conv = n('ol-conv'),
+  const basic = n('ol-basic'), hra = n('ol-hra'), conv = 0,
         other = n('ol-other'), grat = n('ol-gratuity'), pfEmp = n('ol-pf-emp'),
         pfEr  = n('ol-pf-er'), pfAdm = n('ol-pf-admin');
 
@@ -495,7 +491,6 @@ async function loadForm(id) {
   document.getElementById('ol-ctc').value          = ol.ctc_annual || '';
   document.getElementById('ol-basic').value        = ol.basic_monthly || '';
   document.getElementById('ol-hra').value          = ol.hra_monthly || '';
-  document.getElementById('ol-conv').value         = ol.conveyance_monthly || 0;
   document.getElementById('ol-other').value        = ol.other_allowance_monthly || '';
   document.getElementById('ol-gratuity').value     = ol.gratuity_monthly || '';
   document.getElementById('ol-pf-emp').value       = ol.pf_employee_monthly || '';
@@ -541,7 +536,7 @@ async function saveOL() {
     ctc_annual:               parseFloat(document.getElementById('ol-ctc').value) || 0,
     basic_monthly:            parseFloat(document.getElementById('ol-basic').value) || 0,
     hra_monthly:              parseFloat(document.getElementById('ol-hra').value) || 0,
-    conveyance_monthly:       parseFloat(document.getElementById('ol-conv').value) || 0,
+    conveyance_monthly:       0,
     other_allowance_monthly:  parseFloat(document.getElementById('ol-other').value) || 0,
     gratuity_monthly:         parseFloat(document.getElementById('ol-gratuity').value) || 0,
     pf_employee_monthly:      parseFloat(document.getElementById('ol-pf-emp').value) || 0,
@@ -675,7 +670,6 @@ function resetForm() {
   document.getElementById('ol-emp-type').value     = 'permanent';
   document.getElementById('ol-contract-months').value = 0;
   toggleContractMonths();
-  document.getElementById('ol-conv').value       = 0;
   document.getElementById('ctc-summary').style.display = 'none';
   clearSig('sig1');
   clearSig('sig2');
@@ -821,7 +815,7 @@ function downloadBulkTemplate() {
     'Candidate Name','Email','Mobile','Address','Designation','Location',
     'Joining Date','Offer Valid Days','Probation Months','Notice Period Months',
     'Employee Code','Employment Type','Contract Months',
-    'CTC Annual','Basic Monthly','HRA Monthly','Conveyance Monthly',
+    'CTC Annual','Basic Monthly','HRA Monthly',
     'Defray Allowance','Gratuity Monthly','PF Employee','PF Employer','PF Admin',
     'Professional Tax','Custom Clauses','CC','BCC'
   ];
@@ -829,14 +823,14 @@ function downloadBulkTemplate() {
     'Rahul Sharma','rahul@example.com','9876543210','B-12, Andheri West, Mumbai',
     'Senior GIS Analyst','Mumbai','2026-08-01',7,6,3,
     'KCMS-001','permanent',0,
-    1500000,30000,15000,0,76818,1442,1800,1800,150,200,
+    1500000,30000,15000,76818,1442,1800,1800,150,200,
     '',window.CFG?.supportEmail||'hr@riskcare.co.in',''
   ];
   const sample2 = [
     'Amit Kumar','amit@example.com','8877665544','D-78, Jogeshwari East, Mumbai',
     'Field Survey Executive','Mumbai','2026-07-15',7,0,1,
     'KCMS-002','contract',12,
-    600000,12000,6000,0,30350,577,1080,1080,90,0,
+    600000,12000,6000,30350,577,1080,1080,90,0,
     '',window.CFG?.supportEmail||'hr@riskcare.co.in',''
   ];
 

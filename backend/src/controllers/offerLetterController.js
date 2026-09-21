@@ -158,7 +158,7 @@ function apptHeaderFooter() {
 function buildOfferLetterHTML(ol) {
   const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const num = (v) => parseFloat(v || 0) || 0;
-  const basic = num(ol.basic_monthly), hra = num(ol.hra_monthly), conv = num(ol.conveyance_monthly),
+  const basic = num(ol.basic_monthly), hra = num(ol.hra_monthly), conv = 0,
         other = num(ol.other_allowance_monthly), gratuity = num(ol.gratuity_monthly),
         pfEmpr = num(ol.pf_employer_monthly), pfAdmin = num(ol.pf_admin_monthly),
         variable = num(ol.variable_pay_monthly);
@@ -232,7 +232,6 @@ function buildOfferLetterHTML(ol) {
   const row = (name, m, cls) => { sr += 1; rows.push(`<tr class="${cls || ''}"><td class="c">${sr}</td><td>${name}</td><td class="n">${dash(m)}</td><td class="n">${dash(m * 12)}</td></tr>`); };
   row('Fixed Basic', basic);
   row('HRA', hra);
-  if (conv > 0) row('Conveyance Allowance', conv);
   row('Defray Allowances', other);
   row('Gratuity', gratuity);
   row('Total Fixed Pay (A)', fixedA, 'hl');

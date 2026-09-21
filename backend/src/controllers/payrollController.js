@@ -715,6 +715,7 @@ exports.getPayslip = async (req, res) => {
 
     const ps = result.rows[0];
     ps.month_name = MONTH_NAMES[ps.month - 1];
+    ps.conveyance = 0; ps.fixed_conveyance = 0; // Conveyance is not used anywhere
 
     // Derive pf_employer, pf_admin if not stored in DB (the monthly `payroll`
     // table only ever stores pf_employee -- see computePayroll above -- so
@@ -1091,7 +1092,7 @@ exports.getForm16 = async (req, res) => {
       // Gross salary breakdown
       basic:             Math.round(basicTotal),
       hra:               Math.round(hraTotal),
-      conveyance:        Math.round(convTotal),
+      conveyance:        0,
       special_allowance: Math.round(specialTotal),
       gross_salary:      grossIncome,
       // Deductions
@@ -1264,7 +1265,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
 
     // ── Sheet 1: Payroll Input Template ───────────────────────────────────
     const HEADERS = [
-      'Emp Code', 'Full Name', 'Department', 'Designation', 'Category',
+      'Emp Code', 'Full Name', 'Department', 'Division', 'Designation', 'Category',
       'Working Days', 'Present Days', 'LOP Days', 'LOP Reversal (Days)', 'Paid Days',
       'Basic', 'HRA', 'Defray Allowance', 'Gratuity',
       'Food Coupon Adjustment', 'Extra Working Salary', 'Bonus', 'Incentive', 'Other Earning', 'Performance Bonus',
@@ -1307,6 +1308,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
           e.employee_code,
           e.full_name,
           e.department  || '',
+          e.division    || '',
           e.designation || '',
           e.employee_category || '',
           daysInMonth,       // Working Days
@@ -1342,23 +1344,30 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // ── Live formulas: edit Present Days / LOP Reversal / any one-time item and
     // Paid Days, LOP, Gross, Total Deductions and Net Pay recalculate in Excel.
     // (Statutory PF/ESI/PT/LWF stay as values; the system recomputes them on upload.)
+    const hx = (label) => HEADERS.indexOf(label);
+    const LT = (label) => XLSX.utils.encode_col(hx(label));   // column letter by header
     for (let i = 4; i < rows.length; i++) {
       const R = i + 1, r = rows[i];
-      const num = (c) => Number(r[c]) || 0;
-      const paid = Math.min(num(5), num(6) + Math.min(num(8), Math.max(0, num(5) - num(6))));
-      const gross = Math.round(((num(10) + num(11) + num(12) + num(13)) * (num(5) ? paid / num(5) : 0) + num(14) + num(15) + num(16) + num(17) + num(18) + num(19)) * 100) / 100;
-      const ded = num(21) + num(23) + num(25) + num(26) + num(27) + num(28) + num(29) + num(30);
-      const setF = (col, f, v) => { ws1[col + R] = { t: 'n', f, v }; };
-      setF('H',  `MAX(0,F${R}-G${R})`, Math.max(0, num(5) - num(6)));
-      setF('J',  `MIN(F${R},G${R}+MIN(I${R},H${R}))`, paid);
-      setF('U',  `ROUND((K${R}+L${R}+M${R}+N${R})*IF(F${R}>0,J${R}/F${R},0)+SUM(O${R}:T${R}),2)`, gross);
-      setF('AF', `V${R}+X${R}+SUM(Z${R}:AE${R})`, ded);
-      setF('AG', `MAX(0,U${R}-AF${R})`, Math.max(0, gross - ded));
+      const num = (label) => Number(r[hx(label)]) || 0;
+      const wd = num('Working Days'), pr = num('Present Days'), lopRev = num('LOP Reversal (Days)');
+      const lop = Math.max(0, wd - pr);
+      const paid = Math.min(wd, pr + Math.min(lopRev, lop));
+      const earnedFixed = (num('Basic') + num('HRA') + num('Defray Allowance') + num('Gratuity')) * (wd ? paid / wd : 0);
+      const oneTime = ['Food Coupon Adjustment','Extra Working Salary','Bonus','Incentive','Other Earning','Performance Bonus'].reduce((a, l) => a + num(l), 0);
+      const gross = Math.round((earnedFixed + oneTime) * 100) / 100;
+      const ded = num('PF (Employee)') + num('ESI (Employee)') + num('Prof Tax') + num('LWF') + num('TDS') +
+                  num('GTL Deduction') + num('Late Mark Deduction') + num('Salary Advance Recovery (Loan/EMI)');
+      const setF = (label, f, v) => { ws1[LT(label) + R] = { t: 'n', f, v }; };
+      setF('LOP Days', `MAX(0,${LT('Working Days')}${R}-${LT('Present Days')}${R})`, lop);
+      setF('Paid Days', `MIN(${LT('Working Days')}${R},${LT('Present Days')}${R}+MIN(${LT('LOP Reversal (Days)')}${R},${LT('LOP Days')}${R}))`, paid);
+      setF('Gross Salary', `ROUND((${LT('Basic')}${R}+${LT('HRA')}${R}+${LT('Defray Allowance')}${R}+${LT('Gratuity')}${R})*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0)+SUM(${LT('Food Coupon Adjustment')}${R}:${LT('Performance Bonus')}${R}),2)`, gross);
+      setF('Total Deductions', `${LT('PF (Employee)')}${R}+${LT('ESI (Employee)')}${R}+SUM(${LT('Prof Tax')}${R}:${LT('Salary Advance Recovery (Loan/EMI)')}${R})`, ded);
+      setF('Net Pay', `MAX(0,${LT('Gross Salary')}${R}-${LT('Total Deductions')}${R})`, Math.max(0, gross - ded));
     }
 
     // Column widths
     ws1['!cols'] = [
-      {wch:10},{wch:24},{wch:16},{wch:22},{wch:12},
+      {wch:10},{wch:24},{wch:16},{wch:14},{wch:22},{wch:12},
       {wch:11},{wch:11},{wch:9},{wch:12},{wch:9},
       {wch:10},{wch:8},{wch:14},{wch:9},
       {wch:14},{wch:14},{wch:9},{wch:10},{wch:12},{wch:14},{wch:12},
@@ -1380,10 +1389,10 @@ exports.downloadPayrollTemplate = async (req, res) => {
     return ws1;
     };
 
-    // Two sheets: Riskcare division, and RC Offrole. Upload reads both.
-    const isOffrole = (e) => /off\s*-?\s*role/i.test(e.division || '');
-    XLSX.utils.book_append_sheet(wb, await buildPayrollSheet(employees.filter(e => !isOffrole(e))), `Riskcare ${monthName} ${y}`);
-    XLSX.utils.book_append_sheet(wb, await buildPayrollSheet(employees.filter(isOffrole)), `RC Offrole ${monthName} ${y}`);
+    // Two sheets: Risk Care division, and RC Offroll. Upload reads both.
+    const isOffrole = (e) => /off\s*-?\s*rol/i.test(e.division || '');
+    XLSX.utils.book_append_sheet(wb, await buildPayrollSheet(employees.filter(e => !isOffrole(e))), `Risk Care ${monthName} ${y}`);
+    XLSX.utils.book_append_sheet(wb, await buildPayrollSheet(employees.filter(isOffrole)), `RC Offroll ${monthName} ${y}`);
 
     // ── Sheet 2: Instructions ─────────────────────────────────────────────
     const instrRows = [

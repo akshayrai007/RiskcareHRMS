@@ -758,10 +758,10 @@ async function buildPunchRegisterSheet(wb, employees, m, y, MONTH_NAMES, punchMa
   const ExcelJS = require('exceljs');
   const daysInMonth = new Date(y, m, 0).getDate();
   const dayNms = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const totalCols = 3 + daysInMonth * 2 + 3; // 3 info + 2*days + 3 summary cols
+  const totalCols = 4 + daysInMonth * 2 + 3; // 4 info + 2*days + 3 summary cols
 
   const ws = wb.addWorksheet(`Punch Register ${MONTH_NAMES[m-1]} ${y}`, {
-    views: [{ state: 'frozen', xSplit: 3, ySplit: 3 }]
+    views: [{ state: 'frozen', xSplit: 4, ySplit: 3 }]
   });
 
   // ── Row 1: Title ─────────────────────────────────────────────────────────
@@ -785,7 +785,7 @@ async function buildPunchRegisterSheet(wb, employees, m, y, MONTH_NAMES, punchMa
   // ── Row 3: Fixed col headers ─────────────────────────────────────────────
   const hdrFill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF1565C0'} };
   const hdrFont = { bold:true, size:9, color:{argb:'FFFFFFFF'} };
-  ['Emp Code','Name','Department'].forEach((h,i) => {
+  ['Emp Code','Name','Department','Division'].forEach((h,i) => {
     const c = ws.getCell(3, i+1);
     c.value=h; c.font=hdrFont; c.fill=hdrFill;
     c.alignment={horizontal:'center',vertical:'middle'};
@@ -800,7 +800,7 @@ async function buildPunchRegisterSheet(wb, employees, m, y, MONTH_NAMES, punchMa
     const isWeekend = dow === 0 || (dow === 6 && (satCnt === 2 || satCnt === 4));
     const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isHoliday = (holidaysByRegion.all || new Set()).has(dateStr);
-    const col = 3 + (d-1)*2 + 1;
+    const col = 4 + (d-1)*2 + 1;
 
     // Merged date header
     try { ws.mergeCells(3, col, 3, col+1); } catch(e){}
@@ -816,7 +816,7 @@ async function buildPunchRegisterSheet(wb, employees, m, y, MONTH_NAMES, punchMa
 
   // Summary headers
   ['Total\nDays', 'On\nTime', 'Late\nIN'].forEach((h,i) => {
-    const c = ws.getCell(3, 3+daysInMonth*2+1+i);
+    const c = ws.getCell(3, 4+daysInMonth*2+1+i);
     c.value=h; c.font={bold:true,size:8,color:{argb:'FFFFFFFF'}};
     c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF00695C'}};
     c.alignment={horizontal:'center',vertical:'middle',wrapText:true};
@@ -827,13 +827,14 @@ async function buildPunchRegisterSheet(wb, employees, m, y, MONTH_NAMES, punchMa
   ws.getColumn(1).width = 10;
   ws.getColumn(2).width = 22;
   ws.getColumn(3).width = 16;
+  ws.getColumn(4).width = 14;
   for (let d = 1; d <= daysInMonth; d++) {
-    ws.getColumn(3+(d-1)*2+1).width = 9;
-    ws.getColumn(3+(d-1)*2+2).width = 9;
+    ws.getColumn(4+(d-1)*2+1).width = 9;
+    ws.getColumn(4+(d-1)*2+2).width = 9;
   }
-  ws.getColumn(3+daysInMonth*2+1).width = 7;
-  ws.getColumn(3+daysInMonth*2+2).width = 7;
-  ws.getColumn(3+daysInMonth*2+3).width = 7;
+  ws.getColumn(4+daysInMonth*2+1).width = 7;
+  ws.getColumn(4+daysInMonth*2+2).width = 7;
+  ws.getColumn(4+daysInMonth*2+3).width = 7;
 
   // ── Group separator tracker (onsite → offsite → deactivated) ─────────────
   let lastGrp = null;
@@ -868,7 +869,7 @@ async function buildPunchRegisterSheet(wb, employees, m, y, MONTH_NAMES, punchMa
                 : (isAlt?'FFE8F5E9':'FFFFFFFF');
 
     // Info cells
-    [e.employee_code, `${e.first_name} ${e.last_name||''}`.trim(), e.department||''].forEach((v,ci) => {
+    [e.employee_code, `${e.first_name} ${e.last_name||''}`.trim(), e.department||'', e.division||''].forEach((v,ci) => {
       const c = ws.getCell(row, ci+1);
       c.value=v;
       c.font={size:9, bold: ci===1, color:{argb: isDeact?'FF9E0000':'FF000000'}};
@@ -893,11 +894,11 @@ async function buildPunchRegisterSheet(wb, employees, m, y, MONTH_NAMES, punchMa
       const isWeekend = dow===0 || (dow===6 && (punchSatCnt===2||punchSatCnt===4));
       const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const isHol   = empHols.has(dateStr);
-      const col     = 3+(d-1)*2+1;
+      const col     = 4+(d-1)*2+1;
 
       // Deactivated: merge remaining days after last punch day
       if (isDeact && d === lastPunchDay + 1 && d <= daysInMonth) {
-        try { ws.mergeCells(row, col, row, 3+daysInMonth*2); } catch(ex){}
+        try { ws.mergeCells(row, col, row, 4+daysInMonth*2); } catch(ex){}
         const mc = ws.getCell(row, col);
         mc.value = e.deactivation_remark
           ? `❌ ${e.deactivation_remark}`
@@ -1060,7 +1061,7 @@ exports.exportMasterExcel = async (req, res) => {
       SELECT e.id, e.employee_code, e.first_name, e.last_name, e.email, e.phone,
              e.gender, e.date_of_birth, e.blood_group, e.marital_status, e.address_line1,
              e.joining_date,
-             d.name AS department, des.title AS designation,
+             d.name AS department, e.division, des.title AS designation,
              e.role, e.employment_type, e.employee_category, e.level,
              e.city, e.state,
              COALESCE(e.saturday_policy, '2nd_4th_off') AS saturday_policy,
@@ -1744,7 +1745,7 @@ exports.exportAttendanceRegister = async (req, res) => {
       salaryCalcData.push({
         id: e.id, employee_code: e.employee_code,
         name: `${e.first_name} ${e.last_name||''}`.trim(),
-        department: e.department || '—', designation: e.designation || '—',
+        department: e.department || '—', division: e.division || '', designation: e.designation || '—',
         isDeactivated,
         presentDays: attPresent, lopDays: attAbsent + attUnpaidLeave + attUnpaidHalfDay,
         workingDays: workingDaysCount,
@@ -1838,9 +1839,9 @@ exports.exportAttendanceRegister = async (req, res) => {
     advRes.rows.forEach(r => { emiMapSal[r.employee_id] = parseFloat(r.total_emi) || 0; });
 
     const ws3 = wb.addWorksheet(`Salary Calc ${MONTH_NAMES[m-1]} ${y}`, {
-      views: [{ state: 'frozen', xSplit: 4, ySplit: 2 }]
+      views: [{ state: 'frozen', xSplit: 5, ySplit: 2 }]
     });
-    const salCols = 19;
+    const salCols = 20;
     try { ws3.mergeCells(1, 1, 1, salCols); } catch(_) {}
     const salTitle = ws3.getCell(1, 1);
     salTitle.value = `HRMS — Salary Calculation | ${MONTH_NAMES[m-1]} ${y} — Present-Day-Based Proration`;
@@ -1850,7 +1851,7 @@ exports.exportAttendanceRegister = async (req, res) => {
     ws3.getRow(1).height = 26;
 
     const salHeaders = [
-      'Emp Code', 'Name', 'Department', 'Designation',
+      'Emp Code', 'Name', 'Department', 'Division', 'Designation',
       'Basic', 'HRA', 'Defray Allowance', 'Gratuity', 'Gross Salary',
       'PF (Emp)', 'ESI (Emp)', 'Prof Tax', 'TDS', 'Advance EMI', 'Total Deductions',
       'Working Days', 'Present Days', 'Earned Gross', 'Net Payable'
@@ -1888,7 +1889,7 @@ exports.exportAttendanceRegister = async (req, res) => {
       const netPayable  = Math.max(0, earnedNet - emi);
 
       const values = [
-        r.employee_code, r.name, r.department, r.designation,
+        r.employee_code, r.name, r.department, r.division, r.designation,
         basic, hra, special, gratuity, gross,
         pfEmp, esiEmp, pt, tds, emi, totalDed,
         workingDays, presentDays, earnedGross, netPayable
@@ -1899,16 +1900,16 @@ exports.exportAttendanceRegister = async (req, res) => {
         cell.font = { size: 9, color: { argb: r.isDeactivated ? 'FF9E0000' : 'FF000000' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isAlt ? 'FFE3F2FD' : 'FFFFFFFF' } };
         cell.border = { right: { style: 'hair' }, bottom: { style: 'hair' } };
-        if (ci >= 4) cell.alignment = { horizontal: 'right', vertical: 'middle' };
+        if (ci >= 5) cell.alignment = { horizontal: 'right', vertical: 'middle' };
         else cell.alignment = { vertical: 'middle' };
-        if (ci === 18) { // Net Payable — bold green
+        if (ci === 19) { // Net Payable — bold green
           cell.font = { bold: true, size: 10, color: { argb: 'FF1B5E20' } };
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isAlt ? 'FFC8E6C9' : 'FFE8F5E9' } };
         }
       });
       ws3.getRow(row).height = 16;
     });
-    [10,22,16,18, 11,9,14,9,12, 9,9,9,9,11,13, 11,11,12,12].forEach((w, i) => {
+    [10,22,16,14,18, 11,9,14,9,12, 9,9,9,9,11,13, 11,11,12,12].forEach((w, i) => {
       ws3.getColumn(i + 1).width = w;
     });
 

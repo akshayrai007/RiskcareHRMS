@@ -48,10 +48,10 @@ const COL = {
   // ── Salary Structure — matches Edit Employee > Salary Structure tab exactly.
   // Written into employee_salary_structure (the real source of truth for
   // payroll/payslip), not just the legacy employees.basic_salary columns.
-  sal_basic: 52, sal_hra: 53, sal_conveyance: 54, sal_defray_allowance: 55,
-  sal_gratuity: 56, sal_food_coupon: 57,
-  sal_pf_applicable: 58, sal_pf_wage_basis: 59, sal_esi_applicable: 60,
-  sal_pt_applicable: 61, sal_lwf_applicable: 62, sal_tds_applicable: 63
+  sal_basic: 52, sal_hra: 53, sal_defray_allowance: 54,
+  sal_gratuity: 55, sal_food_coupon: 56,
+  sal_pf_applicable: 57, sal_pf_wage_basis: 58, sal_esi_applicable: 59,
+  sal_pt_applicable: 60, sal_lwf_applicable: 61, sal_tds_applicable: 62
 };
 
 // ── Find-or-create helpers (Department/Designation may be brand new) ────────
@@ -369,7 +369,7 @@ exports.importEmployees = async (req, res) => {
           await payCtrl.computeAndSaveSalaryStructure(client, newEmp.id, {
             basic:             salBasic,
             hra:               parseFloat(clean(row[COL.sal_hra])) || 0,
-            conveyance:        parseFloat(clean(row[COL.sal_conveyance])) || 0,
+            conveyance:        0,
             special_allowance: parseFloat(clean(row[COL.sal_defray_allowance])) || 0,
             gratuity:          parseFloat(clean(row[COL.sal_gratuity])) || 0,
             food_coupon:       parseFloat(clean(row[COL.sal_food_coupon])) || 0,
@@ -634,7 +634,7 @@ exports.downloadImportTemplate = async (req, res) => {
       // ── Bank ──
       'Bank Name', 'Bank Branch', 'Bank Account', 'Bank IFSC',
       // ── Salary Structure ──
-      'Basic Salary (₹/month)', 'HRA (₹/month)', 'Conveyance (₹/month)', 'Defray Allowance (₹/month)',
+      'Basic Salary (₹/month)', 'HRA (₹/month)', 'Defray Allowance (₹/month)',
       'Gratuity (₹/month)', 'Food Coupon (₹/month)',
       'PF Applicable (Y/N)', 'PF Wage Basis (capped/actual)', 'ESI Applicable (Y/N)',
       'PT Applicable (Y/N)', 'LWF Applicable (Y/N)', 'TDS Applicable (Y/N)'
@@ -690,7 +690,7 @@ exports.downloadImportTemplate = async (req, res) => {
       // Bank
       '', '', '', '',
       // Salary
-      '', '', '', '', '', '',
+      '', '', '', '', '',
       'Y', 'capped', 'N',
       'Y', 'N', 'N'
     ];
@@ -706,7 +706,7 @@ exports.downloadImportTemplate = async (req, res) => {
       { end: 43, color: 'FF16a34a', name: 'Employment' },
       { end: 47, color: 'FFea580c', name: 'Statutory IDs' },
       { end: 51, color: 'FF0d9488', name: 'Bank' },
-      { end: 63, color: 'FFdb2777', name: 'Salary' },
+      { end: 62, color: 'FFdb2777', name: 'Salary' },
     ];
     function sectionColorFor(colIdx) {
       for (const s of SECTIONS) if (colIdx <= s.end) return s.color;
