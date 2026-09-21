@@ -724,6 +724,29 @@ function switchTab(name) {
 
 let _salaryStructData = null;
 
+// Monthly / Annual entry toggle for the salary-structure editor: annual figures are converted to monthly (/12) automatically.
+let _seMode = 'monthly';
+const SE_EARN = ['se-basic','se-hra','se-special','se-gratuity','se-other'];
+function seVal(id) {
+  const x = parseFloat(document.getElementById(id)?.value) || 0;
+  return (_seMode === 'annual' && SE_EARN.includes(id)) ? Math.round(x / 12 * 100) / 100 : x;
+}
+function setSeMode(mode, convert = true) {
+  if (mode === _seMode && convert) return;
+  if (convert) SE_EARN.forEach(id => {
+    const el = document.getElementById(id); const x = parseFloat(el?.value);
+    if (el && !isNaN(x) && x !== 0) el.value = Math.round(x * (mode === 'annual' ? 12 : 1 / 12) * 100) / 100;
+  });
+  _seMode = mode;
+  const on = 'background:var(--accent);color:#fff', off = 'background:#fff;color:var(--text)';
+  const bm = document.getElementById('se-mode-monthly'), ba = document.getElementById('se-mode-annual');
+  if (bm) bm.style.cssText += ';' + (mode === 'monthly' ? on : off);
+  if (ba) ba.style.cssText += ';' + (mode === 'annual' ? on : off);
+  const t = document.getElementById('se-earn-title');
+  if (t) t.textContent = mode === 'annual' ? '💵 Earnings (₹/year) — auto-converted to monthly' : '💵 Earnings (₹/month)';
+  if (typeof updateSePreview === 'function') updateSePreview();
+}
+
 async function loadSalaryStructures() {
   const el     = document.getElementById('struct-table-wrap');
   const search = document.getElementById('struct-search')?.value?.trim() || '';
@@ -1044,6 +1067,7 @@ async function openSalaryEdit(empId) {
   document.getElementById('se-special').value    = r.special_allowance || 0;
   document.getElementById('se-gratuity').value   = r.gratuity || 0;
   document.getElementById('se-other').value      = r.food_coupon || 0;
+  _seMode = 'annual'; setSeMode('monthly', false);
   // Deductions — checkbox reflects whether this deduction is applicable;
   // the ₹ amount is always auto-calculated server-side, never typed in.
   document.getElementById('se-pf').checked     = r.pf_applicable !== false;
@@ -1081,7 +1105,7 @@ function calcPTPreviewPayroll(gross, state) {
 }
 
 function updateSePreview() {
-  const v = id => parseFloat(document.getElementById(id)?.value) || 0;
+  const v = id => seVal(id);
   const gross = v('se-basic')+v('se-hra')+v('se-special')+v('se-gratuity')+v('se-other');
 
   // Mirrors payrollController.js computeAndSaveSalaryStructure() exactly —
@@ -1111,7 +1135,7 @@ function closeSalaryEdit() {
 async function saveSalaryStructure() {
   const empId = parseInt(document.getElementById('se-emp-id').value);
   if (!empId) return;
-  const v = id => parseFloat(document.getElementById(id)?.value) || 0;
+  const v = id => seVal(id);
   const btn = document.getElementById('se-save-btn');
   btn.disabled = true; btn.textContent = '⏳ Saving…';
 
@@ -1160,7 +1184,13 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
     </div>
     <input type="hidden" id="se-emp-id">
 
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">💵 Earnings (₹/month)</div>
+    <div style="display:flex;align-items:center;margin-bottom:10px">
+      <div id="se-earn-title" style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">💵 Earnings (₹/month)</div>
+      <div style="margin-left:auto;display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
+        <button type="button" id="se-mode-monthly" onclick="setSeMode('monthly')" style="padding:5px 12px;font-size:12px;font-weight:700;border:0;cursor:pointer">Monthly</button>
+        <button type="button" id="se-mode-annual" onclick="setSeMode('annual')" style="padding:5px 12px;font-size:12px;font-weight:700;border:0;cursor:pointer">Annual</button>
+      </div>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
       <div><label class="form-label">Basic Salary *</label><input id="se-basic" type="number" class="form-control" placeholder="0"></div>
       <div><label class="form-label">HRA</label><input id="se-hra" type="number" class="form-control" placeholder="0"></div>

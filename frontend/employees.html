@@ -696,7 +696,11 @@
         <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:16px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">
             <div style="width:28px;height:28px;background:var(--accent-l);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">💵</div>
-            <span style="font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.5px;text-transform:uppercase">Earnings (₹/month)</span>
+            <span id="earn-title" style="font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.5px;text-transform:uppercase">Earnings (₹/month)</span>
+            <div style="margin-left:auto;display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
+              <button type="button" id="mode-monthly" onclick="setSalaryMode('monthly')" style="padding:6px 14px;font-size:12px;font-weight:700;border:0;cursor:pointer">Monthly</button>
+              <button type="button" id="mode-annual" onclick="setSalaryMode('annual')" style="padding:6px 14px;font-size:12px;font-weight:700;border:0;cursor:pointer">Annual</button>
+            </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
 
@@ -2523,6 +2527,7 @@ async function openEditEmp(id) {
   document.getElementById('edit-special').value     = s.special_allowance || e.special_allowance || '';
   document.getElementById('edit-gratuity').value    = s.gratuity    || '';
   document.getElementById('edit-food-coupon').value = s.food_coupon || '';
+  _salaryMode = 'annual'; setSalaryMode('monthly', false); // stored values are monthly
   document.getElementById('edit-pf').checked          = !!s.pf_applicable;
   document.getElementById('edit-eps').checked         = !!s.eps_applicable;
   document.getElementById('edit-esi').checked         = !!s.esi_applicable;
@@ -2614,8 +2619,33 @@ function calcPTPreview(gross, state) {
   return gross >= 10000 ? 200 : 0;
 }
 
+// ── Monthly / Annual entry toggle. Inputs hold whatever the mode says; everything
+// sent to the server / used in the preview is converted to MONTHLY (annual / 12).
+let _salaryMode = 'monthly';
+const SAL_IDS = ['edit-basic','edit-hra','edit-special','edit-gratuity','edit-food-coupon'];
+function mval(id) {
+  const x = parseFloat(document.getElementById(id)?.value) || 0;
+  return _salaryMode === 'annual' ? Math.round(x / 12 * 100) / 100 : x;
+}
+function setSalaryMode(mode, convert = true) {
+  if (mode === _salaryMode && convert) return;
+  const f = mode === 'annual' ? 12 : 1 / 12;
+  if (convert && mode !== _salaryMode) SAL_IDS.forEach(id => {
+    const el = document.getElementById(id); const x = parseFloat(el?.value);
+    if (el && !isNaN(x) && x !== 0) el.value = Math.round(x * f * 100) / 100;
+  });
+  _salaryMode = mode;
+  const on = 'background:var(--accent);color:#fff', off = 'background:#fff;color:var(--text)';
+  const bm = document.getElementById('mode-monthly'), ba = document.getElementById('mode-annual');
+  if (bm) bm.style.cssText += ';' + (mode === 'monthly' ? on : off);
+  if (ba) ba.style.cssText += ';' + (mode === 'annual' ? on : off);
+  const t = document.getElementById('earn-title');
+  if (t) t.textContent = mode === 'annual' ? 'Earnings (₹/year) — auto-converted to monthly' : 'Earnings (₹/month)';
+  recalcSalaryPreview();
+}
+
 function recalcSalaryPreview() {
-  const v = id => parseFloat(document.getElementById(id)?.value) || 0;
+  const v = id => SAL_IDS.includes(id) ? mval(id) : (parseFloat(document.getElementById(id)?.value) || 0);
   const basic      = v('edit-basic');
   const hra        = v('edit-hra');
   const special    = v('edit-special');
@@ -2659,7 +2689,7 @@ async function saveEmployeeEdit() {
   const btn = document.getElementById('edit-save-btn');
   btn.disabled = true; btn.textContent = '⏳ Saving…';
 
-  const basic      = parseFloat(document.getElementById('edit-basic').value)      || 0;
+  const basic      = mval('edit-basic');
 
   // 1. Update core employee fields
   const empBody = {
@@ -2696,10 +2726,10 @@ async function saveEmployeeEdit() {
     aadhar_number:       document.getElementById('edit-aadhar').value.trim()     || null,
     uan_number:          document.getElementById('edit-uan').value.trim()        || null,
     pf_number:           document.getElementById('edit-pf-num').value.trim()     || null,
-    basic_salary:        parseFloat(document.getElementById('edit-basic').value)       || 0,
-    hra:                 parseFloat(document.getElementById('edit-hra').value)          || 0,
-    special_allowance:   parseFloat(document.getElementById('edit-special').value)      || 0,
-    gratuity:            parseFloat(document.getElementById('edit-gratuity').value)     || 0,
+    basic_salary:        mval('edit-basic'),
+    hra:                 mval('edit-hra'),
+    special_allowance:   mval('edit-special'),
+    gratuity:            mval('edit-gratuity'),
     conveyance:          0,
     travel_allowance:    0,
     ...(window._annualCtc ? { ctc: window._annualCtc } : {}),
@@ -2734,16 +2764,16 @@ async function saveEmployeeEdit() {
   }
 
   // 2. Save salary structure ONLY if basic salary is filled in
-  const basicVal = parseFloat(document.getElementById('edit-basic').value) || 0;
+  const basicVal = mval('edit-basic');
   if (basicVal > 0) {
     const salBody = {
       employee_id:       _editEmpId,
       basic: basicVal,
-      hra:        parseFloat(document.getElementById('edit-hra').value)        || 0,
+      hra:        mval('edit-hra'),
       conveyance: 0,
-      special_allowance: parseFloat(document.getElementById('edit-special').value) || 0,
-      gratuity:   parseFloat(document.getElementById('edit-gratuity').value)   || 0,
-      food_coupon: parseFloat(document.getElementById('edit-food-coupon').value) || 0,
+      special_allowance: mval('edit-special'),
+      gratuity:   mval('edit-gratuity'),
+      food_coupon: mval('edit-food-coupon'),
       pf_wage_basis:  document.getElementById('edit-pf-basis').value || 'capped',
       pf_applicable:  document.getElementById('edit-pf').checked,
       eps_applicable: document.getElementById('edit-eps').checked,
