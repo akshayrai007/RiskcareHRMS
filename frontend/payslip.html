@@ -282,7 +282,6 @@ function renderPayslip(p) {
           ${infoRow('Name', p.employee_name)}
           ${infoRow('Designation', p.designation_title)}
           ${infoRow('Department', p.department_name)}
-          ${infoRow('Division', p.division)}
           ${infoRow('Date of Joining', doj)}
         </table>
       </td>
@@ -290,7 +289,6 @@ function renderPayslip(p) {
         <table style="width:100%;border-collapse:collapse">
           ${infoRow('Bank Name', p.bank_name)}
           ${infoRow('Bank A/C No.', p.bank_account)}
-          ${infoRow('IFSC', p.bank_ifsc)}
           ${infoRow('Location', location)}
           ${infoRow('PAN', p.pan_number)}
           ${infoRow('UAN', p.uan_number)}
