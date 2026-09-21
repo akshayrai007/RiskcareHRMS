@@ -366,7 +366,8 @@ exports.uploadPayroll = async (req, res) => {
       if (logs.rows.length)
         await client.query(`DELETE FROM loan_recovery_log WHERE payroll_month=$1 AND payroll_year=$2`, [monthNum, yearNum]);
       // keep payroll rows: detach them from the old upload so deleting it doesn't cascade
-      await client.query(`UPDATE payroll SET upload_id=NULL WHERE month=$1 AND year=$2`, [monthNum, yearNum]);
+      // every (re)upload starts hidden again - HR must click Release Payslips
+      await client.query(`UPDATE payroll SET upload_id=NULL, released=FALSE, released_at=NULL WHERE month=$1 AND year=$2`, [monthNum, yearNum]);
       await client.query(`DELETE FROM payroll_uploads WHERE month=$1 AND year=$2`, [monthNum, yearNum]);
     }
 
