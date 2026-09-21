@@ -692,7 +692,7 @@ exports.getPayslip = async (req, res) => {
               e.pan_number, e.uan_number, e.pf_number, e.esi_number,
               e.bank_name, e.bank_account,
               e.bank_ifsc, e.date_of_birth, e.joining_date,
-              e.city, e.state, e.location, e.gender, e.aadhar_number, e.employment_type,
+              e.city, e.state, e.location, e.gender, e.aadhar_number, e.employment_type, e.division,
               d.name AS department_name, des.title AS designation_title,
               CONCAT(m.first_name,' ',m.last_name) AS manager_name,
               s.basic AS fixed_basic, s.hra AS fixed_hra, s.conveyance AS fixed_conveyance,

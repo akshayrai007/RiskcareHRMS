@@ -237,8 +237,8 @@ function renderPayslip(p) {
   }).join('');
 
   const infoRow = (label, val) => `<tr>
-    <td style="padding:3px 16px;font-size:12px;font-weight:700;white-space:nowrap">${label}</td>
-    <td style="padding:3px 4px;font-size:12px">: ${val || ''}</td>
+    <td style="padding:4px 8px 4px 0;font-size:12px;font-weight:700;white-space:nowrap;width:38%;color:#37474f">${label}</td>
+    <td style="padding:4px 0;font-size:12px;border-bottom:1px dotted #cfd8dc">${val || '—'}</td>
   </tr>`;
 
   return `<div style="font-family:Arial,Helvetica,sans-serif;background:#fff;color:#000;max-width:794px;margin:0 auto;padding:0">
@@ -265,26 +265,42 @@ function renderPayslip(p) {
   <!-- EMPLOYEE INFO: two-column layout -->
   <table style="width:100%;border-collapse:collapse;margin-bottom:12px">
     <tr>
-      <td style="width:50%;vertical-align:top;padding:0 16px 0 0">
+      <td style="width:50%;vertical-align:top;padding:0 22px 0 0">
         <table style="width:100%;border-collapse:collapse">
           ${infoRow('Employee Code', p.employee_code)}
           ${infoRow('Name', p.employee_name)}
           ${infoRow('Designation', p.designation_title)}
           ${infoRow('Department', p.department_name)}
+          ${infoRow('Division', p.division)}
           ${infoRow('Date of Joining', doj)}
-          ${infoRow('Attendance: Base,Elig', paidDays.toFixed(2) + ', ' + paidDays.toFixed(2))}
-          ${infoRow('Previous Period LOP, LOP<br>Reversal Days', lopDays.toFixed(1) + ', 0.0')}
         </table>
       </td>
-      <td style="width:50%;vertical-align:top;padding:0 0 0 16px">
+      <td style="width:50%;vertical-align:top;padding:0 0 0 22px">
         <table style="width:100%;border-collapse:collapse">
           ${infoRow('Bank Name', p.bank_name)}
           ${infoRow('Bank A/C No.', p.bank_account)}
+          ${infoRow('IFSC', p.bank_ifsc)}
           ${infoRow('Location', location)}
           ${infoRow('PAN', p.pan_number)}
           ${infoRow('UAN', p.uan_number)}
         </table>
       </td>
+    </tr>
+  </table>
+
+  <!-- ATTENDANCE SUMMARY -->
+  <table style="width:100%;border-collapse:collapse;margin-bottom:12px;text-align:center">
+    <tr style="background:#f1f8ff">
+      <td style="padding:6px;border:1px solid #cfd8dc;font-size:11px;color:#546e7a;font-weight:700">Working Days</td>
+      <td style="padding:6px;border:1px solid #cfd8dc;font-size:11px;color:#546e7a;font-weight:700">Paid Days</td>
+      <td style="padding:6px;border:1px solid #cfd8dc;font-size:11px;color:#546e7a;font-weight:700">LOP Days</td>
+      <td style="padding:6px;border:1px solid #cfd8dc;font-size:11px;color:#546e7a;font-weight:700">LOP Reversal</td>
+    </tr>
+    <tr>
+      <td style="padding:6px;border:1px solid #cfd8dc;font-size:13px;font-weight:700">${wDays.toFixed(1)}</td>
+      <td style="padding:6px;border:1px solid #cfd8dc;font-size:13px;font-weight:700">${paidDays.toFixed(1)}</td>
+      <td style="padding:6px;border:1px solid #cfd8dc;font-size:13px;font-weight:700">${lopDays.toFixed(1)}</td>
+      <td style="padding:6px;border:1px solid #cfd8dc;font-size:13px;font-weight:700">${parseFloat(p.lop_reversal || 0).toFixed(1)}</td>
     </tr>
   </table>
 
