@@ -278,8 +278,6 @@ function renderPayslip(p) {
           ${infoRow('Name', p.employee_name)}
           ${infoRow('Designation', p.designation_title)}
           ${infoRow('Department', p.department_name)}
-          ${infoRow('Gender', p.gender)}
-          ${infoRow('Date of Birth', dob)}
           ${infoRow('Date of Joining', doj)}
           ${infoRow('Attendance: Base,Elig', paidDays.toFixed(2) + ', ' + paidDays.toFixed(2))}
           ${infoRow('Previous Period LOP, LOP<br>Reversal Days', lopDays.toFixed(1) + ', 0.0')}
@@ -287,12 +285,11 @@ function renderPayslip(p) {
       </td>
       <td style="width:50%;vertical-align:top;padding:0 0 0 16px">
         <table style="width:100%;border-collapse:collapse">
-          ${infoRow('Bank', p.bank_name)}
+          ${infoRow('Bank Name', p.bank_name)}
           ${infoRow('Bank A/C No.', p.bank_account)}
           ${infoRow('Location', location)}
           ${infoRow('PAN', p.pan_number)}
           ${infoRow('UAN', p.uan_number)}
-          ${infoRow('PF A/C No.', p.pf_number)}
         </table>
       </td>
     </tr>
