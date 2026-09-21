@@ -177,12 +177,11 @@ function renderPayslip(p) {
   const basic       = parseFloat(p.basic || 0);
   const hra         = parseFloat(p.hra || 0);
   const gratuity    = parseFloat(p.gratuity || 0);
-  const special     = parseFloat(p.special_allowance || p.conveyance || 0);
-  const conveyance  = parseFloat(p.conveyance || 0);
+  const special     = parseFloat(p.special_allowance || 0);
   const fixedBasic    = parseFloat(p.fixed_basic ?? basic);
   const fixedHRA      = parseFloat(p.fixed_hra ?? hra);
   const fixedGratuity = parseFloat(p.fixed_gratuity ?? gratuity);
-  const fixedSpecial  = parseFloat(p.fixed_special_allowance ?? p.fixed_conveyance ?? special);
+  const fixedSpecial  = parseFloat(p.fixed_special_allowance ?? special);
 
   const foodCoupon = parseFloat(p.other_allowance || 0);
 
@@ -194,10 +193,6 @@ function renderPayslip(p) {
     { label: 'Food Coupon', fixed: foodCoupon, earned: foodCoupon },
   ].filter(r => r.fixed > 0);
 
-  // If conveyance is separate from special_allowance
-  if (conveyance > 0 && p.special_allowance && parseFloat(p.special_allowance) > 0) {
-    earningItems.splice(3, 0, { label: 'Conveyance', fixed: conveyance, earned: conveyance });
-  }
 
   const dedItems = [
     { label: 'ProfessionalTax', amount: pt },

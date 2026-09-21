@@ -130,8 +130,9 @@ async function recordStructureSnapshot(queryable, employeeId, updatedBy) {
 }
 
 async function computeAndSaveSalaryStructure(queryable, employeeId, fields, updatedBy) {
+  const conveyance = 0; // Conveyance allowance is not used anywhere
   const {
-    basic = 0, hra = 0, conveyance = 0, special_allowance = 0,
+    basic = 0, hra = 0, special_allowance = 0,
     gratuity = 0, food_coupon = 0, pf_applicable = true, esi_applicable = true,
     pt_applicable = true, lwf_applicable = true, tds_applicable = false, notes,
     pf_wage_basis = 'capped', // 'capped' = PF on min(basic,15000); 'actual' = PF on full basic
@@ -432,8 +433,7 @@ exports.uploadPayroll = async (req, res) => {
       const hra         = n(row[iHRA]);
       // Conveyance is no longer a column in the monthly sheet; if the salary
       // structure still carries an amount, keep paying it from there.
-      const conveyance  = iConveyance >= 0 ? n(row[iConveyance])
-        : parseFloat((await client.query('SELECT conveyance FROM employee_salary_structure WHERE employee_id=$1', [empId])).rows[0]?.conveyance) || 0;
+      const conveyance  = 0; // no Conveyance allowance anywhere
       const otherAllow  = n(row[iOtherAllow]);
       const gratuity    = n(row[iGratuity]);
       const tds         = iTDS >= 0 ? n(row[iTDS]) : 0;
@@ -862,7 +862,7 @@ exports.exportPayroll = async (req, res) => {
       ['Emp Code','employee_code'],['Name','employee_name'],['Department','department_name'],['Designation','designation_title'],
       ['Month','month'],['Year','year'],['Working Days','working_days'],['Present Days','present_days'],['LOP Days','lop_days'],
       ['LOP Reversal','lop_reversal'],['Paid Days','paid_days'],['Basic','basic'],['HRA','hra'],['Defray Allowance','special_allowance'],
-      ['Conveyance','conveyance'],['Gratuity','gratuity'],['Food Coupon (incl. adj)','other_allowance'],['Extra Working Salary','extra_working_salary'],
+      ['Gratuity','gratuity'],['Food Coupon (incl. adj)','other_allowance'],['Extra Working Salary','extra_working_salary'],
       ['Bonus','bonus'],['Incentive','incentive'],['Other Earning','other_earning'],['Performance Bonus','performance_bonus'],
       ['Gross Salary','gross_salary'],['PF (Employee)','pf_employee'],['ESI Earning','esi_wages'],['ESI (Employee)','esi_employee'],
       ['ESI (Employer)','esi_employer'],['Prof Tax','professional_tax'],['LWF','lwf'],['TDS','tds'],['GTL Deduction','gtl_deduction'],
@@ -1465,7 +1465,7 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
     const HEADERS = [
       'Emp Code', 'Full Name', 'Department', 'Designation',
       'Bank', 'Branch', 'Account No.', 'IFSC',
-      'Basic', 'HRA', 'Conveyance', 'Defray Allowance', 'Gratuity', 'Food Coupon',
+      'Basic', 'HRA', 'Defray Allowance', 'Gratuity', 'Food Coupon',
       'PF Applicable (Y/N)', 'PF Basis (Capped/Actual)', 'EPS Applicable (Y/N)',
       'ESI Applicable (Y/N)', 'PT Applicable (Y/N)',
       'LWF Applicable (Y/N)', 'TDS Applicable (Y/N)'
@@ -1474,13 +1474,13 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
 
     const rows = [
       ['HRMS — Salary Structure Bulk Upload Template'],
-      ['⚠️  Fill Basic, HRA, Conveyance, Defray Allowance, Gratuity (monthly ₹ amounts). PF/ESI/PT/LWF/TDS are auto-calculated by the system based on the Y/N applicability columns — just mark Y or N.'],
+      ['⚠️  Fill Basic, HRA, Defray Allowance, Gratuity (monthly ₹ amounts). PF/ESI/PT/LWF/TDS are auto-calculated by the system based on the Y/N applicability columns — just mark Y or N.'],
       [],
       HEADERS,
       ...empResult.rows.map(e => [
         e.employee_code, e.full_name, e.department || '', e.designation || '',
         e.bank_name || '', e.bank_branch || '', e.bank_account || '', e.bank_ifsc || '',
-        parseFloat(e.basic) || 0, parseFloat(e.hra) || 0, parseFloat(e.conveyance) || 0,
+        parseFloat(e.basic) || 0, parseFloat(e.hra) || 0,
         parseFloat(e.special_allowance) || 0, parseFloat(e.gratuity) || 0, parseFloat(e.food_coupon) || 0,
         yn(e.pf_applicable), e.pf_wage_basis === 'actual' ? 'Actual' : 'Capped', yn(e.eps_applicable),
         yn(e.esi_applicable), yn(e.pt_applicable),
@@ -1511,7 +1511,6 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
       ['IFSC',             'Bank branch IFSC code (leave blank to keep existing value unchanged)'],
       ['Basic',            'Monthly basic salary in ₹'],
       ['HRA',              'Monthly House Rent Allowance in ₹'],
-      ['Conveyance',       'Monthly conveyance/travel allowance in ₹'],
       ['Defray Allowance', 'Any other fixed monthly allowance in ₹'],
       ['Gratuity',         'Monthly gratuity component in ₹ (usually 0 unless applicable)'],
       ['Food Coupon',      'Monthly meal-voucher/food coupon benefit in ₹ — only applicable to select employees, leave 0 for everyone else'],
@@ -1597,7 +1596,7 @@ exports.bulkUploadSalaryStructure = async (req, res) => {
 
       const basic             = parseFloat(row['Basic']) || 0;
       const hra               = parseFloat(row['HRA']) || 0;
-      const conveyance         = parseFloat(row['Conveyance']) || 0;
+      const conveyance         = 0;
       const special_allowance  = parseFloat(row['Defray Allowance'] ?? row['Other Allowance']) || 0;
       const gratuity           = parseFloat(row['Gratuity']) || 0;
       const food_coupon        = parseFloat(row['Food Coupon']) || 0;

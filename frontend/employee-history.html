@@ -261,7 +261,6 @@ async function openEmployeeHistory(empId) {
       ['Monthly CTC',       r => r.snap?.ctc_monthly,       r => r.prevSnap?.ctc_monthly,    '#166534'],
       ['Basic',             r => r.snap?.basic ?? r.new_basic_salary, r => r.prevSnap?.basic ?? r.old_basic_salary, '#334155'],
       ['HRA',               r => r.snap?.hra ?? r.new_hra,  r => r.prevSnap?.hra ?? r.old_hra, '#334155'],
-      ['Conveyance/Travel', r => r.snap?.conveyance ?? r.new_travel_allowance, r => r.prevSnap?.conveyance ?? r.old_travel_allowance, '#334155'],
       ['Defray Allowance',  r => r.snap?.special_allowance ?? r.new_special_allowance, r => r.prevSnap?.special_allowance ?? r.old_special_allowance, '#334155'],
       ['Gratuity',          r => r.snap?.gratuity,          r => r.prevSnap?.gratuity,       '#334155'],
       ['Food Coupon',       r => r.snap?.food_coupon,       r => r.prevSnap?.food_coupon,    '#334155'],

@@ -799,7 +799,6 @@ async function loadSalaryStructures() {
           <th style="${XLH}">Designation</th>
           <th style="${XLH};background:#e8f5e9">Basic</th>
           <th style="${XLH};background:#e8f5e9">HRA</th>
-          <th style="${XLH};background:#e8f5e9">Conveyance</th>
           <th style="${XLH};background:#e8f5e9">Defray Allow.</th>
           <th style="${XLH};background:#e8f5e9">Gross</th>
           <th style="${XLH};background:#fce4ec">PF (Emp)</th>
@@ -824,7 +823,6 @@ async function loadSalaryStructures() {
           <td style="${XLD};color:var(--muted);text-align:left">${r.designation_title||'—'}</td>
           <td style="${XLD};text-align:right">${fmt.money(r.basic)}</td>
           <td style="${XLD};text-align:right">${fmt.money(r.hra)}</td>
-          <td style="${XLD};text-align:right">${fmt.money(r.conveyance)}</td>
           <td style="${XLD};text-align:right">${fmt.money(r.special_allowance)}</td>
           <td style="${XLD};text-align:right;font-weight:700;color:#166534">${fmt.money(r.gross_salary)}</td>
           <td style="${XLD};text-align:right;color:#dc2626">${fmt.money(r.pf_employee)}</td>
@@ -1043,7 +1041,6 @@ async function openSalaryEdit(empId) {
   // Earnings
   document.getElementById('se-basic').value      = r.basic || 0;
   document.getElementById('se-hra').value        = r.hra || 0;
-  document.getElementById('se-conveyance').value = r.conveyance || 0;
   document.getElementById('se-special').value    = r.special_allowance || 0;
   document.getElementById('se-gratuity').value   = r.gratuity || 0;
   document.getElementById('se-other').value      = r.food_coupon || 0;
@@ -1061,7 +1058,7 @@ async function openSalaryEdit(empId) {
   const m = document.getElementById('salary-edit-modal');
   m.style.display = 'flex';
   // Add live preview listeners
-  ['se-basic','se-hra','se-conveyance','se-special','se-gratuity','se-other',
+  ['se-basic','se-hra','se-special','se-gratuity','se-other',
    'se-pf','se-pf-basis','se-esi','se-pt','se-lwf'].forEach(id => {
     const el = document.getElementById(id);
     el.oninput = updateSePreview; el.onchange = updateSePreview;
@@ -1085,7 +1082,7 @@ function calcPTPreviewPayroll(gross, state) {
 
 function updateSePreview() {
   const v = id => parseFloat(document.getElementById(id)?.value) || 0;
-  const gross = v('se-basic')+v('se-hra')+v('se-conveyance')+v('se-special')+v('se-gratuity')+v('se-other');
+  const gross = v('se-basic')+v('se-hra')+v('se-special')+v('se-gratuity')+v('se-other');
 
   // Mirrors payrollController.js computeAndSaveSalaryStructure() exactly —
   // this is a live preview of what gets auto-calculated on save.
@@ -1122,7 +1119,7 @@ async function saveSalaryStructure() {
     employee_id:      empId,
     basic:            v('se-basic'),
     hra:              v('se-hra'),
-    conveyance:       v('se-conveyance'),
+    conveyance:       0,
     special_allowance:v('se-special'),
     gratuity:         v('se-gratuity'),
     food_coupon:      v('se-other'),
@@ -1167,7 +1164,6 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
       <div><label class="form-label">Basic Salary *</label><input id="se-basic" type="number" class="form-control" placeholder="0"></div>
       <div><label class="form-label">HRA</label><input id="se-hra" type="number" class="form-control" placeholder="0"></div>
-      <div><label class="form-label">Conveyance</label><input id="se-conveyance" type="number" class="form-control" placeholder="0"></div>
       <div><label class="form-label">Defray Allowance</label><input id="se-special" type="number" class="form-control" placeholder="0"></div>
       <div><label class="form-label">Gratuity</label><input id="se-gratuity" type="number" class="form-control" placeholder="0"></div>
       <div><label class="form-label">Food Coupon</label><input id="se-other" type="number" class="form-control" placeholder="0"></div>
