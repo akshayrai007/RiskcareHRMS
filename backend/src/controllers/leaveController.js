@@ -125,23 +125,39 @@ exports.apply = async (req, res) => {
       }
     }
 
-    // Block contractual employees under 6 months from applying EL/CL/SL
-    // They are on provision and can only use PL
+    // Block EL/CL/SL for ANY employee still provisional (provision_end_date in the
+    // future, or under 6 months from joining). Provisional staff can use PL only.
     const empCatRes = await client.query(
-      `SELECT employee_category, joining_date FROM employees WHERE id=$1`, [empId]
+      `SELECT employee_category, joining_date, provision_end_date FROM employees WHERE id=$1`, [empId]
     );
     const empCat = empCatRes.rows[0];
-    if (!isForceApply && empCat?.employee_category === 'contractual') {
-      const joiningDate = new Date(empCat.joining_date);
-      const sixMonthMark = new Date(joiningDate);
-      sixMonthMark.setMonth(sixMonthMark.getMonth() + 6);
+    if (!isForceApply && empCat && ['EL', 'CL', 'SL'].includes(ltCode)) {
       const now = new Date();
-      if (now < sixMonthMark && ['EL', 'CL', 'SL'].includes(ltCode)) {
+      const sixMonthMark = empCat.joining_date ? new Date(empCat.joining_date) : null;
+      if (sixMonthMark) sixMonthMark.setMonth(sixMonthMark.getMonth() + 6);
+      const provEnd = empCat.provision_end_date ? new Date(empCat.provision_end_date) : null;
+      const provisional = (provEnd && now < provEnd) || (sixMonthMark && now < sixMonthMark);
+      if (provisional) {
+        const until = (provEnd && now < provEnd) ? provEnd : sixMonthMark;
         return res.status(400).json({
           success: false,
-          message: `Contractual employees on provisional period (under 6 months) can only apply for PL. EL/CL/SL will be available after ${sixMonthMark.toDateString()}.`
+          message: `Employees on provisional period can only apply for PL. EL/CL/SL will be available after ${until.toDateString()}.`
         });
       }
+    }
+
+    // Reject overlap with an existing pending/approved request (a 1st-half and a
+    // 2nd-half half-day on the same date do not conflict).
+    {
+      const ov = await client.query(
+        `SELECT id, is_half_day, half_day_type FROM leave_requests
+         WHERE employee_id=$1 AND status IN ('pending','approved')
+           AND from_date <= $3 AND to_date >= $2`,
+        [empId, from_date, to_date]);
+      const clash = ov.rows.some(o => !(is_half_day && o.is_half_day && from_date === to_date
+        && o.half_day_type && o.half_day_type !== half_day_type));
+      if (clash)
+        return res.status(400).json({ success: false, message: 'You already have a pending/approved leave overlapping these dates.' });
     }
 
     // Leave types like ML (Maternity) are HR-recorded only — no pre-allocated
@@ -385,6 +401,10 @@ exports.action = async (req, res) => {
     // Deduct from balance
     const year = new Date(leave.from_date).getFullYear();
     if (!['OD','LWP'].includes(leave.lt_code)) {
+      await client.query(
+        `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, pending, carry_forward)
+         VALUES ($1,$2,$3,0,0,0,0) ON CONFLICT DO NOTHING`,
+        [leave.employee_id, leave.leave_type_id, year]);
       await client.query(
         `UPDATE leave_balances
          SET used = used + $1, pending = GREATEST(0, pending - $1)
@@ -1465,7 +1485,7 @@ exports.getLeaveTransactions = async (req, res) => {
        LEFT JOIN departments d ON e.department_id = d.id
        LEFT JOIN employees ab ON ab.id = lr.actioned_by
        ${where}
-       ORDER BY lr.created_at DESC
+       ORDER BY lr.from_date DESC, lr.to_date DESC, lr.id DESC
        LIMIT 500`,
       params
     );

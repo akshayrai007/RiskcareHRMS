@@ -149,18 +149,21 @@ exports.bulkAction = async (req, res) => {
     for (const item of items) {
       try {
         if (item.type === 'leave') {
-          await db.query(
-            `UPDATE leave_requests SET status=$1, actioned_by=$2, actioned_at=NOW(), actioned_remarks=$3 WHERE id=$4 AND status='pending'`,
+          // Only touch balances if this call actually moved a pending row (no double count)
+          const upd = await db.query(
+            `UPDATE leave_requests SET status=$1, actioned_by=$2, actioned_at=NOW(), actioned_remarks=$3 WHERE id=$4 AND status='pending' RETURNING *`,
             [status, userId, remarks, item.id]);
+          if (!upd.rowCount) { failed++; continue; }
           if (action === 'approve') {
-            const lr = await db.query(`SELECT * FROM leave_requests WHERE id=$1`, [item.id]);
-            if (lr.rows[0]) {
-              const r = lr.rows[0];
-              await db.query(
-                `UPDATE leave_balances SET used=used+$1, pending=GREATEST(0,pending-$1)
-                 WHERE employee_id=$2 AND leave_type_id=$3 AND year=EXTRACT(YEAR FROM $4::date)`,
-                [r.days_requested, r.employee_id, r.leave_type_id, r.from_date]).catch(()=>{});
-            }
+            const r = upd.rows[0];
+            await db.query(
+              `INSERT INTO leave_balances(employee_id, leave_type_id, year, allocated, used, pending, carry_forward)
+               VALUES ($1,$2,EXTRACT(YEAR FROM $3::date),0,0,0,0) ON CONFLICT DO NOTHING`,
+              [r.employee_id, r.leave_type_id, r.from_date]);
+            await db.query(
+              `UPDATE leave_balances SET used=used+$1, pending=GREATEST(0,pending-$1)
+               WHERE employee_id=$2 AND leave_type_id=$3 AND year=EXTRACT(YEAR FROM $4::date)`,
+              [r.days_requested, r.employee_id, r.leave_type_id, r.from_date]);
           } else {
             await db.query(
               `UPDATE leave_balances SET pending=GREATEST(0,pending-(SELECT days_requested FROM leave_requests WHERE id=$1))

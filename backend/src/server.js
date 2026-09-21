@@ -220,6 +220,11 @@ cron.schedule('1 0 1 * *', async () => {
 }, { timezone: CONFIG.timezone || 'Asia/Kolkata' });
 
 // 2. Mark absent — runs at 23:55 every weekday for employees who didn't punch in
+cron.schedule('20 0 * * *', async () => {
+  try { const n = await require('./utils/leaveRevert').revertRecent(10); console.log(`Leave revert reconcile: credited back ${n} day(s)`); }
+  catch (e) { console.error('❌ leaveRevert cron failed:', e.message); }
+}, { timezone: 'Asia/Kolkata' });
+
 cron.schedule('55 23 * * 1-6', async () => {
   console.log('⏰ Marking absent for employees with no attendance today...');
   try {

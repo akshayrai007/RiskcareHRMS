@@ -61,6 +61,20 @@ async function getHalfDayType(queryable, empId, dateStr) {
      ORDER BY (status='approved') DESC LIMIT 1`, [empId, dateStr]);
   return r.rows[0]?.half_day_type || null;
 }
+// Which half is off on an APPROVED half-day leave for this date ('first'|'second'|null).
+// Legacy rows with no half_day_type: infer from punch-in (at/after 12:00 => morning was leave).
+async function getApprovedHalfDay(queryable, empId, dateStr, punchIn) {
+  const r = await queryable.query(
+    `SELECT half_day_type FROM leave_requests
+     WHERE employee_id=$1 AND is_half_day=true AND status='approved'
+       AND from_date <= $2::date AND to_date >= $2::date LIMIT 1`, [empId, dateStr]);
+  if (!r.rows.length) return null;
+  if (r.rows[0].half_day_type) return r.rows[0].half_day_type;
+  if (punchIn) { const [h] = String(punchIn).split(':').map(Number); return h >= 12 ? 'first' : 'second'; }
+  return getHalfDayType(queryable, empId, dateStr) ? null : 'first';
+}
+const isHalfLeaveStatus = (s) => /^h-(el|cl|sl|pl|lwp)$/i.test(s || '');
+
 async function getLateCutoffMins(queryable, empId, dateStr) {
   return (await getHalfDayType(queryable, empId, dateStr)) === 'first' ? 14 * 60 : 10 * 60 + 30;
 }
@@ -99,9 +113,15 @@ exports.punchIn = async (req, res) => {
 
     // ── FIX: Use IST time — Render server runs on UTC ─────────────────────────
     const ist = getISTTimeParts();
+    const halfToday = await getApprovedHalfDay(db, empId, today, null);
+    if (halfToday === 'first' && ist.hour < 12)
+      return res.status(400).json({ success: false, half_day_leave: true,
+        message: 'You have 1st-half leave today — you can punch in from 12:00 PM.' });
     const lateCutoff = await getLateCutoffMins(db, empId, today);
     const isLate = (ist.hour * 60 + ist.minute) > lateCutoff;
-    const status = isLate ? 'late' : 'present';
+    let status = isLate ? 'late' : 'present';
+    // Approved half-day leave day: keep the h-el/h-cl/h-sl status, never overwrite with late/present
+    if (halfToday && isHalfLeaveStatus(existing.rows[0]?.status)) status = existing.rows[0].status.toLowerCase();
 
     const locStr = punch_in_location ||
       (location_lat && location_lng ? `GPS: ${parseFloat(location_lat).toFixed(4)},${parseFloat(location_lng).toFixed(4)}` : 'Manual');
@@ -170,10 +190,11 @@ exports.punchOut = async (req, res) => {
 
     // ── 2nd-half leave: the morning is worked, the afternoon is leave — so
     // punch-out is not allowed before the 2:00 PM half boundary.
-    if ((await getHalfDayType(db, empId, today)) === 'second') {
+    const halfOut = await getApprovedHalfDay(db, empId, today, existing.rows[0].punch_in);
+    if (halfOut === 'second') {
       const nowIst = getISTTimeParts();
       if (nowIst.hour * 60 + nowIst.minute < 14 * 60)
-        return res.status(400).json({ success: false, message: 'You have 2nd-half leave today — you can punch out from 2:00 PM.' });
+        return res.status(400).json({ success: false, half_day_leave: true, message: 'You have 2nd-half leave today — you can punch out from 2:00 PM.' });
     }
 
     // ── Geo-boundary validation — see punchIn for why this is coordinate-gated
@@ -235,7 +256,10 @@ exports.punchOut = async (req, res) => {
     const onTimeOut = punchOutTotalMins >= (18 * 60 + 30); // punch-out at or after 18:30
 
     let status = existing.rows[0].status;
-    if (onTimeIn && onTimeOut) {
+    if (halfOut && isHalfLeaveStatus(status)) {
+      // Half-day leave day: keep the h-xx status, no auto half-day deduction
+      status = status.toLowerCase();
+    } else if (onTimeIn && onTimeOut) {
       // Punched in ≤10:30 and out ≥18:30 → always Present (not half-day)
       status = 'present';
     } else if (hoursWorked >= 7) {
@@ -268,55 +292,8 @@ exports.punchOut = async (req, res) => {
 
     if (isNowPresent) {
       try {
-        const leaveRes = await db.query(
-          `SELECT lr.id, lr.leave_type_id, lr.days_requested, lt.code AS lt_code
-           FROM leave_requests lr
-           JOIN leave_types lt ON lr.leave_type_id = lt.id
-           WHERE lr.employee_id = $1
-             AND lr.status = 'approved'
-             AND $2::date BETWEEN lr.from_date AND lr.to_date
-           LIMIT 1`,
-          [empId, today]
-        );
-
-        if (leaveRes.rows.length) {
-          const leave = leaveRes.rows[0];
-          if (!['LWP', 'OD'].includes(leave.lt_code)) {
-            const leaveYear = new Date(today).getFullYear();
-            const newDays = Math.max(0, parseFloat(leave.days_requested) - 1);
-
-            // Credit 1 day back to leave balance
-            await db.query(
-              `UPDATE leave_balances SET used = GREATEST(0, used - 1)
-               WHERE employee_id=$1 AND leave_type_id=$2 AND year=$3`,
-              [empId, leave.leave_type_id, leaveYear]
-            );
-
-            // Update leave request days
-            await db.query(
-              `UPDATE leave_requests SET days_requested=$1,
-               status = CASE WHEN $1 = 0 THEN 'cancelled' ELSE status END,
-               remarks = COALESCE(remarks,'') || $2
-               WHERE id=$3`,
-              [newDays,
-               newDays === 0 ? ' [Auto-cancelled: employee worked all days]' : ` [1 day auto-reverted: worked on ${today}]`,
-               leave.id]
-            );
-
-            // Notify employee (no expires_at column in this table)
-            await db.query(
-              `INSERT INTO notifications(employee_id, type, title, message)
-               VALUES($1,'leave',$2,$3)`,
-              [empId,
-               '✅ Leave Day Reverted',
-               `1 ${leave.lt_code} day credited back — you worked on ${today}. Remaining: ${newDays} day(s).`]
-            );
-          }
-        }
-      } catch (leaveErr) {
-        // Leave revert failed — don't block punch-out, just log
-        console.error('[LeaveRevert Error]', leaveErr.message);
-      }
+        await require('../utils/leaveRevert').revertWorkedLeaveDay(empId, today);
+      } catch (e) { console.error('[LeaveRevert Error]', e.message); }
     }
 
     // ── Auto Comp Off Grant ──────────────────────────────────────────────────

@@ -247,6 +247,7 @@ router.post('/leave/import-balances',        authenticate, authorize(...HR_ADMIN
 // ── Advance Salary ────────────────────────────────────────────────────────────
 router.post('/advance/apply',                authenticate, advCtrl.apply);
 router.get ('/advance/mine',                 authenticate, advCtrl.getMine);
+router.get ('/advance/stats',                authenticate, advCtrl.getStats);
 router.get ('/advance',                      authenticate, advCtrl.getAll);
 router.post('/advance/:id/action',           authenticate, advCtrl.action);
 router.post('/advance/:id/revoke',           authenticate, advCtrl.revoke);
