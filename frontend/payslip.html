@@ -97,7 +97,7 @@ const NOW = new Date();
 const monthSel = document.getElementById('ps-month');
 const yearSel  = document.getElementById('ps-year');
 fmt.months.forEach((m,i) => monthSel.innerHTML += `<option value="${i+1}" ${i+1===NOW.getMonth()+1?'selected':''}>${m}</option>`);
-for (let y = NOW.getFullYear(); y >= 2020; y--)
+for (let y = 2026; y <= 2035; y++)
   yearSel.innerHTML += `<option value="${y}" ${y===NOW.getFullYear()?'selected':''}>${y}</option>`;
 
 // Load available payslip months

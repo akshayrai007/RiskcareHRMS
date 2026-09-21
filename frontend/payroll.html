@@ -281,7 +281,7 @@ const NOW = new Date();
 });
 ['ps-year','proc-year','list-year','upload-year'].forEach(id => {
   const sel = document.getElementById(id);
-  if (sel) for (let y=NOW.getFullYear(); y>=2020; y--)
+  if (sel) for (let y = 2026; y <= 2035; y++)
     sel.innerHTML += `<option value="${y}" ${y===NOW.getFullYear()?'selected':''}>${y}</option>`;
 });
 
@@ -892,7 +892,7 @@ function downloadSalaryStructureExcel() {
   const sel = document.getElementById('struct-year');
   if (!sel) return;
   const yr = new Date().getFullYear();
-  for (let y = yr; y >= yr - 3; y--)
+  for (let y = 2026; y <= 2035; y++)
     sel.innerHTML += `<option value="${y}" ${y===yr?'selected':''}>${y}</option>`;
   // Set current month in month dropdown
   const msel = document.getElementById('struct-month');

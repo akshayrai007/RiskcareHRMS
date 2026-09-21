@@ -429,7 +429,7 @@ function enableHrLeaveView(withImport = true) {
   ['summary-year','txn-year'].forEach(id => {
     const sel = document.getElementById(id);
     if (!sel || sel.options.length) return;
-    for (let y = curYr; y >= curYr - 3; y--) {
+    for (let y = 2026; y <= 2035; y++) {
       const o = document.createElement('option');
       o.value = y; o.textContent = y;
       if (y === curYr) o.selected = true;

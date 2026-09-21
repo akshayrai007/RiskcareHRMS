@@ -921,7 +921,7 @@ if (Role.is('hr','super_admin')) {
     if (mSel && !mSel.options.length)
       MONTHS.forEach((m,i) => mSel.innerHTML += `<option value="${i+1}" ${i+1===NOW.getMonth()+1?'selected':''}>${m}</option>`);
     if (ySel && !ySel.options.length)
-      for (let y = NOW.getFullYear(); y >= NOW.getFullYear()-3; y--)
+      for (let y = 2026; y <= 2035; y++)
         ySel.innerHTML += `<option value="${y}" ${y===NOW.getFullYear()?'selected':''}>${y}</option>`;
   })();
   api('GET','/employees').then(resp => {
@@ -959,7 +959,7 @@ if (Role.is('hr','accounts','super_admin')) {
     if (abMonth && !abMonth.options.length)
       MONTHS.forEach((m,i) => abMonth.innerHTML += `<option value="${i+1}" ${i+1===NOW.getMonth()+1?'selected':''}>${m}</option>`);
     if (abYear && !abYear.options.length)
-      for (let y = NOW.getFullYear(); y >= 2020; y--)
+      for (let y = 2026; y <= 2035; y++)
         abYear.innerHTML += `<option value="${y}" ${y===NOW.getFullYear()?'selected':''}>${y}</option>`;
   })();
   (function initDownloadTab() {
@@ -970,7 +970,7 @@ if (Role.is('hr','accounts','super_admin')) {
     if (dlMonth && !dlMonth.options.length)
       MONTHS.forEach((m,i) => dlMonth.innerHTML += `<option value="${i+1}" ${i+1===NOW.getMonth()+1?'selected':''}>${m}</option>`);
     if (dlYear && !dlYear.options.length)
-      for (let y = NOW.getFullYear(); y >= 2020; y--)
+      for (let y = 2026; y <= 2035; y++)
         dlYear.innerHTML += `<option value="${y}" ${y===NOW.getFullYear()?'selected':''}>${y}</option>`;
     api('GET','/departments').then(resp => {
       if (!resp?.success) return;
@@ -992,7 +992,7 @@ const monthSel = document.getElementById('sum-month');
 const yearSel  = document.getElementById('sum-year');
 ['January','February','March','April','May','June','July','August','September','October','November','December']
   .forEach((m,i) => monthSel.innerHTML += `<option value="${i+1}" ${i+1===curMonth?'selected':''}>${m}</option>`);
-for (let y = new Date().getFullYear(); y >= 2020; y--)
+for (let y = 2026; y <= 2035; y++)
   yearSel.innerHTML += `<option value="${y}" ${y===curYear?'selected':''}>${y}</option>`;
 
 loadCalendar();
@@ -2957,7 +2957,7 @@ function initImportTab() {
     MONTHS_IMP.forEach((m,i) =>
       impMonth.innerHTML += `<option value="${i+1}" ${i+1===now.getMonth()+1?'selected':''}>${m}</option>`
     );
-    for (let y = now.getFullYear(); y >= 2020; y--)
+    for (let y = 2026; y <= 2035; y++)
       impYear.innerHTML += `<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y}</option>`;
   }
 }
