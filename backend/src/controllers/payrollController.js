@@ -506,7 +506,7 @@ exports.uploadPayroll = async (req, res) => {
            basic=$8, hra=$9, conveyance=$10, special_allowance=$11, gratuity=$12, other_allowance=$13, gross_salary=$14,
            pf_employee=$15, esi_employee=$16, professional_tax=$17, lwf=$18, loan_emi_recovery=$19,
            tds=$20, total_deductions=$21, net_salary=$22, status=$23, payment_date=$24, upload_id=$25`,
-        [empId, monthNum, yearNum, workDays, presentDays, lopDays, paidDays,
+        [empId, monthNum, yearNum, workDays, presentDays, lopDays, effPresent,
          earnedBasic, earnedHRA, earnedConveyance, earnedOtherAllow, earnedGratuity, foodCoupon, gross,
          pfEmp, esiEmp, pt, lwf, loanEmi, tds,
          totalDed, netPay, status,

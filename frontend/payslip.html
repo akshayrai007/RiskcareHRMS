@@ -241,7 +241,7 @@ function renderPayslip(p) {
     <td style="padding:4px 0;font-size:12px;border-bottom:1px dotted #cfd8dc">${val || '—'}</td>
   </tr>`;
 
-  return `<div style="font-family:Arial,Helvetica,sans-serif;background:#fff;color:#000;max-width:794px;margin:0 auto;padding:0">
+  return `<div style="font-family:Arial,Helvetica,sans-serif;background:#fff;color:#000;max-width:794px;margin:0 auto;padding:14px 26px 18px;box-sizing:border-box">
 
   <!-- HEADER -->
   <table style="width:100%;border-collapse:collapse">
@@ -291,14 +291,10 @@ function renderPayslip(p) {
   <!-- ATTENDANCE SUMMARY -->
   <table style="width:100%;border-collapse:collapse;margin-bottom:12px;text-align:center">
     <tr style="background:#f1f8ff">
-      <td style="padding:6px;border:1px solid #cfd8dc;font-size:11px;color:#546e7a;font-weight:700">Working Days</td>
-      <td style="padding:6px;border:1px solid #cfd8dc;font-size:11px;color:#546e7a;font-weight:700">Paid Days</td>
       <td style="padding:6px;border:1px solid #cfd8dc;font-size:11px;color:#546e7a;font-weight:700">LOP Days</td>
       <td style="padding:6px;border:1px solid #cfd8dc;font-size:11px;color:#546e7a;font-weight:700">LOP Reversal</td>
     </tr>
     <tr>
-      <td style="padding:6px;border:1px solid #cfd8dc;font-size:13px;font-weight:700">${wDays.toFixed(1)}</td>
-      <td style="padding:6px;border:1px solid #cfd8dc;font-size:13px;font-weight:700">${paidDays.toFixed(1)}</td>
       <td style="padding:6px;border:1px solid #cfd8dc;font-size:13px;font-weight:700">${lopDays.toFixed(1)}</td>
       <td style="padding:6px;border:1px solid #cfd8dc;font-size:13px;font-weight:700">${parseFloat(p.lop_reversal || 0).toFixed(1)}</td>
     </tr>
