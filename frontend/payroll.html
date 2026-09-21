@@ -504,7 +504,6 @@ function renderPayslipHTML(p) {
     ['ESI — Employee (0.75%)',     p.esi_employee],
     ['Professional Tax',           p.professional_tax],
     ['TDS',                        p.tds],
-    ['LWF',                        p.lwf],
     ['EMI Recovery',               p.loan_emi_recovery],
     ['PF — Employer (12%)',        p.pf_employer],
     ['PF Admin Charges (0.5%)',    p.pf_admin],
@@ -830,7 +829,6 @@ async function loadSalaryStructures() {
           <th style="${XLH};background:#fce4ec">ESI (Emp)</th>
           <th style="${XLH};background:#fce4ec">ESI (Empr)</th>
           <th style="${XLH};background:#fce4ec">PT</th>
-          <th style="${XLH};background:#fce4ec">LWF</th>
           <th style="${XLH};background:#fce4ec">Total Ded.</th>
           <th style="${XLH};background:#e3f2fd">Net Salary</th>
           <th style="${XLH};background:#e3f2fd">CTC/mo</th>
@@ -854,7 +852,6 @@ async function loadSalaryStructures() {
           <td style="${XLD};text-align:right;color:#dc2626">${fmt.money(r.esi_employee)}</td>
           <td style="${XLD};text-align:right;color:#9f1239">${fmt.money(r.esi_employer)}</td>
           <td style="${XLD};text-align:right;color:#dc2626">${fmt.money(r.professional_tax||r.pt_amount||0)}</td>
-          <td style="${XLD};text-align:right;color:#dc2626">${fmt.money(r.lwf)}</td>
           <td style="${XLD};text-align:right;color:#dc2626">- ${fmt.money(r.total_deductions)}</td>
           <td style="${XLD};text-align:right;font-weight:800;color:#16a34a;font-size:13px">${fmt.money(r.net_salary)}</td>
           <td style="${XLD};text-align:right;color:#1d4ed8">${fmt.money(r.ctc_monthly)}</td>
@@ -1075,7 +1072,6 @@ async function openSalaryEdit(empId) {
   document.getElementById('se-eps').checked    = r.eps_applicable !== false;
   document.getElementById('se-esi').checked    = r.esi_applicable !== false;
   document.getElementById('se-pt').checked     = r.pt_applicable !== false;
-  document.getElementById('se-lwf').checked    = r.lwf_applicable !== false;
   document.getElementById('se-tds').checked    = !!r.tds_applicable;
   document.getElementById('se-emp-id').dataset.state = r.employee_state || '';
   // Show modal
@@ -1083,7 +1079,7 @@ async function openSalaryEdit(empId) {
   m.style.display = 'flex';
   // Add live preview listeners
   ['se-basic','se-hra','se-special','se-gratuity','se-other',
-   'se-pf','se-pf-basis','se-esi','se-pt','se-lwf'].forEach(id => {
+   'se-pf','se-pf-basis','se-esi','se-pt'].forEach(id => {
     const el = document.getElementById(id);
     el.oninput = updateSePreview; el.onchange = updateSePreview;
   });
@@ -1116,8 +1112,7 @@ function updateSePreview() {
   const esiEmp  = document.getElementById('se-esi').checked && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
   const state   = document.getElementById('se-emp-id')?.dataset.state || '';
   const pt      = document.getElementById('se-pt').checked  ? calcPTPreviewPayroll(gross, state) : 0;
-  const lwf     = document.getElementById('se-lwf').checked ? 6 : 0;
-  const ded     = pfEmp + esiEmp + pt + lwf;
+  const ded     = pfEmp + esiEmp + pt;
   const net     = gross - ded;
   const esiOn = document.getElementById('se-esi').checked && gross <= 21000;
   const esiLine = document.getElementById('sep-esi');
@@ -1152,7 +1147,7 @@ async function saveSalaryStructure() {
     eps_applicable:   document.getElementById('se-eps').checked,
     esi_applicable:   document.getElementById('se-esi').checked,
     pt_applicable:    document.getElementById('se-pt').checked,
-    lwf_applicable:   document.getElementById('se-lwf').checked,
+    lwf_applicable:   false,
     tds_applicable:   document.getElementById('se-tds').checked,
   };
 
@@ -1215,10 +1210,6 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
       <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px">
         <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:700"><input type="checkbox" id="se-pt"> Professional Tax (PT)</label>
         <div style="font-size:11px;color:var(--muted);margin-top:4px">By state slab (employee's State)</div>
-      </div>
-      <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px">
-        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:700"><input type="checkbox" id="se-lwf"> LWF</label>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px">Fixed ₹6/month</div>
       </div>
       <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;grid-column:1/-1">
         <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:700"><input type="checkbox" id="se-tds"> TDS (Tax Deducted at Source)</label>

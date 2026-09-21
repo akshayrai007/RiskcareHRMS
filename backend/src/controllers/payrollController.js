@@ -162,8 +162,8 @@ async function computeAndSaveSalaryStructure(queryable, employeeId, fields, upda
   const esi_employee = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
   const esi_employer = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
   const pt           = pt_applicable  ? calcPT(gross, empState) : 0;
-  const lwf          = lwf_applicable ? 6 : 0;
-  const total_ded    = pf_employee + esi_employee + pt + lwf;
+  const lwf          = 0; // Labour Welfare Fund is not used
+  const total_ded    = pf_employee + esi_employee + pt;
   const net          = gross - total_ded;
   const ctc          = gross + pf_employer + esi_employer + pf_admin;
 
@@ -487,7 +487,7 @@ exports.uploadPayroll = async (req, res) => {
       const pfEmp    = struct.pf_applicable  ? Math.round(pfBase * 0.12) : 0;
       const esiEmp   = struct.esi_applicable && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
       const pt       = struct.pt_applicable  ? calcPT(gross, empState) : 0;
-      const lwf      = struct.lwf_applicable ? 6 : 0;
+      const lwf      = 0; // Labour Welfare Fund is not used
 
       const totalDed = pfEmp + esiEmp + pt + lwf + tds + loanEmi + gtlDed + lateMarkDed;
       const netPay   = Math.round((gross - totalDed) * 100) / 100;
@@ -715,7 +715,7 @@ exports.getPayslip = async (req, res) => {
 
     const ps = result.rows[0];
     ps.month_name = MONTH_NAMES[ps.month - 1];
-    ps.conveyance = 0; ps.fixed_conveyance = 0; // Conveyance is not used anywhere
+    ps.lwf = 0; ps.conveyance = 0; ps.fixed_conveyance = 0; // Conveyance is not used anywhere
 
     // Derive pf_employer, pf_admin if not stored in DB (the monthly `payroll`
     // table only ever stores pf_employee -- see computePayroll above -- so
@@ -878,7 +878,7 @@ exports.exportPayroll = async (req, res) => {
       ['Gratuity','gratuity'],['Food Coupon (incl. adj)','other_allowance'],['Extra Working Salary','extra_working_salary'],
       ['Bonus','bonus'],['Incentive','incentive'],['Other Earning','other_earning'],['Performance Bonus','performance_bonus'],
       ['Gross Salary','gross_salary'],['PF (Employee)','pf_employee'],['ESI Earning','esi_wages'],['ESI (Employee)','esi_employee'],
-      ['ESI (Employer)','esi_employer'],['Prof Tax','professional_tax'],['LWF','lwf'],['TDS','tds'],['GTL Deduction','gtl_deduction'],
+      ['ESI (Employer)','esi_employer'],['Prof Tax','professional_tax'],['TDS','tds'],['GTL Deduction','gtl_deduction'],
       ['Late Mark Deduction','late_mark_deduction'],['Salary Advance Recovery','loan_emi_recovery'],['Total Deductions','total_deductions'],
       ['Net Pay','net_salary'],['Status','status']];
     const money = new Set(cols.map(c => c[1]).filter(k => !['employee_code','employee_name','department_name','designation_title','status','month','year'].includes(k)));
@@ -1285,7 +1285,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       'Basic', 'HRA', 'Defray Allowance', 'Gratuity',
       'Food Coupon Adjustment', 'Extra Working Salary', 'Bonus', 'Incentive', 'Other Earning', 'Performance Bonus',
       'Gross Salary',
-      'PF (Employee)', 'EPF Employer (A/c-1)', 'EPS Employer (A/c-10)', 'PF Admin + EDLI (Employer)', 'ESI Earning (Wages)', 'ESI (Employee)', 'ESI (Employer)', 'Prof Tax', 'LWF', 'TDS',
+      'PF (Employee)', 'EPF Employer (A/c-1)', 'EPS Employer (A/c-10)', 'PF Admin + EDLI (Employer)', 'ESI Earning (Wages)', 'ESI (Employee)', 'ESI (Employer)', 'Prof Tax', 'TDS',
       'GTL Deduction', 'Late Mark Deduction',
       'Salary Advance Recovery (Loan/EMI)', 'Total Deductions',
       'Net Pay', 'Total Employer Contribution', 'Total Cost to Company', 'Payment Status', 'Remarks'
@@ -1315,9 +1315,8 @@ exports.downloadPayrollTemplate = async (req, res) => {
         const pf      = parseFloat(e.pf_employee)    || 0;
         const esi     = parseFloat(e.esi_employee)   || 0;
         const pt      = parseFloat(e.professional_tax) || 0;
-        const lwf     = parseFloat(e.lwf)            || 0;
         const tds     = parseFloat(e.tds)            || 0;
-        const totalDed= parseFloat(e.total_deductions) || (pf + esi + pt + lwf + tds);
+        const totalDed= parseFloat(e.total_deductions) || (pf + esi + pt + tds);
         const net     = parseFloat(e.net_salary)     || Math.max(0, gross - totalDed);
         return [
           e.employee_code,
@@ -1345,7 +1344,6 @@ exports.downloadPayrollTemplate = async (req, res) => {
           esi,
           parseFloat(e.esi_employer) || 0,
           pt,
-          lwf,
           tds,
           0, 0,              // GTL, Late Mark deductions (one-time)
           parseFloat(activeEMI ? activeEMI.monthly_emi : 0),
@@ -1374,7 +1372,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       const earnedFixed = (num('Basic') + num('HRA') + num('Defray Allowance') + num('Gratuity')) * (wd ? paid / wd : 0);
       const oneTime = ['Food Coupon Adjustment','Extra Working Salary','Bonus','Incentive','Other Earning','Performance Bonus'].reduce((a, l) => a + num(l), 0);
       const gross = Math.round((earnedFixed + oneTime) * 100) / 100;
-      const ded = num('PF (Employee)') + num('ESI (Employee)') + num('Prof Tax') + num('LWF') + num('TDS') +
+      const ded = num('PF (Employee)') + num('ESI (Employee)') + num('Prof Tax') + num('TDS') +
                   num('GTL Deduction') + num('Late Mark Deduction') + num('Salary Advance Recovery (Loan/EMI)');
       const setF = (label, f, v) => { ws1[LT(label) + R] = { t: 'n', f, v }; };
       setF('LOP Days', `MAX(0,${LT('Working Days')}${R}-${LT('Present Days')}${R})`, lop);
@@ -1393,7 +1391,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       {wch:11},{wch:11},{wch:9},{wch:12},{wch:9},
       {wch:10},{wch:8},{wch:14},{wch:9},
       {wch:14},{wch:14},{wch:9},{wch:10},{wch:12},{wch:14},{wch:12},
-      {wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:12},{wch:12},{wch:9},{wch:6},{wch:8},
+      {wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:12},{wch:12},{wch:9},{wch:8},
       {wch:12},{wch:14},
       {wch:20},{wch:14},
       {wch:10},{wch:16},{wch:16},{wch:14},{wch:20}
@@ -1499,13 +1497,13 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
       'Basic', 'HRA', 'Defray Allowance', 'Gratuity', 'Food Coupon',
       'PF Applicable (Y/N)', 'PF Basis (Capped/Actual)', 'EPS Applicable (Y/N)',
       'ESI Applicable (Y/N)', 'PT Applicable (Y/N)',
-      'LWF Applicable (Y/N)', 'TDS Applicable (Y/N)'
+      'TDS Applicable (Y/N)'
     ];
     const yn = v => v ? 'Y' : 'N';
 
     const rows = [
       ['HRMS — Salary Structure Bulk Upload Template'],
-      ['⚠️  Fill Basic, HRA, Defray Allowance, Gratuity (monthly ₹ amounts). PF/ESI/PT/LWF/TDS are auto-calculated by the system based on the Y/N applicability columns — just mark Y or N.'],
+      ['⚠️  Fill Basic, HRA, Defray Allowance, Gratuity (monthly ₹ amounts). PF/ESI/PT/TDS are auto-calculated by the system based on the Y/N applicability columns — just mark Y or N.'],
       [],
       HEADERS,
       ...empResult.rows.map(e => [
@@ -1515,7 +1513,7 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
         parseFloat(e.special_allowance) || 0, parseFloat(e.gratuity) || 0, parseFloat(e.food_coupon) || 0,
         yn(e.pf_applicable), e.pf_wage_basis === 'actual' ? 'Actual' : 'Capped', yn(e.eps_applicable),
         yn(e.esi_applicable), yn(e.pt_applicable),
-        yn(e.lwf_applicable), yn(e.tds_applicable)
+        yn(e.tds_applicable)
       ])
     ];
 
@@ -1550,13 +1548,12 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
       ['EPS Applicable',   'Y if the employer\'s 12% PF share splits into EPS (A/c-10, 8.33%) + EPF (A/c-1, 3.67%), which is the default for most employees. N if EPS does not apply to this employee — their full 12% employer share stays in EPF A/c-1 instead.'],
       ['ESI Applicable',   'Y if ESI applies (only relevant when gross ≤ ₹21,000), else N'],
       ['PT Applicable',    'Y if Professional Tax applies, else N'],
-      ['LWF Applicable',   'Y if Labour Welfare Fund applies, else N'],
       ['TDS Applicable',   'Y if TDS should be deducted, else N (TDS amount itself is entered separately during monthly payroll)'],
       [''],
       ['UPLOAD RULES:'],
       ['• Emp Code must match exactly (e.g. E066)'],
       ['• Do not add/remove columns or rename the sheet'],
-      ['• PF/ESI/PT/LWF amounts are auto-calculated — do not add columns for them'],
+      ['• PF/ESI/PT amounts are auto-calculated — do not add columns for them'],
       ['• Save as .xlsx before uploading'],
       ['• Upload via Employees page → Upload Salary'],
     ];
@@ -1638,7 +1635,7 @@ exports.bulkUploadSalaryStructure = async (req, res) => {
       const eps_applicable     = row['EPS Applicable (Y/N)'] !== undefined ? isYes(row['EPS Applicable (Y/N)']) : true;
       const esi_applicable     = isYes(row['ESI Applicable (Y/N)']);
       const pt_applicable      = isYes(row['PT Applicable (Y/N)']);
-      const lwf_applicable     = isYes(row['LWF Applicable (Y/N)']);
+      const lwf_applicable     = false;
       const tds_applicable     = isYes(row['TDS Applicable (Y/N)']);
       const pf_wage_basis      = /actual/i.test(String(row['PF Basis (Capped/Actual)'] || '')) ? 'actual' : 'capped';
 
@@ -1664,8 +1661,8 @@ exports.bulkUploadSalaryStructure = async (req, res) => {
       const esi_employee   = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
       const esi_employer   = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
       const pt             = pt_applicable  ? calcPT(gross, empStateMap[empCode]) : 0;
-      const lwf            = lwf_applicable ? 6 : 0;
-      const total_ded      = pf_employee + esi_employee + pt + lwf;
+      const lwf            = 0;
+      const total_ded      = pf_employee + esi_employee + pt;
       const net            = gross - total_ded;
       const total_employer_cost = pf_employer + esi_employer + pf_admin;
       const ctc_monthly    = gross + total_employer_cost;

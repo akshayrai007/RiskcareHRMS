@@ -51,7 +51,7 @@ const COL = {
   sal_basic: 52, sal_hra: 53, sal_defray_allowance: 54,
   sal_gratuity: 55, sal_food_coupon: 56,
   sal_pf_applicable: 57, sal_pf_wage_basis: 58, sal_esi_applicable: 59,
-  sal_pt_applicable: 60, sal_lwf_applicable: 61, sal_tds_applicable: 62
+  sal_pt_applicable: 60, sal_tds_applicable: 61
 };
 
 // ── Find-or-create helpers (Department/Designation may be brand new) ────────
@@ -377,7 +377,7 @@ exports.importEmployees = async (req, res) => {
             pf_wage_basis:     clean(row[COL.sal_pf_wage_basis])?.toLowerCase() === 'actual' ? 'actual' : 'capped',
             esi_applicable:    yn(row[COL.sal_esi_applicable]),
             pt_applicable:     yn(row[COL.sal_pt_applicable]),
-            lwf_applicable:    yn(row[COL.sal_lwf_applicable]),
+            lwf_applicable:    false,
             tds_applicable:    yn(row[COL.sal_tds_applicable])
           }, req.user.id);
         }
@@ -637,7 +637,7 @@ exports.downloadImportTemplate = async (req, res) => {
       'Basic Salary (₹/month)', 'HRA (₹/month)', 'Defray Allowance (₹/month)',
       'Gratuity (₹/month)', 'Food Coupon (₹/month)',
       'PF Applicable (Y/N)', 'PF Wage Basis (capped/actual)', 'ESI Applicable (Y/N)',
-      'PT Applicable (Y/N)', 'LWF Applicable (Y/N)', 'TDS Applicable (Y/N)'
+      'PT Applicable (Y/N)', 'TDS Applicable (Y/N)'
     ];
 
     // A real employee (whichever exists) as a fill-in-the-blank example, so
@@ -692,7 +692,7 @@ exports.downloadImportTemplate = async (req, res) => {
       // Salary
       '', '', '', '', '',
       'Y', 'capped', 'N',
-      'Y', 'N', 'N'
+      'Y', 'N'
     ];
 
     // Section a column belongs to (by 0-indexed COL position) → header fill
@@ -706,7 +706,7 @@ exports.downloadImportTemplate = async (req, res) => {
       { end: 43, color: 'FF16a34a', name: 'Employment' },
       { end: 47, color: 'FFea580c', name: 'Statutory IDs' },
       { end: 51, color: 'FF0d9488', name: 'Bank' },
-      { end: 62, color: 'FFdb2777', name: 'Salary' },
+      { end: 61, color: 'FFdb2777', name: 'Salary' },
     ];
     function sectionColorFor(colIdx) {
       for (const s of SECTIONS) if (colIdx <= s.end) return s.color;
@@ -831,7 +831,7 @@ exports.downloadImportTemplate = async (req, res) => {
     valueRow('Category', 'permanent, contractual, provision', 'FFdcfce7');
     valueRow('Employment Type', 'Full-Time, Part-Time', 'FFdcfce7');
     valueRow('Saturday Policy', '2nd_4th_off (2nd & 4th Saturday off)  |  all_working (every Saturday a working day)', 'FFdcfce7');
-    valueRow('PF Applicable / ESI Applicable / PT Applicable / LWF Applicable / TDS Applicable', 'Y or N', 'FFfce7f3');
+    valueRow('PF Applicable / ESI Applicable / PT Applicable / TDS Applicable', 'Y or N', 'FFfce7f3');
     valueRow('PF Wage Basis', 'capped, actual', 'FFfce7f3');
 
     const buf = await wb.xlsx.writeBuffer();

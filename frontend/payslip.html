@@ -154,10 +154,9 @@ function renderPayslip(p) {
   const tds      = parseFloat(p.tds          || 0);
   const loanEmi  = parseFloat(p.loan_emi_recovery || 0);
 
-  const lwf      = parseFloat(p.lwf || 0);
   const gtlDed   = parseFloat(p.gtl_deduction || 0);
   const lateDed  = parseFloat(p.late_mark_deduction || 0);
-  const empDedTotal = pfEmp + esiEmp + pt + lwf + tds + gtlDed + lateDed + loanEmi;
+  const empDedTotal = pfEmp + esiEmp + pt + tds + gtlDed + lateDed + loanEmi;
   const netPay = gross - empDedTotal;
 
   const wDays = parseFloat(p.working_days || 30);
@@ -208,7 +207,6 @@ function renderPayslip(p) {
     { label: 'Professional Tax', amount: pt, always: true },
     { label: 'Provident Fund', amount: pfEmp, always: true },
     { label: 'ESI (Employee)', amount: esiEmp, always: true },
-    { label: 'Labour Welfare Fund', amount: lwf },
     { label: 'TDS', amount: tds },
     { label: 'GTL Deduction', amount: gtlDed },
     { label: 'Late Mark Deduction', amount: lateDed },

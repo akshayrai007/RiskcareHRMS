@@ -273,7 +273,6 @@ async function openEmployeeHistory(empId) {
       ['ESI (Employee)',    r => r.snap?.esi_employee,      r => r.prevSnap?.esi_employee,   '#0f766e'],
       ['ESI (Employer)',    r => r.snap?.esi_employer,      r => r.prevSnap?.esi_employer,   '#0f766e'],
       ['Prof. Tax',         r => r.snap?.professional_tax,  r => r.prevSnap?.professional_tax, '#b45309'],
-      ['LWF',               r => r.snap?.lwf,               r => r.prevSnap?.lwf,            '#b45309'],
       ['Total Deductions',  r => r.snap?.total_deductions,  r => r.prevSnap?.total_deductions, '#b91c1c'],
       ['Net Salary',        r => r.snap?.net_salary,        r => r.prevSnap?.net_salary,     '#15803d'],
     ];
@@ -324,7 +323,7 @@ async function openEmployeeHistory(empId) {
           </thead>
           <tbody>${rowsHtml}</tbody>
         </table>
-        <div style="font-size:11px;color:var(--muted);margin-top:8px">Struck-through amounts are the previous value. Auto-calculated items (PF/EPF/EPS/ESI/PT/LWF, gross, net) come from the salary structure saved with each revision; revisions made before this was tracked show only the headline amounts.</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">Struck-through amounts are the previous value. Auto-calculated items (PF/EPF/EPS/ESI/PT, gross, net) come from the salary structure saved with each revision; revisions made before this was tracked show only the headline amounts.</div>
       </div>`;
   } catch (renderErr) {
     console.error('[openEmployeeHistory render]', renderErr);
