@@ -830,6 +830,11 @@ async function start() {
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS branch VARCHAR(80)`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS branch_effective_date DATE`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS division VARCHAR(100)`);
+        // Columns the payslip query reads - older live DBs may lack some of them
+        for (const [c, t] of [['esi_number','VARCHAR(30)'],['pf_number','VARCHAR(30)'],['uan_number','VARCHAR(30)'],
+                              ['pan_number','VARCHAR(15)'],['aadhar_number','VARCHAR(15)'],['bank_name','VARCHAR(100)'],
+                              ['bank_account','VARCHAR(40)'],['bank_ifsc','VARCHAR(15)'],['location','VARCHAR(150)']])
+          await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS ${c} ${t}`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS nationality VARCHAR(50) DEFAULT 'Indian'`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS father_name VARCHAR(150)`);
         await db.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS spouse_name VARCHAR(150)`);
