@@ -609,7 +609,7 @@ exports.getRequests = async (req, res) => {
        LEFT JOIN departments d ON e.department_id = d.id
        LEFT JOIN employees mgr ON mgr.id = e.reporting_manager_id
        ${where}
-       ORDER BY lr.created_at DESC`, params
+       ORDER BY lr.from_date DESC, lr.to_date DESC, lr.id DESC`, params
     );
 
     // Expand approval_chain into l1/l2/l3 fields for the frontend
