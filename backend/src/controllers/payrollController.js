@@ -781,8 +781,8 @@ exports.getPayslip = async (req, res) => {
 
     res.json({ success: true, data: ps });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('[getPayslip]', err.message, err.stack);
+    res.status(500).json({ success: false, message: 'Payslip error: ' + err.message });
   }
 };
 
