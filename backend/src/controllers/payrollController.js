@@ -607,6 +607,11 @@ exports.uploadPayroll = async (req, res) => {
     );
     for (const row of processedEmps.rows) {
       emailSvc.notifyPayslipReleased(row.employee_id, monthName, yearNum).catch(console.error);
+      // In-app notification + push so the employee sees it in the app straight away
+      const t = `💰 ${monthName} ${yearNum} payslip is ready`;
+      const msg = `Your payslip for ${monthName} ${yearNum} has been released. Open Payslip to view it.`;
+      db.query(`INSERT INTO notifications(employee_id,type,title,message) VALUES($1,'payslip',$2,$3)`, [row.employee_id, t, msg]).catch(console.error);
+      try { require('../config/pushService').sendPush(row.employee_id, t, msg, { channel: 'riskcare_general' }); } catch (_) {}
     }
 
     res.json({

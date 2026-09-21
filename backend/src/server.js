@@ -786,6 +786,13 @@ async function start() {
                          'professional_tax','lwf','tds','loan_emi_recovery','total_deductions','net_salary','gross_salary','basic','hra'])
           await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS ${c} NUMERIC(12,2) DEFAULT 0`);
         await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS lop_reversal NUMERIC(5,2) DEFAULT 0`);
+        for (const c of ['working_days','present_days','lop_days','paid_days'])
+          await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS ${c} NUMERIC(6,2) DEFAULT 0`);
+        await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS payment_date DATE`);
+        await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS upload_id INT`);
+        // The upload stores status 'pending' | 'paid' — make sure the CHECK allows it
+        await db.query(`ALTER TABLE payroll DROP CONSTRAINT IF EXISTS payroll_status_check`);
+        await db.query(`ALTER TABLE payroll ADD CONSTRAINT payroll_status_check CHECK (status IN ('draft','processed','paid','pending','hold'))`).catch(()=>{});
         // ESI Earning (ESI wages) — the wage ESI is calculated on, shown next to the
         // employee/employer contributions on the structure and the monthly payroll.
         await db.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS esi_wages NUMERIC(12,2) DEFAULT 0`);
