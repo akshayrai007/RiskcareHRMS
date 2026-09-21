@@ -1405,7 +1405,7 @@ exports.exportAttendanceRegister = async (req, res) => {
     // ── Employees (basic info only — no salary data needed) ─────────────────
     const empResult = await db.query(`
       SELECT e.id, e.employee_code, e.first_name, e.last_name,
-             d.name AS department, des.title AS designation,
+             d.name AS department, e.division, des.title AS designation,
              e.employee_category,
              COALESCE(e.saturday_policy, '2nd_4th_off') AS saturday_policy,
              e.city, e.state,
@@ -1497,10 +1497,10 @@ exports.exportAttendanceRegister = async (req, res) => {
 
     // ── Sheet 1 — Attendance Register (identical to exportMasterExcel Sheet 1) ─
     const ws1 = wb.addWorksheet(`Attendance ${MONTH_NAMES[m-1]} ${y}`, {
-      views: [{ state: 'frozen', xSplit: 5, ySplit: 2 }]
+      views: [{ state: 'frozen', xSplit: 6, ySplit: 2 }]
     });
 
-    const totalCols = 5 + daysInMonth + 9;
+    const totalCols = 6 + daysInMonth + 9;
     try { ws1.mergeCells(1, 1, 1, totalCols); } catch(_) {}
     const titleCell = ws1.getCell(1, 1);
     titleCell.value = `HRMS — Attendance Register | ${MONTH_NAMES[m-1]} ${y}`;
@@ -1509,7 +1509,7 @@ exports.exportAttendanceRegister = async (req, res) => {
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     ws1.getRow(1).height = 28;
 
-    const infoHeaders = ['Emp Code', 'Name', 'Department', 'Designation', 'Category'];
+    const infoHeaders = ['Emp Code', 'Name', 'Department', 'Division', 'Designation', 'Category'];
     const headerFill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E7D32' } };
     const headerFont  = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
     const headerAlign = { horizontal: 'center', vertical: 'middle', wrapText: true };
@@ -1527,7 +1527,7 @@ exports.exportAttendanceRegister = async (req, res) => {
       const dow = new Date(y, m - 1, d).getDay();
       if (dow === 6) satCountHdr++;
       const isWeekOff = dow === 0 || (dow === 6 && (satCountHdr === 2 || satCountHdr === 4));
-      const cell = ws1.getCell(2, 5 + d);
+      const cell = ws1.getCell(2, 6 + d);
       cell.value = `${d}\n${dayNames[dow]}`;
       cell.font = { bold: true, size: 9, color: { argb: isWeekOff ? 'FFFF1744' : 'FFFFFFFF' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isWeekOff ? 'FF880E4F' : 'FF2E7D32' } };
@@ -1546,7 +1546,7 @@ exports.exportAttendanceRegister = async (req, res) => {
       { h: 'Late',            bg: 'FFF57F17' },
       { h: 'Total Present',   bg: 'FF00695C' },
     ].forEach(({ h, bg }, i) => {
-      const cell = ws1.getCell(2, 5 + daysInMonth + 1 + i);
+      const cell = ws1.getCell(2, 6 + daysInMonth + 1 + i);
       cell.value = h;
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 8 };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
@@ -1597,7 +1597,7 @@ exports.exportAttendanceRegister = async (req, res) => {
       const categoryVal = (e.employee_category || '') + (isDeactivated ? ` (INACTIVE${remarkStr})` : '');
 
       [e.employee_code, `${e.first_name} ${e.last_name||''}`.trim(),
-       e.department||'', e.designation||'', categoryVal].forEach((v, ci) => {
+       e.department||'', e.division||'', e.designation||'', categoryVal].forEach((v, ci) => {
         const cell = ws1.getCell(row, ci + 1);
         cell.value = v; cell.font = { size: 9, color: { argb: isDeactivated ? 'FF9E0000' : 'FF000000' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
@@ -1619,8 +1619,8 @@ exports.exportAttendanceRegister = async (req, res) => {
           .map(ds => parseInt(ds.split('-')[2]))
           .filter(d => d >= 1 && d <= daysInMonth);
         const lastAttDay = empAttDays.length ? Math.max(...empAttDays) : 0;
-        const mergeFromCol = 5 + lastAttDay + 1; // first col after last attendance day
-        const mergeToCol   = 5 + daysInMonth;    // last day col
+        const mergeFromCol = 6 + lastAttDay + 1; // first col after last attendance day
+        const mergeToCol   = 6 + daysInMonth;    // last day col
 
         // Render actual attendance for days they have records
         for (let d = 1; d <= daysInMonth; d++) {
@@ -1638,7 +1638,7 @@ exports.exportAttendanceRegister = async (req, res) => {
             else status = (attMap[e.id] || {})[dateStr] || '';
 
             const style = STATUS_STYLE[status] || { label: '', bg: 'FFF5F5', fg: '9E0000' };
-            const cell  = ws1.getCell(row, 5 + d);
+            const cell  = ws1.getCell(row, 6 + d);
             cell.value = style.label;
             cell.font  = { bold: true, size: 8, color: { argb: 'FF' + style.fg } };
             cell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + style.bg } };
@@ -1690,7 +1690,7 @@ exports.exportAttendanceRegister = async (req, res) => {
           }
 
           const style = STATUS_STYLE[status] || { label: '', bg: isAlt ? 'F1F8E9' : 'FFFFFF', fg: '000000' };
-          const cell  = ws1.getCell(row, 5 + d);
+          const cell  = ws1.getCell(row, 6 + d);
           cell.value = style.label;
           cell.font  = { bold: true, size: 8, color: { argb: 'FF' + style.fg } };
           cell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + style.bg } };
@@ -1722,7 +1722,7 @@ exports.exportAttendanceRegister = async (req, res) => {
         [attLate,          'FFF57F17'],
         [attPresent,       'FF00695C'],
       ].forEach(([v, color], i) => {
-        const cell = ws1.getCell(row, 5 + daysInMonth + 1 + i);
+        const cell = ws1.getCell(row, 6 + daysInMonth + 1 + i);
         cell.value = v;
         cell.font  = { bold: true, size: 9, color: { argb: color } };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1752,9 +1752,9 @@ exports.exportAttendanceRegister = async (req, res) => {
     });
 
     ws1.getColumn(1).width = 10; ws1.getColumn(2).width = 20;
-    ws1.getColumn(3).width = 14; ws1.getColumn(4).width = 20; ws1.getColumn(5).width = 12;
-    for (let d = 1; d <= daysInMonth; d++) ws1.getColumn(5 + d).width = 5;
-    for (let i = 1; i <= 9; i++) ws1.getColumn(5 + daysInMonth + i).width = 10;
+    ws1.getColumn(3).width = 14; ws1.getColumn(4).width = 14; ws1.getColumn(5).width = 20; ws1.getColumn(6).width = 12;
+    for (let d = 1; d <= daysInMonth; d++) ws1.getColumn(6 + d).width = 5;
+    for (let i = 1; i <= 9; i++) ws1.getColumn(6 + daysInMonth + i).width = 10;
 
     const legendRow = employees.length + 4;
     try { ws1.mergeCells(legendRow, 1, legendRow, totalCols); } catch(_) {}

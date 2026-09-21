@@ -261,17 +261,7 @@ exports.uploadPayroll = async (req, res) => {
       });
     }
 
-    // Check duplicate
-    const dup = await client.query(
-      `SELECT id FROM payroll_uploads WHERE month=$1 AND year=$2 AND status='processed'`,
-      [monthNum, yearNum]
-    );
-    if (dup.rows.length) {
-      return res.status(409).json({ 
-        success: false, 
-        message: `${monthName} ${yearNum} payroll already processed` 
-      });
-    }
+    // Re-uploading an already-processed month OVERWRITES it (cleanup happens after the file is validated, below)
 
     // Parse Excel
     let wb, ws, rows;
@@ -356,6 +346,22 @@ exports.uploadPayroll = async (req, res) => {
         success: false, 
         message: 'Invalid Excel format — missing required columns (Emp Code, Net Pay)' 
       });
+    }
+
+    // Overwrite: undo the previous upload's loan-EMI installments and drop its upload record;
+    // payroll rows are upserted below (keeping their released/visible state).
+    {
+      const logs = await client.query(
+        `SELECT advance_id FROM loan_recovery_log WHERE payroll_month=$1 AND payroll_year=$2`, [monthNum, yearNum]);
+      for (const l of logs.rows)
+        await client.query(
+          `UPDATE advance_salary SET installments_paid=GREATEST(0, installments_paid-1),
+                  status=CASE WHEN status='cleared' THEN 'disbursed' ELSE status END, updated_at=NOW() WHERE id=$1`, [l.advance_id]);
+      if (logs.rows.length)
+        await client.query(`DELETE FROM loan_recovery_log WHERE payroll_month=$1 AND payroll_year=$2`, [monthNum, yearNum]);
+      // keep payroll rows: detach them from the old upload so deleting it doesn't cascade
+      await client.query(`UPDATE payroll SET upload_id=NULL WHERE month=$1 AND year=$2`, [monthNum, yearNum]);
+      await client.query(`DELETE FROM payroll_uploads WHERE month=$1 AND year=$2`, [monthNum, yearNum]);
     }
 
     // Create upload record
