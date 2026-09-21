@@ -154,7 +154,10 @@ function renderPayslip(p) {
   const tds      = parseFloat(p.tds          || 0);
   const loanEmi  = parseFloat(p.loan_emi_recovery || 0);
 
-  const empDedTotal = pfEmp + esiEmp + pt + tds + loanEmi;
+  const lwf      = parseFloat(p.lwf || 0);
+  const gtlDed   = parseFloat(p.gtl_deduction || 0);
+  const lateDed  = parseFloat(p.late_mark_deduction || 0);
+  const empDedTotal = pfEmp + esiEmp + pt + lwf + tds + gtlDed + lateDed + loanEmi;
   const netPay = gross - empDedTotal;
 
   const wDays = parseFloat(p.working_days || 30);
@@ -192,15 +195,25 @@ function renderPayslip(p) {
     { label: 'Defray Allowance', fixed: fixedSpecial, earned: special },
     { label: 'Food Coupon', fixed: foodCoupon, earned: foodCoupon },
   ].filter(r => r.fixed > 0);
+  // One-time monthly payments (only when present)
+  [['Extra Working Salary','extra_working_salary'],['Bonus','bonus'],['Incentive','incentive'],
+   ['Other Earning','other_earning'],['Performance Bonus','performance_bonus']].forEach(([label, k]) => {
+    const v = parseFloat(p[k] || 0);
+    if (v > 0) earningItems.push({ label, fixed: 0, earned: v });
+  });
 
 
+  // PT, PF and ESI (Employee) always listed; the rest only when there is an amount
   const dedItems = [
-    { label: 'ProfessionalTax', amount: pt },
-    { label: 'ProvidentFund', amount: pfEmp },
+    { label: 'Professional Tax', amount: pt, always: true },
+    { label: 'Provident Fund', amount: pfEmp, always: true },
+    { label: 'ESI (Employee)', amount: esiEmp, always: true },
+    { label: 'Labour Welfare Fund', amount: lwf },
     { label: 'TDS', amount: tds },
-    { label: 'ESI', amount: esiEmp },
-    { label: 'EMI Recovery', amount: loanEmi },
-  ].filter(r => r.amount > 0);
+    { label: 'GTL Deduction', amount: gtlDed },
+    { label: 'Late Mark Deduction', amount: lateDed },
+    { label: 'Salary Advance Recovery', amount: loanEmi },
+  ].filter(r => r.always || r.amount > 0);
 
   const maxRows = Math.max(earningItems.length, dedItems.length);
 
@@ -213,7 +226,7 @@ function renderPayslip(p) {
       <td style="padding:4px 8px;border:1px solid #999;font-size:12px;text-align:right">${e ? Rs(e.fixed) : ''}</td>
       <td style="padding:4px 8px;border:1px solid #999;font-size:12px;text-align:right">${e ? Rs(e.earned) : ''}</td>
       <td style="padding:4px 12px;border:1px solid #999;font-size:12px">${d ? d.label : ''}</td>
-      <td style="padding:4px 8px;border:1px solid #999;font-size:12px;text-align:right">${d ? Rs(d.amount) : ''}</td>
+      <td style="padding:4px 8px;border:1px solid #999;font-size:12px;text-align:right">${d ? (d.amount > 0 ? Rs(d.amount) : '0.00') : ''}</td>
     </tr>`;
   }
 
