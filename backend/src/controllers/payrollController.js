@@ -1198,6 +1198,9 @@ exports.downloadPayrollTemplate = async (req, res) => {
              COALESCE(s.gratuity,                              0) AS gratuity,
              COALESCE(s.gross_salary,                          0) AS gross_salary,
              COALESCE(s.pf_employee,                           0) AS pf_employee,
+             COALESCE(s.pf_employer,                           0) AS pf_employer,
+             COALESCE(s.pf_eps,                                0) AS pf_eps,
+             COALESCE(s.pf_admin,                              0) AS pf_admin,
              COALESCE(s.esi_wages,                             0) AS esi_wages,
              COALESCE(s.esi_employee,                          0) AS esi_employee,
              COALESCE(s.esi_employer,                          0) AS esi_employer,
@@ -1270,10 +1273,10 @@ exports.downloadPayrollTemplate = async (req, res) => {
       'Basic', 'HRA', 'Defray Allowance', 'Gratuity',
       'Food Coupon Adjustment', 'Extra Working Salary', 'Bonus', 'Incentive', 'Other Earning', 'Performance Bonus',
       'Gross Salary',
-      'PF (Employee)', 'ESI Earning (Wages)', 'ESI (Employee)', 'ESI (Employer)', 'Prof Tax', 'LWF', 'TDS',
+      'PF (Employee)', 'EPF Employer (A/c-1)', 'EPS Employer (A/c-10)', 'PF Admin + EDLI (Employer)', 'ESI Earning (Wages)', 'ESI (Employee)', 'ESI (Employer)', 'Prof Tax', 'LWF', 'TDS',
       'GTL Deduction', 'Late Mark Deduction',
       'Salary Advance Recovery (Loan/EMI)', 'Total Deductions',
-      'Net Pay', 'Payment Status', 'Remarks'
+      'Net Pay', 'Total Employer Contribution', 'Total Cost to Company', 'Payment Status', 'Remarks'
     ];
 
     const buildPayrollSheet = async (employeesList) => {
@@ -1323,6 +1326,9 @@ exports.downloadPayrollTemplate = async (req, res) => {
           0, 0, 0, 0, 0, 0,  // Food Coupon Adj, Extra Working Salary, Bonus, Incentive, Other Earning, Performance Bonus (one-time)
           gross,
           pf,
+          Math.max(0, (parseFloat(e.pf_employer) || 0) - (parseFloat(e.pf_eps) || 0)),  // EPF employer A/c-1
+          parseFloat(e.pf_eps) || 0,                                                       // EPS A/c-10
+          parseFloat(e.pf_admin) || 0,                                                     // PF admin + EDLI
           parseFloat(e.esi_wages) || 0,
           esi,
           parseFloat(e.esi_employer) || 0,
@@ -1333,6 +1339,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
           parseFloat(activeEMI ? activeEMI.monthly_emi : 0),
           totalDed,
           net,
+          0, 0,      // Total Employer Contribution, Total Cost to Company (formulas below)
           'Paid',    // Payment Status default
           '',        // Remarks
         ];
@@ -1362,6 +1369,9 @@ exports.downloadPayrollTemplate = async (req, res) => {
       setF('Paid Days', `MIN(${LT('Working Days')}${R},${LT('Present Days')}${R}+MIN(${LT('LOP Reversal (Days)')}${R},${LT('LOP Days')}${R}))`, paid);
       setF('Gross Salary', `ROUND((${LT('Basic')}${R}+${LT('HRA')}${R}+${LT('Defray Allowance')}${R}+${LT('Gratuity')}${R})*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0)+SUM(${LT('Food Coupon Adjustment')}${R}:${LT('Performance Bonus')}${R}),2)`, gross);
       setF('Total Deductions', `${LT('PF (Employee)')}${R}+${LT('ESI (Employee)')}${R}+SUM(${LT('Prof Tax')}${R}:${LT('Salary Advance Recovery (Loan/EMI)')}${R})`, ded);
+      const empr = num('EPF Employer (A/c-1)') + num('EPS Employer (A/c-10)') + num('PF Admin + EDLI (Employer)') + num('ESI (Employer)');
+      setF('Total Employer Contribution', `${LT('EPF Employer (A/c-1)')}${R}+${LT('EPS Employer (A/c-10)')}${R}+${LT('PF Admin + EDLI (Employer)')}${R}+${LT('ESI (Employer)')}${R}`, empr);
+      setF('Total Cost to Company', `${LT('Gross Salary')}${R}+${LT('Total Employer Contribution')}${R}`, gross + empr);
       setF('Net Pay', `MAX(0,${LT('Gross Salary')}${R}-${LT('Total Deductions')}${R})`, Math.max(0, gross - ded));
     }
 
@@ -1371,10 +1381,10 @@ exports.downloadPayrollTemplate = async (req, res) => {
       {wch:11},{wch:11},{wch:9},{wch:12},{wch:9},
       {wch:10},{wch:8},{wch:14},{wch:9},
       {wch:14},{wch:14},{wch:9},{wch:10},{wch:12},{wch:14},{wch:12},
-      {wch:12},{wch:14},{wch:12},{wch:12},{wch:9},{wch:6},{wch:8},
+      {wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:12},{wch:12},{wch:9},{wch:6},{wch:8},
       {wch:12},{wch:14},
       {wch:20},{wch:14},
-      {wch:10},{wch:14},{wch:20}
+      {wch:10},{wch:16},{wch:16},{wch:14},{wch:20}
     ];
 
     // Freeze top 4 rows and first 2 cols
