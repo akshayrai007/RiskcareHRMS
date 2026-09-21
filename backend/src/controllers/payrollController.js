@@ -777,7 +777,19 @@ exports.getPayslip = async (req, res) => {
        ORDER BY lt.id`,
       [empId, parseInt(year)]
     );
-    ps.leave_balances = leaveBalRes.rows;
+    // Per-month figures for the payslip leave table: credit (monthly accrual log) and utilized (approved leave that month)
+    const acc = (await db.query(
+      `SELECT el_accrued, sl_accrued, cl_accrued FROM monthly_leave_accrual_log WHERE employee_id=$1 AND month=$2 AND year=$3`,
+      [empId, parseInt(month), parseInt(year)]).catch(() => ({ rows: [] }))).rows[0] || {};
+    const usedM = {};
+    (await db.query(
+      `SELECT lt.code, COALESCE(SUM(lr.days_requested),0) AS d
+       FROM leave_requests lr JOIN leave_types lt ON lt.id=lr.leave_type_id
+       WHERE lr.employee_id=$1 AND lr.status='approved'
+         AND EXTRACT(MONTH FROM lr.from_date)=$2 AND EXTRACT(YEAR FROM lr.from_date)=$3
+       GROUP BY lt.code`, [empId, parseInt(month), parseInt(year)])).rows.forEach(r => { usedM[r.code] = parseFloat(r.d) || 0; });
+    const creditM = { EL: parseFloat(acc.el_accrued) || 0, SL: parseFloat(acc.sl_accrued) || 0, CL: parseFloat(acc.cl_accrued) || 0 };
+    ps.leave_balances = leaveBalRes.rows.map(l => ({ ...l, credit_month: creditM[l.code] || 0, utilized_month: usedM[l.code] || 0 }));
 
     res.json({ success: true, data: ps });
   } catch (err) {

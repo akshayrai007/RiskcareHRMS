@@ -219,22 +219,20 @@ function renderPayslip(p) {
 
   // Leave balance table
   const leaves = p.leave_balances || [];
-  const leaveMap = { EL: 'Earned Leave', SL: 'Sick or Casual Leave', CL: 'Casual Leave', PL: 'Privilege Leave' };
+  const leaveMap = { EL: 'Earned Leave (EL)', SL: 'Sick Leave (SL)', CL: 'Casual Leave (CL)', PL: 'Privilege Leave (PL)' };
+  const td = 'padding:4px 8px;border:1px solid #999;font-size:12px;text-align:right';
   let leaveRows = leaves.map(l => {
     const name = leaveMap[l.code] || l.name;
-    const alloc = parseFloat(l.allocated || 0);
-    const used = parseFloat(l.used || 0);
-    const avail = parseFloat(l.available || 0);
-    const cf = parseFloat(l.carry_forward || 0);
-    const opening = cf > 0 ? cf.toFixed(2) : (alloc - used > 0 ? (alloc - used).toFixed(2) : '0.00');
+    const avail  = parseFloat(l.available || 0);           // current balance
+    const credit = parseFloat(l.credit_month || 0);        // credited this payslip month
+    const used   = parseFloat(l.utilized_month || 0);      // taken this payslip month
+    const opening = Math.max(0, avail - credit + used);    // balance at start of the month
     return `<tr>
       <td style="padding:4px 12px;border:1px solid #999;font-size:12px">${name}</td>
-      <td style="padding:4px 8px;border:1px solid #999;font-size:12px;text-align:right">${opening}</td>
-      <td style="padding:4px 8px;border:1px solid #999;font-size:12px;text-align:right">0.00</td>
-      <td style="padding:4px 8px;border:1px solid #999;font-size:12px;text-align:right">0.00</td>
-      <td style="padding:4px 8px;border:1px solid #999;font-size:12px;text-align:right">${used.toFixed(2)}</td>
-      <td style="padding:4px 8px;border:1px solid #999;font-size:12px;text-align:right">${avail.toFixed(2)}</td>
-      <td style="padding:4px 8px;border:1px solid #999;font-size:12px;text-align:right">0.00</td>
+      <td style="${td}">${opening.toFixed(2)}</td>
+      <td style="${td}">${credit.toFixed(2)}</td>
+      <td style="${td}">${used.toFixed(2)}</td>
+      <td style="${td}">${avail.toFixed(2)}</td>
     </tr>`;
   }).join('');
 
@@ -262,11 +260,6 @@ function renderPayslip(p) {
   <!-- TITLE BAR -->
   <div style="text-align:center;padding:8px;font-size:14px;font-weight:700;color:#1a237e;border-top:2px solid #1565c0;border-bottom:2px solid #1565c0;background:#e3f2fd">
     Payslip for ${mon}
-  </div>
-
-  <!-- NOTE -->
-  <div style="padding:6px 16px;font-size:10px;color:#c62828;font-weight:700">
-    Note : Payslip is system generated hence signature is not required
   </div>
 
   <!-- EMPLOYEE INFO: two-column layout -->
@@ -326,13 +319,16 @@ function renderPayslip(p) {
       <th style="padding:5px 12px;border:1px solid #999;font-size:11px;font-weight:700;text-align:left">Leave Type</th>
       <th style="padding:5px 8px;border:1px solid #999;font-size:11px;font-weight:700;text-align:right">Opening Balance</th>
       <th style="padding:5px 8px;border:1px solid #999;font-size:11px;font-weight:700;text-align:right">Current Month<br>Credit</th>
-      <th style="padding:5px 8px;border:1px solid #999;font-size:11px;font-weight:700;text-align:right">Leaves<br>Withdrawn<br>/Rejected of<br>previous month</th>
       <th style="padding:5px 8px;border:1px solid #999;font-size:11px;font-weight:700;text-align:right">Leaves Utilized</th>
       <th style="padding:5px 8px;border:1px solid #999;font-size:11px;font-weight:700;text-align:right">Available<br>Balance</th>
-      <th style="padding:5px 8px;border:1px solid #999;font-size:11px;font-weight:700;text-align:right">Leave Lapsed</th>
     </tr>
     ${leaveRows}
   </table>` : ''}
+
+  <!-- NOTE -->
+  <div style="padding:10px 16px 0;font-size:10px;color:#c62828;font-weight:700">
+    Note : Payslip is system generated hence signature is not required
+  </div>
 
   <!-- FOOTER -->
   <div style="display:flex;justify-content:space-between;padding:20px 16px 10px;font-size:10px;color:#666;margin-top:40px">
