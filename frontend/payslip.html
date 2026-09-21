@@ -115,6 +115,8 @@ async function loadAvailableMonths() {
           <span class="badge badge-${p.status}" style="font-size:9px;margin-left:4px">${p.status}</span>
         </button>`).join('')}
     </div>`;
+  // Open straight onto the latest payslip instead of an empty "not found" state
+  quickLoad(data.data[0].month, data.data[0].year);
 }
 
 function quickLoad(month, year) {
