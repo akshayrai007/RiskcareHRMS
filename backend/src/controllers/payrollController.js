@@ -1166,7 +1166,8 @@ exports.downloadPayrollTemplate = async (req, res) => {
       let paid = 0, lop = 0;
       // No attendance and no approved leave this month => nothing worked: all LOP
       // (weekly offs / holidays / future days are not free paid days for them).
-      if (!Object.keys(attMap[empId] || {}).length && !(lvMap[empId] || []).length) return { paid: 0, lop: daysInMonth };
+      const workedAny = Object.values(attMap[empId] || {}).some(st => st && st !== 'absent' && st !== 'lwp');
+      if (!workedAny && !(lvMap[empId] || []).length) return { paid: 0, lop: daysInMonth };
       for (let day = 1; day <= daysInMonth; day++) {
         const ds = `${y}-${pad2(m)}-${pad2(day)}`;
         const dow = new Date(y, m - 1, day).getDay();
