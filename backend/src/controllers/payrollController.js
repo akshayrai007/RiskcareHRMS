@@ -269,7 +269,13 @@ exports.uploadPayroll = async (req, res) => {
       wb   = XLSX.read(req.file.buffer, { type: 'buffer' });
       ws   = wb.Sheets[wb.SheetNames[0]];
       rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
-      console.log(`[uploadPayroll] Excel parsed: ${rows.length} rows, sheet: "${wb.SheetNames[0]}"`);
+      // Template has one sheet per division (Riskcare / RC Offrole) - read them all
+      for (const name of wb.SheetNames.slice(1)) {
+        const more = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: null });
+        const h = more.findIndex((r, i) => i < 10 && r && r.some(c => String(c || '').toLowerCase().includes('emp code')));
+        if (h !== -1) rows = rows.concat(more.slice(h + 1));
+      }
+      console.log(`[uploadPayroll] Excel parsed: ${rows.length} rows across ${wb.SheetNames.length} sheet(s)`);
     } catch (parseErr) {
       return res.status(400).json({ 
         success: false, 
@@ -1182,7 +1188,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       SELECT e.id, e.employee_code,
              CONCAT(e.first_name,' ',e.last_name) AS full_name,
              d.name AS department, des.title AS designation,
-             e.employee_category, e.employment_type,
+             e.employee_category, e.employment_type, e.division,
              COALESCE(s.basic,           e.basic_salary,       0) AS basic,
              COALESCE(s.hra,             e.hra,                0) AS hra,
              COALESCE(s.conveyance,      e.conveyance,         0) AS conveyance,
@@ -1268,6 +1274,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       'Net Pay', 'Payment Status', 'Remarks'
     ];
 
+    const buildPayrollSheet = async (employeesList) => {
     const rows = [
       // Row 0: Title
       [`HRMS — Payroll Input Template | ${monthName} ${y} | Total Working Days: ${daysInMonth}`],
@@ -1278,7 +1285,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       // Row 3: Headers
       HEADERS,
       // Data rows
-      ...await Promise.all(employees.map(async e => {
+      ...await Promise.all(employeesList.map(async e => {
         const gross   = parseFloat(e.gross_salary)   || 0;
         // Fetch active EMI for this employee
         const emiRes  = await db.query(
@@ -1369,7 +1376,13 @@ exports.downloadPayrollTemplate = async (req, res) => {
       { s:{r:1,c:0}, e:{r:1,c:HEADERS.length-1} },
     ];
 
-    XLSX.utils.book_append_sheet(wb, ws1, `Payroll ${monthName} ${y}`);
+    return ws1;
+    };
+
+    // Two sheets: Riskcare division, and RC Offrole. Upload reads both.
+    const isOffrole = (e) => /off\s*-?\s*role/i.test(e.division || '');
+    XLSX.utils.book_append_sheet(wb, await buildPayrollSheet(employees.filter(e => !isOffrole(e))), `Riskcare ${monthName} ${y}`);
+    XLSX.utils.book_append_sheet(wb, await buildPayrollSheet(employees.filter(isOffrole)), `RC Offrole ${monthName} ${y}`);
 
     // ── Sheet 2: Instructions ─────────────────────────────────────────────
     const instrRows = [
