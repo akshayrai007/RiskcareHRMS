@@ -285,7 +285,7 @@ router.get ('/my/payslip-months',    authenticate, async (req, res) => {
   const db    = require('../config/db');
   const empId = req.user.id;
   const r     = await db.query(
-    `SELECT DISTINCT month, year, status FROM payroll WHERE employee_id=$1 ORDER BY year DESC, month DESC LIMIT 6`,
+    `SELECT DISTINCT month, year, status FROM payroll WHERE employee_id=$1 AND released IS TRUE ORDER BY year DESC, month DESC LIMIT 6`,
     [empId]
   );
   res.json({ success: true, data: r.rows });
@@ -294,6 +294,8 @@ router.post('/payroll/process',      authenticate, authorize(...ACCOUNTS,'hr'), 
   res.json({ success: true, message: 'Use /payroll/upload to process payroll via Excel upload.' });
 });
 router.get ('/payroll/export',                    authenticate, authorize(...ACCOUNTS,'hr','super_admin'), payCtrl.exportPayroll);
+router.post('/payroll/release',                   authenticate, authorize('accounts','hr','super_admin'), payCtrl.releasePayslips);
+router.delete('/payroll/uploads/:id',             authenticate, authorize('accounts','hr','super_admin'), payCtrl.deleteUpload);
 router.get ('/payroll/uploads',                   authenticate, authorize(...ACCOUNTS,'hr'), payCtrl.getUploads);
 router.get ('/payroll/salary-structures',         authenticate, authorize('hr'),        payCtrl.getAllSalaryStructures);
 router.get ('/payroll/salary-structure/:employee_id', authenticate, authorize('hr'),    payCtrl.getSalaryStructure);

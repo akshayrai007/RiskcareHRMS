@@ -791,6 +791,11 @@ async function start() {
         await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS payment_date DATE`);
         await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS upload_id INT`);
         // The upload stores status 'pending' | 'paid' — make sure the CHECK allows it
+        // Payslip release: existing rows stay visible (default TRUE at add time); NEW uploads default to
+        // unreleased so employees see nothing until HR/Accounts clicks "Release Payslips".
+        await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS released BOOLEAN DEFAULT TRUE`);
+        await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS released_at TIMESTAMP`);
+        await db.query(`ALTER TABLE payroll ALTER COLUMN released SET DEFAULT FALSE`);
         await db.query(`ALTER TABLE payroll DROP CONSTRAINT IF EXISTS payroll_status_check`);
         await db.query(`ALTER TABLE payroll ADD CONSTRAINT payroll_status_check CHECK (status IN ('draft','processed','paid','pending','hold'))`).catch(()=>{});
         // ESI Earning (ESI wages) — the wage ESI is calculated on, shown next to the

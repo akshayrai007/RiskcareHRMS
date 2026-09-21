@@ -123,13 +123,19 @@
               📤 Upload & Generate Payslips
             </button>
             <div style="font-size:11px;color:#999;margin-top:8px;text-align:center">
-              All employees will be notified immediately after upload
+              Payslips stay hidden until you click Release Payslips below
             </div>
           </div>
         </div>
 
         <!-- Upload result -->
         <div id="upload-result" style="display:none;margin-top:24px"></div>
+
+        <!-- Upload history: review, release payslips, or delete a wrong upload -->
+        <div style="margin-top:28px">
+          <div style="font-weight:800;font-size:14px;margin-bottom:10px">🗂 Uploaded Payrolls</div>
+          <div id="upload-history"></div>
+        </div>
       </div>
     </div>
 
@@ -294,6 +300,8 @@ if (user && user.role === 'accounts') {
   document.getElementById('list-tab').style.display = '';
 }
 
+if (user && ['hr','accounts'].includes(user.role)) loadUploadHistory();
+
 // Super Admin: List only — payroll upload is accounts' job (Salary Structures is HR-only)
 if (user && user.role === 'super_admin') {
   document.getElementById('upload-tab').style.display = 'none';
@@ -346,6 +354,45 @@ function setFile(file) {
   document.getElementById('upload-result').style.display = 'none';
 }
 
+async function loadUploadHistory() {
+  const el = document.getElementById('upload-history');
+  if (!el) return;
+  const data = await api('GET', '/payroll/uploads');
+  if (!data?.success) { el.innerHTML = ''; return; }
+  const rows = data.data.filter(u => u.status === 'processed');
+  el.innerHTML = rows.length ? `<table class="table" style="width:100%"><thead><tr>
+      <th>Month</th><th>File</th><th>Payslips</th><th>Uploaded by</th><th>Status</th><th></th></tr></thead><tbody>` +
+    rows.map(u => {
+      const total = parseInt(u.payslip_count) || 0, rel = parseInt(u.released_count) || 0;
+      const released = total > 0 && rel === total;
+      return `<tr>
+        <td><b>${fmt.months[u.month-1]} ${u.year}</b></td>
+        <td class="text-muted">${u.filename || ''}</td>
+        <td style="text-align:center">${total}</td>
+        <td>${u.uploaded_by_name || ''}</td>
+        <td>${released ? '<span class="badge badge-paid">Released</span>' : '<span class="badge badge-pending">Not released</span>'}</td>
+        <td><div class="flex gap-1">
+          ${released ? '' : `<button class="btn btn-success btn-xs" onclick="releasePayslips(${u.month},${u.year})">📢 Release Payslips</button>
+          <button class="btn btn-danger btn-xs" onclick="deleteUpload(${u.id})">🗑 Delete</button>`}
+        </div></td></tr>`;
+    }).join('') + '</tbody></table>'
+    : '<div class="text-muted" style="padding:12px">No payroll uploaded yet.</div>';
+}
+
+async function releasePayslips(month, year) {
+  if (!confirm(`Release ${fmt.months[month-1]} ${year} payslips? Every employee will be notified and can see their payslip.`)) return;
+  const d = await api('POST', '/payroll/release', { month, year });
+  toast(d?.message || 'Failed', d?.success ? 'success' : 'error');
+  loadUploadHistory();
+}
+
+async function deleteUpload(id) {
+  if (!confirm('Delete this upload and all its payslips? You can then upload the corrected file. This cannot be undone.')) return;
+  const d = await api('DELETE', '/payroll/uploads/' + id);
+  toast(d?.message || 'Failed', d?.success ? 'success' : 'error');
+  loadUploadHistory();
+}
+
 async function uploadPayrollExcel() {
   if (!selectedFile) return;
 
@@ -393,7 +440,7 @@ async function uploadPayrollExcel() {
             </div>
           </div>
           <div style="background:#fff3e0;border-radius:8px;padding:12px;font-size:13px;color:#e65100;font-weight:600">
-            🔔 All ${data.data.processed} employees have been notified on the app!
+            📢 Payslips are saved but NOT released. Review them, then click Release Payslips in the list below.
           </div>
           ${data.data.errors?.length ? `
           <div style="margin-top:12px;background:#ffebee;border-radius:8px;padding:12px">
@@ -401,7 +448,8 @@ async function uploadPayrollExcel() {
             ${data.data.errors.map(e=>`<div style="font-size:12px;color:#555">• ${e}</div>`).join('')}
           </div>` : ''}
         </div>`;
-      toast('Payslips generated — all employees notified! 🎉', 'success');
+      toast('Payroll uploaded — review it, then Release Payslips', 'success');
+      loadUploadHistory();
       // Reload payroll list
       loadPayrollList();
     } else {

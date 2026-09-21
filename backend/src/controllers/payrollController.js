@@ -600,23 +600,11 @@ exports.uploadPayroll = async (req, res) => {
     await client.query('COMMIT');
     console.log(`[uploadPayroll] Complete: processed=${processed}, skipped=${skipped}, upload_id=${uploadId}`);
 
-    // Send payslip notifications to all processed employees (async)
-    const processedEmps = await db.query(
-      `SELECT employee_id FROM payroll WHERE month=$1 AND year=$2 AND upload_id=$3`,
-      [monthNum, yearNum, uploadId]
-    );
-    for (const row of processedEmps.rows) {
-      emailSvc.notifyPayslipReleased(row.employee_id, monthName, yearNum).catch(console.error);
-      // In-app notification + push so the employee sees it in the app straight away
-      const t = `💰 ${monthName} ${yearNum} payslip is ready`;
-      const msg = `Your payslip for ${monthName} ${yearNum} has been released. Open Payslip to view it.`;
-      db.query(`INSERT INTO notifications(employee_id,type,title,message) VALUES($1,'payslip',$2,$3)`, [row.employee_id, t, msg]).catch(console.error);
-      try { require('../config/pushService').sendPush(row.employee_id, t, msg, { channel: 'riskcare_general' }); } catch (_) {}
-    }
+    // Payslips are NOT visible / notified yet - HR/Accounts review, then click "Release Payslips".
 
     res.json({
       success: true,
-      message: `${monthName} ${yearNum} payroll uploaded. ${processed} processed, ${skipped} skipped.`,
+      message: `${monthName} ${yearNum} payroll uploaded. ${processed} processed, ${skipped} skipped. Review it, then click Release Payslips.`,
       data: { upload_id: uploadId, processed, skipped, month: monthNum, year: yearNum, errors: errors.slice(0, 10) }
     });
   } catch (err) {
@@ -679,7 +667,8 @@ exports.getPayslip = async (req, res) => {
     console.log(`[getPayslip] userId=${userId} role=${userRole} employee_id=${employee_id} month=${month} year=${year}`);
 
     const empId = employee_id || userId;
-    if (!['super_admin','accounts','hr'].includes(userRole) && parseInt(empId) !== userId)
+    const isPayrollStaff = ['super_admin','accounts','hr'].includes(userRole);
+    if (!isPayrollStaff && parseInt(empId) !== userId)
       return res.status(403).json({ success: false, message: 'Access denied' });
 
     const result = await db.query(
@@ -701,8 +690,9 @@ exports.getPayslip = async (req, res) => {
        LEFT JOIN designations des ON e.designation_id = des.id
        LEFT JOIN employees m ON e.reporting_manager_id = m.id
        LEFT JOIN employee_salary_structure s ON s.employee_id = p.employee_id
-       WHERE p.employee_id=$1 AND p.month=$2 AND p.year=$3`,
-      [empId, parseInt(month), parseInt(year)]
+       WHERE p.employee_id=$1 AND p.month=$2 AND p.year=$3
+         AND ($4::boolean OR p.released IS TRUE)`,
+      [empId, parseInt(month), parseInt(year), isPayrollStaff && parseInt(empId) !== userId]
     );
 
     if (!result.rows.length) {
@@ -782,6 +772,67 @@ exports.getPayslip = async (req, res) => {
   }
 };
 
+// ── Release payslips for a month: makes them visible + notifies employees ────
+// POST /payroll/release { month, year }
+exports.releasePayslips = async (req, res) => {
+  try {
+    const month = parseInt(req.body.month), year = parseInt(req.body.year);
+    if (!month || !year) return res.status(400).json({ success: false, message: 'month and year required' });
+    const r = await db.query(
+      `UPDATE payroll SET released=TRUE, released_at=NOW()
+       WHERE month=$1 AND year=$2 AND released IS NOT TRUE RETURNING employee_id`, [month, year]);
+    const monthName = MONTH_NAMES[month - 1];
+    for (const row of r.rows) {
+      emailSvc.notifyPayslipReleased(row.employee_id, monthName, year).catch(console.error);
+      const t = `💰 ${monthName} ${year} payslip is ready`;
+      const msg = `Your payslip for ${monthName} ${year} has been released. Open Payslip to view it.`;
+      db.query(`INSERT INTO notifications(employee_id,type,title,message) VALUES($1,'payslip',$2,$3)`, [row.employee_id, t, msg]).catch(console.error);
+      try { require('../config/pushService').sendPush(row.employee_id, t, msg, { channel: 'riskcare_general' }); } catch (_) {}
+    }
+    res.json({ success: true, message: `${r.rows.length} payslip(s) released for ${monthName} ${year} - employees notified.`, data: { released: r.rows.length } });
+  } catch (err) {
+    console.error('[releasePayslips]', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ── Delete an upload (wrong file) so the month can be re-uploaded ─────────────
+// DELETE /payroll/uploads/:id - blocked once any payslip of that month is released.
+exports.deleteUpload = async (req, res) => {
+  const client = await db.getClient();
+  try {
+    await client.query('BEGIN');
+    const up = (await client.query(`SELECT * FROM payroll_uploads WHERE id=$1`, [req.params.id])).rows[0];
+    if (!up) { await client.query('ROLLBACK'); return res.status(404).json({ success: false, message: 'Upload not found' }); }
+    const rel = await client.query(`SELECT 1 FROM payroll WHERE month=$1 AND year=$2 AND released=TRUE LIMIT 1`, [up.month, up.year]);
+    if (rel.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: 'Payslips for this month are already released - cannot delete.' });
+    }
+
+    // Undo the loan-EMI installments this month's upload recorded
+    const logs = await client.query(
+      `SELECT * FROM loan_recovery_log WHERE payroll_month=$1 AND payroll_year=$2`, [up.month, up.year]);
+    for (const l of logs.rows) {
+      await client.query(
+        `UPDATE advance_salary SET installments_paid=GREATEST(0, installments_paid-1),
+                status=CASE WHEN status='cleared' THEN 'disbursed' ELSE status END, updated_at=NOW()
+         WHERE id=$1`, [l.advance_id]);
+    }
+    if (logs.rows.length)
+      await client.query(`DELETE FROM loan_recovery_log WHERE payroll_month=$1 AND payroll_year=$2`, [up.month, up.year]);
+
+    const del = await client.query(`DELETE FROM payroll WHERE month=$1 AND year=$2`, [up.month, up.year]);
+    await client.query(`DELETE FROM payroll_uploads WHERE month=$1 AND year=$2`, [up.month, up.year]);
+    await client.query('COMMIT');
+    res.json({ success: true, message: `${MONTH_NAMES[up.month - 1]} ${up.year} upload deleted (${del.rowCount} payslip rows removed). You can upload it again.` });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('[deleteUpload]', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  } finally { client.release(); }
+};
+
 // ── Get Upload History ────────────────────────────────────────────────────────
 // GET /payroll/export?month=&year= — full-breakup Excel of processed payroll
 exports.exportPayroll = async (req, res) => {
@@ -828,7 +879,9 @@ exports.getUploads = async (req, res) => {
     const result = await db.query(
       `SELECT pu.*,
               CONCAT(u.first_name,' ',u.last_name) AS uploaded_by_name,
-              CONCAT(p.first_name,' ',p.last_name) AS processed_by_name
+              CONCAT(p.first_name,' ',p.last_name) AS processed_by_name,
+              (SELECT COUNT(*) FROM payroll pr WHERE pr.month=pu.month AND pr.year=pu.year) AS payslip_count,
+              (SELECT COUNT(*) FROM payroll pr WHERE pr.month=pu.month AND pr.year=pu.year AND pr.released) AS released_count
        FROM payroll_uploads pu
        JOIN employees u ON pu.uploaded_by = u.id
        LEFT JOIN employees p ON pu.processed_by = p.id
