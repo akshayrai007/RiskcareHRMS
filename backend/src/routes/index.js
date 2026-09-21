@@ -293,6 +293,7 @@ router.get ('/my/payslip-months',    authenticate, async (req, res) => {
 router.post('/payroll/process',      authenticate, authorize(...ACCOUNTS,'hr'), async (req, res) => {
   res.json({ success: true, message: 'Use /payroll/upload to process payroll via Excel upload.' });
 });
+router.get ('/payroll/export',                    authenticate, authorize(...ACCOUNTS,'hr','super_admin'), payCtrl.exportPayroll);
 router.get ('/payroll/uploads',                   authenticate, authorize(...ACCOUNTS,'hr'), payCtrl.getUploads);
 router.get ('/payroll/salary-structures',         authenticate, authorize('hr'),        payCtrl.getAllSalaryStructures);
 router.get ('/payroll/salary-structure/:employee_id', authenticate, authorize('hr'),    payCtrl.getSalaryStructure);

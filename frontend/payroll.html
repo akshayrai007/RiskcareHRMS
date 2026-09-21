@@ -169,6 +169,7 @@
           <div class="flex gap-2">
             <select id="list-month" class="form-control" style="width:140px" onchange="loadPayrollList()"></select>
             <select id="list-year"  class="form-control" style="width:95px"  onchange="loadPayrollList()"></select>
+            <button class="btn btn-outline btn-sm" onclick="downloadPayrollListExcel()">⬇ Download Excel</button>
           </div>
         </div>
         <div id="payroll-list-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px"></div>
@@ -585,6 +586,21 @@ async function processPayroll() {
     toast(`${data.data?.processed||0} employees processed for ${MONTHS[month-1]} ${year}`,'success');
     loadPayrollStats();
   } else toast(data?.message||'Failed','error');
+}
+
+async function downloadPayrollListExcel() {
+  const month = document.getElementById('list-month').value;
+  const year  = document.getElementById('list-year').value;
+  try {
+    const token = localStorage.getItem(window.CFG.tokenKey);
+    const res = await fetch(`${API_BASE}/payroll/export?month=${month}&year=${year}`, { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) { toast('Download failed','error'); return; }
+    const blob = await res.blob();
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `Payroll_${month}_${year}.xlsx` });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    toast('✅ Payroll downloaded!','success');
+  } catch(e) { toast('Download failed: '+e.message,'error'); }
 }
 
 async function loadPayrollList() {

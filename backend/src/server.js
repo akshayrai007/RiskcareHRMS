@@ -781,6 +781,10 @@ async function start() {
         // sheet, NOT part of the recurring salary structure) ──────────────────
         for (const c of ['extra_working_salary','incentive','other_earning','performance_bonus','food_coupon_adjustment','gtl_deduction','late_mark_deduction','gms_deduction'])
           await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS ${c} NUMERIC(12,2) DEFAULT 0`);
+        // Base columns the payroll upload writes — older live tables may predate them
+        for (const c of ['conveyance','special_allowance','other_allowance','bonus','gratuity','pf_employee','esi_employee','esi_employer',
+                         'professional_tax','lwf','tds','loan_emi_recovery','total_deductions','net_salary','gross_salary','basic','hra'])
+          await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS ${c} NUMERIC(12,2) DEFAULT 0`);
         await db.query(`ALTER TABLE payroll ADD COLUMN IF NOT EXISTS lop_reversal NUMERIC(5,2) DEFAULT 0`);
         // ESI Earning (ESI wages) — the wage ESI is calculated on, shown next to the
         // employee/employer contributions on the structure and the monthly payroll.

@@ -778,6 +778,46 @@ exports.getPayslip = async (req, res) => {
 };
 
 // ── Get Upload History ────────────────────────────────────────────────────────
+// GET /payroll/export?month=&year= — full-breakup Excel of processed payroll
+exports.exportPayroll = async (req, res) => {
+  try {
+    const month = parseInt(req.query.month), year = parseInt(req.query.year);
+    const r = await db.query(
+      `SELECT p.*, e.employee_code, CONCAT(e.first_name,' ',e.last_name) AS employee_name,
+              d.name AS department_name, des.title AS designation_title
+       FROM payroll p JOIN employees e ON e.id=p.employee_id
+       LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN designations des ON des.id=e.designation_id
+       WHERE ($1::int IS NULL OR p.month=$1) AND ($2::int IS NULL OR p.year=$2)
+       ORDER BY p.year DESC, p.month DESC, e.employee_code`, [month || null, year || null]);
+    const cols = [
+      ['Emp Code','employee_code'],['Name','employee_name'],['Department','department_name'],['Designation','designation_title'],
+      ['Month','month'],['Year','year'],['Working Days','working_days'],['Present Days','present_days'],['LOP Days','lop_days'],
+      ['LOP Reversal','lop_reversal'],['Paid Days','paid_days'],['Basic','basic'],['HRA','hra'],['Defray Allowance','special_allowance'],
+      ['Conveyance','conveyance'],['Gratuity','gratuity'],['Food Coupon (incl. adj)','other_allowance'],['Extra Working Salary','extra_working_salary'],
+      ['Bonus','bonus'],['Incentive','incentive'],['Other Earning','other_earning'],['Performance Bonus','performance_bonus'],
+      ['Gross Salary','gross_salary'],['PF (Employee)','pf_employee'],['ESI Earning','esi_wages'],['ESI (Employee)','esi_employee'],
+      ['ESI (Employer)','esi_employer'],['Prof Tax','professional_tax'],['LWF','lwf'],['TDS','tds'],['GTL Deduction','gtl_deduction'],
+      ['Late Mark Deduction','late_mark_deduction'],['Salary Advance Recovery','loan_emi_recovery'],['Total Deductions','total_deductions'],
+      ['Net Pay','net_salary'],['Status','status']];
+    const money = new Set(cols.map(c => c[1]).filter(k => !['employee_code','employee_name','department_name','designation_title','status','month','year'].includes(k)));
+    const aoa = [cols.map(c => c[0]), ...r.rows.map(row => cols.map(([, k]) => {
+      const v = row[k]; if (v === null || v === undefined) return '';
+      return money.has(k) || k === 'month' || k === 'year' ? Number(v) : v; }))];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = cols.map((c, i) => ({ wch: i < 4 ? 20 : 13 }));
+    ws['!freeze'] = { xSplit: 2, ySplit: 1 };
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Payroll');
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Disposition', `attachment; filename="Payroll_${month || 'All'}_${year || 'All'}.xlsx"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buf);
+  } catch (err) {
+    console.error('[exportPayroll]', err.message);
+    res.status(500).json({ success: false, message: 'Export failed: ' + err.message });
+  }
+};
+
 exports.getUploads = async (req, res) => {
   try {
     const result = await db.query(
