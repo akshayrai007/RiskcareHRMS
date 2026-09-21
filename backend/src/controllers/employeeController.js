@@ -758,10 +758,10 @@ async function buildPunchRegisterSheet(wb, employees, m, y, MONTH_NAMES, punchMa
   const ExcelJS = require('exceljs');
   const daysInMonth = new Date(y, m, 0).getDate();
   const dayNms = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const totalCols = 4 + daysInMonth * 2 + 3; // 4 info + 2*days + 3 summary cols
+  const totalCols = 5 + daysInMonth * 2 + 3; // 5 info + 2*days + 3 summary cols
 
   const ws = wb.addWorksheet(`Punch Register ${MONTH_NAMES[m-1]} ${y}`, {
-    views: [{ state: 'frozen', xSplit: 4, ySplit: 3 }]
+    views: [{ state: 'frozen', xSplit: 5, ySplit: 3 }]
   });
 
   // ── Row 1: Title ─────────────────────────────────────────────────────────
@@ -785,7 +785,7 @@ async function buildPunchRegisterSheet(wb, employees, m, y, MONTH_NAMES, punchMa
   // ── Row 3: Fixed col headers ─────────────────────────────────────────────
   const hdrFill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF1565C0'} };
   const hdrFont = { bold:true, size:9, color:{argb:'FFFFFFFF'} };
-  ['Emp Code','Name','Department','Division'].forEach((h,i) => {
+  ['Emp Code','Name','Department','Division','Designation'].forEach((h,i) => {
     const c = ws.getCell(3, i+1);
     c.value=h; c.font=hdrFont; c.fill=hdrFill;
     c.alignment={horizontal:'center',vertical:'middle'};
@@ -800,7 +800,7 @@ async function buildPunchRegisterSheet(wb, employees, m, y, MONTH_NAMES, punchMa
     const isWeekend = dow === 0 || (dow === 6 && (satCnt === 2 || satCnt === 4));
     const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isHoliday = (holidaysByRegion.all || new Set()).has(dateStr);
-    const col = 4 + (d-1)*2 + 1;
+    const col = 5 + (d-1)*2 + 1;
 
     // Merged date header
     try { ws.mergeCells(3, col, 3, col+1); } catch(e){}
@@ -816,7 +816,7 @@ async function buildPunchRegisterSheet(wb, employees, m, y, MONTH_NAMES, punchMa
 
   // Summary headers
   ['Total\nDays', 'On\nTime', 'Late\nIN'].forEach((h,i) => {
-    const c = ws.getCell(3, 4+daysInMonth*2+1+i);
+    const c = ws.getCell(3, 5+daysInMonth*2+1+i);
     c.value=h; c.font={bold:true,size:8,color:{argb:'FFFFFFFF'}};
     c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF00695C'}};
     c.alignment={horizontal:'center',vertical:'middle',wrapText:true};
@@ -828,13 +828,14 @@ async function buildPunchRegisterSheet(wb, employees, m, y, MONTH_NAMES, punchMa
   ws.getColumn(2).width = 22;
   ws.getColumn(3).width = 16;
   ws.getColumn(4).width = 14;
+  ws.getColumn(5).width = 20;
   for (let d = 1; d <= daysInMonth; d++) {
-    ws.getColumn(4+(d-1)*2+1).width = 9;
-    ws.getColumn(4+(d-1)*2+2).width = 9;
+    ws.getColumn(5+(d-1)*2+1).width = 9;
+    ws.getColumn(5+(d-1)*2+2).width = 9;
   }
-  ws.getColumn(4+daysInMonth*2+1).width = 7;
-  ws.getColumn(4+daysInMonth*2+2).width = 7;
-  ws.getColumn(4+daysInMonth*2+3).width = 7;
+  ws.getColumn(5+daysInMonth*2+1).width = 7;
+  ws.getColumn(5+daysInMonth*2+2).width = 7;
+  ws.getColumn(5+daysInMonth*2+3).width = 7;
 
   // ── Group separator tracker (onsite → offsite → deactivated) ─────────────
   let lastGrp = null;
@@ -869,7 +870,7 @@ async function buildPunchRegisterSheet(wb, employees, m, y, MONTH_NAMES, punchMa
                 : (isAlt?'FFE8F5E9':'FFFFFFFF');
 
     // Info cells
-    [e.employee_code, `${e.first_name} ${e.last_name||''}`.trim(), e.department||'', e.division||''].forEach((v,ci) => {
+    [e.employee_code, `${e.first_name} ${e.last_name||''}`.trim(), e.department||'', e.division||'', e.designation||''].forEach((v,ci) => {
       const c = ws.getCell(row, ci+1);
       c.value=v;
       c.font={size:9, bold: ci===1, color:{argb: isDeact?'FF9E0000':'FF000000'}};
@@ -894,11 +895,11 @@ async function buildPunchRegisterSheet(wb, employees, m, y, MONTH_NAMES, punchMa
       const isWeekend = dow===0 || (dow===6 && (punchSatCnt===2||punchSatCnt===4));
       const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const isHol   = empHols.has(dateStr);
-      const col     = 4+(d-1)*2+1;
+      const col     = 5+(d-1)*2+1;
 
       // Deactivated: merge remaining days after last punch day
       if (isDeact && d === lastPunchDay + 1 && d <= daysInMonth) {
-        try { ws.mergeCells(row, col, row, 4+daysInMonth*2); } catch(ex){}
+        try { ws.mergeCells(row, col, row, 5+daysInMonth*2); } catch(ex){}
         const mc = ws.getCell(row, col);
         mc.value = e.deactivation_remark
           ? `❌ ${e.deactivation_remark}`
