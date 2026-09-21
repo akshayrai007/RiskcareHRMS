@@ -1164,7 +1164,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       // Row 0: Title
       [`HRMS — Payroll Input Template | ${monthName} ${y} | Total Working Days: ${daysInMonth}`],
       // Row 1: Instructions
-      [`⚠️  Present/LOP Days are PRE-FILLED from ${monthName} ${y} attendance & leave - review and edit. One-time monthly items (LOP Reversal, Food Coupon Adjustment, Extra Working Salary, Bonus, Incentive, Other Earning, Performance Bonus, GTL / Late Mark Deduction, Salary Advance Recovery) apply to THIS month only. Net Pay is recalculated on upload. Payment Status: Paid / Hold / Pending`],
+      [`⚠️  Present/LOP Days are PRE-FILLED from ${monthName} ${y} attendance & leave - review and edit. One-time monthly items (LOP Reversal, Food Coupon Adjustment, Extra Working Salary, Bonus, Incentive, Other Earning, Performance Bonus, GTL / Late Mark Deduction, Salary Advance Recovery) apply to THIS month only. Paid Days, Gross, Total Deductions and Net Pay are live formulas (they recalculate as you edit); final figures are recomputed on upload. Payment Status: Paid / Hold / Pending`],
       // Row 2: Empty spacer
       [],
       // Row 3: Headers
@@ -1222,6 +1222,23 @@ exports.downloadPayrollTemplate = async (req, res) => {
     ];
 
     const ws1 = XLSX.utils.aoa_to_sheet(rows);
+
+    // ── Live formulas: edit Present Days / LOP Reversal / any one-time item and
+    // Paid Days, LOP, Gross, Total Deductions and Net Pay recalculate in Excel.
+    // (Statutory PF/ESI/PT/LWF stay as values; the system recomputes them on upload.)
+    for (let i = 4; i < rows.length; i++) {
+      const R = i + 1, r = rows[i];
+      const num = (c) => Number(r[c]) || 0;
+      const paid = Math.min(num(5), num(6) + Math.min(num(8), Math.max(0, num(5) - num(6))));
+      const gross = Math.round(((num(10) + num(11) + num(12) + num(13)) * (num(5) ? paid / num(5) : 0) + num(14) + num(15) + num(16) + num(17) + num(18) + num(19)) * 100) / 100;
+      const ded = num(21) + num(23) + num(25) + num(26) + num(27) + num(28) + num(29) + num(30);
+      const setF = (col, f, v) => { ws1[col + R] = { t: 'n', f, v }; };
+      setF('H',  `MAX(0,F${R}-G${R})`, Math.max(0, num(5) - num(6)));
+      setF('J',  `MIN(F${R},G${R}+MIN(I${R},H${R}))`, paid);
+      setF('U',  `ROUND((K${R}+L${R}+M${R}+N${R})*IF(F${R}>0,J${R}/F${R},0)+SUM(O${R}:T${R}),2)`, gross);
+      setF('AF', `V${R}+X${R}+SUM(Z${R}:AE${R})`, ded);
+      setF('AG', `MAX(0,U${R}-AF${R})`, Math.max(0, gross - ded));
+    }
 
     // Column widths
     ws1['!cols'] = [
