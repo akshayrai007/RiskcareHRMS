@@ -784,41 +784,47 @@
 
           <div class="sx-row">
             <div><div class="t">TDS</div><div class="h">Auto-filled in payroll from IT Declaration</div></div>
-            <label class="sx-sw"><input type="checkbox" id="edit-tds"><i></i></label>
+            <label class="sx-sw"><input type="checkbox" id="edit-tds" onchange="toggleTdsRegime();recalcSalaryPreview()"><i></i></label>
+          </div>
+          <div id="tds-regime-wrap" class="sx-sub" style="display:none;margin:0">
+            <div class="sx-field"><label>Tax regime</label>
+              <select id="edit-tax-regime" class="form-control">
+                <option value="new">New Regime (default)</option>
+                <option value="old">Old Regime</option>
+              </select></div>
           </div>
         </div>
 
         <!-- Live Preview -->
+        <style>
+  .pv-row{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;font-size:13px;color:rgba(255,255,255,.75);border-top:1px solid rgba(255,255,255,.1)}
+  .pv-row:first-child{border-top:0}
+  .pv-row b{color:#fff;font-weight:700}
+  .pv-row small{display:block;font-size:10px;color:#a7f3d0;margin-top:2px}
+  .pv-row.ded b{color:#fca5a5}
+</style>
         <div id="salary-preview" style="display:none;background:linear-gradient(135deg,#1e293b,#334155);border-radius:14px;padding:18px 20px;margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.2)">
-            <span style="font-size:12px;font-weight:800;color:rgba(255,255,255,.9);letter-spacing:.5px;text-transform:uppercase">📊 Live Salary Preview</span>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span style="font-size:12px;font-weight:800;color:rgba(255,255,255,.9);letter-spacing:.5px;text-transform:uppercase">📊 Live Preview</span>
+            <span id="prev-tds-pill" style="display:none;font-size:10px;font-weight:700;background:rgba(251,191,36,.2);color:#fcd34d;border-radius:20px;padding:3px 10px">Excludes TDS</span>
           </div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
-            <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:14px;text-align:center">
-              <div style="font-size:10px;color:rgba(255,255,255,.7);font-weight:700;margin-bottom:5px;text-transform:uppercase">Gross Earnings</div>
-              <b id="prev-gross" style="font-size:17px;color:#fff">₹0</b>
+          <div style="display:grid;grid-template-columns:3fr 2fr;gap:10px;margin-bottom:12px">
+            <div style="background:#fff;border-radius:12px;padding:14px 16px">
+              <div style="font-size:10px;color:var(--accent);font-weight:800;text-transform:uppercase;letter-spacing:.4px">Net Take-Home / month</div>
+              <b id="prev-net" style="display:block;font-size:26px;color:#16a34a;margin-top:2px">₹0</b>
             </div>
-            <div style="background:rgba(239,68,68,.25);border-radius:10px;padding:14px;text-align:center">
-              <div style="font-size:10px;color:rgba(255,255,255,.7);font-weight:700;margin-bottom:5px;text-transform:uppercase">Total Deductions</div>
-              <b id="prev-ded" style="font-size:17px;color:#fca5a5">₹0</b>
+            <div style="background:rgba(255,255,255,.12);border-radius:12px;padding:14px 16px">
+              <div style="font-size:10px;color:rgba(255,255,255,.7);font-weight:800;text-transform:uppercase;letter-spacing:.4px">Annual CTC</div>
+              <b id="prev-ctc" style="display:block;font-size:19px;color:#d9f99d;margin-top:6px">₹0</b>
             </div>
-            <div style="background:rgba(255,255,255,.95);border-radius:10px;padding:14px;text-align:center;border:2px solid var(--accent)">
-              <div style="font-size:10px;color:var(--accent);font-weight:700;margin-bottom:5px;text-transform:uppercase">Net Take-Home</div>
-              <b id="prev-net" style="font-size:20px;color:#16a34a">₹0</b>
-            </div>
-            <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">
-              <div style="font-size:10px;color:rgba(255,255,255,.6);font-weight:600;margin-bottom:3px">PF (Employee)</div>
-              <b id="prev-pf-emp" style="font-size:14px;color:#fff">₹0</b>
-            </div>
-            <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">
-              <div style="font-size:10px;color:rgba(255,255,255,.6);font-weight:600;margin-bottom:3px">ESI (Employee)</div>
-              <b id="prev-esi-emp" style="font-size:14px;color:#fff">₹0</b>
-              <div id="prev-esi-detail" style="font-size:9px;color:#a7f3d0;margin-top:3px"></div>
-            </div>
-            <div style="background:rgba(255,255,255,.15);border-radius:10px;padding:10px;text-align:center;border:1px solid rgba(255,255,255,.3)">
-              <div style="font-size:10px;color:rgba(255,255,255,.7);font-weight:700;margin-bottom:3px;text-transform:uppercase">Annual CTC</div>
-              <b id="prev-ctc" style="font-size:14px;color:#d9f99d">₹0</b>
-            </div>
+          </div>
+          <div>
+            <div class="pv-row"><span>Gross earnings</span><b id="prev-gross">₹0</b></div>
+            <div class="pv-row ded"><span>PF (Employee)</span><b id="prev-pf-emp">₹0</b></div>
+            <div class="pv-row ded"><span>ESI (Employee)<small id="prev-esi-detail"></small></span><b id="prev-esi-emp">₹0</b></div>
+            <div class="pv-row ded"><span>Professional Tax</span><b id="prev-pt">₹0</b></div>
+            <div class="pv-row" id="prev-tds-row" style="display:none"><span>TDS<small style="color:#fcd34d">Calculated each month in payroll</small></span><b style="color:#fcd34d">—</b></div>
+            <div class="pv-row" style="border-top:1.5px solid rgba(255,255,255,.3)"><span>Total deductions</span><b id="prev-ded" style="color:#fca5a5">₹0</b></div>
           </div>
         </div>
 
@@ -2521,6 +2527,8 @@ async function openEditEmp(id) {
   document.getElementById('edit-esi').checked         = !!s.esi_applicable;
   document.getElementById('edit-pt').checked          = !!s.pt_applicable;
   document.getElementById('edit-tds').checked         = !!s.tds_applicable;
+  document.getElementById('edit-tax-regime').value    = s.tax_regime === 'old' ? 'old' : 'new';
+  toggleTdsRegime();
   document.getElementById('edit-pf-basis').value      = s.pf_wage_basis === 'actual' ? 'actual' : 'capped';
   // PF / ESI manual overrides — only shown when checkbox is ticked; blank = use formula
   document.getElementById('edit-pf-emp-override').value  = s.pf_employee_override  || '';
@@ -2641,6 +2649,10 @@ function setSalaryMode(mode, convert = true) {
   recalcSalaryPreview();
 }
 
+function toggleTdsRegime() {
+  const w = document.getElementById('tds-regime-wrap');
+  if (w) w.style.display = document.getElementById('edit-tds').checked ? '' : 'none';
+}
 function togglePFOverride() {
   const on = document.getElementById('edit-pf').checked;
   const wrap = document.getElementById('pf-override-wrap');
@@ -2702,7 +2714,11 @@ function recalcSalaryPreview() {
   document.getElementById('prev-net').textContent     = fmt2(net);
   document.getElementById('prev-pf-emp').textContent  = fmt2(pfEmp);
   document.getElementById('prev-esi-emp').textContent = fmt2(esiEmp);
-  document.getElementById('prev-esi-detail').textContent = esiEmp || esiEmr ? `Earning ${fmt2(gross)} · Empr ${fmt2(esiEmr)}` : 'not applicable';
+  document.getElementById('prev-esi-detail').textContent = !esiOn ? '' : (esiEmp || esiEmr ? `Employer ${fmt2(esiEmr)}` : 'Not applicable (Gross > ₹21,000)');
+  document.getElementById('prev-pt').textContent = fmt2(pt);
+  const tdsOn = !!document.getElementById('edit-tds')?.checked;
+  document.getElementById('prev-tds-row').style.display  = tdsOn ? '' : 'none';
+  document.getElementById('prev-tds-pill').style.display = tdsOn ? '' : 'none';
   window._annualCtc = Math.round(ctc * 12);
   document.getElementById('prev-ctc').textContent     = fmt2(ctc * 12);
   document.getElementById('salary-preview').style.display = '';
@@ -2805,6 +2821,7 @@ async function saveEmployeeEdit() {
       pt_applicable:  document.getElementById('edit-pt').checked,
       lwf_applicable: false,
       tds_applicable: document.getElementById('edit-tds').checked,
+      tax_regime:     document.getElementById('edit-tax-regime').value || 'new',
       // Manual overrides — null means "use formula", a number means "use this fixed amount"
       pf_employee_override:  parseFloat(document.getElementById('edit-pf-emp-override').value)  || null,
       pf_employer_override:  parseFloat(document.getElementById('edit-pf-emr-override').value)  || null,
