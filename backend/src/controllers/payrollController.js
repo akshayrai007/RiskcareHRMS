@@ -44,12 +44,6 @@ exports.uploadMiddleware = upload.single('file');
 const MONTH_NAMES = ['January','February','March','April','May','June',
                      'July','August','September','October','November','December'];
 
-// ── Statutory parameters (shared by downloadPayrollTemplate and
-//    downloadSalaryStructureTemplate — single source of truth so both
-//    templates and the payroll math itself never drift out of sync) ────────
-const PF_RATE = 0.12, PF_CAP = 15000, ESI_CAP = 21000, ESI_EE = 0.0075, ESI_ER = 0.0325, PT_THR = 10000, PT_AMT = 200;
-const WB_SLABS = [[0, 0], [10000.01, 110], [15000.01, 130], [25000.01, 150], [40000.01, 200]];
-
 // ── Present-day-based salary proration ───────────────────────────────────────
 // Uses the ACTUAL number of days in the cycle (28/29/30/31) as the divisor —
 // never a fixed 30. A fully-present employee always earns 100% of their
@@ -1322,6 +1316,8 @@ exports.downloadPayrollTemplate = async (req, res) => {
     const R_PF_RATE = RULES + '$B$3', R_PF_CAP = RULES + '$B$4', R_ESI_CAP = RULES + '$B$5',
           R_ESI_EE = RULES + '$B$6', R_ESI_ER = RULES + '$B$7', R_PT_THR = RULES + '$B$8', R_PT_AMT = RULES + '$B$9',
           R_WB_LO = RULES + '$A$13:$A$17', R_WB_AMT = RULES + '$B$13:$B$17';
+    const WB_SLABS = [[0, 0], [10000.01, 110], [15000.01, 130], [25000.01, 150], [40000.01, 200]];
+    const PF_RATE = 0.12, PF_CAP = 15000, ESI_CAP = 21000, ESI_EE = 0.0075, ESI_ER = 0.0325, PT_THR = 10000, PT_AMT = 200;
     const r2 = (x) => Math.round(x * 100) / 100;
 
     const buildPayrollSheet = async (employeesList) => {
@@ -1544,12 +1540,6 @@ exports.downloadPayrollTemplate = async (req, res) => {
     XLSX.utils.book_append_sheet(wb, ws3, 'Statutory Rules');
 
     // ── Send ──────────────────────────────────────────────────────────────
-    // Force Excel to fully recalculate every formula on open, instead of trusting
-    // our cached values. Without this, Excel can show stale cached numbers for
-    // some formula cells (e.g. Basic/HRA) while recalculating others (e.g. Gross
-    // Salary) — the exact split-brain mismatch this fixes.
-    wb.Workbook = wb.Workbook || {};
-    wb.Workbook.CalcPr = { fullCalcOnLoad: true, calcMode: 'auto' };
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     res.setHeader('Content-Disposition', `attachment; filename="HRMS_Payroll_Template_${monthName}_${y}.xlsx"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
