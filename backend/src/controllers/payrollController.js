@@ -201,6 +201,11 @@ async function computeAndSaveSalaryStructure(queryable, employeeId, fields, upda
     `UPDATE employee_salary_structure SET esi_wages=$2 WHERE employee_id=$1`,
     [employeeId, esi_applicable && gross <= 21000 ? gross : 0]
   );
+  // Tax regime used for monthly TDS ('new' unless HR sets 'old' for this employee)
+  await queryable.query(
+    `UPDATE employee_salary_structure SET tax_regime=$2 WHERE employee_id=$1`,
+    [employeeId, fields.tax_regime === 'old' ? 'old' : 'new']
+  );
   await recordStructureSnapshot(queryable, employeeId, updatedBy);
 
   return { gross, net, ctc: ctc_monthly };
