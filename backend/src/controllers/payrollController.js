@@ -4,6 +4,7 @@ const CONFIG = require('../Main_file');
 
 const db       = require('../config/db');
 const emailSvc = require('../config/emailService');
+const itDecl   = require('./itDeclarationController');
 const XLSX     = require('xlsx');
 const multer   = require('multer');
 const path     = require('path');
@@ -1228,6 +1229,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
              COALESCE(s.professional_tax,                      0) AS professional_tax,
              COALESCE(s.lwf,                                   0) AS lwf,
              COALESCE(s.tds,                                   0) AS tds,
+             COALESCE(s.tds_applicable,                    false) AS tds_applicable,
              COALESCE(s.total_deductions,                      0) AS total_deductions,
              COALESCE(s.net_salary,                            0) AS net_salary
       FROM employees e
@@ -1335,7 +1337,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       // Row 0: Title
       [`HRMS — Payroll Input Template | ${monthName} ${y} | Total Working Days: ${daysInMonth}`],
       // Row 1: Instructions
-      [`⚠️  Present/LOP Days are PRE-FILLED from ${monthName} ${y} attendance & leave - review and edit. One-time monthly items (LOP Reversal, Food Coupon Adjustment, Extra Working Salary, Bonus, Incentive, Other Earning, Performance Bonus, GTL / Late Mark Deduction, Salary Advance Recovery) apply to THIS month only. Paid Days, Gross, Total Deductions and Net Pay are live formulas (they recalculate as you edit); final figures are recomputed on upload. Payment Status: Paid / Hold / Pending`],
+      [`Present/LOP days are pre-filled from attendance. Bonus, deductions and EMI apply to this month only. TDS is pre-filled from IT Declaration (where TDS is enabled). Status: Paid / Hold / Pending`],
       // Row 2: Empty spacer
       [],
       // Row 3: Headers
@@ -1354,7 +1356,17 @@ exports.downloadPayrollTemplate = async (req, res) => {
         const pf      = parseFloat(e.pf_employee)    || 0;
         const esi     = parseFloat(e.esi_employee)   || 0;
         const pt      = parseFloat(e.professional_tax) || 0;
-        const tds     = parseFloat(e.tds)            || 0;
+        // TDS: if the structure has TDS enabled, pre-fill this month's amount from the
+        // employee's IT Declaration (regime, deductions, prev-employer income, TDS paid YTD).
+        let tds = parseFloat(e.tds) || 0;
+        if (e.tds_applicable) {
+          try {
+            const fixedMonthly = (parseFloat(e.basic) || 0) + (parseFloat(e.hra) || 0) + (parseFloat(e.special_allowance) || 0) + (parseFloat(e.gratuity) || 0);
+            const earned = fixedMonthly * (daysInMonth ? monthAtt.paid / daysInMonth : 0) + (parseFloat(e.food_coupon) || 0);
+            const r = await itDecl.estimateMonthlyTds(e.id, m, y, earned);
+            tds = r.tds || 0;
+          } catch (err) { console.error('TDS estimate failed for', e.employee_code, err.message); }
+        } else { tds = 0; }
         const totalDed= parseFloat(e.total_deductions) || (pf + esi + pt + tds);
         const net     = parseFloat(e.net_salary)     || Math.max(0, gross - totalDed);
         return [
@@ -1507,7 +1519,8 @@ exports.downloadPayrollTemplate = async (req, res) => {
       ['Basic/HRA/Defray/Gratuity/Food Coupon (Monthly)', 'Full monthly amount from employee salary structure in system'],
       ['Basic/HRA/Defray/Gratuity/Food Coupon (Actual)', 'What is actually earned THIS month after attendance/LOP is applied - live formulas, for review only, do not edit'],
       ['Gross Salary',      'Sum of all earnings'],
-      ['PF, ESI, PT, TDS',  'From salary structure'],
+      ['PF, ESI, PT',  'From salary structure'],
+      ['TDS',  'Auto-calculated from IT Declaration if TDS is enabled for the employee; edit if needed'],
       ['Total Deductions',  'Sum of all deductions'],
       ['Net Pay',           'Gross - Total Deductions (system recalculates on upload)'],
       [''],
@@ -1620,7 +1633,7 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
       ['EPS Applicable',   'Y if the employer\'s 12% PF share splits into EPS (A/c-10, 8.33%) + EPF (A/c-1, 3.67%), which is the default for most employees. N if EPS does not apply to this employee — their full 12% employer share stays in EPF A/c-1 instead.'],
       ['ESI Applicable',   'Y if ESI applies (only relevant when gross ≤ ₹21,000), else N'],
       ['PT Applicable',    'Y if Professional Tax applies, else N'],
-      ['TDS Applicable',   'Y if TDS should be deducted, else N (TDS amount itself is entered separately during monthly payroll)'],
+      ['TDS Applicable',   'Y to deduct TDS (amount is auto-calculated from the IT Declaration in the payroll template)'],
       [''],
       ['UPLOAD RULES:'],
       ['• Emp Code must match exactly (e.g. E066)'],
