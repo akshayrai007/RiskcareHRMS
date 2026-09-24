@@ -172,6 +172,11 @@ exports.initTables = async () => {
         ['proof_start',         `${fyStart}-06-01`,  'Proof upload window start'],
         ['proof_end',           `${fyEnd}-03-31`,    'Proof upload window end'],
         ['old_slabs', '0|250000|0,250001|500000|5,500001|1000000|20,1000001|999999999|30', 'Old Regime slabs: low|high|rate%'],
+        ['old_slabs_senior', '0|300000|0,300001|500000|5,500001|1000000|20,1000001|999999999|30', 'Old Regime slabs: resident senior citizen (60-79)'],
+        ['old_slabs_super',  '0|500000|0,500001|1000000|20,1000001|999999999|30', 'Old Regime slabs: resident super senior citizen (80+)'],
+        ['surcharge_slabs',  '5000000|10,10000000|15,20000000|25,50000000|37', 'Surcharge: income_above|rate% (applies on tax when taxable income exceeds the threshold)'],
+        ['surcharge_cap_new','25', 'Max surcharge % under New Regime'],
+        ['limit_80d_self_sr','50000', '80D self + family max (senior citizen)'],
         ['new_slabs', NEW_SLABS, 'New Regime slabs: low|high|rate%'],
       ];
       for (const [k, v, d] of defaults) {
@@ -346,27 +351,91 @@ function applySlabs(income, slabs) {
   return tax;
 }
 
-function computeTax(taxableIncome, regime, cfg) {
-  const slabStr = regime === 'new' ? cfg.new_slabs : cfg.old_slabs;
-  const slabs   = parseSlabs(slabStr);
-  let tax = applySlabs(taxableIncome, slabs);
+// Age group as on last day of the FY (a person turning 60/80 during the FY is treated as senior/super senior)
+function getAgeGroup(dob, fy) {
+  if (!dob) return 'below60';
+  let y, m, d;
+  if (dob instanceof Date) { y = dob.getFullYear(); m = dob.getMonth(); d = dob.getDate(); }
+  else {
+    const mt = String(dob).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!mt) return 'below60';
+    y = +mt[1]; m = +mt[2] - 1; d = +mt[3];
+  }
+  if (!y) return 'below60';
+  const fyEndYear = 2000 + parseInt(String(fy || '').split('-')[1], 10);
+  if (!fyEndYear) return 'below60';
+  let age = fyEndYear - y;
+  if (m > 2 || (m === 2 && d > 31)) age -= 1;   // birthday after 31 March
+  return age >= 80 ? 'super_senior' : age >= 60 ? 'senior' : 'below60';
+}
 
-  // Rebate 87A
-  const rebateThresh = regime === 'new'
-    ? cfgN(cfg, 'rebate_87a_new', 1200000)
-    : cfgN(cfg, 'rebate_87a_old', 500000);
-  const rebateAmt = regime === 'new'
-    ? cfgN(cfg, 'rebate_87a_new_amt', 60000)
-    : cfgN(cfg, 'rebate_87a_old_amt', 12500);
-  if (taxableIncome <= rebateThresh) {
-    tax = Math.max(0, tax - rebateAmt);
-  } else if (regime === 'new' && taxableIncome > rebateThresh) {
-    // Marginal relief: tax payable can't exceed the income above the rebate threshold
-    tax = Math.min(tax, taxableIncome - rebateThresh);
+const DEFAULT_SLABS = {
+  old_slabs:        '0|250000|0,250001|500000|5,500001|1000000|20,1000001|999999999|30',
+  old_slabs_senior: '0|300000|0,300001|500000|5,500001|1000000|20,1000001|999999999|30',
+  old_slabs_super:  '0|500000|0,500001|1000000|20,1000001|999999999|30',
+};
+const DEFAULT_SURCHARGE = '5000000|10,10000000|15,20000000|25,50000000|37';
+
+// Full breakdown: slab tax -> 87A rebate (+ marginal relief) -> surcharge (+ marginal relief) -> cess
+function computeTaxDetail(taxableIncome, regime, cfg, ageGroup = 'below60') {
+  const slabKey = regime === 'new' ? 'new_slabs'
+    : ageGroup === 'super_senior' ? 'old_slabs_super'
+    : ageGroup === 'senior'       ? 'old_slabs_senior'
+    : 'old_slabs';
+  const slabs = parseSlabs(cfg[slabKey] || DEFAULT_SLABS[slabKey] || cfg.old_slabs);
+
+  const rebateThresh = regime === 'new' ? cfgN(cfg, 'rebate_87a_new', 1200000) : cfgN(cfg, 'rebate_87a_old', 500000);
+  const rebateAmt    = regime === 'new' ? cfgN(cfg, 'rebate_87a_new_amt', 60000) : cfgN(cfg, 'rebate_87a_old_amt', 12500);
+
+  // Tax after 87A (and its marginal relief) but before surcharge/cess, for any income
+  const taxBeforeSurcharge = (inc) => {
+    let t = applySlabs(inc, slabs);
+    if (inc <= rebateThresh) t = Math.max(0, t - rebateAmt);
+    else if (regime === 'new') t = Math.min(t, inc - rebateThresh);   // marginal relief on 87A
+    return t;
+  };
+
+  const slabTax = applySlabs(taxableIncome, slabs);
+  const tax     = taxBeforeSurcharge(taxableIncome);
+
+  // Surcharge
+  const sl = (cfg.surcharge_slabs || DEFAULT_SURCHARGE).split(',').map(x => {
+    const [above, rate] = x.split('|'); return { above: parseFloat(above), rate: parseFloat(rate) };
+  }).sort((p, q) => p.above - q.above);
+  const capNew   = cfgN(cfg, 'surcharge_cap_new', 25);
+  const rateAt   = (inc) => {
+    let r = 0;
+    for (const x of sl) if (inc > x.above) r = x.rate;
+    return regime === 'new' ? Math.min(r, capNew) : r;
+  };
+  const surRate = rateAt(taxableIncome);
+  let surcharge = tax * surRate / 100;
+  if (surRate > 0) {
+    // Marginal relief: extra (tax + surcharge) can't exceed the income above the threshold
+    const thr = sl.filter(x => taxableIncome > x.above).pop().above;
+    const prevTotal = taxBeforeSurcharge(thr) * (1 + rateAt(thr) / 100);
+    const total     = tax + surcharge;
+    if (total - prevTotal > taxableIncome - thr) surcharge = Math.max(0, prevTotal + (taxableIncome - thr) - tax);
   }
 
   const cessRate = cfgN(cfg, 'cess_rate', 4) / 100;
-  return Math.round(tax + tax * cessRate);
+  const beforeCess = tax + surcharge;
+  const cess  = beforeCess * cessRate;
+  const total = Math.round(beforeCess + cess);
+  return {
+    slab_tax:            Math.round(slabTax),
+    rebate:              Math.round(Math.max(0, slabTax - tax)),
+    tax_before_surcharge:Math.round(tax),
+    surcharge_rate:      surRate,
+    surcharge:           Math.round(surcharge),
+    tax_before_cess:     Math.round(beforeCess),
+    cess:                total - Math.round(beforeCess),
+    total,
+  };
+}
+
+function computeTax(taxableIncome, regime, cfg, ageGroup = 'below60') {
+  return computeTaxDetail(taxableIncome, regime, cfg, ageGroup).total;
 }
 
 // ── FIX: HRA Exemption helper (used in both saveDeclaration & taxPreview) ─────
@@ -394,7 +463,9 @@ function calcHRAExempt(d, salRow) {
 function calcDeductions(d, cfg, salRow) {
   const lim80c      = cfgN(cfg, 'limit_80c', 150000);
   const limNps      = cfgN(cfg, 'limit_80ccd1b', 50000);
-  const lim80dSelf  = cfgN(cfg, 'limit_80d_self', 25000);
+  const lim80dSelf  = (salRow && salRow.age_group && salRow.age_group !== 'below60')
+    ? cfgN(cfg, 'limit_80d_self_sr', 50000)
+    : cfgN(cfg, 'limit_80d_self', 25000);
   const lim80dPar   = d.sec80d_senior_parent
     ? cfgN(cfg, 'limit_80d_parents_sr', 50000)
     : cfgN(cfg, 'limit_80d_parents', 25000);
@@ -476,10 +547,12 @@ function computeRegimeTax(regime, d, cfg, sal, prevSal, otherInc) {
     const stdNew      = cfgN(cfg, 'std_deduction_new', 75000);
     const employerNps = parseFloat(d.employer_nps || 0);
     const taxableNew  = Math.max(0, annGross + prevSal + otherInc - stdNew - employerNps);
-    const tax         = computeTax(taxableNew, 'new', cfg);
+    const detail      = computeTaxDetail(taxableNew, 'new', cfg, sal && sal.age_group);
+    const tax         = detail.total;
     return {
       taxableIncome:   taxableNew,
       tax,
+      detail,
       stdDeduction:    stdNew,
       employerNps,
       totalDeductions: stdNew + employerNps,
@@ -496,10 +569,12 @@ function computeRegimeTax(regime, d, cfg, sal, prevSal, otherInc) {
       - deductions.total
       - deductions.hpDeduction
     );
-    const tax = computeTax(taxableOld, 'old', cfg);
+    const detail = computeTaxDetail(taxableOld, 'old', cfg, sal && sal.age_group);
+    const tax = detail.total;
     return {
       taxableIncome:   taxableOld,
       tax,
+      detail,
       stdDeduction:    stdOld,
       hraExempt:       deductions.hraExempt,
       hpDeduction:     deductions.hpDeduction,
@@ -685,9 +760,13 @@ exports.saveDeclaration = async (req, res) => {
 
     // Fetch salary structure
     const salRow = await db.query(
-      `SELECT basic, hra, gross_salary FROM employee_salary_structure WHERE employee_id=$1`, [empId]
+      `SELECT ess.basic, ess.hra, ess.gross_salary, e.date_of_birth
+       FROM employees e
+       LEFT JOIN employee_salary_structure ess ON ess.employee_id = e.id
+       WHERE e.id=$1`, [empId]
     );
     const sal = salRow.rows[0] || {};
+    sal.age_group = getAgeGroup(sal.date_of_birth, fy);
 
     const prevSal  = parseFloat(b.prev_gross_salary || 0);
     const otherInc = parseFloat(b.other_savings_int || 0) + parseFloat(b.other_fd_int || 0) +
@@ -1052,16 +1131,16 @@ exports.taxPreview = async (req, res) => {
     const empId = req.query.employee_id ? parseInt(req.query.employee_id) : req.user.id;
     const fy    = req.query.fy || '2025-26';
     const cfg   = await loadConfig(fy);
-    const cessDiv = 1 + cfgN(cfg, 'cess_rate', 4) / 100;
 
     const salRes = await db.query(
-      `SELECT ess.gross_salary, ess.basic, ess.hra, e.city
+      `SELECT ess.gross_salary, ess.basic, ess.hra, e.city, e.date_of_birth
        FROM employee_salary_structure ess JOIN employees e ON ess.employee_id=e.id
        WHERE ess.employee_id=$1`, [empId]
     );
     if (!salRes.rows.length)
       return res.json({ success:false, message:'Salary structure not set up. Ask HR.' });
     const sal      = salRes.rows[0];
+    sal.age_group  = getAgeGroup(sal.date_of_birth, fy);
     const annGross = parseFloat(sal.gross_salary || 0) * 12;
 
     const declRes = await db.query(
@@ -1104,6 +1183,7 @@ exports.taxPreview = async (req, res) => {
       reasons.push('Standard Deduction ₹75,000 in New Regime exceeds applicable deductions');
 
     res.json({ success:true, data: {
+      age_group:     sal.age_group,
       annual_gross:  Math.round(annGross),
       prev_salary:   Math.round(prevSal),
       other_income:  Math.round(otherInc),
@@ -1123,8 +1203,13 @@ exports.taxPreview = async (req, res) => {
         house_property:     Math.round(oldComputed.hpDeduction || 0),
         total_deductions:   Math.round(oldComputed.totalDeductions),
         taxable_income:     Math.round(oldComputed.taxableIncome),
-        tax_before_cess:    Math.round(taxOld / cessDiv),
-        cess:               Math.round(taxOld - taxOld / cessDiv),
+        slab_tax:             oldComputed.detail.slab_tax,
+        rebate_87a:           oldComputed.detail.rebate,
+        tax_before_surcharge: oldComputed.detail.tax_before_surcharge,
+        surcharge_rate:       oldComputed.detail.surcharge_rate,
+        surcharge:            oldComputed.detail.surcharge,
+        tax_before_cess:    oldComputed.detail.tax_before_cess,
+        cess:               oldComputed.detail.cess,
         tax:                Math.round(taxOld),
         prev_tds:           Math.round(prevTds),
         net_tax:            Math.round(netTaxOld),
@@ -1134,8 +1219,13 @@ exports.taxPreview = async (req, res) => {
         std_deduction:   newComputed.stdDeduction,
         employer_nps:    Math.round(newComputed.employerNps || 0),
         taxable_income:  Math.round(newComputed.taxableIncome),
-        tax_before_cess: Math.round(taxNew / cessDiv),
-        cess:            Math.round(taxNew - taxNew / cessDiv),
+        slab_tax:             newComputed.detail.slab_tax,
+        rebate_87a:           newComputed.detail.rebate,
+        tax_before_surcharge: newComputed.detail.tax_before_surcharge,
+        surcharge_rate:       newComputed.detail.surcharge_rate,
+        surcharge:            newComputed.detail.surcharge,
+        tax_before_cess: newComputed.detail.tax_before_cess,
+        cess:            newComputed.detail.cess,
         tax:             Math.round(taxNew),
         prev_tds:        Math.round(prevTds),
         net_tax:         Math.round(netTaxNew),
