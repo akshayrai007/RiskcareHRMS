@@ -688,146 +688,103 @@
       <!-- ── Tab: Salary Structure ── -->
       <div id="etab-salary" style="padding:20px 24px;display:none">
 
-        <div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#6d4c00;display:flex;align-items:center;gap:8px">
-          📝 Tick to enable a deduction. Amounts are auto-calculated.
-        </div>
+        <style>
+  .sx-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+  .sx-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .sx-head h4{margin:0;font-size:13px;font-weight:800;color:var(--accent);letter-spacing:.4px;text-transform:uppercase}
+  .sx-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .sx-field label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px}
+  .sx-field label small{font-weight:500;opacity:.8}
+  .sx-money{position:relative}
+  .sx-money>span{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;font-weight:700;color:var(--muted);pointer-events:none}
+  .sx-money .form-control{padding:9px 12px 9px 26px;font-size:14px;font-weight:600;width:100%;box-sizing:border-box}
+  .sx-money.big .form-control{font-size:16px;font-weight:800;padding-top:11px;padding-bottom:11px}
+  .sx-full{grid-column:1/-1}
+  .sx-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--border)}
+  .sx-row:first-of-type{border-top:0;padding-top:0}
+  .sx-row .t{font-size:13px;font-weight:700;color:#1f2937}
+  .sx-row .h{font-size:11px;color:var(--muted);margin-top:2px}
+  .sx-sw{position:relative;width:40px;height:22px;flex:none;cursor:pointer}
+  .sx-sw input{position:absolute;inset:0;opacity:0;cursor:pointer;margin:0;width:100%;height:100%;z-index:2}
+  .sx-sw i{position:absolute;inset:0;background:#cbd5e1;border-radius:22px;transition:.2s}
+  .sx-sw i:before{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+  .sx-sw input:checked+i{background:var(--accent)}
+  .sx-sw input:checked+i:before{transform:translateX(18px)}
+  .sx-sub{background:var(--surface2);border-radius:10px;padding:12px;margin:0 0 12px}
+  .sx-sub .sx-grid{gap:10px}
+  .sx-sub select.form-control{padding:8px 10px;font-size:12px;width:100%}
+  .sx-chk{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;cursor:pointer;height:100%;padding-top:16px}
+  .sx-ov-title{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:12px 0 6px}
+</style>
 
         <!-- Earnings -->
-        <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">
-            <div style="width:28px;height:28px;background:var(--accent-l);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">💵</div>
-            <span id="earn-title" style="font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.5px;text-transform:uppercase">Earnings (₹/month)</span>
+        <div class="sx-card">
+          <div class="sx-head">
+            <span style="font-size:18px">💵</span>
+            <h4 id="earn-title">Earnings (₹/month)</h4>
             <div style="margin-left:auto;display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
               <button type="button" id="mode-monthly" onclick="setSalaryMode('monthly')" style="padding:6px 14px;font-size:12px;font-weight:700;border:0;cursor:pointer">Monthly</button>
               <button type="button" id="mode-annual" onclick="setSalaryMode('annual')" style="padding:6px 14px;font-size:12px;font-weight:700;border:0;cursor:pointer">Annual</button>
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-
-            <!-- Basic Salary -->
-            <div style="background:var(--accent-l);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10px;color:var(--accent);font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Basic Salary * (₹)</div>
-              <input id="edit-basic" type="number" class="form-control" placeholder="0.00"
-                style="padding:8px 12px;font-size:15px;font-weight:700;border-color:var(--accent)"
-                oninput="recalcSalaryPreview()">
-            </div>
-
-            <!-- HRA -->
-            <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10px;color:var(--accent);font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">HRA — House Rent Allowance (₹)</div>
-              <input id="edit-hra" type="number" class="form-control" placeholder="0.00"
-                style="padding:8px 12px;font-size:14px;font-weight:600"
-                oninput="recalcSalaryPreview()">
-            </div>
-
-            <!-- Defray Allowance -->
-            <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10px;color:var(--accent);font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Defray Allowance (₹)</div>
-              <input id="edit-special" type="number" class="form-control" placeholder="0.00"
-                style="padding:8px 12px;font-size:14px;font-weight:600"
-                oninput="recalcSalaryPreview()">
-            </div>
-
-            <!-- Gratuity -->
-            <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10px;color:var(--accent);font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Gratuity (₹) — monthly provision</div>
-              <input id="edit-gratuity" type="number" class="form-control" placeholder="0.00"
-                style="padding:8px 12px;font-size:14px;font-weight:600"
-                oninput="recalcSalaryPreview()">
-            </div>
-
-            <!-- Food Coupon — only applicable to select employees -->
-            <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10px;color:var(--accent);font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Food Coupon (₹) — select employees only</div>
-              <input id="edit-food-coupon" type="number" class="form-control" placeholder="0.00"
-                style="padding:8px 12px;font-size:14px;font-weight:600"
-                oninput="recalcSalaryPreview()">
-            </div>
-
+          <div class="sx-grid">
+            <div class="sx-field sx-full"><label>Basic Salary *</label>
+              <div class="sx-money big"><span>₹</span><input id="edit-basic" type="number" class="form-control" placeholder="0" oninput="recalcSalaryPreview()"></div></div>
+            <div class="sx-field"><label>HRA</label>
+              <div class="sx-money"><span>₹</span><input id="edit-hra" type="number" class="form-control" placeholder="0" oninput="recalcSalaryPreview()"></div></div>
+            <div class="sx-field"><label>Defray Allowance</label>
+              <div class="sx-money"><span>₹</span><input id="edit-special" type="number" class="form-control" placeholder="0" oninput="recalcSalaryPreview()"></div></div>
+            <div class="sx-field"><label>Gratuity <small>(monthly)</small></label>
+              <div class="sx-money"><span>₹</span><input id="edit-gratuity" type="number" class="form-control" placeholder="0" oninput="recalcSalaryPreview()"></div></div>
+            <div class="sx-field"><label>Food Coupon <small>(if eligible)</small></label>
+              <div class="sx-money"><span>₹</span><input id="edit-food-coupon" type="number" class="form-control" placeholder="0" oninput="recalcSalaryPreview()"></div></div>
           </div>
         </div>
 
-        <!-- Statutory Deductions — manual amounts -->
-        <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">
-            <div style="width:28px;height:28px;background:var(--accent-l);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">📋</div>
-            <span style="font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.5px;text-transform:uppercase">Deductions</span>
+        <!-- Deductions -->
+        <div class="sx-card">
+          <div class="sx-head"><span style="font-size:18px">📋</span><h4>Deductions</h4></div>
+
+          <div class="sx-row">
+            <div><div class="t">Provident Fund (PF)</div><div class="h">12% of Basic</div></div>
+            <label class="sx-sw"><input type="checkbox" id="edit-pf" onchange="togglePFOverride();recalcSalaryPreview()"><i></i></label>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-            <!-- PF -->
-            <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
-              <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:var(--accent)">
-                <input type="checkbox" id="edit-pf" style="accent-color:var(--accent);width:15px;height:15px" onchange="togglePFOverride();recalcSalaryPreview()"> PF (Provident Fund)
-              </label>
-              <div style="font-size:11px;color:var(--muted)">12% of Basic</div>
-              <div style="margin-top:8px"><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">PF BASIS</div>
-                <select id="edit-pf-basis" class="form-control" style="padding:6px 10px;font-size:12px" onchange="recalcSalaryPreview()">
-                  <option value="capped">Capped (₹15,000)</option>
+          <div id="pf-override-wrap" class="sx-sub" style="display:none">
+            <div class="sx-grid">
+              <div class="sx-field"><label>PF basis</label>
+                <select id="edit-pf-basis" class="form-control" onchange="recalcSalaryPreview()">
+                  <option value="capped">Capped at ₹15,000</option>
                   <option value="actual">Actual Basic</option>
                 </select></div>
-              <label style="display:flex;align-items:center;gap:7px;margin-top:8px;cursor:pointer;font-size:11px">
-                <input type="checkbox" id="edit-eps" style="accent-color:var(--accent);width:14px;height:14px"> EPS applicable
-              </label>
-              <!-- Manual PF override -->
-              <div id="pf-override-wrap" style="display:none;margin-top:10px;background:#fff;border:1.5px dashed #93c5fd;border-radius:8px;padding:10px 12px">
-                <div style="font-size:10px;font-weight:800;color:#1d4ed8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">⚙️ Override (optional)</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                  <div>
-                    <div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">PF Employee (₹)</div>
-                    <input id="edit-pf-emp-override" type="number" class="form-control" placeholder="Auto"
-                      style="padding:6px 10px;font-size:13px;font-weight:600;border-color:#93c5fd"
-                      oninput="recalcSalaryPreview()">
-                  </div>
-                  <div>
-                    <div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">PF Employer (₹)</div>
-                    <input id="edit-pf-emr-override" type="number" class="form-control" placeholder="Auto"
-                      style="padding:6px 10px;font-size:13px;font-weight:600;border-color:#93c5fd"
-                      oninput="recalcSalaryPreview()">
-                  </div>
-                </div>
-                <div style="font-size:10px;color:#6b7280;margin-top:6px">Blank = auto.</div>
-              </div>
+              <label class="sx-chk"><input type="checkbox" id="edit-eps" style="accent-color:var(--accent);width:15px;height:15px"> EPS applicable</label>
             </div>
-            <!-- ESI -->
-            <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
-              <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:var(--accent)">
-                <input type="checkbox" id="edit-esi" style="accent-color:var(--accent);width:15px;height:15px" onchange="toggleESIOverride();recalcSalaryPreview()"> ESI
-              </label>
-              <div style="font-size:11px;color:var(--muted)">Only if Gross ≤ ₹21,000</div>
-              <!-- Manual ESI override -->
-              <div id="esi-override-wrap" style="display:none;margin-top:10px;background:#fff;border:1.5px dashed #6ee7b7;border-radius:8px;padding:10px 12px">
-                <div style="font-size:10px;font-weight:800;color:#065f46;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">⚙️ Override (optional)</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                  <div>
-                    <div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">ESI Employee (₹)</div>
-                    <input id="edit-esi-emp-override" type="number" class="form-control" placeholder="Auto"
-                      style="padding:6px 10px;font-size:13px;font-weight:600;border-color:#6ee7b7"
-                      oninput="recalcSalaryPreview()">
-                  </div>
-                  <div>
-                    <div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">ESI Employer (₹)</div>
-                    <input id="edit-esi-emr-override" type="number" class="form-control" placeholder="Auto"
-                      style="padding:6px 10px;font-size:13px;font-weight:600;border-color:#6ee7b7"
-                      oninput="recalcSalaryPreview()">
-                  </div>
-                </div>
-                <div style="font-size:10px;color:#6b7280;margin-top:6px">Blank = auto.</div>
-              </div>
+            <div class="sx-ov-title">Override ₹ · blank = auto</div>
+            <div class="sx-grid">
+              <div class="sx-field"><div class="sx-money"><span>₹</span><input id="edit-pf-emp-override" type="number" class="form-control" placeholder="Employee" oninput="recalcSalaryPreview()"></div></div>
+              <div class="sx-field"><div class="sx-money"><span>₹</span><input id="edit-pf-emr-override" type="number" class="form-control" placeholder="Employer" oninput="recalcSalaryPreview()"></div></div>
             </div>
-            <!-- PT -->
-            <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
-              <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:var(--accent)">
-                <input type="checkbox" id="edit-pt" style="accent-color:var(--accent);width:15px;height:15px" onchange="recalcSalaryPreview()"> PT
-              </label>
-              <div style="font-size:11px;color:var(--muted)">By state slab</div>
+          </div>
+
+          <div class="sx-row">
+            <div><div class="t">ESI</div><div class="h">Only if Gross ≤ ₹21,000</div></div>
+            <label class="sx-sw"><input type="checkbox" id="edit-esi" onchange="toggleESIOverride();recalcSalaryPreview()"><i></i></label>
+          </div>
+          <div id="esi-override-wrap" class="sx-sub" style="display:none">
+            <div class="sx-ov-title" style="margin-top:0">Override ₹ · blank = auto</div>
+            <div class="sx-grid">
+              <div class="sx-field"><div class="sx-money"><span>₹</span><input id="edit-esi-emp-override" type="number" class="form-control" placeholder="Employee" oninput="recalcSalaryPreview()"></div></div>
+              <div class="sx-field"><div class="sx-money"><span>₹</span><input id="edit-esi-emr-override" type="number" class="form-control" placeholder="Employer" oninput="recalcSalaryPreview()"></div></div>
             </div>
-            <!-- TDS -->
-            <div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:12px 14px;grid-column:1/-1">
-              <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:700;color:#e65100">
-                <input type="checkbox" id="edit-tds" style="accent-color:#e65100;width:15px;height:15px"> TDS
-              </label>
-              <div style="font-size:11px;color:var(--muted);margin-top:4px">Auto-filled in payroll from IT Declaration.</div>
-            </div>
+          </div>
+
+          <div class="sx-row">
+            <div><div class="t">Professional Tax (PT)</div><div class="h">By state slab</div></div>
+            <label class="sx-sw"><input type="checkbox" id="edit-pt" onchange="recalcSalaryPreview()"><i></i></label>
+          </div>
+
+          <div class="sx-row">
+            <div><div class="t">TDS</div><div class="h">Auto-filled in payroll from IT Declaration</div></div>
+            <label class="sx-sw"><input type="checkbox" id="edit-tds"><i></i></label>
           </div>
         </div>
 
@@ -2680,7 +2637,7 @@ function setSalaryMode(mode, convert = true) {
   if (bm) bm.style.cssText += ';' + (mode === 'monthly' ? on : off);
   if (ba) ba.style.cssText += ';' + (mode === 'annual' ? on : off);
   const t = document.getElementById('earn-title');
-  if (t) t.textContent = mode === 'annual' ? 'Earnings (₹/year) — auto-converted to monthly' : 'Earnings (₹/month)';
+  if (t) t.textContent = mode === 'annual' ? 'Earnings (₹/year)' : 'Earnings (₹/month)';
   recalcSalaryPreview();
 }
 
