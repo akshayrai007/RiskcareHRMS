@@ -689,7 +689,7 @@
       <div id="etab-salary" style="padding:20px 24px;display:none">
 
         <div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#6d4c00;display:flex;align-items:center;gap:8px">
-          📝 Tick the checkbox to enable each deduction — the amount is calculated automatically (PF 12% of Basic, ESI 0.75%/3.25% of Gross under ₹21,000, PT by state slab). See the Live Preview below.
+          📝 Tick the checkbox to enable each deduction — the amount is calculated automatically (PF 12% of Basic, ESI 0.75%/3.25% of Gross under ₹21,000, PT by state slab). Use the optional <strong>Manual Override</strong> inside each PF/ESI card to enter a fixed ₹ amount when the formula doesn't apply. See the Live Preview below.
         </div>
 
         <!-- Earnings -->
@@ -757,7 +757,7 @@
             <!-- PF -->
             <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
               <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:var(--accent)">
-                <input type="checkbox" id="edit-pf" style="accent-color:var(--accent);width:15px;height:15px" onchange="recalcSalaryPreview()"> PF (Provident Fund)
+                <input type="checkbox" id="edit-pf" style="accent-color:var(--accent);width:15px;height:15px" onchange="togglePFOverride();recalcSalaryPreview()"> PF (Provident Fund)
               </label>
               <div style="font-size:11px;color:var(--muted)">12% of Basic — Employee A/c-1, Employer A/c-1+A/c-10 — plus 1% admin/EDLI (A/c-2 + A/c-21), auto-calculated</div>
               <div style="margin-top:8px"><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">PF BASIS</div>
@@ -768,13 +768,51 @@
               <label style="display:flex;align-items:center;gap:7px;margin-top:8px;cursor:pointer;font-size:11px">
                 <input type="checkbox" id="edit-eps" style="accent-color:var(--accent);width:14px;height:14px"> EPS applicable (A/c-10, 8.33% of employer's 12% share)
               </label>
+              <!-- Manual PF override -->
+              <div id="pf-override-wrap" style="display:none;margin-top:10px;background:#fff;border:1.5px dashed #93c5fd;border-radius:8px;padding:10px 12px">
+                <div style="font-size:10px;font-weight:800;color:#1d4ed8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">⚙️ Manual Override (optional)</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <div>
+                    <div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">PF Employee (₹)</div>
+                    <input id="edit-pf-emp-override" type="number" class="form-control" placeholder="Auto"
+                      style="padding:6px 10px;font-size:13px;font-weight:600;border-color:#93c5fd"
+                      oninput="recalcSalaryPreview()">
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">PF Employer (₹)</div>
+                    <input id="edit-pf-emr-override" type="number" class="form-control" placeholder="Auto"
+                      style="padding:6px 10px;font-size:13px;font-weight:600;border-color:#93c5fd"
+                      oninput="recalcSalaryPreview()">
+                  </div>
+                </div>
+                <div style="font-size:10px;color:#6b7280;margin-top:6px">Leave blank to use auto-calculated values. Fill only when the standard formula doesn't apply (e.g. international employees, court orders).</div>
+              </div>
             </div>
             <!-- ESI -->
             <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
               <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:var(--accent)">
-                <input type="checkbox" id="edit-esi" style="accent-color:var(--accent);width:15px;height:15px" onchange="recalcSalaryPreview()"> ESI (Employee State Insurance)
+                <input type="checkbox" id="edit-esi" style="accent-color:var(--accent);width:15px;height:15px" onchange="toggleESIOverride();recalcSalaryPreview()"> ESI (Employee State Insurance)
               </label>
               <div style="font-size:11px;color:var(--muted)">0.75% / 3.25% of Gross (only if Gross ≤ ₹21,000), auto-calculated</div>
+              <!-- Manual ESI override -->
+              <div id="esi-override-wrap" style="display:none;margin-top:10px;background:#fff;border:1.5px dashed #6ee7b7;border-radius:8px;padding:10px 12px">
+                <div style="font-size:10px;font-weight:800;color:#065f46;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">⚙️ Manual Override (optional)</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <div>
+                    <div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">ESI Employee (₹)</div>
+                    <input id="edit-esi-emp-override" type="number" class="form-control" placeholder="Auto"
+                      style="padding:6px 10px;font-size:13px;font-weight:600;border-color:#6ee7b7"
+                      oninput="recalcSalaryPreview()">
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">ESI Employer (₹)</div>
+                    <input id="edit-esi-emr-override" type="number" class="form-control" placeholder="Auto"
+                      style="padding:6px 10px;font-size:13px;font-weight:600;border-color:#6ee7b7"
+                      oninput="recalcSalaryPreview()">
+                  </div>
+                </div>
+                <div style="font-size:10px;color:#6b7280;margin-top:6px">Leave blank to use auto-calculated values. Fill only when gross exceeds ₹21,000 but ESI still applies (e.g. gross-up correction, ESIC exception).</div>
+              </div>
             </div>
             <!-- PT -->
             <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
@@ -2527,6 +2565,16 @@ async function openEditEmp(id) {
   document.getElementById('edit-pt').checked          = !!s.pt_applicable;
   document.getElementById('edit-tds').checked         = !!s.tds_applicable;
   document.getElementById('edit-pf-basis').value      = s.pf_wage_basis === 'actual' ? 'actual' : 'capped';
+  // PF / ESI manual overrides — only shown when checkbox is ticked; blank = use formula
+  document.getElementById('edit-pf-emp-override').value  = s.pf_employee_override  || '';
+  document.getElementById('edit-pf-emr-override').value  = s.pf_employer_override  || '';
+  document.getElementById('edit-esi-emp-override').value = s.esi_employee_override || '';
+  document.getElementById('edit-esi-emr-override').value = s.esi_employer_override || '';
+  // Show/hide override panels based on checkbox state
+  const pfOvWrap = document.getElementById('pf-override-wrap');
+  const esiOvWrap= document.getElementById('esi-override-wrap');
+  if (pfOvWrap)  pfOvWrap.style.display  = !!s.pf_applicable  ? '' : 'none';
+  if (esiOvWrap) esiOvWrap.style.display = !!s.esi_applicable ? '' : 'none';
   document.getElementById('edit-sal-notes').value     = s.notes || '';
   document.getElementById('edit-sal-effective').value = '';
   document.getElementById('edit-sal-comments').value = '';
@@ -2636,6 +2684,27 @@ function setSalaryMode(mode, convert = true) {
   recalcSalaryPreview();
 }
 
+function togglePFOverride() {
+  const on = document.getElementById('edit-pf').checked;
+  const wrap = document.getElementById('pf-override-wrap');
+  if (wrap) wrap.style.display = on ? '' : 'none';
+  if (!on) {
+    const a = document.getElementById('edit-pf-emp-override');
+    const b = document.getElementById('edit-pf-emr-override');
+    if (a) a.value = ''; if (b) b.value = '';
+  }
+}
+function toggleESIOverride() {
+  const on = document.getElementById('edit-esi').checked;
+  const wrap = document.getElementById('esi-override-wrap');
+  if (wrap) wrap.style.display = on ? '' : 'none';
+  if (!on) {
+    const a = document.getElementById('edit-esi-emp-override');
+    const b = document.getElementById('edit-esi-emr-override');
+    if (a) a.value = ''; if (b) b.value = '';
+  }
+}
+
 function recalcSalaryPreview() {
   const v = id => SAL_IDS.includes(id) ? mval(id) : (parseFloat(document.getElementById(id)?.value) || 0);
   const basic      = v('edit-basic');
@@ -2651,12 +2720,19 @@ function recalcSalaryPreview() {
   // these are auto-calculated on save, this is just a live preview of that.
   const pfBasis = document.getElementById('edit-pf-basis')?.value || 'capped';
   const pfBase  = pfBasis === 'actual' ? basic : Math.min(basic, 15000);
-  const pfEmp   = document.getElementById('edit-pf').checked  ? Math.round(pfBase * 0.12) : 0;
-  const pfEmr   = document.getElementById('edit-pf').checked  ? Math.round(pfBase * 0.12) : 0;
+  const pfOn    = document.getElementById('edit-pf').checked;
+  const esiOn   = document.getElementById('edit-esi').checked;
+  // Manual overrides (blank = use auto formula)
+  const _pfEmpOvr = parseFloat(document.getElementById('edit-pf-emp-override')?.value) || 0;
+  const _pfEmrOvr = parseFloat(document.getElementById('edit-pf-emr-override')?.value) || 0;
+  const _esiEmpOvr= parseFloat(document.getElementById('edit-esi-emp-override')?.value) || 0;
+  const _esiEmrOvr= parseFloat(document.getElementById('edit-esi-emr-override')?.value) || 0;
+  const pfEmp   = pfOn  ? (_pfEmpOvr  || Math.round(pfBase * 0.12)) : 0;
+  const pfEmr   = pfOn  ? (_pfEmrOvr  || Math.round(pfBase * 0.12)) : 0;
   // PF Admin A/c-2 (0.5%) + EDLI A/c-21 (0.5%) + EDLI Admin A/c-22 (0%) — see PF card note
-  const pfAdmin = document.getElementById('edit-pf').checked  ? Math.round(pfBase * 0.01) : 0;
-  const esiEmp  = document.getElementById('edit-esi').checked && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
-  const esiEmr  = document.getElementById('edit-esi').checked && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
+  const pfAdmin = pfOn  ? Math.round(pfBase * 0.01) : 0;
+  const esiEmp  = esiOn ? (_esiEmpOvr || (gross <= 21000 ? Math.round(gross * 0.0075) : 0)) : 0;
+  const esiEmr  = esiOn ? (_esiEmrOvr || (gross <= 21000 ? Math.round(gross * 0.0325) : 0)) : 0;
   const state   = document.getElementById('edit-state')?.value || '';
   const pt      = document.getElementById('edit-pt').checked  ? calcPTPreview(gross, state) : 0;
   const totalDed = pfEmp + esiEmp + pt;
@@ -2772,6 +2848,11 @@ async function saveEmployeeEdit() {
       pt_applicable:  document.getElementById('edit-pt').checked,
       lwf_applicable: false,
       tds_applicable: document.getElementById('edit-tds').checked,
+      // Manual overrides — null means "use formula", a number means "use this fixed amount"
+      pf_employee_override:  parseFloat(document.getElementById('edit-pf-emp-override').value)  || null,
+      pf_employer_override:  parseFloat(document.getElementById('edit-pf-emr-override').value)  || null,
+      esi_employee_override: parseFloat(document.getElementById('edit-esi-emp-override').value) || null,
+      esi_employer_override: parseFloat(document.getElementById('edit-esi-emr-override').value) || null,
       notes:          document.getElementById('edit-sal-notes').value.trim() || null,
     };
     const salRes = await api('POST', '/payroll/salary-structure', salBody);
