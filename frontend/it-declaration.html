@@ -1511,6 +1511,7 @@ async function loadTaxPreview() {
         <h3>🏛️ Old Regime</h3>
         <div class="tax-amt">${money(o.net_tax)}</div>
         <div class="tds-ln">Monthly TDS: <strong>${money(o.monthly_tds)}</strong></div>
+        ${o.tds_paid_ytd ? `<div class="tds-ln">Already deducted: ${money(o.tds_paid_ytd)}</div>` : ''}
         <div class="tds-ln">Taxable Income: ${money(o.taxable_income)}</div>
         ${oCheap ? '<span class="rec-bdg">⭐ RECOMMENDED</span>' : ''}
         <button class="sel-btn ${currentRegime==='old'?'chosen':''}" onclick="setRegime('old');sw('decl')">Select Old Regime</button>
@@ -1519,6 +1520,7 @@ async function loadTaxPreview() {
         <h3>✨ New Regime</h3>
         <div class="tax-amt">${money(nw.net_tax)}</div>
         <div class="tds-ln">Monthly TDS: <strong>${money(nw.monthly_tds)}</strong></div>
+        ${nw.tds_paid_ytd ? `<div class="tds-ln">Already deducted: ${money(nw.tds_paid_ytd)}</div>` : ''}
         <div class="tds-ln">Taxable Income: ${money(nw.taxable_income)}</div>
         ${nCheap ? '<span class="rec-bdg">⭐ RECOMMENDED</span>' : ''}
         <button class="sel-btn ${currentRegime==='new'?'chosen':''}" onclick="setRegime('new');sw('decl')">Select New Regime</button>
