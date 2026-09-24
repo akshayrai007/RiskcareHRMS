@@ -1133,7 +1133,7 @@ exports.taxPreview = async (req, res) => {
     const cfg   = await loadConfig(fy);
 
     const salRes = await db.query(
-      `SELECT ess.gross_salary, ess.basic, ess.hra, e.city, e.date_of_birth
+      `SELECT ess.gross_salary, ess.basic, ess.hra, e.city, e.date_of_birth, e.joining_date
        FROM employee_salary_structure ess JOIN employees e ON ess.employee_id=e.id
        WHERE ess.employee_id=$1`, [empId]
     );
@@ -1141,6 +1141,17 @@ exports.taxPreview = async (req, res) => {
       return res.json({ success:false, message:'Salary structure not set up. Ask HR.' });
     const sal      = salRes.rows[0];
     sal.age_group  = getAgeGroup(sal.date_of_birth, fy);
+    // Months this employee actually earns from this employer in the FY (mid-year joiners < 12)
+    const fyStartYr = parseInt(fy.slice(0, 4));
+    let monthsEmployed = 12;
+    if (sal.joining_date) {
+      let jY, jM;
+      if (sal.joining_date instanceof Date) { jY = sal.joining_date.getFullYear(); jM = sal.joining_date.getMonth() + 1; }
+      else { const mt = String(sal.joining_date).match(/^(\d{4})-(\d{2})/); if (mt) { jY = +mt[1]; jM = +mt[2]; } }
+      if (jY) monthsEmployed = Math.max(0, Math.min(12, 12 - ((jY * 12 + jM) - (fyStartYr * 12 + 4))));
+    }
+    // computeRegimeTax annualises gross_salary x 12, so scale the monthly figure by months employed / 12
+    sal.gross_salary = parseFloat(sal.gross_salary || 0) * monthsEmployed / 12;
     const annGross = parseFloat(sal.gross_salary || 0) * 12;
 
     const declRes = await db.query(
@@ -1244,6 +1255,7 @@ exports.taxPreview = async (req, res) => {
         monthly_tds:     Math.round(Math.max(0, netTaxNew - tdsPaidYtd) / monthsRem),
       },
       months_remaining: monthsRem,
+      months_employed:  monthsEmployed,
       recommended,
       savings: Math.round(savings),
       recommendation_reasons: reasons,
@@ -1604,8 +1616,13 @@ exports.estimateMonthlyTds = async (empId, month, year, earnedGrossThisMonth) =>
     [empId, fyStart, fyStart + 1]);
   const hist = {}; histRes.rows.forEach(r => { hist[`${r.year}-${r.month}`] = r; });
 
-  const jd = sal.joining_date ? new Date(sal.joining_date) : null;
-  const joinedBy = (y, m) => !jd || (y * 12 + m) >= (jd.getFullYear() * 12 + jd.getMonth() + 1);
+  // Joining month as (year, month) — parsed from the calendar date so server timezone can't shift it
+  let jY = 0, jM = 0;
+  if (sal.joining_date) {
+    if (sal.joining_date instanceof Date) { jY = sal.joining_date.getFullYear(); jM = sal.joining_date.getMonth() + 1; }
+    else { const mt = String(sal.joining_date).match(/^(\d{4})-(\d{2})/); if (mt) { jY = +mt[1]; jM = +mt[2]; } }
+  }
+  const joinedBy = (y, m) => !jY || (y * 12 + m) >= (jY * 12 + jM);
 
   let projected = 0, tdsPaid = 0, monthsLeft = 0;   // prevSal is added inside computeRegimeTax — don't add it twice
   for (let i = 0; i < 12; i++) {
@@ -1614,8 +1631,9 @@ exports.estimateMonthlyTds = async (empId, month, year, earnedGrossThisMonth) =>
     const key = `${y}-${m}`;
     const ord = y * 12 + m, cur = year * 12 + month;
     if (ord < cur) {                               // past month
-      if (hist[key]) { projected += parseFloat(hist[key].gross_salary) || 0; tdsPaid += parseFloat(hist[key].tds) || 0; }
-      else if (joinedBy(y, m)) projected += structGross;   // no payroll row: assume full salary (catch-up TDS)
+      if (!joinedBy(y, m)) { /* before joining — not this employer's income, even if a stray payroll row exists */ }
+      else if (hist[key]) { projected += parseFloat(hist[key].gross_salary) || 0; tdsPaid += parseFloat(hist[key].tds) || 0; }
+      else projected += structGross;   // no payroll row: assume full salary (catch-up TDS)
     } else if (ord === cur) {                      // this month: actual earned (paid-days based)
       projected += earnedGrossThisMonth; monthsLeft += 1;
     } else {                                       // future month
@@ -1628,7 +1646,7 @@ exports.estimateMonthlyTds = async (empId, month, year, earnedGrossThisMonth) =>
   const remaining = Math.max(0, computed.tax - prevTds - tdsPaid);
   let tds = monthsLeft > 0 ? Math.round(remaining / monthsLeft) : 0;
   tds = Math.max(0, Math.min(tds, Math.round(earnedGrossThisMonth)));
-  const out = { tds, fy, regime, has_declaration: !!d.id, projected_gross: Math.round(projected), prev_salary: Math.round(prevSal),
+  const out = { tds, fy, regime, joined: jY ? `${jY}-${String(jM).padStart(2,'0')}` : null, has_declaration: !!d.id, projected_gross: Math.round(projected), prev_salary: Math.round(prevSal),
                 annual_tax: computed.tax, taxable_income: Math.round(computed.taxableIncome), tds_paid_ytd: tdsPaid, months_left: monthsLeft };
   console.log('[TDS estimate]', empId, JSON.stringify(out));
   return out;
