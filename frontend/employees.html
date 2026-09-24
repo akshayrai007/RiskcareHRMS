@@ -797,32 +797,36 @@
 
         <!-- Live Preview -->
         <style>
-  .pv-tbl{width:100%;border-collapse:collapse;font-size:12.5px;color:rgba(255,255,255,.8)}
-  .pv-tbl th{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:rgba(255,255,255,.55);text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.25)}
-  .pv-tbl th:first-child{text-align:left}
-  .pv-tbl td{padding:6px 8px;text-align:right;border-bottom:1px solid rgba(255,255,255,.08);font-variant-numeric:tabular-nums}
-  .pv-tbl td:first-child{text-align:left}
-  .pv-tbl small{display:block;font-size:10px;color:#a7f3d0;margin-top:1px}
-  .pv-tbl tr.sec td{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#93c5fd;padding-top:12px;border-bottom:0;text-align:left}
-  .pv-tbl tr.tot td{font-weight:800;color:#fff;background:rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.2)}
-  .pv-tbl tr.ded td:not(:first-child){color:#fca5a5}
-  .pv-tbl tr.net td{background:rgba(22,163,74,.25)} .pv-tbl tr.net td:not(:first-child){color:#86efac}
-  .pv-tbl tr.tds td,.pv-tbl tr.tds small{color:#fcd34d}
-  .pv-tbl tr.ctc td{font-weight:800;font-size:13.5px;color:#d9f99d;background:rgba(190,242,100,.15);border-bottom:0}
+  #salary-preview .pv-tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden}
+  #salary-preview .pv-tbl th{background:#f1f5f9;color:#475569;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;text-align:right;padding:9px 12px;border-bottom:1px solid #e2e8f0}
+  #salary-preview .pv-tbl th:first-child{text-align:left}
+  #salary-preview .pv-tbl td{background:#fff;color:#1e293b;padding:8px 12px;text-align:right;border-bottom:1px solid #f1f5f9;font-variant-numeric:tabular-nums}
+  #salary-preview .pv-tbl td:first-child{text-align:left;color:#334155}
+  #salary-preview .pv-tbl tbody tr:hover td{background:#fff}
+  #salary-preview .pv-tbl small{display:block;font-size:10px;color:#059669;margin-top:1px}
+  #salary-preview .pv-tbl tr.sec td{background:#eef2ff;color:#4338ca;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;text-align:left;padding:7px 12px}
+  #salary-preview .pv-tbl tr.tot td{background:#f8fafc;font-weight:800;color:#0f172a;border-top:1px solid #cbd5e1}
+  #salary-preview .pv-tbl tr.ded td:not(:first-child){color:#dc2626}
+  #salary-preview .pv-tbl tr.tot.ded td:first-child{color:#0f172a}
+  #salary-preview .pv-tbl tr.net td{background:#dcfce7;color:#166534;font-weight:800;font-size:14px}
+  #salary-preview .pv-tbl tr.tds td,#salary-preview .pv-tbl tr.tds small{color:#b45309}
+  #salary-preview .pv-tbl tr.tds td{background:#fffbeb}
+  #salary-preview .pv-tbl tr.ctc td{background:#1d4ed8;color:#fff;font-weight:800;font-size:14px;border-bottom:0}
+  #salary-preview .pv-tbl tbody tr:last-child td{border-bottom:0}
 </style>
-        <div id="salary-preview" style="display:none;background:linear-gradient(135deg,#1e293b,#334155);border-radius:14px;padding:18px 20px;margin-bottom:16px">
+        <div id="salary-preview" style="display:none;background:#f8fafc;border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <span style="font-size:12px;font-weight:800;color:rgba(255,255,255,.9);letter-spacing:.5px;text-transform:uppercase">📊 Live Preview</span>
-            <span id="prev-tds-pill" style="display:none;font-size:10px;font-weight:700;background:rgba(251,191,36,.2);color:#fcd34d;border-radius:20px;padding:3px 10px">Excludes TDS</span>
+            <span style="font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.5px;text-transform:uppercase">📊 Live Salary Preview</span>
+            <span id="prev-tds-pill" style="display:none;font-size:10px;font-weight:700;background:#fef3c7;color:#b45309;border-radius:20px;padding:3px 10px">Excludes TDS</span>
           </div>
           <div style="display:grid;grid-template-columns:3fr 2fr;gap:10px;margin-bottom:12px">
-            <div style="background:#fff;border-radius:12px;padding:14px 16px">
-              <div style="font-size:10px;color:var(--accent);font-weight:800;text-transform:uppercase;letter-spacing:.4px">Net Take-Home / month</div>
-              <b id="prev-net" style="display:block;font-size:26px;color:#16a34a;margin-top:2px">₹0</b>
+            <div style="background:#dcfce7;border:1px solid #86efac;border-radius:12px;padding:14px 16px">
+              <div style="font-size:10px;color:#166534;font-weight:800;text-transform:uppercase;letter-spacing:.4px">Net Take-Home / month</div>
+              <b id="prev-net" style="display:block;font-size:26px;color:#15803d;margin-top:2px">₹0</b>
             </div>
-            <div style="background:rgba(255,255,255,.12);border-radius:12px;padding:14px 16px">
-              <div style="font-size:10px;color:rgba(255,255,255,.7);font-weight:800;text-transform:uppercase;letter-spacing:.4px">Annual CTC</div>
-              <b id="prev-ctc" style="display:block;font-size:19px;color:#d9f99d;margin-top:6px">₹0</b>
+            <div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:12px;padding:14px 16px">
+              <div style="font-size:10px;color:#1e40af;font-weight:800;text-transform:uppercase;letter-spacing:.4px">Annual CTC</div>
+              <b id="prev-ctc" style="display:block;font-size:19px;color:#1d4ed8;margin-top:6px">₹0</b>
             </div>
           </div>
           <table class="pv-tbl">
