@@ -389,6 +389,8 @@ async function runAllMigrations() {
     // ── Additional resignation-form fields (added later — safe/additive) ─────
     // These use ADD COLUMN IF NOT EXISTS so they apply cleanly regardless of
     // whatever the live `separations` table already looks like.
+    // TDS: which tax regime payroll should use when the employee has no IT declaration ('new' by default)
+    await client.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS tax_regime VARCHAR(3) DEFAULT 'new'`);
     await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS resignation_reason_category VARCHAR(50)`);
     await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS comments TEXT`);
     await client.query(`ALTER TABLE separations ADD COLUMN IF NOT EXISTS personal_email VARCHAR(150)`);
