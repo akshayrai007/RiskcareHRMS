@@ -1167,7 +1167,8 @@ exports.taxPreview = async (req, res) => {
     const taxNew      = newComputed.tax;
     const netTaxNew   = Math.max(0, taxNew - prevTds);
 
-    const monthsRem   = Math.max(1, 12 - new Date().getMonth());
+    const nowM        = new Date().getMonth() + 1;                 // 1-12
+    const monthsRem   = nowM >= 4 ? 16 - nowM : 4 - nowM;          // months left in the FY incl. this one (Apr=12 ... Mar=1)
     const recommended = netTaxOld <= netTaxNew ? 'old' : 'new';
     const savings     = Math.abs(netTaxOld - netTaxNew);
 
@@ -1544,4 +1545,73 @@ exports.exportExcel = async (req, res) => {
     console.error('[exportExcel]', err.message, err.stack);
     res.status(500).json({ success:false, message:'Export failed: ' + err.message });
   }
+};
+
+
+// ── Payroll integration: monthly TDS on salary ───────────────────────────────
+// Used by payrollController when building the monthly payroll template.
+//   Projected annual income = previous-employer salary
+//                           + salary already paid this FY (payroll table; catch-up at structure gross if a month is missing)
+//                           + THIS month's earned gross (paid-days based)
+//                           + structure gross x remaining months
+//   Annual tax   = same engine as the IT Declaration (regime chosen by the employee, New Regime if none)
+//   This month's TDS = (annual tax - previous-employer TDS - TDS already deducted this FY) / months left in FY
+exports.estimateMonthlyTds = async (empId, month, year, earnedGrossThisMonth) => {
+  const fy      = month >= 4 ? `${year}-${String(year + 1).slice(2)}` : `${year - 1}-${String(year).slice(2)}`;
+  const fyStart = month >= 4 ? year : year - 1;
+  const cfg     = await loadConfig(fy);
+  if (!cfg.new_slabs) return { tds: 0, note: `No tax config for FY ${fy}` };
+
+  const salRes = await db.query(
+    `SELECT ess.gross_salary, ess.basic, ess.hra, e.date_of_birth, e.joining_date
+     FROM employees e LEFT JOIN employee_salary_structure ess ON ess.employee_id = e.id
+     WHERE e.id=$1`, [empId]);
+  const sal = salRes.rows[0];
+  const structGross = parseFloat(sal && sal.gross_salary) || 0;
+  if (!sal || structGross <= 0) return { tds: 0, note: 'No salary structure' };
+
+  const declRes = await db.query(
+    `SELECT * FROM it_declarations WHERE employee_id=$1 AND financial_year=$2`, [empId, fy]);
+  const d = declRes.rows[0] || {};
+  if (d.house_properties && typeof d.house_properties === 'string') {
+    try { d.house_properties = JSON.parse(d.house_properties); } catch { d.house_properties = []; }
+  }
+  const regime   = d.regime === 'old' ? 'old' : 'new';
+  const prevSal  = parseFloat(d.prev_gross_salary || 0);
+  const prevTds  = parseFloat(d.prev_tds || 0);
+  // capital gains are taxed at special rates and are not part of salary TDS
+  const otherInc = parseFloat(d.other_savings_int || 0) + parseFloat(d.other_fd_int || 0) +
+                   parseFloat(d.other_dividend || 0) + parseFloat(d.other_misc || 0);
+
+  const histRes = await db.query(
+    `SELECT month, year, gross_salary, tds FROM payroll
+     WHERE employee_id=$1 AND ((year=$2 AND month>=4) OR (year=$3 AND month<=3))`,
+    [empId, fyStart, fyStart + 1]);
+  const hist = {}; histRes.rows.forEach(r => { hist[`${r.year}-${r.month}`] = r; });
+
+  const jd = sal.joining_date ? new Date(sal.joining_date) : null;
+  const joinedBy = (y, m) => !jd || (y * 12 + m) >= (jd.getFullYear() * 12 + jd.getMonth() + 1);
+
+  let projected = prevSal, tdsPaid = 0, monthsLeft = 0;
+  for (let i = 0; i < 12; i++) {
+    const m = ((3 + i) % 12) + 1;                 // 4,5,...,12,1,2,3
+    const y = m >= 4 ? fyStart : fyStart + 1;
+    const key = `${y}-${m}`;
+    const ord = y * 12 + m, cur = year * 12 + month;
+    if (ord < cur) {                               // past month
+      if (hist[key]) { projected += parseFloat(hist[key].gross_salary) || 0; tdsPaid += parseFloat(hist[key].tds) || 0; }
+      else if (joinedBy(y, m)) projected += structGross;   // no payroll row: assume full salary (catch-up TDS)
+    } else if (ord === cur) {                      // this month: actual earned (paid-days based)
+      projected += earnedGrossThisMonth; monthsLeft += 1;
+    } else {                                       // future month
+      if (joinedBy(y, m)) projected += structGross; monthsLeft += 1;
+    }
+  }
+
+  const sal2 = { ...sal, gross_salary: projected / 12, age_group: getAgeGroup(sal.date_of_birth, fy) };
+  const computed = computeRegimeTax(regime, d, cfg, sal2, prevSal, otherInc);
+  const remaining = Math.max(0, computed.tax - prevTds - tdsPaid);
+  let tds = monthsLeft > 0 ? Math.round(remaining / monthsLeft) : 0;
+  tds = Math.max(0, Math.min(tds, Math.round(earnedGrossThisMonth)));
+  return { tds, regime, annual_tax: computed.tax, taxable_income: Math.round(computed.taxableIncome), tds_paid_ytd: tdsPaid, months_left: monthsLeft };
 };
