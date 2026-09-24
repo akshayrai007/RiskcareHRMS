@@ -689,7 +689,7 @@
       <div id="etab-salary" style="padding:20px 24px;display:none">
 
         <div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#6d4c00;display:flex;align-items:center;gap:8px">
-          📝 Tick the checkbox to enable each deduction — the amount is calculated automatically (PF 12% of Basic, ESI 0.75%/3.25% of Gross under ₹21,000, PT by state slab). Use the optional <strong>Manual Override</strong> inside each PF/ESI card to enter a fixed ₹ amount when the formula doesn't apply. See the Live Preview below.
+          📝 Tick to enable a deduction. Amounts are auto-calculated.
         </div>
 
         <!-- Earnings -->
@@ -751,7 +751,7 @@
         <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:16px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">
             <div style="width:28px;height:28px;background:var(--accent-l);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">📋</div>
-            <span style="font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.5px;text-transform:uppercase">Statutory Deductions (₹/month) — HR Defined</span>
+            <span style="font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.5px;text-transform:uppercase">Deductions</span>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
             <!-- PF -->
@@ -759,18 +759,18 @@
               <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:var(--accent)">
                 <input type="checkbox" id="edit-pf" style="accent-color:var(--accent);width:15px;height:15px" onchange="togglePFOverride();recalcSalaryPreview()"> PF (Provident Fund)
               </label>
-              <div style="font-size:11px;color:var(--muted)">12% of Basic — Employee A/c-1, Employer A/c-1+A/c-10 — plus 1% admin/EDLI (A/c-2 + A/c-21), auto-calculated</div>
+              <div style="font-size:11px;color:var(--muted)">12% of Basic</div>
               <div style="margin-top:8px"><div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">PF BASIS</div>
                 <select id="edit-pf-basis" class="form-control" style="padding:6px 10px;font-size:12px" onchange="recalcSalaryPreview()">
-                  <option value="capped">Capped (min Basic, ₹15,000)</option>
-                  <option value="actual">Actual (full Basic, uncapped)</option>
+                  <option value="capped">Capped (₹15,000)</option>
+                  <option value="actual">Actual Basic</option>
                 </select></div>
               <label style="display:flex;align-items:center;gap:7px;margin-top:8px;cursor:pointer;font-size:11px">
-                <input type="checkbox" id="edit-eps" style="accent-color:var(--accent);width:14px;height:14px"> EPS applicable (A/c-10, 8.33% of employer's 12% share)
+                <input type="checkbox" id="edit-eps" style="accent-color:var(--accent);width:14px;height:14px"> EPS applicable
               </label>
               <!-- Manual PF override -->
               <div id="pf-override-wrap" style="display:none;margin-top:10px;background:#fff;border:1.5px dashed #93c5fd;border-radius:8px;padding:10px 12px">
-                <div style="font-size:10px;font-weight:800;color:#1d4ed8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">⚙️ Manual Override (optional)</div>
+                <div style="font-size:10px;font-weight:800;color:#1d4ed8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">⚙️ Override (optional)</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                   <div>
                     <div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">PF Employee (₹)</div>
@@ -785,18 +785,18 @@
                       oninput="recalcSalaryPreview()">
                   </div>
                 </div>
-                <div style="font-size:10px;color:#6b7280;margin-top:6px">Leave blank to use auto-calculated values. Fill only when the standard formula doesn't apply (e.g. international employees, court orders).</div>
+                <div style="font-size:10px;color:#6b7280;margin-top:6px">Blank = auto.</div>
               </div>
             </div>
             <!-- ESI -->
             <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
               <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:var(--accent)">
-                <input type="checkbox" id="edit-esi" style="accent-color:var(--accent);width:15px;height:15px" onchange="toggleESIOverride();recalcSalaryPreview()"> ESI (Employee State Insurance)
+                <input type="checkbox" id="edit-esi" style="accent-color:var(--accent);width:15px;height:15px" onchange="toggleESIOverride();recalcSalaryPreview()"> ESI
               </label>
-              <div style="font-size:11px;color:var(--muted)">0.75% / 3.25% of Gross (only if Gross ≤ ₹21,000), auto-calculated</div>
+              <div style="font-size:11px;color:var(--muted)">Only if Gross ≤ ₹21,000</div>
               <!-- Manual ESI override -->
               <div id="esi-override-wrap" style="display:none;margin-top:10px;background:#fff;border:1.5px dashed #6ee7b7;border-radius:8px;padding:10px 12px">
-                <div style="font-size:10px;font-weight:800;color:#065f46;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">⚙️ Manual Override (optional)</div>
+                <div style="font-size:10px;font-weight:800;color:#065f46;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">⚙️ Override (optional)</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                   <div>
                     <div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:3px">ESI Employee (₹)</div>
@@ -811,22 +811,22 @@
                       oninput="recalcSalaryPreview()">
                   </div>
                 </div>
-                <div style="font-size:10px;color:#6b7280;margin-top:6px">Leave blank to use auto-calculated values. Fill only when gross exceeds ₹21,000 but ESI still applies (e.g. gross-up correction, ESIC exception).</div>
+                <div style="font-size:10px;color:#6b7280;margin-top:6px">Blank = auto.</div>
               </div>
             </div>
             <!-- PT -->
             <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px">
               <label style="display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:700;color:var(--accent)">
-                <input type="checkbox" id="edit-pt" style="accent-color:var(--accent);width:15px;height:15px" onchange="recalcSalaryPreview()"> PT (Professional Tax)
+                <input type="checkbox" id="edit-pt" style="accent-color:var(--accent);width:15px;height:15px" onchange="recalcSalaryPreview()"> PT
               </label>
-              <div style="font-size:11px;color:var(--muted)">By state slab (based on the employee's State), auto-calculated</div>
+              <div style="font-size:11px;color:var(--muted)">By state slab</div>
             </div>
             <!-- TDS -->
             <div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:12px 14px;grid-column:1/-1">
               <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:700;color:#e65100">
-                <input type="checkbox" id="edit-tds" style="accent-color:#e65100;width:15px;height:15px"> TDS (Tax Deducted at Source)
+                <input type="checkbox" id="edit-tds" style="accent-color:#e65100;width:15px;height:15px"> TDS
               </label>
-              <div style="font-size:11px;color:var(--muted);margin-top:4px">TDS's monthly ₹ amount is set separately during each month's Payroll run, not here.</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">Auto-filled in payroll from IT Declaration.</div>
             </div>
           </div>
         </div>
