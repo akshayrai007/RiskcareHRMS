@@ -343,11 +343,6 @@ exports.uploadPayroll = async (req, res) => {
     const iPerfBon  = colEx('performance bonus');
     const iGTL      = colEx('gtl');
     const iLateMark = colEx('late mark');
-    // New-format template: full MONTHLY structure amounts live in these columns and the
-    // Basic/HRA/Defray/Gratuity columns hold EARNED (already paid-days based) figures.
-    const iMBasic = colEx('monthly basic'), iMHra = colEx('monthly hra'),
-          iMDef   = colEx('monthly defray'), iMGrat = colEx('monthly gratuity');
-    const hasMonthlyCols = iMBasic >= 0 && iMHra >= 0 && iMDef >= 0 && iMGrat >= 0;
 
     if (iEmpCode === -1 || iNetPay === -1) {
       console.warn('[uploadPayroll] Column mapping failed:');
@@ -434,15 +429,13 @@ exports.uploadPayroll = async (req, res) => {
       const presentDays = n(row[iPresentDays]);
       const lopDays     = n(row[iLOP]);
       const paidDays    = n(row[iPaidDays])   || presentDays;
-      // New template: monthly amounts come from the "(Structure)" columns (Basic/HRA columns are earned figures).
-      // Old template: Basic/HRA columns ARE the full monthly amounts.
-      const basic       = hasMonthlyCols ? n(row[iMBasic]) : n(row[iBasic]);
-      const hra         = hasMonthlyCols ? n(row[iMHra])   : n(row[iHRA]);
+      const basic       = n(row[iBasic]);
+      const hra         = n(row[iHRA]);
       // Conveyance is no longer a column in the monthly sheet; if the salary
       // structure still carries an amount, keep paying it from there.
       const conveyance  = 0; // no Conveyance allowance anywhere
-      const otherAllow  = hasMonthlyCols ? n(row[iMDef])   : n(row[iOtherAllow]);
-      const gratuity    = hasMonthlyCols ? n(row[iMGrat])  : n(row[iGratuity]);
+      const otherAllow  = n(row[iOtherAllow]);
+      const gratuity    = n(row[iGratuity]);
       const tds         = iTDS >= 0 ? n(row[iTDS]) : 0;
       const loanEmi     = iLoanEMI >= 0 ? n(row[iLoanEMI]) : 0;
       const statusRaw   = String(row[iStatus] || 'paid').toLowerCase().trim();
@@ -457,11 +450,11 @@ exports.uploadPayroll = async (req, res) => {
       // LOP Reversal credits LOP days back as paid days (capped at the month).
       const lopReversal = iLopRev >= 0 ? Math.min(n(row[iLopRev]), lopDays) : 0;
       const effPresent  = Math.min(presentDays + lopReversal, totalDaysInMonth);
-      const earnedBasic      = Math.round(proratedAmount(basic,      effPresent, totalDaysInMonth) * 100) / 100;
-      const earnedHRA        = Math.round(proratedAmount(hra,         effPresent, totalDaysInMonth) * 100) / 100;
-      const earnedConveyance = Math.round(proratedAmount(conveyance,  effPresent, totalDaysInMonth) * 100) / 100;
-      const earnedOtherAllow = Math.round(proratedAmount(otherAllow,  effPresent, totalDaysInMonth) * 100) / 100;
-      const earnedGratuity   = Math.round(proratedAmount(gratuity,    effPresent, totalDaysInMonth) * 100) / 100;
+      const earnedBasic      = proratedAmount(basic,      effPresent, totalDaysInMonth);
+      const earnedHRA        = proratedAmount(hra,         effPresent, totalDaysInMonth);
+      const earnedConveyance = proratedAmount(conveyance,  effPresent, totalDaysInMonth);
+      const earnedOtherAllow = proratedAmount(otherAllow,  effPresent, totalDaysInMonth);
+      const earnedGratuity   = proratedAmount(gratuity,    effPresent, totalDaysInMonth);
       // One-time monthly payments / deductions from the sheet (not in salary structure)
       const rd = (i) => i >= 0 ? n(row[i]) : 0;
       const extraWorkSal = rd(iExtraWk), bonusAmt = rd(iBonus), incentive = rd(iIncent),
@@ -1227,13 +1220,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
              COALESCE(s.lwf,                                   0) AS lwf,
              COALESCE(s.tds,                                   0) AS tds,
              COALESCE(s.total_deductions,                      0) AS total_deductions,
-             COALESCE(s.net_salary,                            0) AS net_salary,
-             COALESCE(s.food_coupon,                           0) AS food_coupon,
-             COALESCE(s.pf_applicable,  true)                      AS pf_applicable,
-             COALESCE(s.pf_wage_basis,  'capped')                  AS pf_wage_basis,
-             COALESCE(s.esi_applicable, false)                     AS esi_applicable,
-             COALESCE(s.pt_applicable,  true)                      AS pt_applicable,
-             e.state AS emp_state
+             COALESCE(s.net_salary,                            0) AS net_salary
       FROM employees e
       LEFT JOIN departments  d   ON e.department_id  = d.id
       LEFT JOIN designations des ON e.designation_id = des.id
@@ -1301,38 +1288,22 @@ exports.downloadPayrollTemplate = async (req, res) => {
       'PF (Employee)', 'EPF Employer (A/c-1)', 'EPS Employer (A/c-10)', 'PF Admin + EDLI (Employer)', 'ESI Earning (Wages)', 'ESI (Employee)', 'ESI (Employer)', 'Prof Tax', 'TDS',
       'GTL Deduction', 'Late Mark Deduction',
       'Salary Advance Recovery (Loan/EMI)', 'Total Deductions',
-      'Net Pay', 'Total Employer Contribution', 'Total Cost to Company', 'Payment Status', 'Remarks',
-      // ── Salary-structure inputs (full-MONTH figures). Basic/HRA/Defray/Gratuity and every statutory
-      //    column on the left are formulas built from these + Paid Days. Kept at the far right so the
-      //    upload's column lookup for the original 40 columns is unaffected.
-      'Monthly Basic (Structure)', 'Monthly HRA (Structure)', 'Monthly Defray Allowance (Structure)', 'Monthly Gratuity (Structure)',
-      'Food Coupon (Structure)', 'PF Applicable (1/0)', 'PF Wage Basis (capped/actual)',
-      'Monthly EPF Employer (Structure)', 'Monthly EPS Employer (Structure)', 'Monthly PF Admin+EDLI (Structure)',
-      'ESI Applicable (1/0)', 'PT Applicable (1/0)', 'PT State'
+      'Net Pay', 'Total Employer Contribution', 'Total Cost to Company', 'Payment Status', 'Remarks'
     ];
 
-    // Statutory parameters live on the 'Statutory Rules' sheet (mirrors calcPT / upload logic)
-    const RULES = "'Statutory Rules'!";
-    const R_PF_RATE = RULES + '$B$3', R_PF_CAP = RULES + '$B$4', R_ESI_CAP = RULES + '$B$5',
-          R_ESI_EE = RULES + '$B$6', R_ESI_ER = RULES + '$B$7', R_PT_THR = RULES + '$B$8', R_PT_AMT = RULES + '$B$9',
-          R_WB_LO = RULES + '$A$13:$A$17', R_WB_AMT = RULES + '$B$13:$B$17';
-    const WB_SLABS = [[0, 0], [10000.01, 110], [15000.01, 130], [25000.01, 150], [40000.01, 200]];
-    const PF_RATE = 0.12, PF_CAP = 15000, ESI_CAP = 21000, ESI_EE = 0.0075, ESI_ER = 0.0325, PT_THR = 10000, PT_AMT = 200;
-    const r2 = (x) => Math.round(x * 100) / 100;
-
     const buildPayrollSheet = async (employeesList) => {
-    const itCtrl = require('./itDeclarationController');
     const rows = [
       // Row 0: Title
       [`HRMS — Payroll Input Template | ${monthName} ${y} | Total Working Days: ${daysInMonth}`],
       // Row 1: Instructions
-      [`⚠️  Present/LOP Days are PRE-FILLED from ${monthName} ${y} attendance & leave - review and edit. EVERYTHING is calculated on PAID DAYS: Basic, HRA, Defray, Gratuity = Monthly amount ÷ Working Days × Paid Days; PF, ESI, Prof Tax, Gross, Total Deductions and Net Pay are live formulas on those earned amounts (change Present Days / LOP Reversal and they all recalculate). TDS is estimated from the IT Declaration for this month's earned salary (edit if needed). Monthly structure amounts are in the grey columns at the far right. One-time items (LOP Reversal, Food Coupon Adjustment, Extra Working Salary, Bonus, Incentive, Other Earning, Performance Bonus, GTL / Late Mark Deduction, Salary Advance Recovery) apply to THIS month only. Final figures are recomputed on upload. Payment Status: Paid / Hold / Pending`],
+      [`⚠️  Present/LOP Days are PRE-FILLED from ${monthName} ${y} attendance & leave - review and edit. One-time monthly items (LOP Reversal, Food Coupon Adjustment, Extra Working Salary, Bonus, Incentive, Other Earning, Performance Bonus, GTL / Late Mark Deduction, Salary Advance Recovery) apply to THIS month only. Paid Days, Gross, Total Deductions and Net Pay are live formulas (they recalculate as you edit); final figures are recomputed on upload. Payment Status: Paid / Hold / Pending`],
       // Row 2: Empty spacer
       [],
       // Row 3: Headers
       HEADERS,
       // Data rows
       ...await Promise.all(employeesList.map(async e => {
+        const gross   = parseFloat(e.gross_salary)   || 0;
         // Fetch active EMI for this employee
         const emiRes  = await db.query(
           `SELECT monthly_emi, installments_paid, total_installments
@@ -1341,16 +1312,12 @@ exports.downloadPayrollTemplate = async (req, res) => {
            ORDER BY approved_at ASC LIMIT 1`, [e.id]);
         const activeEMI = emiRes.rows[0] || null;
         const monthAtt = monthAttendance(e.id);
-        const mBasic = parseFloat(e.basic) || 0, mHra = parseFloat(e.hra) || 0,
-              mDef = parseFloat(e.special_allowance) || 0, mGrat = parseFloat(e.gratuity) || 0,
-              food = parseFloat(e.food_coupon) || 0;
-        // Estimated TDS on THIS month's earned salary (IT Declaration engine)
-        const earnedFixed = daysInMonth ? (mBasic + mHra + mDef + mGrat) * monthAtt.paid / daysInMonth : 0;
-        let tdsEst = 0;
-        try {
-          const t = await itCtrl.estimateMonthlyTds(e.id, m, y, r2(earnedFixed + food));
-          tdsEst = t.tds || 0;
-        } catch (tdsErr) { console.error('[template TDS]', e.employee_code, tdsErr.message); }
+        const pf      = parseFloat(e.pf_employee)    || 0;
+        const esi     = parseFloat(e.esi_employee)   || 0;
+        const pt      = parseFloat(e.professional_tax) || 0;
+        const tds     = parseFloat(e.tds)            || 0;
+        const totalDed= parseFloat(e.total_deductions) || (pf + esi + pt + tds);
+        const net     = parseFloat(e.net_salary)     || Math.max(0, gross - totalDed);
         return [
           e.employee_code,
           e.full_name,
@@ -1360,107 +1327,74 @@ exports.downloadPayrollTemplate = async (req, res) => {
           e.employee_category || '',
           daysInMonth,       // Working Days
           monthAtt.paid,     // Present Days (paid days) - pre-filled from attendance
-          monthAtt.lop,      // LOP Days
-          0,                 // LOP Reversal (Days)
+          monthAtt.lop,      // LOP Days - pre-filled from attendance
+          0,                 // LOP Reversal (Days) - credit LOP days back
           monthAtt.paid,     // Paid Days
-          0, 0, 0, 0,        // Basic, HRA, Defray, Gratuity (EARNED - formulas below)
-          0, 0, 0, 0, 0, 0,  // one-time earnings
-          0,                 // Gross (formula)
-          0, 0, 0, 0, 0, 0, 0, 0,   // PF, EPF-er, EPS-er, PF admin, ESI wages, ESI ee, ESI er, PT (formulas)
-          tdsEst,            // TDS (estimated from IT Declaration)
-          0, 0,              // GTL, Late Mark (one-time)
+          parseFloat(e.basic)             || 0,
+          parseFloat(e.hra)               || 0,
+          parseFloat(e.special_allowance) || 0,
+          parseFloat(e.gratuity)          || 0,
+          0, 0, 0, 0, 0, 0,  // Food Coupon Adj, Extra Working Salary, Bonus, Incentive, Other Earning, Performance Bonus (one-time)
+          gross,
+          pf,
+          Math.max(0, (parseFloat(e.pf_employer) || 0) - (parseFloat(e.pf_eps) || 0)),  // EPF employer A/c-1
+          parseFloat(e.pf_eps) || 0,                                                       // EPS A/c-10
+          parseFloat(e.pf_admin) || 0,                                                     // PF admin + EDLI
+          parseFloat(e.esi_wages) || 0,
+          esi,
+          parseFloat(e.esi_employer) || 0,
+          pt,
+          tds,
+          0, 0,              // GTL, Late Mark deductions (one-time)
           parseFloat(activeEMI ? activeEMI.monthly_emi : 0),
-          0, 0, 0, 0,        // Total Ded, Net, Employer Contribution, CTC (formulas)
-          'Paid', '',
-          // ── structure inputs (full month)
-          mBasic, mHra, mDef, mGrat, food,
-          e.pf_applicable ? 1 : 0, String(e.pf_wage_basis || 'capped').toLowerCase(),
-          Math.max(0, (parseFloat(e.pf_employer) || 0) - (parseFloat(e.pf_eps) || 0)),
-          parseFloat(e.pf_eps) || 0,
-          parseFloat(e.pf_admin) || 0,
-          e.esi_applicable ? 1 : 0, e.pt_applicable ? 1 : 0, e.emp_state || '',
+          totalDed,
+          net,
+          0, 0,      // Total Employer Contribution, Total Cost to Company (formulas below)
+          'Paid',    // Payment Status default
+          '',        // Remarks
         ];
       })),
     ];
 
     const ws1 = XLSX.utils.aoa_to_sheet(rows);
 
-    // ── Live formulas — every figure is driven by Paid Days ─────────────────
+    // ── Live formulas: edit Present Days / LOP Reversal / any one-time item and
+    // Paid Days, LOP, Gross, Total Deductions and Net Pay recalculate in Excel.
+    // (Statutory PF/ESI/PT/LWF stay as values; the system recomputes them on upload.)
     const hx = (label) => HEADERS.indexOf(label);
-    const LT = (label) => XLSX.utils.encode_col(hx(label));
-    const MONEY = '#,##0.00';
+    const LT = (label) => XLSX.utils.encode_col(hx(label));   // column letter by header
     for (let i = 4; i < rows.length; i++) {
       const R = i + 1, r = rows[i];
-      const c  = (label) => LT(label) + R;                       // e.g. c('Basic') -> 'L5'
       const num = (label) => Number(r[hx(label)]) || 0;
-      const txt = (label) => String(r[hx(label)] || '');
-      // ---- JS mirror (cached values so the sheet displays before Excel recalculates)
       const wd = num('Working Days'), pr = num('Present Days'), lopRev = num('LOP Reversal (Days)');
       const lop = Math.max(0, wd - pr);
       const paid = Math.min(wd, pr + Math.min(lopRev, lop));
-      const earn = (k) => r2(wd > 0 ? num(k) * paid / wd : 0);
-      const eB = earn('Monthly Basic (Structure)'), eH = earn('Monthly HRA (Structure)'),
-            eD = earn('Monthly Defray Allowance (Structure)'), eG = earn('Monthly Gratuity (Structure)');
+      const earnedFixed = (num('Basic') + num('HRA') + num('Defray Allowance') + num('Gratuity')) * (wd ? paid / wd : 0);
       const oneTime = ['Food Coupon Adjustment','Extra Working Salary','Bonus','Incentive','Other Earning','Performance Bonus'].reduce((a, l) => a + num(l), 0);
-      const gross = r2(eB + eH + eD + eG + num('Food Coupon (Structure)') + oneTime);
-      const pfOn = num('PF Applicable (1/0)') === 1, actual = txt('PF Wage Basis (capped/actual)') === 'actual';
-      const pfE = actual ? eB : Math.min(eB, PF_CAP);
-      const pfF = actual ? num('Monthly Basic (Structure)') : Math.min(num('Monthly Basic (Structure)'), PF_CAP);
-      const pf   = pfOn ? Math.round(pfE * PF_RATE) : 0;
-      const ratio = (k) => (pfOn && pfF > 0) ? Math.round(num(k) * pfE / pfF) : 0;
-      const epfEr = ratio('Monthly EPF Employer (Structure)'), epsEr = ratio('Monthly EPS Employer (Structure)'), adm = ratio('Monthly PF Admin+EDLI (Structure)');
-      const esiOn = num('ESI Applicable (1/0)') === 1 && gross <= ESI_CAP;
-      const esiW = esiOn ? gross : 0, esiEe = esiOn ? Math.round(gross * ESI_EE) : 0, esiEr = esiOn ? Math.round(gross * ESI_ER) : 0;
-      let pt = 0;
-      if (num('PT Applicable (1/0)') === 1) {
-        if (txt('PT State').trim().toLowerCase() === 'west bengal') { pt = 0; for (const [lo, amt] of WB_SLABS) if (gross >= lo) pt = amt; }
-        else pt = gross >= PT_THR ? PT_AMT : 0;
-      }
-      const ded = pf + esiEe + pt + num('TDS') + num('GTL Deduction') + num('Late Mark Deduction') + num('Salary Advance Recovery (Loan/EMI)');
-      const empr = epfEr + epsEr + adm + esiEr;
-
-      const setF = (label, f, v) => { ws1[LT(label) + R] = { t: 'n', f, v, z: MONEY }; };
-      const WDc = c('Working Days'), PDc = c('Paid Days');
-      setF('LOP Days', `MAX(0,${WDc}-${c('Present Days')})`, lop);
-      setF('Paid Days', `MIN(${WDc},${c('Present Days')}+MIN(${c('LOP Reversal (Days)')},${c('LOP Days')}))`, paid);
-      // Earned = Monthly ÷ Working Days × Paid Days   (e.g. 140000/30*26)
-      const earnF = (mLabel) => `ROUND(IF(${WDc}>0,${c(mLabel)}*${PDc}/${WDc},0),2)`;
-      setF('Basic',            earnF('Monthly Basic (Structure)'), eB);
-      setF('HRA',              earnF('Monthly HRA (Structure)'), eH);
-      setF('Defray Allowance', earnF('Monthly Defray Allowance (Structure)'), eD);
-      setF('Gratuity',         earnF('Monthly Gratuity (Structure)'), eG);
-      setF('Gross Salary', `ROUND(SUM(${c('Basic')}:${c('Gratuity')})+${c('Food Coupon (Structure)')}+SUM(${c('Food Coupon Adjustment')}:${c('Performance Bonus')}),2)`, gross);
-      // PF on EARNED basic (capped at the PF ceiling unless wage basis = actual)
-      const pfBaseE = `IF(${c('PF Wage Basis (capped/actual)')}="actual",${c('Basic')},MIN(${c('Basic')},${R_PF_CAP}))`;
-      const pfBaseF = `IF(${c('PF Wage Basis (capped/actual)')}="actual",${c('Monthly Basic (Structure)')},MIN(${c('Monthly Basic (Structure)')},${R_PF_CAP}))`;
-      setF('PF (Employee)', `IF(${c('PF Applicable (1/0)')}=1,ROUND(${pfBaseE}*${R_PF_RATE},0),0)`, pf);
-      const erF = (mLabel) => `IF(AND(${c('PF Applicable (1/0)')}=1,${pfBaseF}>0),ROUND(${c(mLabel)}*${pfBaseE}/${pfBaseF},0),0)`;
-      setF('EPF Employer (A/c-1)',          erF('Monthly EPF Employer (Structure)'), epfEr);
-      setF('EPS Employer (A/c-10)',         erF('Monthly EPS Employer (Structure)'), epsEr);
-      setF('PF Admin + EDLI (Employer)',    erF('Monthly PF Admin+EDLI (Structure)'), adm);
-      const esiCond = `AND(${c('ESI Applicable (1/0)')}=1,${c('Gross Salary')}<=${R_ESI_CAP})`;
-      setF('ESI Earning (Wages)', `IF(${esiCond},${c('Gross Salary')},0)`, esiW);
-      setF('ESI (Employee)',      `IF(${esiCond},ROUND(${c('Gross Salary')}*${R_ESI_EE},0),0)`, esiEe);
-      setF('ESI (Employer)',      `IF(${esiCond},ROUND(${c('Gross Salary')}*${R_ESI_ER},0),0)`, esiEr);
-      setF('Prof Tax', `IF(${c('PT Applicable (1/0)')}=1,IF(LOWER(TRIM(${c('PT State')}))="west bengal",LOOKUP(${c('Gross Salary')},${R_WB_LO},${R_WB_AMT}),IF(${c('Gross Salary')}>=${R_PT_THR},${R_PT_AMT},0)),0)`, pt);
-      ws1[c('TDS')].z = MONEY;
-      setF('Total Deductions', `${c('PF (Employee)')}+${c('ESI (Employee)')}+SUM(${c('Prof Tax')}:${c('Salary Advance Recovery (Loan/EMI)')})`, ded);
-      setF('Total Employer Contribution', `${c('EPF Employer (A/c-1)')}+${c('EPS Employer (A/c-10)')}+${c('PF Admin + EDLI (Employer)')}+${c('ESI (Employer)')}`, empr);
-      setF('Total Cost to Company', `${c('Gross Salary')}+${c('Total Employer Contribution')}`, r2(gross + empr));
-      setF('Net Pay', `MAX(0,${c('Gross Salary')}-${c('Total Deductions')})`, Math.max(0, r2(gross - ded)));
+      const gross = Math.round((earnedFixed + oneTime) * 100) / 100;
+      const ded = num('PF (Employee)') + num('ESI (Employee)') + num('Prof Tax') + num('TDS') +
+                  num('GTL Deduction') + num('Late Mark Deduction') + num('Salary Advance Recovery (Loan/EMI)');
+      const setF = (label, f, v) => { ws1[LT(label) + R] = { t: 'n', f, v }; };
+      setF('LOP Days', `MAX(0,${LT('Working Days')}${R}-${LT('Present Days')}${R})`, lop);
+      setF('Paid Days', `MIN(${LT('Working Days')}${R},${LT('Present Days')}${R}+MIN(${LT('LOP Reversal (Days)')}${R},${LT('LOP Days')}${R}))`, paid);
+      setF('Gross Salary', `ROUND((${LT('Basic')}${R}+${LT('HRA')}${R}+${LT('Defray Allowance')}${R}+${LT('Gratuity')}${R})*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0)+SUM(${LT('Food Coupon Adjustment')}${R}:${LT('Performance Bonus')}${R}),2)`, gross);
+      setF('Total Deductions', `${LT('PF (Employee)')}${R}+${LT('ESI (Employee)')}${R}+SUM(${LT('Prof Tax')}${R}:${LT('Salary Advance Recovery (Loan/EMI)')}${R})`, ded);
+      const empr = num('EPF Employer (A/c-1)') + num('EPS Employer (A/c-10)') + num('PF Admin + EDLI (Employer)') + num('ESI (Employer)');
+      setF('Total Employer Contribution', `${LT('EPF Employer (A/c-1)')}${R}+${LT('EPS Employer (A/c-10)')}${R}+${LT('PF Admin + EDLI (Employer)')}${R}+${LT('ESI (Employer)')}${R}`, empr);
+      setF('Total Cost to Company', `${LT('Gross Salary')}${R}+${LT('Total Employer Contribution')}${R}`, gross + empr);
+      setF('Net Pay', `MAX(0,${LT('Gross Salary')}${R}-${LT('Total Deductions')}${R})`, Math.max(0, gross - ded));
     }
 
     // Column widths
     ws1['!cols'] = [
       {wch:10},{wch:24},{wch:16},{wch:14},{wch:22},{wch:12},
       {wch:11},{wch:11},{wch:9},{wch:12},{wch:9},
-      {wch:12},{wch:11},{wch:14},{wch:10},
-      {wch:14},{wch:14},{wch:9},{wch:10},{wch:12},{wch:14},{wch:13},
-      {wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:12},{wch:12},{wch:10},{wch:9},
+      {wch:10},{wch:8},{wch:14},{wch:9},
+      {wch:14},{wch:14},{wch:9},{wch:10},{wch:12},{wch:14},{wch:12},
+      {wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:12},{wch:12},{wch:9},{wch:8},
       {wch:12},{wch:14},
       {wch:20},{wch:14},
-      {wch:10},{wch:16},{wch:16},{wch:14},{wch:20},
-      {wch:14},{wch:14},{wch:16},{wch:14},{wch:14},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:12},{wch:12},{wch:14}
+      {wch:10},{wch:16},{wch:16},{wch:14},{wch:20}
     ];
 
     // Freeze top 4 rows and first 2 cols
@@ -1499,18 +1433,15 @@ exports.downloadPayrollTemplate = async (req, res) => {
       [''],
       ['COLUMNS PRE-FILLED (do not change unless needed):'],
       ['Column', 'Source'],
-      ['Basic, HRA, Defray, Gratuity', 'EARNED for this month = Monthly amount ÷ Working Days × Paid Days (e.g. 140000 ÷ 30 × 26). The full monthly amounts are in the grey "(Structure)" columns at the far right'],
-      ['Gross Salary',      'Earned Basic + HRA + Defray + Gratuity + Food Coupon + one-time earnings'],
-      ['PF (Employee) and Employer PF', '12% of EARNED Basic (capped at the PF ceiling unless the employee is on actual-basis PF); employer shares scale the same way'],
-      ['ESI',               'Only if applicable and EARNED Gross is within the ESI ceiling; on earned gross'],
-      ['Prof Tax',          'State slab on EARNED Gross (see Statutory Rules sheet)'],
-      ['TDS',               'Estimated at download from the employee IT Declaration (New Regime if none): projected annual tax on this month earned salary, less TDS already deducted this FY, spread over the remaining months. You may overwrite it'],
-      ['Total Deductions',  'PF + ESI + Prof Tax + TDS + GTL + Late Mark + Advance recovery'],
+      ['Basic, HRA, etc.', 'From employee salary structure in system'],
+      ['Gross Salary',      'Sum of all earnings'],
+      ['PF, ESI, PT, TDS',  'From salary structure'],
+      ['Total Deductions',  'Sum of all deductions'],
       ['Net Pay',           'Gross - Total Deductions (system recalculates on upload)'],
       [''],
       ['UPLOAD RULES:'],
       ['• Emp Code must match exactly (e.g. KC7708)'],
-      ['• Do not add/remove columns. To change a salary component, edit the grey "(Structure)" columns (far right), not the earned Basic/HRA columns'],
+      ['• Do not add/remove columns'],
       ['• Do not change sheet name'],
       ['• Save as .xlsx before uploading'],
       ['• Upload via Payroll → Upload Payroll Excel tab'],
@@ -1518,26 +1449,6 @@ exports.downloadPayrollTemplate = async (req, res) => {
     const ws2 = XLSX.utils.aoa_to_sheet(instrRows);
     ws2['!cols'] = [{wch:28},{wch:60}];
     XLSX.utils.book_append_sheet(wb, ws2, 'Instructions');
-
-    // ── Sheet: Statutory Rules (parameters referenced by the payroll formulas) ──
-    const rulesRows = [
-      ['Statutory Rules used by the payroll formulas (same values the upload uses)'],
-      ['Parameter', 'Value', 'Note'],
-      ['PF employee rate', PF_RATE, 'On earned Basic'],
-      ['PF wage ceiling (Rs./month)', PF_CAP, 'Applies unless PF Wage Basis = actual (applied to EARNED basic)'],
-      ['ESI wage ceiling (Rs./month)', ESI_CAP, 'ESI applies only if earned Gross <= this'],
-      ['ESI employee rate', ESI_EE, 'On earned Gross'],
-      ['ESI employer rate', ESI_ER, 'On earned Gross'],
-      ['Prof Tax threshold - Maharashtra / default', PT_THR, 'Earned Gross >= this'],
-      ['Prof Tax amount - Maharashtra / default', PT_AMT, ''],
-      [''],
-      ['West Bengal Prof Tax slabs (earned Gross)'],
-      ['Gross from (Rs.)', 'Prof Tax (Rs.)'],
-      ...WB_SLABS,
-    ];
-    const ws3 = XLSX.utils.aoa_to_sheet(rulesRows);
-    ws3['!cols'] = [{wch:44},{wch:16},{wch:70}];
-    XLSX.utils.book_append_sheet(wb, ws3, 'Statutory Rules');
 
     // ── Send ──────────────────────────────────────────────────────────────
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -1649,26 +1560,6 @@ exports.downloadSalaryStructureTemplate = async (req, res) => {
     const ws2 = XLSX.utils.aoa_to_sheet(instrRows);
     ws2['!cols'] = [{wch:22},{wch:70}];
     XLSX.utils.book_append_sheet(wb, ws2, 'Instructions');
-
-    // ── Sheet: Statutory Rules (parameters referenced by the payroll formulas) ──
-    const rulesRows = [
-      ['Statutory Rules used by the payroll formulas (same values the upload uses)'],
-      ['Parameter', 'Value', 'Note'],
-      ['PF employee rate', PF_RATE, 'On earned Basic'],
-      ['PF wage ceiling (Rs./month)', PF_CAP, 'Applies unless PF Wage Basis = actual (applied to EARNED basic)'],
-      ['ESI wage ceiling (Rs./month)', ESI_CAP, 'ESI applies only if earned Gross <= this'],
-      ['ESI employee rate', ESI_EE, 'On earned Gross'],
-      ['ESI employer rate', ESI_ER, 'On earned Gross'],
-      ['Prof Tax threshold - Maharashtra / default', PT_THR, 'Earned Gross >= this'],
-      ['Prof Tax amount - Maharashtra / default', PT_AMT, ''],
-      [''],
-      ['West Bengal Prof Tax slabs (earned Gross)'],
-      ['Gross from (Rs.)', 'Prof Tax (Rs.)'],
-      ...WB_SLABS,
-    ];
-    const ws3 = XLSX.utils.aoa_to_sheet(rulesRows);
-    ws3['!cols'] = [{wch:44},{wch:16},{wch:70}];
-    XLSX.utils.book_append_sheet(wb, ws3, 'Statutory Rules');
 
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     res.setHeader('Content-Disposition', 'attachment; filename="HRMS_Salary_Structure_Template.xlsx"');
