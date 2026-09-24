@@ -1569,6 +1569,7 @@ exports.exportExcel = async (req, res) => {
 //   Annual tax   = same engine as the IT Declaration (regime chosen by the employee, New Regime if none)
 //   This month's TDS = (annual tax - previous-employer TDS - TDS already deducted this FY) / months left in FY
 exports.estimateMonthlyTds = async (empId, month, year, earnedGrossThisMonth) => {
+  await db.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS tax_regime VARCHAR(3) DEFAULT 'new'`);
   const fy      = month >= 4 ? `${year}-${String(year + 1).slice(2)}` : `${year - 1}-${String(year).slice(2)}`;
   const fyStart = month >= 4 ? year : year - 1;
   const cfg     = await loadConfig(fy);
