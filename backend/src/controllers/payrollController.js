@@ -1544,6 +1544,12 @@ exports.downloadPayrollTemplate = async (req, res) => {
     XLSX.utils.book_append_sheet(wb, ws3, 'Statutory Rules');
 
     // ── Send ──────────────────────────────────────────────────────────────
+    // Force Excel to fully recalculate every formula on open, instead of trusting
+    // our cached values. Without this, Excel can show stale cached numbers for
+    // some formula cells (e.g. Basic/HRA) while recalculating others (e.g. Gross
+    // Salary) — the exact split-brain mismatch this fixes.
+    wb.Workbook = wb.Workbook || {};
+    wb.Workbook.CalcPr = { fullCalcOnLoad: true, calcMode: 'auto' };
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     res.setHeader('Content-Disposition', `attachment; filename="HRMS_Payroll_Template_${monthName}_${y}.xlsx"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
