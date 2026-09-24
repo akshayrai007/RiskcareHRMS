@@ -130,6 +130,14 @@ async function recordStructureSnapshot(queryable, employeeId, updatedBy) {
   } catch (e) { console.error('[recordStructureSnapshot]', e.message); }
 }
 
+let _taxRegimeColReady = false;
+async function ensureTaxRegimeCol(q) {
+  if (_taxRegimeColReady) return;
+  await q.query(`ALTER TABLE employee_salary_structure ADD COLUMN IF NOT EXISTS tax_regime VARCHAR(3) DEFAULT 'new'`);
+  _taxRegimeColReady = true;
+}
+exports.ensureTaxRegimeCol = ensureTaxRegimeCol;
+
 async function computeAndSaveSalaryStructure(queryable, employeeId, fields, updatedBy) {
   const conveyance = 0; // Conveyance allowance is not used anywhere
   const {
@@ -202,6 +210,7 @@ async function computeAndSaveSalaryStructure(queryable, employeeId, fields, upda
     [employeeId, esi_applicable && gross <= 21000 ? gross : 0]
   );
   // Tax regime used for monthly TDS ('new' unless HR sets 'old' for this employee)
+  await ensureTaxRegimeCol(queryable);   // self-heals if the DB migration hasn't run yet
   await queryable.query(
     `UPDATE employee_salary_structure SET tax_regime=$2 WHERE employee_id=$1`,
     [employeeId, fields.tax_regime === 'old' ? 'old' : 'new']
