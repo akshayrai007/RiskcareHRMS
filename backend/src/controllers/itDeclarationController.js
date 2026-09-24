@@ -1169,6 +1169,15 @@ exports.taxPreview = async (req, res) => {
 
     const nowM        = new Date().getMonth() + 1;                 // 1-12
     const monthsRem   = nowM >= 4 ? 16 - nowM : 4 - nowM;          // months left in the FY incl. this one (Apr=12 ... Mar=1)
+
+    // TDS already deducted through payroll in this FY — the payroll template subtracts this
+    // too, so the "Monthly TDS" shown here now matches what payroll will actually deduct.
+    const fyStart = parseInt(fy.slice(0, 4));
+    const paidRes = await db.query(
+      `SELECT COALESCE(SUM(tds),0) AS paid FROM payroll
+       WHERE employee_id=$1 AND ((year=$2 AND month>=4) OR (year=$3 AND month<=3))`,
+      [empId, fyStart, fyStart + 1]);
+    const tdsPaidYtd = parseFloat(paidRes.rows[0].paid) || 0;
     const recommended = netTaxOld <= netTaxNew ? 'old' : 'new';
     const savings     = Math.abs(netTaxOld - netTaxNew);
 
@@ -1214,7 +1223,8 @@ exports.taxPreview = async (req, res) => {
         tax:                Math.round(taxOld),
         prev_tds:           Math.round(prevTds),
         net_tax:            Math.round(netTaxOld),
-        monthly_tds:        Math.round(netTaxOld / monthsRem),
+        tds_paid_ytd:       Math.round(tdsPaidYtd),
+        monthly_tds:        Math.round(Math.max(0, netTaxOld - tdsPaidYtd) / monthsRem),
       },
       new_regime: {
         std_deduction:   newComputed.stdDeduction,
@@ -1230,8 +1240,10 @@ exports.taxPreview = async (req, res) => {
         tax:             Math.round(taxNew),
         prev_tds:        Math.round(prevTds),
         net_tax:         Math.round(netTaxNew),
-        monthly_tds:     Math.round(netTaxNew / monthsRem),
+        tds_paid_ytd:    Math.round(tdsPaidYtd),
+        monthly_tds:     Math.round(Math.max(0, netTaxNew - tdsPaidYtd) / monthsRem),
       },
+      months_remaining: monthsRem,
       recommended,
       savings: Math.round(savings),
       recommendation_reasons: reasons,
@@ -1563,7 +1575,7 @@ exports.estimateMonthlyTds = async (empId, month, year, earnedGrossThisMonth) =>
   if (!cfg.new_slabs) return { tds: 0, note: `No tax config for FY ${fy}` };
 
   const salRes = await db.query(
-    `SELECT ess.gross_salary, ess.basic, ess.hra, e.date_of_birth, e.joining_date
+    `SELECT ess.gross_salary, ess.basic, ess.hra, ess.tax_regime, e.date_of_birth, e.joining_date
      FROM employees e LEFT JOIN employee_salary_structure ess ON ess.employee_id = e.id
      WHERE e.id=$1`, [empId]);
   const sal = salRes.rows[0];
@@ -1576,7 +1588,9 @@ exports.estimateMonthlyTds = async (empId, month, year, earnedGrossThisMonth) =>
   if (d.house_properties && typeof d.house_properties === 'string') {
     try { d.house_properties = JSON.parse(d.house_properties); } catch { d.house_properties = []; }
   }
-  const regime   = d.regime === 'old' ? 'old' : 'new';
+  // Regime: the employee's own IT Declaration choice wins; otherwise the regime HR set on the
+  // salary structure; otherwise New Regime (default for everyone).
+  const regime   = d.id ? (d.regime === 'old' ? 'old' : 'new') : (sal.tax_regime === 'old' ? 'old' : 'new');
   const prevSal  = parseFloat(d.prev_gross_salary || 0);
   const prevTds  = parseFloat(d.prev_tds || 0);
   // capital gains are taxed at special rates and are not part of salary TDS
@@ -1592,7 +1606,7 @@ exports.estimateMonthlyTds = async (empId, month, year, earnedGrossThisMonth) =>
   const jd = sal.joining_date ? new Date(sal.joining_date) : null;
   const joinedBy = (y, m) => !jd || (y * 12 + m) >= (jd.getFullYear() * 12 + jd.getMonth() + 1);
 
-  let projected = prevSal, tdsPaid = 0, monthsLeft = 0;
+  let projected = 0, tdsPaid = 0, monthsLeft = 0;   // prevSal is added inside computeRegimeTax — don't add it twice
   for (let i = 0; i < 12; i++) {
     const m = ((3 + i) % 12) + 1;                 // 4,5,...,12,1,2,3
     const y = m >= 4 ? fyStart : fyStart + 1;
@@ -1613,5 +1627,8 @@ exports.estimateMonthlyTds = async (empId, month, year, earnedGrossThisMonth) =>
   const remaining = Math.max(0, computed.tax - prevTds - tdsPaid);
   let tds = monthsLeft > 0 ? Math.round(remaining / monthsLeft) : 0;
   tds = Math.max(0, Math.min(tds, Math.round(earnedGrossThisMonth)));
-  return { tds, regime, annual_tax: computed.tax, taxable_income: Math.round(computed.taxableIncome), tds_paid_ytd: tdsPaid, months_left: monthsLeft };
+  const out = { tds, fy, regime, has_declaration: !!d.id, projected_gross: Math.round(projected), prev_salary: Math.round(prevSal),
+                annual_tax: computed.tax, taxable_income: Math.round(computed.taxableIncome), tds_paid_ytd: tdsPaid, months_left: monthsLeft };
+  console.log('[TDS estimate]', empId, JSON.stringify(out));
+  return out;
 };
