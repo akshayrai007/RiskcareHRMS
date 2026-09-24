@@ -797,11 +797,18 @@
 
         <!-- Live Preview -->
         <style>
-  .pv-row{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;font-size:13px;color:rgba(255,255,255,.75);border-top:1px solid rgba(255,255,255,.1)}
-  .pv-row:first-child{border-top:0}
-  .pv-row b{color:#fff;font-weight:700}
-  .pv-row small{display:block;font-size:10px;color:#a7f3d0;margin-top:2px}
-  .pv-row.ded b{color:#fca5a5}
+  .pv-tbl{width:100%;border-collapse:collapse;font-size:12.5px;color:rgba(255,255,255,.8)}
+  .pv-tbl th{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:rgba(255,255,255,.55);text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.25)}
+  .pv-tbl th:first-child{text-align:left}
+  .pv-tbl td{padding:6px 8px;text-align:right;border-bottom:1px solid rgba(255,255,255,.08);font-variant-numeric:tabular-nums}
+  .pv-tbl td:first-child{text-align:left}
+  .pv-tbl small{display:block;font-size:10px;color:#a7f3d0;margin-top:1px}
+  .pv-tbl tr.sec td{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#93c5fd;padding-top:12px;border-bottom:0;text-align:left}
+  .pv-tbl tr.tot td{font-weight:800;color:#fff;background:rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.2)}
+  .pv-tbl tr.ded td:not(:first-child){color:#fca5a5}
+  .pv-tbl tr.net td{background:rgba(22,163,74,.25)} .pv-tbl tr.net td:not(:first-child){color:#86efac}
+  .pv-tbl tr.tds td,.pv-tbl tr.tds small{color:#fcd34d}
+  .pv-tbl tr.ctc td{font-weight:800;font-size:13.5px;color:#d9f99d;background:rgba(190,242,100,.15);border-bottom:0}
 </style>
         <div id="salary-preview" style="display:none;background:linear-gradient(135deg,#1e293b,#334155);border-radius:14px;padding:18px 20px;margin-bottom:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -818,14 +825,31 @@
               <b id="prev-ctc" style="display:block;font-size:19px;color:#d9f99d;margin-top:6px">₹0</b>
             </div>
           </div>
-          <div>
-            <div class="pv-row"><span>Gross earnings</span><b id="prev-gross">₹0</b></div>
-            <div class="pv-row ded"><span>PF (Employee)</span><b id="prev-pf-emp">₹0</b></div>
-            <div class="pv-row ded"><span>ESI (Employee)<small id="prev-esi-detail"></small></span><b id="prev-esi-emp">₹0</b></div>
-            <div class="pv-row ded"><span>Professional Tax</span><b id="prev-pt">₹0</b></div>
-            <div class="pv-row" id="prev-tds-row" style="display:none"><span>TDS<small style="color:#fcd34d">Calculated each month in payroll</small></span><b style="color:#fcd34d">—</b></div>
-            <div class="pv-row" style="border-top:1.5px solid rgba(255,255,255,.3)"><span>Total deductions</span><b id="prev-ded" style="color:#fca5a5">₹0</b></div>
-          </div>
+          <table class="pv-tbl">
+            <thead><tr><th>Component</th><th>Monthly</th><th>Annual</th></tr></thead>
+            <tbody>
+              <tr class="sec"><td colspan="3">Earnings</td></tr>
+              <tr id="pvr-basic"><td>Basic</td><td id="pv-basic-m"></td><td id="pv-basic-a"></td></tr>
+              <tr id="pvr-hra"><td>HRA</td><td id="pv-hra-m"></td><td id="pv-hra-a"></td></tr>
+              <tr id="pvr-special"><td>Defray Allowance</td><td id="pv-special-m"></td><td id="pv-special-a"></td></tr>
+              <tr id="pvr-gratuity"><td>Gratuity</td><td id="pv-gratuity-m"></td><td id="pv-gratuity-a"></td></tr>
+              <tr id="pvr-food"><td>Food Coupon</td><td id="pv-food-m"></td><td id="pv-food-a"></td></tr>
+              <tr class="tot"><td>Total Earnings (Gross)</td><td id="prev-gross"></td><td id="pv-gross-a"></td></tr>
+              <tr class="sec"><td colspan="3">Deductions</td></tr>
+              <tr class="ded"><td>PF (Employee)</td><td id="prev-pf-emp"></td><td id="pv-pf-a"></td></tr>
+              <tr class="ded"><td>ESI (Employee)<small id="prev-esi-detail"></small></td><td id="prev-esi-emp"></td><td id="pv-esi-a"></td></tr>
+              <tr class="ded"><td>Professional Tax</td><td id="prev-pt"></td><td id="pv-pt-a"></td></tr>
+              <tr class="tds" id="prev-tds-row" style="display:none"><td>TDS<small>Calculated each month in payroll</small></td><td>—</td><td>—</td></tr>
+              <tr class="tot ded"><td>Total Deductions</td><td id="prev-ded"></td><td id="pv-ded-a"></td></tr>
+              <tr class="tot net"><td>Net Take-Home</td><td id="pv-net-m"></td><td id="pv-net-a"></td></tr>
+              <tr class="sec"><td colspan="3">Employer Contribution</td></tr>
+              <tr id="pvr-pfemr"><td>PF (Employer)</td><td id="pv-pfemr-m"></td><td id="pv-pfemr-a"></td></tr>
+              <tr id="pvr-pfadm"><td>PF Admin + EDLI</td><td id="pv-pfadm-m"></td><td id="pv-pfadm-a"></td></tr>
+              <tr id="pvr-esiemr"><td>ESI (Employer)</td><td id="pv-esiemr-m"></td><td id="pv-esiemr-a"></td></tr>
+              <tr class="tot"><td>Total Employer Contribution</td><td id="pv-emr-m"></td><td id="pv-emr-a"></td></tr>
+              <tr class="ctc"><td>Cost to Company (CTC)</td><td id="pv-ctc-m"></td><td id="pv-ctc-a"></td></tr>
+            </tbody>
+          </table>
         </div>
 
         <div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:18px 20px">
@@ -2719,6 +2743,20 @@ function recalcSalaryPreview() {
   const tdsOn = !!document.getElementById('edit-tds')?.checked;
   document.getElementById('prev-tds-row').style.display  = tdsOn ? '' : 'none';
   document.getElementById('prev-tds-pill').style.display = tdsOn ? '' : 'none';
+  // Monthly / Annual breakdown table
+  const setRow = (key, m, hideIfZero) => {
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = fmt2(v); };
+    set(`pv-${key}-m`, m); set(`pv-${key}-a`, m * 12);
+    if (hideIfZero) { const r = document.getElementById(`pvr-${key}`); if (r) r.style.display = m ? '' : 'none'; }
+  };
+  setRow('basic', basic); setRow('hra', hra, true); setRow('special', special, true);
+  setRow('gratuity', gratuity, true); setRow('food', foodCoupon, true);
+  const empr = pfEmr + esiEmr + pfAdmin;
+  setRow('pfemr', pfEmr, true); setRow('pfadm', pfAdmin, true); setRow('esiemr', esiEmr, true);
+  setRow('emr', empr); setRow('net', net); setRow('ctc', ctc);
+  [['gross', gross], ['pf', pfEmp], ['esi', esiEmp], ['pt', pt], ['ded', totalDed]].forEach(([k, v]) => {
+    const el = document.getElementById(`pv-${k}-a`); if (el) el.textContent = fmt2(v * 12);
+  });
   window._annualCtc = Math.round(ctc * 12);
   document.getElementById('prev-ctc').textContent     = fmt2(ctc * 12);
   document.getElementById('salary-preview').style.display = '';
