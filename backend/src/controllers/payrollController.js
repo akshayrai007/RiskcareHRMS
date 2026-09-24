@@ -335,6 +335,7 @@ exports.uploadPayroll = async (req, res) => {
     // with the fuzzy column lookups above)
     const colEx = (name) => headers.findIndex(h => h.startsWith(name));
     const iLopRev   = colEx('lop reversal');
+    const iFoodBase = colEx('food coupon (monthly');
     const iFoodAdj  = colEx('food coupon adj');
     const iExtraWk  = colEx('extra working');
     const iBonus    = colEx('bonus');
@@ -474,8 +475,13 @@ exports.uploadPayroll = async (req, res) => {
          FROM employee_salary_structure WHERE employee_id=$1`, [empId]
       );
       const struct = structRes.rows[0] || { pf_applicable: true, esi_applicable: false, pt_applicable: true, lwf_applicable: false, pf_wage_basis: 'capped', food_coupon: 0 };
-      // Structure food coupon + this month's one-time adjustment (can be negative)
-      const foodCoupon = (parseFloat(struct.food_coupon) || 0) + foodAdj;
+      // Food coupon base: read from the sheet's "Food Coupon (Monthly)" column when present
+      // (this is the bug fix — HR edits it per employee in the sheet, same as Basic/HRA,
+      // but the upload was only ever reading the salary-structure value and ignoring it).
+      // Older template files without that column fall back to the structure value.
+      const foodCouponBase = iFoodBase >= 0 ? n(row[iFoodBase]) : (parseFloat(struct.food_coupon) || 0);
+      // Base food coupon + this month's one-time adjustment (can be negative)
+      const foodCoupon = foodCouponBase + foodAdj;
       const oneTimeEarnings = extraWorkSal + bonusAmt + incentive + otherEarning + perfBonus;
 
       const gross = Math.round((earnedBasic + earnedHRA + earnedConveyance + earnedOtherAllow + earnedGratuity + foodCoupon + oneTimeEarnings) * 100) / 100;
@@ -1190,7 +1196,9 @@ exports.getForm16Years = async (req, res) => {
 // fills in Working Days, Present Days, LOP and any adjustments
 exports.downloadPayrollTemplate = async (req, res) => {
   try {
-    const XLSX = require('xlsx');
+    // xlsx-js-style (already used elsewhere, e.g. itDeclarationController) so we
+    // can color-code Earnings / Deductions / Totals sections in the template.
+    const XLSX = require('xlsx-js-style');
     const { month, year } = req.query;
     const m = parseInt(month) || new Date().getMonth() + 1;
     const y = parseInt(year)  || new Date().getFullYear();
@@ -1208,6 +1216,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
              COALESCE(s.conveyance,      e.conveyance,         0) AS conveyance,
              COALESCE(s.special_allowance,e.special_allowance, 0) AS special_allowance,
              COALESCE(s.gratuity,                              0) AS gratuity,
+             COALESCE(s.food_coupon,                           0) AS food_coupon,
              COALESCE(s.gross_salary,                          0) AS gross_salary,
              COALESCE(s.pf_employee,                           0) AS pf_employee,
              COALESCE(s.pf_employer,                           0) AS pf_employer,
@@ -1279,10 +1288,20 @@ exports.downloadPayrollTemplate = async (req, res) => {
     const wb = XLSX.utils.book_new();
 
     // ── Sheet 1: Payroll Input Template ───────────────────────────────────
+    // Grouped in proper payroll sequence: Identity/Attendance → Fixed Earnings
+    // (Monthly = full structure amount, Actual = what's actually earned this
+    // month after attendance is applied) → One-time Earnings → Gross →
+    // Deductions → Totals/Net Pay → Status. Each group gets its own color
+    // (see COL_GROUPS below) so Earning vs Deduction is obvious at a glance,
+    // and the same sheet is what gets uploaded for payroll AND used for payslips.
     const HEADERS = [
       'Emp Code', 'Full Name', 'Department', 'Division', 'Designation', 'Category',
       'Working Days', 'Present Days', 'LOP Days', 'LOP Reversal (Days)', 'Paid Days',
-      'Basic', 'HRA', 'Defray Allowance', 'Gratuity',
+      'Basic (Monthly)', 'Basic (Actual)',
+      'HRA (Monthly)', 'HRA (Actual)',
+      'Defray Allowance (Monthly)', 'Defray Allowance (Actual)',
+      'Gratuity (Monthly)', 'Gratuity (Actual)',
+      'Food Coupon (Monthly)', 'Food Coupon (Actual)',
       'Food Coupon Adjustment', 'Extra Working Salary', 'Bonus', 'Incentive', 'Other Earning', 'Performance Bonus',
       'Gross Salary',
       'PF (Employee)', 'EPF Employer (A/c-1)', 'EPS Employer (A/c-10)', 'PF Admin + EDLI (Employer)', 'ESI Earning (Wages)', 'ESI (Employee)', 'ESI (Employer)', 'Prof Tax', 'TDS',
@@ -1290,6 +1309,26 @@ exports.downloadPayrollTemplate = async (req, res) => {
       'Salary Advance Recovery (Loan/EMI)', 'Total Deductions',
       'Net Pay', 'Total Employer Contribution', 'Total Cost to Company', 'Payment Status', 'Remarks'
     ];
+
+    // Section color map — used for header fill + a light tint on data rows.
+    const COL_GROUPS = [
+      { from: 'Emp Code',              to: 'Paid Days',                headBg:'475569', headFg:'FFFFFF', dataBg:'F1F5F9' }, // identity/attendance - slate
+      { from: 'Basic (Monthly)',       to: 'Food Coupon (Actual)',     headBg:'15803D', headFg:'FFFFFF', dataBg:'DCFCE7' }, // fixed earnings - green
+      { from: 'Food Coupon Adjustment',to: 'Performance Bonus',        headBg:'0D9488', headFg:'FFFFFF', dataBg:'CCFBF1' }, // one-time earnings - teal
+      { from: 'Gross Salary',          to: 'Gross Salary',             headBg:'B45309', headFg:'FFFFFF', dataBg:'FEF3C7' }, // gross - amber
+      { from: 'PF (Employee)',         to: 'Salary Advance Recovery (Loan/EMI)', headBg:'B91C1C', headFg:'FFFFFF', dataBg:'FEE2E2' }, // deductions - red
+      { from: 'Total Deductions',      to: 'Total Deductions',         headBg:'991B1B', headFg:'FFFFFF', dataBg:'FECACA' }, // deductions total - darker red
+      { from: 'Net Pay',               to: 'Total Cost to Company',    headBg:'1D4ED8', headFg:'FFFFFF', dataBg:'DBEAFE' }, // net/employer cost - blue
+      { from: 'Payment Status',        to: 'Remarks',                  headBg:'475569', headFg:'FFFFFF', dataBg:'F1F5F9' }, // status - slate
+    ];
+    const groupForCol = (idx) => {
+      const label = HEADERS[idx];
+      const gi = COL_GROUPS.findIndex(g => HEADERS.indexOf(g.from) <= idx && idx <= HEADERS.indexOf(g.to));
+      return gi >= 0 ? COL_GROUPS[gi] : COL_GROUPS[0];
+    };
+    const thinBorder = { top:{style:'thin',color:{rgb:'CBD5E1'}}, bottom:{style:'thin',color:{rgb:'CBD5E1'}}, left:{style:'thin',color:{rgb:'CBD5E1'}}, right:{style:'thin',color:{rgb:'CBD5E1'}} };
+    const headerCellStyle = (g) => ({ font:{name:'Calibri',sz:10,bold:true,color:{rgb:g.headFg}}, fill:{patternType:'solid',fgColor:{rgb:g.headBg}}, alignment:{horizontal:'center',vertical:'center',wrapText:true}, border:thinBorder });
+    const dataCellStyle = (g, isNum) => ({ font:{name:'Calibri',sz:10,color:{rgb:'1F2937'}}, fill:{patternType:'solid',fgColor:{rgb:g.dataBg}}, alignment:{horizontal:isNum?'right':'left',vertical:'center'}, border:thinBorder, numFmt:isNum?'#,##0.00':undefined });
 
     const buildPayrollSheet = async (employeesList) => {
     const rows = [
@@ -1330,10 +1369,11 @@ exports.downloadPayrollTemplate = async (req, res) => {
           monthAtt.lop,      // LOP Days - pre-filled from attendance
           0,                 // LOP Reversal (Days) - credit LOP days back
           monthAtt.paid,     // Paid Days
-          parseFloat(e.basic)             || 0,
-          parseFloat(e.hra)               || 0,
-          parseFloat(e.special_allowance) || 0,
-          parseFloat(e.gratuity)          || 0,
+          parseFloat(e.basic)             || 0, 0,   // Basic (Monthly), Basic (Actual - live formula, placeholder here)
+          parseFloat(e.hra)               || 0, 0,   // HRA (Monthly), HRA (Actual)
+          parseFloat(e.special_allowance) || 0, 0,   // Defray Allowance (Monthly), (Actual)
+          parseFloat(e.gratuity)          || 0, 0,   // Gratuity (Monthly), (Actual)
+          parseFloat(e.food_coupon)       || 0, 0,   // Food Coupon (Monthly) - from salary structure, edit per eligible employee; (Actual)
           0, 0, 0, 0, 0, 0,  // Food Coupon Adj, Extra Working Salary, Bonus, Incentive, Other Earning, Performance Bonus (one-time)
           gross,
           pf,
@@ -1369,33 +1409,63 @@ exports.downloadPayrollTemplate = async (req, res) => {
       const wd = num('Working Days'), pr = num('Present Days'), lopRev = num('LOP Reversal (Days)');
       const lop = Math.max(0, wd - pr);
       const paid = Math.min(wd, pr + Math.min(lopRev, lop));
-      const earnedFixed = (num('Basic') + num('HRA') + num('Defray Allowance') + num('Gratuity')) * (wd ? paid / wd : 0);
+      const prorateFactor = wd ? paid / wd : 0;
+      // Fixed components (Basic/HRA/Defray/Gratuity) prorate by attendance; Food
+      // Coupon is a flat monthly meal-voucher benefit and is NEVER prorated.
+      const earnedFixed = (num('Basic (Monthly)') + num('HRA (Monthly)') + num('Defray Allowance (Monthly)') + num('Gratuity (Monthly)')) * prorateFactor;
+      const foodCouponMonthly = num('Food Coupon (Monthly)');
       const oneTime = ['Food Coupon Adjustment','Extra Working Salary','Bonus','Incentive','Other Earning','Performance Bonus'].reduce((a, l) => a + num(l), 0);
-      const gross = Math.round((earnedFixed + oneTime) * 100) / 100;
+      const gross = Math.round((earnedFixed + foodCouponMonthly + oneTime) * 100) / 100;
       const ded = num('PF (Employee)') + num('ESI (Employee)') + num('Prof Tax') + num('TDS') +
                   num('GTL Deduction') + num('Late Mark Deduction') + num('Salary Advance Recovery (Loan/EMI)');
-      const setF = (label, f, v) => { ws1[LT(label) + R] = { t: 'n', f, v }; };
+      const setF = (label, f, v) => { ws1[LT(label) + R] = { t: 'n', f, v, s: dataCellStyle(groupForCol(hx(label)), true) }; };
       setF('LOP Days', `MAX(0,${LT('Working Days')}${R}-${LT('Present Days')}${R})`, lop);
       setF('Paid Days', `MIN(${LT('Working Days')}${R},${LT('Present Days')}${R}+MIN(${LT('LOP Reversal (Days)')}${R},${LT('LOP Days')}${R}))`, paid);
-      setF('Gross Salary', `ROUND((${LT('Basic')}${R}+${LT('HRA')}${R}+${LT('Defray Allowance')}${R}+${LT('Gratuity')}${R})*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0)+SUM(${LT('Food Coupon Adjustment')}${R}:${LT('Performance Bonus')}${R}),2)`, gross);
+      // "Actual" columns = what's actually earned this month once attendance is
+      // applied. Food Coupon (Actual) mirrors the monthly value since it's flat.
+      setF('Basic (Actual)', `ROUND(${LT('Basic (Monthly)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('Basic (Monthly)') * prorateFactor * 100) / 100);
+      setF('HRA (Actual)', `ROUND(${LT('HRA (Monthly)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('HRA (Monthly)') * prorateFactor * 100) / 100);
+      setF('Defray Allowance (Actual)', `ROUND(${LT('Defray Allowance (Monthly)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('Defray Allowance (Monthly)') * prorateFactor * 100) / 100);
+      setF('Gratuity (Actual)', `ROUND(${LT('Gratuity (Monthly)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('Gratuity (Monthly)') * prorateFactor * 100) / 100);
+      setF('Food Coupon (Actual)', `${LT('Food Coupon (Monthly)')}${R}`, foodCouponMonthly);
+      setF('Gross Salary', `ROUND((${LT('Basic (Monthly)')}${R}+${LT('HRA (Monthly)')}${R}+${LT('Defray Allowance (Monthly)')}${R}+${LT('Gratuity (Monthly)')}${R})*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0)+${LT('Food Coupon (Monthly)')}${R}+SUM(${LT('Food Coupon Adjustment')}${R}:${LT('Performance Bonus')}${R}),2)`, gross);
       setF('Total Deductions', `${LT('PF (Employee)')}${R}+${LT('ESI (Employee)')}${R}+SUM(${LT('Prof Tax')}${R}:${LT('Salary Advance Recovery (Loan/EMI)')}${R})`, ded);
       const empr = num('EPF Employer (A/c-1)') + num('EPS Employer (A/c-10)') + num('PF Admin + EDLI (Employer)') + num('ESI (Employer)');
       setF('Total Employer Contribution', `${LT('EPF Employer (A/c-1)')}${R}+${LT('EPS Employer (A/c-10)')}${R}+${LT('PF Admin + EDLI (Employer)')}${R}+${LT('ESI (Employer)')}${R}`, empr);
       setF('Total Cost to Company', `${LT('Gross Salary')}${R}+${LT('Total Employer Contribution')}${R}`, gross + empr);
       setF('Net Pay', `MAX(0,${LT('Gross Salary')}${R}-${LT('Total Deductions')}${R})`, Math.max(0, gross - ded));
+
+      // Style every remaining (non-formula) cell in this data row by its section color.
+      for (let c = 0; c < HEADERS.length; c++) {
+        const addr = XLSX.utils.encode_col(c) + R;
+        if (!ws1[addr]) ws1[addr] = { t: 's', v: '' };
+        if (!ws1[addr].s) {
+          const isNum = typeof rows[i][c] === 'number';
+          ws1[addr].s = dataCellStyle(groupForCol(c), isNum);
+        }
+      }
     }
 
-    // Column widths
-    ws1['!cols'] = [
-      {wch:10},{wch:24},{wch:16},{wch:14},{wch:22},{wch:12},
-      {wch:11},{wch:11},{wch:9},{wch:12},{wch:9},
-      {wch:10},{wch:8},{wch:14},{wch:9},
-      {wch:14},{wch:14},{wch:9},{wch:10},{wch:12},{wch:14},{wch:12},
-      {wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:12},{wch:12},{wch:9},{wch:8},
-      {wch:12},{wch:14},
-      {wch:20},{wch:14},
-      {wch:10},{wch:16},{wch:16},{wch:14},{wch:20}
-    ];
+    // Style the header row (row index 3 → Excel row 4) by section color.
+    for (let c = 0; c < HEADERS.length; c++) {
+      const addr = XLSX.utils.encode_col(c) + '4';
+      if (ws1[addr]) ws1[addr].s = headerCellStyle(groupForCol(c));
+    }
+
+    // Column widths — sized by column purpose rather than a hand-counted list,
+    // so adding/removing a column can never silently misalign the widths.
+    ws1['!cols'] = HEADERS.map(h => {
+      if (h === 'Full Name') return {wch:24};
+      if (h === 'Designation') return {wch:22};
+      if (h === 'Department') return {wch:16};
+      if (h === 'Division') return {wch:14};
+      if (h === 'Emp Code' || h === 'Category') return {wch:11};
+      if (h.includes('Days')) return {wch:11};
+      if (h === 'Remarks') return {wch:20};
+      if (h === 'Payment Status') return {wch:14};
+      if (['Gross Salary','Net Pay','Total Deductions','Total Employer Contribution','Total Cost to Company'].includes(h)) return {wch:16};
+      return {wch:13};
+    });
 
     // Freeze top 4 rows and first 2 cols
     ws1['!freeze'] = { xSplit: 2, ySplit: 4 };
@@ -1424,7 +1494,8 @@ exports.downloadPayrollTemplate = async (req, res) => {
       ['Present Days',      'Paid days for the month (present + weekly offs + holidays + paid leave) - PRE-FILLED from attendance, edit if needed'],
       ['LOP Days',          'Loss of Pay days - PRE-FILLED from attendance (absent / unpaid leave / before joining)'],
       ['LOP Reversal (Days)','Days of LOP to credit back this month (paid for those days; LOP Days reduces by the same)'],
-      ['Food Coupon Adjustment','One-time +/- adjustment to this month food coupon (base amount comes from salary structure)'],
+      ['Food Coupon (Monthly)','Fixed monthly meal-voucher amount for this employee - pre-filled from salary structure. Leave 0 if not eligible. NOT prorated by attendance.'],
+      ['Food Coupon Adjustment','One-time +/- adjustment ON TOP of Food Coupon (Monthly), for this month only (e.g. a correction)'],
       ['Extra Working Salary / Bonus / Incentive / Other Earning / Performance Bonus','One-time earnings for THIS month only - not prorated, not part of the salary structure'],
       ['GTL / Late Mark Deduction','One-time deductions for THIS month only'],
       ['Salary Advance Recovery','Monthly advance/loan EMI recovery (pre-filled from active advance; reduces the advance balance)'],
@@ -1433,7 +1504,8 @@ exports.downloadPayrollTemplate = async (req, res) => {
       [''],
       ['COLUMNS PRE-FILLED (do not change unless needed):'],
       ['Column', 'Source'],
-      ['Basic, HRA, etc.', 'From employee salary structure in system'],
+      ['Basic/HRA/Defray/Gratuity/Food Coupon (Monthly)', 'Full monthly amount from employee salary structure in system'],
+      ['Basic/HRA/Defray/Gratuity/Food Coupon (Actual)', 'What is actually earned THIS month after attendance/LOP is applied - live formulas, for review only, do not edit'],
       ['Gross Salary',      'Sum of all earnings'],
       ['PF, ESI, PT, TDS',  'From salary structure'],
       ['Total Deductions',  'Sum of all deductions'],
