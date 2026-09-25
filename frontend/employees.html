@@ -816,7 +816,7 @@
   #salary-preview .pv-tbl tr.emr-sec td{background:#eff6ff;color:#1e40af;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;text-align:left;padding:7px 12px}
   #salary-preview .pv-tbl tr.emr-row td{background:#f8faff;color:#1e293b}
   #salary-preview .pv-tbl tr.emr-row td:not(:first-child){color:#1d4ed8}
-  #salary-preview .pv-tbl tr.emr-tot td{background:#dbeafe;font-weight:800;color:#1e3a8a;border-top:1px solid #93c5fd}
+  #salary-preview .pv-tbl tr.emr-tot td{background:#1e40af;font-weight:800;color:#fff;border-top:2px solid #1e3a8a}
   #salary-preview .pv-tbl .pv-badge{display:inline-block;font-size:9.5px;color:#3b82f6;background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:0 5px;font-weight:700;margin-left:4px;vertical-align:middle;line-height:16px}
 </style>
         <div id="salary-preview" style="display:none;background:#f8fafc;border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:16px">
@@ -2769,19 +2769,18 @@ function recalcSalaryPreview() {
   const _pfEmrOvr = parseFloat(document.getElementById('edit-pf-emr-override')?.value) || 0;
   const _esiEmpOvr= parseFloat(document.getElementById('edit-esi-emp-override')?.value) || 0;
   const _esiEmrOvr= parseFloat(document.getElementById('edit-esi-emr-override')?.value) || 0;
-  const pfEmp   = pfOn  ? (_pfEmpOvr  || Math.round(pfBase * 0.12)) : 0;
-  const pfEmr   = pfOn  ? (_pfEmrOvr  || Math.round(pfBase * 0.12)) : 0;
-  // PF Admin A/c-2 (0.5%) + EDLI A/c-21 (0.5%) + EDLI Admin A/c-22 (0%) — see PF card note
-  const pfAdmin = pfOn  ? Math.round(pfBase * 0.01) : 0;
-  const esiEmp  = esiOn ? (_esiEmpOvr || (gross <= 21000 ? Math.round(gross * 0.0075) : 0)) : 0;
-  const esiEmr  = esiOn ? (_esiEmrOvr || (gross <= 21000 ? Math.round(gross * 0.0325) : 0)) : 0;
+  const pfEmp   = pfOn  ? (_pfEmpOvr  || pfBase * 0.12) : 0;
+  const pfEmr   = pfOn  ? (_pfEmrOvr  || pfBase * 0.12) : 0;
+  const pfAdmin = pfOn  ? pfBase * 0.01 : 0;
+  const esiEmp  = esiOn ? (_esiEmpOvr || (gross <= 21000 ? gross * 0.0075 : 0)) : 0;
+  const esiEmr  = esiOn ? (_esiEmrOvr || (gross <= 21000 ? gross * 0.0325 : 0)) : 0;
   const state   = document.getElementById('edit-state')?.value || '';
   const pt      = document.getElementById('edit-pt').checked  ? calcPTPreview(gross, state) : 0;
   const totalDed = pfEmp + esiEmp + pt;
   const net      = gross - totalDed;
   const ctc      = gross + pfEmr + esiEmr + pfAdmin;
 
-  const fmt2 = n => '₹' + Math.round(n).toLocaleString('en-IN');
+  const fmt2 = n => '₹' + (+n.toFixed(2)).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
   document.getElementById('prev-gross').textContent   = fmt2(gross);
   document.getElementById('prev-ded').textContent     = fmt2(totalDed);
   document.getElementById('prev-net').textContent     = fmt2(net);
@@ -2802,10 +2801,10 @@ function recalcSalaryPreview() {
   setRow('gratuity', gratuity, true); setRow('food', foodCoupon, true);
   // Break out employer PF into individual A/c rows
   const edliBase = Math.min(basic, 15000); // EDLI always capped at ₹15,000
-  const epfAc1   = pfOn ? Math.round(pfBase * 0.0367) : 0;
-  const epsAc10  = pfOn ? Math.round(pfBase * 0.0833) : 0;
-  const pfAdmAc2 = pfOn ? Math.round(pfBase * 0.005)  : 0;
-  const edliAc21 = pfOn ? Math.round(edliBase * 0.005) : 0;
+  const epfAc1   = pfOn ? pfBase * 0.0367 : 0;
+  const epsAc10  = pfOn ? pfBase * 0.0833 : 0;
+  const pfAdmAc2 = pfOn ? pfBase * 0.005  : 0;
+  const edliAc21 = pfOn ? edliBase * 0.005 : 0;
   const setCell = (id, v) => { const el = document.getElementById(id); if (el) { el.textContent = v > 0 ? fmt2(v) : '—'; } };
   setCell('pv-epf-ac1-m', epfAc1);  setCell('pv-epf-ac1-a', epfAc1 * 12);
   setCell('pv-eps-m', epsAc10);     setCell('pv-eps-a', epsAc10 * 12);

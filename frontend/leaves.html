@@ -518,11 +518,9 @@ async function loadBalance() {
     el.parentNode.insertBefore(banner, el);
   }
 
-  // EL, SL, CL always shown as separate cards — no more merging SL+CL.
   const ALWAYS_SHOW = [
     { code: 'EL', name: 'Earned Leave' },
-    { code: 'SL', name: 'Sick Leave' },
-    { code: 'CL', name: 'Casual Leave' },
+    { code: 'CL', name: 'Casual/Sick Leave' },
   ];
 
   // Index API data by code
