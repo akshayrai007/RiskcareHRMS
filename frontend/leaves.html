@@ -751,7 +751,55 @@ function filterAll() {
     el.innerHTML = '<div class="empty-state"><div class="empty-icon">📂</div><p>No applications found.</p></div>';
     return;
   }
-  el.innerHTML = filtered.map(a => renderLeaveCard(a, Role.canApproveLeave())).join('');
+  const canApprove = Role.canApproveLeave();
+  const userCode   = user.employee_code;
+  const userId     = user.id;
+  const TH = `border:1px solid #cbd5e1;background:#1e293b;color:#fff;font-size:11px;font-weight:700;padding:7px 10px;white-space:nowrap;text-align:center`;
+  const TD = `border:1px solid #e2e8f0;padding:6px 9px;font-size:12px;vertical-align:middle`;
+  const statusStyle = { approved:'background:#dcfce7;color:#166534', pending:'background:#fef9c3;color:#854d0e', rejected:'background:#fee2e2;color:#991b1b', cancelled:'background:#f3f4f6;color:#6b7280' };
+  const rows = filtered.map((a, i) => {
+    const isOwnLeave = a.employee_id === userId;
+    const isMyTurn   = !isOwnLeave && a.current_approver_code === userCode && a.status === 'pending';
+    const bg = i % 2 === 0 ? '#fff' : '#f8fafc';
+    const actions = canApprove && isMyTurn
+      ? `<button class="btn btn-success btn-sm" style="padding:2px 8px;font-size:11px" onclick="actionLeave(${a.id},'approve')">✓</button>
+         <button class="btn btn-danger btn-sm"  style="padding:2px 8px;font-size:11px;margin-left:3px" onclick="openReject(${a.id})">✗</button>`
+      : (a.status === 'pending' && a.employee_id === userId
+          ? `<button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:11px" onclick="cancelLeave(${a.id})">Cancel</button>`
+          : '—');
+    return `<tr style="background:${bg};cursor:pointer" onclick="showDetail(${a.id})">
+      <td style="${TD};font-weight:700;color:#2563eb">${a.employee_code||''}</td>
+      <td style="${TD};font-weight:600">${a.employee_name||''}</td>
+      <td style="${TD};color:#64748b">${a.department_name||'—'}</td>
+      <td style="${TD};text-align:center"><span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:#e0e7ff;color:#3730a3">${a.leave_type_code}</span></td>
+      <td style="${TD};text-align:center;white-space:nowrap">${fmt.date(a.from_date)}</td>
+      <td style="${TD};text-align:center;white-space:nowrap">${fmt.date(a.to_date)}</td>
+      <td style="${TD};text-align:center;font-weight:700">${a.days_requested ?? a.total_days ?? '?'}</td>
+      <td style="${TD};max-width:200px;color:#64748b;font-size:11px">${a.reason||'—'}</td>
+      <td style="${TD};text-align:center"><span style="padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;${statusStyle[a.status]||statusStyle.cancelled}">${(a.status||'').charAt(0).toUpperCase()+(a.status||'').slice(1)}</span></td>
+      <td style="${TD};text-align:center;white-space:nowrap;color:#94a3b8">${fmt.date(a.applied_at||a.created_at)}</td>
+      <td style="${TD};text-align:center" onclick="event.stopPropagation()">${actions}</td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<div style="overflow-x:auto">
+    <table style="border-collapse:collapse;width:100%;min-width:900px">
+      <thead><tr>
+        <th style="${TH}">Emp Code</th>
+        <th style="${TH}">Employee Name</th>
+        <th style="${TH}">Department</th>
+        <th style="${TH}">Type</th>
+        <th style="${TH}">From</th>
+        <th style="${TH}">To</th>
+        <th style="${TH}">Days</th>
+        <th style="${TH}">Reason</th>
+        <th style="${TH}">Status</th>
+        <th style="${TH}">Applied On</th>
+        <th style="${TH}">Action</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="font-size:11px;color:#94a3b8;padding:6px 2px">${filtered.length} record(s)</div>
+  </div>`;
 }
 
 function renderLeaveCard(a, canApprove) {
