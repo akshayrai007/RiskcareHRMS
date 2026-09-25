@@ -730,8 +730,56 @@ async function loadApprovals() {
     return;
   }
   const pending = teamLeaves.filter(a => a.status === 'pending');
-  const selectHdr = pending.length > 0 ? `<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;font-weight:700"><input type="checkbox" id="leave-chk-all" style="width:16px;height:16px;cursor:pointer" onchange="leaveSelectAll(this.checked)"> ☑ Select All Pending (${pending.length})</label></div>` : '';
-  el.innerHTML = selectHdr + teamLeaves.map(a => renderLeaveCard(a, true)).join('');
+  const userCode = user.employee_code;
+  const TH = `border:1px solid #cbd5e1;background:#1e293b;color:#fff;font-size:11px;font-weight:700;padding:7px 10px;white-space:nowrap;text-align:center`;
+  const TD = `border:1px solid #e2e8f0;padding:6px 9px;font-size:12px;vertical-align:middle`;
+  const SS = { approved:'background:#dcfce7;color:#166534', pending:'background:#fef9c3;color:#854d0e', rejected:'background:#fee2e2;color:#991b1b', cancelled:'background:#f3f4f6;color:#6b7280' };
+  const rows = teamLeaves.map((a, i) => {
+    const isMyTurn = a.current_approver_code === userCode && a.status === 'pending';
+    const bg = i % 2 === 0 ? '#fff' : '#f8fafc';
+    const chk = isMyTurn ? `<input type="checkbox" class="leave-chk" data-id="${a.id}" style="width:15px;height:15px;cursor:pointer;accent-color:#1e40af" onchange="leaveBulkUpdate()">` : '';
+    const actions = isMyTurn
+      ? `<button class="btn btn-success btn-sm" style="padding:2px 8px;font-size:11px" onclick="actionLeave(${a.id},'approve')">✓</button>
+         <button class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:11px;margin-left:3px" onclick="openReject(${a.id})">✗</button>`
+      : '—';
+    return `<tr style="background:${bg};cursor:pointer" onclick="showDetail(${a.id})">
+      <td style="${TD};text-align:center;width:36px" onclick="event.stopPropagation()">${chk}</td>
+      <td style="${TD};font-weight:700;color:#2563eb">${a.employee_code||''}</td>
+      <td style="${TD};font-weight:600">${a.employee_name||''}</td>
+      <td style="${TD};color:#64748b">${a.department_name||'—'}</td>
+      <td style="${TD};text-align:center"><span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:#e0e7ff;color:#3730a3">${a.leave_type_code}</span></td>
+      <td style="${TD};text-align:center;white-space:nowrap">${fmt.date(a.from_date)}</td>
+      <td style="${TD};text-align:center;white-space:nowrap">${fmt.date(a.to_date)}</td>
+      <td style="${TD};text-align:center;font-weight:700">${a.days_requested ?? a.total_days ?? '?'}</td>
+      <td style="${TD};max-width:200px;color:#64748b;font-size:11px">${a.reason||'—'}</td>
+      <td style="${TD};text-align:center"><span style="padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;${SS[a.status]||SS.cancelled}">${(a.status||'').charAt(0).toUpperCase()+(a.status||'').slice(1)}</span></td>
+      <td style="${TD};text-align:center;white-space:nowrap;color:#94a3b8">${fmt.date(a.applied_at||a.created_at)}</td>
+      <td style="${TD};text-align:center" onclick="event.stopPropagation()">${actions}</td>
+    </tr>`;
+  }).join('');
+  const masterChk = pending.length > 0
+    ? `<input type="checkbox" id="leave-chk-all" style="width:15px;height:15px;cursor:pointer;accent-color:#1e40af" onchange="leaveSelectAll(this.checked)">`
+    : '';
+  el.innerHTML = `<div style="overflow-x:auto">
+    <table style="border-collapse:collapse;width:100%;min-width:900px">
+      <thead><tr>
+        <th style="${TH};width:36px">${masterChk}</th>
+        <th style="${TH}">Emp Code</th>
+        <th style="${TH}">Employee Name</th>
+        <th style="${TH}">Department</th>
+        <th style="${TH}">Type</th>
+        <th style="${TH}">From</th>
+        <th style="${TH}">To</th>
+        <th style="${TH}">Days</th>
+        <th style="${TH}">Reason</th>
+        <th style="${TH}">Status</th>
+        <th style="${TH}">Applied On</th>
+        <th style="${TH}">Action</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="font-size:11px;color:#94a3b8;padding:6px 2px">${teamLeaves.length} record(s) · ${pending.length} pending</div>
+  </div>`;
   leaveBulkUpdate();
 }
 
