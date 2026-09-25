@@ -1318,33 +1318,48 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // (see COL_GROUPS below) so Earning vs Deduction is obvious at a glance,
     // and the same sheet is what gets uploaded for payroll AND used for payslips.
     const HEADERS = [
+      // ── A: Employee Identification ──────────────────────────────────────────
       'Emp Code', 'Full Name', 'Department', 'Division', 'Designation', 'Category',
+      // ── B: Attendance ───────────────────────────────────────────────────────
       'Working Days', 'Present Days', 'LOP Days', 'LOP Reversal (Days)', 'Paid Days',
-      'Gross CTC (Monthly)', 'Actual CTC',
+      // ── C: Fixed Earnings (Monthly structure + Actual after LOP) ────────────
       'Basic (Monthly)', 'Basic (Actual)',
       'HRA (Monthly)', 'HRA (Actual)',
       'Defray Allowance (Monthly)', 'Defray Allowance (Actual)',
       'Gratuity (Monthly)', 'Gratuity (Actual)',
       'Food Coupon (Monthly)', 'Food Coupon (Actual)',
+      // ── D: Variable / One-time Earnings ─────────────────────────────────────
       'Food Coupon Adjustment', 'Extra Working Salary', 'Bonus', 'Incentive', 'Other Earning', 'Performance Bonus',
+      // ── E: Gross ─────────────────────────────────────────────────────────────
       'Gross Salary',
-      'PF (Employee)', 'EPF Employer (A/c-1)', 'EPS Employer (A/c-10)', 'PF Admin + EDLI (Employer)', 'ESI Earning (Wages)', 'ESI (Employee)', 'ESI (Employer)', 'Prof Tax', 'TDS',
-      'GTL Deduction', 'Late Mark Deduction',
-      'Salary Advance Recovery (Loan/EMI)', 'Total Deductions',
-      'Net Pay', 'Total Employer Contribution', 'Total Cost to Company', 'Payment Status', 'Remarks'
+      // ── F: Employee Deductions ───────────────────────────────────────────────
+      'PF (Employee)', 'ESI (Employee)', 'Prof Tax', 'TDS',
+      'GTL Deduction', 'Late Mark Deduction', 'Salary Advance Recovery (Loan/EMI)',
+      'Total Deductions',
+      // ── G: Net Pay ───────────────────────────────────────────────────────────
+      'Net Pay',
+      // ── H: Employer Contributions ────────────────────────────────────────────
+      'EPF Employer (A/c-1)', 'EPS Employer (A/c-10)', 'PF Admin + EDLI (Employer)', 'ESI Earning (Wages)', 'ESI (Employer)',
+      'Total Employer Contribution',
+      // ── I: CTC Summary ───────────────────────────────────────────────────────
+      'Total Cost to Company', 'Gross CTC (Monthly)', 'Actual CTC',
+      // ── J: Status ────────────────────────────────────────────────────────────
+      'Payment Status', 'Remarks'
     ];
 
     // Section color map — used for header fill + a light tint on data rows.
     const COL_GROUPS = [
-      { from: 'Emp Code',              to: 'Paid Days',                headBg:'475569', headFg:'FFFFFF', dataBg:'F1F5F9' }, // identity/attendance - slate
-      { from: 'Gross CTC (Monthly)',  to: 'Actual CTC',               headBg:'7C3AED', headFg:'FFFFFF', dataBg:'EDE9FE' }, // CTC overview - purple
-      { from: 'Basic (Monthly)',       to: 'Food Coupon (Actual)',     headBg:'15803D', headFg:'FFFFFF', dataBg:'DCFCE7' }, // fixed earnings - green
-      { from: 'Food Coupon Adjustment',to: 'Performance Bonus',        headBg:'0D9488', headFg:'FFFFFF', dataBg:'CCFBF1' }, // one-time earnings - teal
-      { from: 'Gross Salary',          to: 'Gross Salary',             headBg:'B45309', headFg:'FFFFFF', dataBg:'FEF3C7' }, // gross - amber
-      { from: 'PF (Employee)',         to: 'Salary Advance Recovery (Loan/EMI)', headBg:'B91C1C', headFg:'FFFFFF', dataBg:'FEE2E2' }, // deductions - red
-      { from: 'Total Deductions',      to: 'Total Deductions',         headBg:'991B1B', headFg:'FFFFFF', dataBg:'FECACA' }, // deductions total - darker red
-      { from: 'Net Pay',               to: 'Total Cost to Company',    headBg:'1D4ED8', headFg:'FFFFFF', dataBg:'DBEAFE' }, // net/employer cost - blue
-      { from: 'Payment Status',        to: 'Remarks',                  headBg:'475569', headFg:'FFFFFF', dataBg:'F1F5F9' }, // status - slate
+      { from: 'Emp Code',                   to: 'Paid Days',                          headBg:'475569', headFg:'FFFFFF', dataBg:'F1F5F9' }, // A: identity/attendance - slate
+      { from: 'Basic (Monthly)',            to: 'Food Coupon (Actual)',               headBg:'15803D', headFg:'FFFFFF', dataBg:'DCFCE7' }, // C: fixed earnings - green
+      { from: 'Food Coupon Adjustment',     to: 'Performance Bonus',                 headBg:'0D9488', headFg:'FFFFFF', dataBg:'CCFBF1' }, // D: variable earnings - teal
+      { from: 'Gross Salary',              to: 'Gross Salary',                       headBg:'B45309', headFg:'FFFFFF', dataBg:'FEF3C7' }, // E: gross - amber
+      { from: 'PF (Employee)',             to: 'Salary Advance Recovery (Loan/EMI)', headBg:'B91C1C', headFg:'FFFFFF', dataBg:'FEE2E2' }, // F: employee deductions - red
+      { from: 'Total Deductions',          to: 'Total Deductions',                   headBg:'991B1B', headFg:'FFFFFF', dataBg:'FECACA' }, // F: deductions total - darker red
+      { from: 'Net Pay',                   to: 'Net Pay',                            headBg:'1D4ED8', headFg:'FFFFFF', dataBg:'DBEAFE' }, // G: net pay - blue
+      { from: 'EPF Employer (A/c-1)',      to: 'ESI (Employer)',                     headBg:'7C3AED', headFg:'FFFFFF', dataBg:'EDE9FE' }, // H: employer contributions - purple
+      { from: 'Total Employer Contribution',to: 'Total Employer Contribution',        headBg:'6D28D9', headFg:'FFFFFF', dataBg:'DDD6FE' }, // H: employer total - darker purple
+      { from: 'Total Cost to Company',     to: 'Actual CTC',                         headBg:'0369A1', headFg:'FFFFFF', dataBg:'E0F2FE' }, // I: CTC summary - sky blue
+      { from: 'Payment Status',            to: 'Remarks',                            headBg:'475569', headFg:'FFFFFF', dataBg:'F1F5F9' }, // J: status - slate
     ];
     const groupForCol = (idx) => {
       const label = HEADERS[idx];
@@ -1399,42 +1414,39 @@ exports.downloadPayrollTemplate = async (req, res) => {
         const totalDed= parseFloat(e.total_deductions) || (pf + esi + pt + tds);
         const net     = parseFloat(e.net_salary)     || Math.max(0, gross - totalDed);
         const row = [
-          e.employee_code,
-          e.full_name,
-          e.department  || '',
-          e.division    || '',
-          e.designation || '',
-          e.employee_category || '',
-          daysInMonth,       // Working Days
-          monthAtt.paid,     // Present Days (paid days) - pre-filled from attendance
-          monthAtt.lop,      // LOP Days - pre-filled from attendance
-          0,                 // LOP Reversal (Days) - credit LOP days back
-          monthAtt.paid,     // Paid Days
-          gross + (parseFloat(e.pf_employer) || 0) + (parseFloat(e.pf_admin) || 0) + (parseFloat(e.esi_employer) || 0), // Gross CTC (Monthly)
-          0,                 // Actual CTC — live formula set below
-          parseFloat(e.basic)             || 0, 0,   // Basic (Monthly), Basic (Actual - live formula, placeholder here)
-          parseFloat(e.hra)               || 0, 0,   // HRA (Monthly), HRA (Actual)
-          parseFloat(e.special_allowance) || 0, 0,   // Defray Allowance (Monthly), (Actual)
-          parseFloat(e.gratuity)          || 0, 0,   // Gratuity (Monthly), (Actual)
-          parseFloat(e.food_coupon)       || 0, 0,   // Food Coupon (Monthly) - from salary structure, edit per eligible employee; (Actual)
-          0, 0, 0, 0, 0, 0,  // Food Coupon Adj, Extra Working Salary, Bonus, Incentive, Other Earning, Performance Bonus (one-time)
+          // A: Employee Identification
+          e.employee_code, e.full_name, e.department || '', e.division || '', e.designation || '', e.employee_category || '',
+          // B: Attendance
+          daysInMonth, monthAtt.paid, monthAtt.lop, 0, monthAtt.paid,
+          // C: Fixed Earnings (Monthly + Actual pairs)
+          parseFloat(e.basic)             || 0, 0,
+          parseFloat(e.hra)               || 0, 0,
+          parseFloat(e.special_allowance) || 0, 0,
+          parseFloat(e.gratuity)          || 0, 0,
+          parseFloat(e.food_coupon)       || 0, 0,
+          // D: Variable / One-time Earnings
+          0, 0, 0, 0, 0, 0,
+          // E: Gross Salary
           gross,
-          pf,
-          Math.max(0, (parseFloat(e.pf_employer) || 0) - (parseFloat(e.pf_eps) || 0)),  // EPF employer A/c-1
-          parseFloat(e.pf_eps) || 0,                                                       // EPS A/c-10
-          parseFloat(e.pf_admin) || 0,                                                     // PF admin + EDLI
-          parseFloat(e.esi_wages) || 0,
-          esi,
-          parseFloat(e.esi_employer) || 0,
-          pt,
-          tds,
-          0, 0,              // GTL, Late Mark deductions (one-time)
+          // F: Employee Deductions — PF(emp), ESI(emp), PT, TDS, GTL, Late Mark, Loan
+          pf, esi, pt, tds, 0, 0,
           parseFloat(activeEMI ? activeEMI.monthly_emi : 0),
-          totalDed,
-          net,
-          0, 0,      // Total Employer Contribution, Total Cost to Company (formulas below)
-          'Paid',    // Payment Status default
-          '',        // Remarks
+          totalDed,          // Total Deductions (formula below)
+          // G: Net Pay
+          net,               // Net Pay (formula below)
+          // H: Employer Contributions
+          Math.max(0, (parseFloat(e.pf_employer) || 0) - (parseFloat(e.pf_eps) || 0)),  // EPF Employer A/c-1
+          parseFloat(e.pf_eps)      || 0,   // EPS A/c-10
+          parseFloat(e.pf_admin)    || 0,   // PF Admin + EDLI
+          parseFloat(e.esi_wages)   || 0,   // ESI Earning (Wages)
+          parseFloat(e.esi_employer)|| 0,   // ESI (Employer)
+          0,                 // Total Employer Contribution (formula below)
+          // I: CTC Summary
+          0,                 // Total Cost to Company (formula below)
+          gross + (parseFloat(e.pf_employer) || 0) + (parseFloat(e.pf_admin) || 0) + (parseFloat(e.esi_employer) || 0), // Gross CTC (Monthly)
+          0,                 // Actual CTC (formula below)
+          // J: Status
+          'Paid', '',
         ];
         dataRows.push(row);
       } }
@@ -1503,7 +1515,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       setF('Gratuity (Actual)', `ROUND(${LT('Gratuity (Monthly)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('Gratuity (Monthly)') * prorateFactor * 100) / 100);
       setF('Food Coupon (Actual)', `${LT('Food Coupon (Monthly)')}${R}`, foodCouponMonthly);
       setF('Gross Salary', `ROUND((${LT('Basic (Monthly)')}${R}+${LT('HRA (Monthly)')}${R}+${LT('Defray Allowance (Monthly)')}${R}+${LT('Gratuity (Monthly)')}${R})*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0)+${LT('Food Coupon (Monthly)')}${R}+SUM(${LT('Food Coupon Adjustment')}${R}:${LT('Performance Bonus')}${R}),2)`, gross);
-      setF('Total Deductions', `${LT('PF (Employee)')}${R}+${LT('ESI (Employee)')}${R}+SUM(${LT('Prof Tax')}${R}:${LT('Salary Advance Recovery (Loan/EMI)')}${R})`, ded);
+      setF('Total Deductions', `SUM(${LT('PF (Employee)')}${R}:${LT('Salary Advance Recovery (Loan/EMI)')}${R})`, ded);
       const empr = num('EPF Employer (A/c-1)') + num('EPS Employer (A/c-10)') + num('PF Admin + EDLI (Employer)') + num('ESI (Employer)');
       setF('Total Employer Contribution', `${LT('EPF Employer (A/c-1)')}${R}+${LT('EPS Employer (A/c-10)')}${R}+${LT('PF Admin + EDLI (Employer)')}${R}+${LT('ESI (Employer)')}${R}`, empr);
       setF('Total Cost to Company', `${LT('Gross Salary')}${R}+${LT('Total Employer Contribution')}${R}`, gross + empr);
