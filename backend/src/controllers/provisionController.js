@@ -615,9 +615,17 @@ exports.confirmationLetterStandalone = async (req, res) => {
        WHERE e.id = $1`, [parseInt(req.params.id)]);
     if (!r.rows.length) return res.status(404).json({ success: false, message: 'Employee not found' });
     const emp = { ...r.rows[0] };
-    // Allow HR to override dates via query string
-    if (req.query.confirmation_date) emp.confirmed_date = req.query.confirmation_date;
-    if (req.query.probation_end_date) emp.provision_end_date = req.query.probation_end_date;
+    // Allow HR to override any field via query string
+    if (req.query.confirmation_date)   emp.confirmed_date    = req.query.confirmation_date;
+    if (req.query.probation_end_date)  emp.provision_end_date = req.query.probation_end_date;
+    if (req.query.override_name) {
+      const parts = req.query.override_name.trim().split(/\s+/);
+      emp.first_name = parts.slice(0, -1).join(' ') || parts[0];
+      emp.last_name  = parts.length > 1 ? parts[parts.length - 1] : '';
+    }
+    if (req.query.override_designation)  emp.designation   = req.query.override_designation;
+    if (req.query.override_department)   emp.department    = req.query.override_department;
+    if (req.query.override_joining_date) emp.joining_date  = req.query.override_joining_date;
     const pdf = await require('./offerLetterController').htmlToPdf(buildConfirmationLetterHTML(emp));
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="Confirmation_Letter_${emp.employee_code}.pdf"`);

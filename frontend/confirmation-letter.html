@@ -38,8 +38,10 @@
   /* ── Employee info card ── */
   .emp-info { background:#fff5f5; border:1px solid #fecaca; border-radius:8px; padding:12px 16px; margin-top:12px; font-size:.86rem; display:none; }
   .emp-info table { width:100%; }
-  .emp-info table td { padding:3px 10px 3px 0; vertical-align:top; user-select:none; pointer-events:none; }
-  .emp-info table td:first-child { color:var(--cfg-primary,#C0272D); font-weight:700; white-space:nowrap; font-size:.78rem; text-transform:uppercase; }
+  .emp-info table td { padding:4px 10px 4px 0; vertical-align:middle; }
+  .emp-info table td:first-child { color:var(--cfg-primary,#C0272D); font-weight:700; white-space:nowrap; font-size:.78rem; text-transform:uppercase; width:130px; }
+  .emp-info table td input { width:100%; padding:5px 8px; border:1px solid #fca5a5; border-radius:5px; font-size:.86rem; background:#fff; color:#111; }
+  .emp-info table td input:focus { border-color:var(--cfg-primary,#C0272D); outline:none; box-shadow:0 0 0 2px rgba(192,39,45,.1); }
 
   /* ── Buttons ── */
   .btn-row { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
@@ -103,12 +105,12 @@
       <input type="hidden" id="emp-id">
       <div class="emp-info" id="emp-info">
         <table>
-          <tr><td>Employee</td><td id="ei-name">—</td></tr>
-          <tr><td>Code</td><td id="ei-code">—</td></tr>
-          <tr><td>Designation</td><td id="ei-desig">—</td></tr>
-          <tr><td>Department</td><td id="ei-dept">—</td></tr>
-          <tr><td>Joining Date</td><td id="ei-join">—</td></tr>
-          <tr><td>Email</td><td id="ei-email">—</td></tr>
+          <tr><td>Employee</td><td><input id="ei-name" type="text" placeholder="Full name"></td></tr>
+          <tr><td>Code</td><td><input id="ei-code" type="text" placeholder="Employee code"></td></tr>
+          <tr><td>Designation</td><td><input id="ei-desig" type="text" placeholder="Designation"></td></tr>
+          <tr><td>Department</td><td><input id="ei-dept" type="text" placeholder="Department"></td></tr>
+          <tr><td>Joining Date</td><td><input id="ei-join" type="text" placeholder="Joining date"></td></tr>
+          <tr><td>Email</td><td><input id="ei-email" type="email" placeholder="Email" oninput="document.getElementById('send-email').value=this.value"></td></tr>
         </table>
       </div>
     </div>
@@ -184,14 +186,14 @@ function selectEmp(e) {
   document.getElementById('emp-search').value = name;
   document.getElementById('emp-id').value = e.id;
   document.getElementById('emp-dropdown').style.display='none';
-  document.getElementById('ei-name').textContent  = name;
-  document.getElementById('ei-code').textContent  = e.employee_code||'—';
-  document.getElementById('ei-desig').textContent = e.designation_title||e.designation||'—';
-  document.getElementById('ei-dept').textContent  = e.department_name||e.department||'—';
-  document.getElementById('ei-join').textContent  = e.joining_date ? new Date(e.joining_date).toLocaleDateString('en-IN') : '—';
+  document.getElementById('ei-name').value  = name;
+  document.getElementById('ei-code').value  = e.employee_code||'';
+  document.getElementById('ei-desig').value = e.designation_title||e.designation||'';
+  document.getElementById('ei-dept').value  = e.department_name||e.department||'';
+  document.getElementById('ei-join').value  = e.joining_date ? new Date(e.joining_date).toLocaleDateString('en-IN') : '';
   const email = e.email || e.personal_email || '';
-  document.getElementById('ei-email').textContent = email || '—';
-  document.getElementById('send-email').value     = email;
+  document.getElementById('ei-email').value = email;
+  document.getElementById('send-email').value = email;
   if (e.provision_end_date) document.getElementById('probation-end').value = e.provision_end_date.slice(0,10);
   if (e.confirmed_date)     document.getElementById('confirmation-date').value = e.confirmed_date.slice(0,10);
   else document.getElementById('confirmation-date').value = new Date().toISOString().slice(0,10);
@@ -205,14 +207,22 @@ document.addEventListener('click', e => {
 });
 
 function buildUrl(download) {
-  const id   = document.getElementById('emp-id').value;
-  const conf = document.getElementById('confirmation-date').value;
-  const prob = document.getElementById('probation-end').value;
+  const id    = document.getElementById('emp-id').value;
+  const conf  = document.getElementById('confirmation-date').value;
+  const prob  = document.getElementById('probation-end').value;
+  const name  = document.getElementById('ei-name').value.trim();
+  const desig = document.getElementById('ei-desig').value.trim();
+  const dept  = document.getElementById('ei-dept').value.trim();
+  const join  = document.getElementById('ei-join').value.trim();
   if (!id) { alert('Please select an employee first'); return null; }
   let url = `${API_BASE}/employees/${id}/confirmation-letter?token=${Auth.getToken()}`;
   if (download) url += '&download=1';
-  if (conf) url += `&confirmation_date=${conf}`;
-  if (prob) url += `&probation_end_date=${prob}`;
+  if (conf)  url += `&confirmation_date=${conf}`;
+  if (prob)  url += `&probation_end_date=${prob}`;
+  if (name)  url += `&override_name=${encodeURIComponent(name)}`;
+  if (desig) url += `&override_designation=${encodeURIComponent(desig)}`;
+  if (dept)  url += `&override_department=${encodeURIComponent(dept)}`;
+  if (join)  url += `&override_joining_date=${encodeURIComponent(join)}`;
   return url;
 }
 
