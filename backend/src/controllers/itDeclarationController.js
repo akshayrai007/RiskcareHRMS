@@ -775,8 +775,20 @@ exports.saveDeclaration = async (req, res) => {
 
     // ✅ FIX: Use regime-aware tax computation
     const computed = computeRegimeTax(regime, b, cfg, sal, prevSal, otherInc);
-    const estTax     = computed.tax;
-    const monthlyTds = Math.round(estTax / 12);
+    const estTax   = computed.tax;
+
+    // Monthly TDS: same formula as taxPreview — spread remaining tax over remaining months
+    const prevTdsForSave = parseFloat(b.prev_tds || 0);
+    const netTaxForSave  = Math.max(0, estTax - prevTdsForSave);
+    const paidResForSave = await db.query(
+      `SELECT COALESCE(SUM(tds),0) AS paid FROM payroll
+       WHERE employee_id=$1 AND ((year=$2 AND month>=4) OR (year=$3 AND month<=3))`,
+      [empId, parseInt(fy.slice(0, 4)), parseInt(fy.slice(0, 4)) + 1]
+    );
+    const tdsPaidForSave = parseFloat(paidResForSave.rows[0].paid) || 0;
+    const nowMForSave    = new Date().getMonth() + 1;
+    const monthsRemForSave = nowMForSave >= 4 ? 16 - nowMForSave : 4 - nowMForSave;
+    const monthlyTds = Math.round(Math.max(0, netTaxForSave - tdsPaidForSave) / Math.max(1, monthsRemForSave));
 
     // For storage: always compute 80C total for reference (even in new regime, we store what was declared)
     const deductionsForStorage = calcDeductions(b, cfg, sal);
@@ -898,6 +910,9 @@ exports.saveDeclaration = async (req, res) => {
         annual_gross:     Math.round(parseFloat(sal.gross_salary || 0) * 12),
         taxable_income:   Math.round(computed.taxableIncome),
         estimated_tax:    estTax,
+        net_tax:          Math.round(netTaxForSave),
+        tds_paid_ytd:     Math.round(tdsPaidForSave),
+        months_remaining: monthsRemForSave,
         monthly_tds:      monthlyTds,
         std_deduction:    computed.stdDeduction,
         total_deductions: Math.round(computed.totalDeductions),
