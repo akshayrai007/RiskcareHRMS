@@ -527,8 +527,23 @@ async function loadBalance() {
   const byCode = {};
   balanceData.forEach(b => { byCode[b.code] = b; });
 
-  // Build from whichever codes the API returned, excluding OD (has its own display elsewhere)
-  const apiCodes = balanceData.map(b => b.code).filter(c => c !== 'OD');
+  // Merge SL into CL
+  if (byCode['SL'] && byCode['CL']) {
+    const sl = byCode['SL'], cl = byCode['CL'];
+    byCode['CL'] = {
+      ...cl,
+      allocated:    (parseFloat(cl.allocated||0)    + parseFloat(sl.allocated||0)),
+      used:         (parseFloat(cl.used||0)         + parseFloat(sl.used||0)),
+      pending:      (parseFloat(cl.pending||0)      + parseFloat(sl.pending||0)),
+      carry_forward:(parseFloat(cl.carry_forward||0)+ parseFloat(sl.carry_forward||0)),
+      available:    (parseFloat(cl.available||0)    + parseFloat(sl.available||0)),
+    };
+  } else if (byCode['SL'] && !byCode['CL']) {
+    byCode['CL'] = { ...byCode['SL'], code: 'CL', name: 'Casual/Sick Leave' };
+  }
+
+  // Build from whichever codes the API returned, excluding OD and SL (SL merged into CL)
+  const apiCodes = balanceData.map(b => b.code).filter(c => c !== 'OD' && c !== 'SL');
   const showCodes = [...new Set([...ALWAYS_SHOW.map(x => x.code), ...apiCodes])];
   const items = showCodes.map(code => {
     const api = byCode[code];
