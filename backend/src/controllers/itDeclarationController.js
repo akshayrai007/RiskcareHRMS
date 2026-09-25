@@ -1646,8 +1646,34 @@ exports.estimateMonthlyTds = async (empId, month, year, earnedGrossThisMonth) =>
   const remaining = Math.max(0, computed.tax - prevTds - tdsPaid);
   let tds = monthsLeft > 0 ? Math.round(remaining / monthsLeft) : 0;
   tds = Math.max(0, Math.min(tds, Math.round(earnedGrossThisMonth)));
-  const out = { tds, fy, regime, joined: jY ? `${jY}-${String(jM).padStart(2,'0')}` : null, has_declaration: !!d.id, projected_gross: Math.round(projected), prev_salary: Math.round(prevSal),
+  // Components so the Excel template can recompute TDS live when HR edits days / bonus:
+  //   taxable = base_income + this month's gross - deductions ; TDS = (annual tax - already_deducted) / months_left
+  const totalIncome = projected + prevSal + otherInc;
+  const out = { base_income: Math.round(totalIncome - earnedGrossThisMonth), deductions: Math.round(Math.max(0, totalIncome - computed.taxableIncome)),
+                already_deducted: Math.round(prevTds + tdsPaid),
+                tds, fy, regime, joined: jY ? `${jY}-${String(jM).padStart(2,'0')}` : null, has_declaration: !!d.id, projected_gross: Math.round(projected), prev_salary: Math.round(prevSal),
                 annual_tax: computed.tax, taxable_income: Math.round(computed.taxableIncome), tds_paid_ytd: tdsPaid, months_left: monthsLeft };
   console.log('[TDS estimate]', empId, JSON.stringify(out));
   return out;
+};
+
+
+// ── Slab parameters for the payroll template's live TDS formulas ─────────────
+// Slabs are flattened to (threshold, incremental rate) pairs so Excel can compute
+// tax with one SUMPRODUCT:  tax = SUM( (T > threshold) * (T - threshold) * step )
+exports.getTdsSheetParams = async (fy) => {
+  const cfg = await loadConfig(fy);
+  const flat = (str) => {
+    const sl = parseSlabs(str);
+    let prev = 0;
+    return sl.map(x => { const lo = x.low > 0 ? x.low - 1 : 0; const step = (x.rate - prev) / 100; prev = x.rate; return { lo, step }; });
+  };
+  return {
+    fy,
+    newSlabs: flat(cfg.new_slabs || ''),
+    oldSlabs: flat(cfg.old_slabs || DEFAULT_SLABS.old_slabs),
+    rebateNew: cfgN(cfg, 'rebate_87a_new', 1200000), rebateNewAmt: cfgN(cfg, 'rebate_87a_new_amt', 60000),
+    rebateOld: cfgN(cfg, 'rebate_87a_old', 500000),  rebateOldAmt: cfgN(cfg, 'rebate_87a_old_amt', 12500),
+    cess: cfgN(cfg, 'cess_rate', 4) / 100,
+  };
 };
