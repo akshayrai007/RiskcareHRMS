@@ -1267,18 +1267,28 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // leave), because salary is prorated over calendar days on upload.
     const pad2 = (n) => String(n).padStart(2, '0');
     const mStart = `${y}-${pad2(m)}-01`, mEnd = `${y}-${pad2(m)}-${pad2(daysInMonth)}`;
-    const [attR, lvR, holR, empMetaR] = await Promise.all([
+    const [attR, lvR, holR, empMetaR, lvTypesR] = await Promise.all([
       db.query(`SELECT employee_id, TO_CHAR(date,'YYYY-MM-DD') AS d, status FROM attendance WHERE date BETWEEN $1 AND $2`, [mStart, mEnd]),
-      db.query(`SELECT lr.employee_id, TO_CHAR(lr.from_date,'YYYY-MM-DD') AS f, TO_CHAR(lr.to_date,'YYYY-MM-DD') AS t, lt.code
+      db.query(`SELECT lr.employee_id, lr.days_requested, TO_CHAR(lr.from_date,'YYYY-MM-DD') AS f, TO_CHAR(lr.to_date,'YYYY-MM-DD') AS t, lt.code, lt.name
                 FROM leave_requests lr JOIN leave_types lt ON lt.id=lr.leave_type_id
                 WHERE lr.status='approved' AND lr.from_date <= $2 AND lr.to_date >= $1`, [mStart, mEnd]),
       db.query(`SELECT TO_CHAR(date,'YYYY-MM-DD') AS d FROM holidays WHERE date BETWEEN $1 AND $2`, [mStart, mEnd]),
-      db.query(`SELECT id, saturday_policy, TO_CHAR(joining_date,'YYYY-MM-DD') AS jd FROM employees WHERE is_active=true`)
+      db.query(`SELECT id, saturday_policy, TO_CHAR(joining_date,'YYYY-MM-DD') AS jd FROM employees WHERE is_active=true`),
+      db.query(`SELECT code, name FROM leave_types WHERE is_active=true ORDER BY name`)
     ]);
     const attMap = {}; attR.rows.forEach(r => { (attMap[r.employee_id] = attMap[r.employee_id] || {})[r.d] = (r.status || '').toLowerCase(); });
     const lvMap = {}; lvR.rows.forEach(r => { (lvMap[r.employee_id] = lvMap[r.employee_id] || []).push(r); });
     const holSet = new Set(holR.rows.map(r => r.d));
     const metaMap = {}; empMetaR.rows.forEach(r => { metaMap[r.id] = r; });
+
+    // ── Leave utilised this month per employee per type ───────────────────
+    // days_requested is stored on the request; clip to days that fall inside this month.
+    const leaveTypes = lvTypesR.rows; // [{code, name}, ...]
+    const leaveUsedMap = {}; // { empId: { code: days } }
+    lvR.rows.forEach(r => {
+      if (!leaveUsedMap[r.employee_id]) leaveUsedMap[r.employee_id] = {};
+      leaveUsedMap[r.employee_id][r.code] = (leaveUsedMap[r.employee_id][r.code] || 0) + (parseFloat(r.days_requested) || 0);
+    });
     const todayStr = new Date().toISOString().slice(0, 10);
     const monthAttendance = (empId) => {
       const meta = metaMap[empId] || {};
@@ -1317,11 +1327,15 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // Deductions → Totals/Net Pay → Status. Each group gets its own color
     // (see COL_GROUPS below) so Earning vs Deduction is obvious at a glance,
     // and the same sheet is what gets uploaded for payroll AND used for payslips.
+    // Leave headers: one column per active leave type, e.g. "Leave (CL)", "Leave (SL)"
+    const leaveHeaders = leaveTypes.map(lt => `Leave (${lt.code})`);
     const HEADERS = [
       // ── A: Employee Identification ──────────────────────────────────────────
       'Emp Code', 'Full Name', 'Department', 'Division', 'Designation', 'Category',
       // ── B: Attendance ───────────────────────────────────────────────────────
       'Working Days', 'Present Days', 'LOP Days', 'LOP Reversal (Days)', 'Paid Days',
+      // ── B2: Leave Utilised (one column per leave type) ──────────────────────
+      ...leaveHeaders,
       // ── C: Fixed Earnings (salary structure amounts — per month) ────────────
       'Basic (Fixed P.M.)', 'HRA (Fixed P.M.)', 'Defray Allowance (Fixed P.M.)', 'Gratuity (Fixed P.M.)', 'Food Coupon (Fixed P.M.)',
       // ── D: Earned (pro-rated after LOP/attendance) ───────────────────────────
@@ -1348,6 +1362,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // Section color map — used for header fill + a light tint on data rows.
     const COL_GROUPS = [
       { from: 'Emp Code',                   to: 'Paid Days',                          headBg:'475569', headFg:'FFFFFF', dataBg:'F1F5F9' }, // A: identity/attendance - slate
+      ...(leaveHeaders.length ? [{ from: leaveHeaders[0], to: leaveHeaders[leaveHeaders.length-1], headBg:'C2410C', headFg:'FFFFFF', dataBg:'FFEDD5' }] : []), // B2: leave - orange
       { from: 'Basic (Fixed P.M.)',          to: 'Food Coupon (Fixed P.M.)',           headBg:'15803D', headFg:'FFFFFF', dataBg:'DCFCE7' }, // C: fixed P.M. - green
       { from: 'Basic (Earned)',              to: 'Food Coupon (Earned)',               headBg:'166534', headFg:'FFFFFF', dataBg:'BBF7D0' }, // D: earned - darker green
       { from: 'Food Coupon Adjustment',     to: 'Performance Bonus',                 headBg:'0D9488', headFg:'FFFFFF', dataBg:'CCFBF1' }, // D: variable earnings - teal
@@ -1417,6 +1432,8 @@ exports.downloadPayrollTemplate = async (req, res) => {
           e.employee_code, e.full_name, e.department || '', e.division || '', e.designation || '', e.employee_category || '',
           // B: Attendance
           daysInMonth, monthAtt.paid, monthAtt.lop, 0, monthAtt.paid,
+          // B2: Leave Utilised (days taken per leave type this month)
+          ...leaveTypes.map(lt => (leaveUsedMap[e.id] || {})[lt.code] || 0),
           // C: All Fixed P.M. (salary structure amounts)
           parseFloat(e.basic)             || 0,
           parseFloat(e.hra)               || 0,
