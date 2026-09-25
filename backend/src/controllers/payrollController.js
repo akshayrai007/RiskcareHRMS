@@ -1355,7 +1355,8 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // tdsFormulaMap[i] holds the live-formula parts for data row i (0-indexed from first data row).
     // Built inside the per-employee Promise.all callback and read in the formula loop below.
     const tdsFormulaMap = [];
-    const dataRows = await Promise.all(employeesList.map(async (e, idx) => {
+    const dataRows = [];
+    for (let idx = 0; idx < employeesList.length; idx++) { const e = employeesList[idx]; {
         const gross   = parseFloat(e.gross_salary)   || 0;
         // Fetch active EMI for this employee
         const emiRes  = await db.query(
@@ -1388,7 +1389,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
         } else { tds = 0; }
         const totalDed= parseFloat(e.total_deductions) || (pf + esi + pt + tds);
         const net     = parseFloat(e.net_salary)     || Math.max(0, gross - totalDed);
-        return [
+        const row = [
           e.employee_code,
           e.full_name,
           e.department  || '',
@@ -1424,7 +1425,8 @@ exports.downloadPayrollTemplate = async (req, res) => {
           'Paid',    // Payment Status default
           '',        // Remarks
         ];
-      }));
+        dataRows.push(row);
+      } }
     const rows = [
       // Row 0: Title
       [`HRMS — Payroll Input Template | ${monthName} ${y} | Total Working Days: ${daysInMonth}`],
