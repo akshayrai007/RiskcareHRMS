@@ -729,7 +729,7 @@
           </div>
           <div class="sx-grid">
             <div class="sx-field sx-full"><label>Basic Salary *</label>
-              <div class="sx-money big"><span>₹</span><input id="edit-basic" type="number" class="form-control" placeholder="0" oninput="autoCalcGratuity();autoCalcPfEsi();recalcSalaryPreview()"></div></div>
+              <div class="sx-money big"><span>₹</span><input id="edit-basic" type="number" class="form-control" placeholder="0" oninput="autoCalcGratuity();autoCalcPfEsi(true);recalcSalaryPreview()"></div></div>
             <div class="sx-field"><label>HRA</label>
               <div class="sx-money"><span>₹</span><input id="edit-hra" type="number" class="form-control" placeholder="0" oninput="recalcSalaryPreview()"></div></div>
             <div class="sx-field"><label>Defray Allowance</label>
@@ -752,7 +752,7 @@
           <div id="pf-override-wrap" class="sx-sub" style="display:none">
             <div class="sx-grid">
               <div class="sx-field"><label>PF basis</label>
-                <select id="edit-pf-basis" class="form-control" onchange="autoCalcPfEsi();recalcSalaryPreview()">
+                <select id="edit-pf-basis" class="form-control" onchange="autoCalcPfEsi(true);recalcSalaryPreview()">
                   <option value="capped">Capped at ₹15,000</option>
                   <option value="actual">Actual Basic</option>
                 </select></div>
@@ -2565,7 +2565,7 @@ async function openEditEmp(id) {
   document.getElementById('edit-pf-emr-override').value  = s.pf_employer_override  || '';
   document.getElementById('edit-esi-emp-override').value = s.esi_employee_override || '';
   document.getElementById('edit-esi-emr-override').value = s.esi_employer_override || '';
-  if (!s.pf_employee_override && !s.pf_employer_override && !s.esi_employee_override && !s.esi_employer_override) autoCalcPfEsi();
+  autoCalcPfEsi(); // fill any blank PF/ESI fields with computed values (existing overrides kept)
   // Show/hide override panels based on checkbox state
   const pfOvWrap = document.getElementById('pf-override-wrap');
   const esiOvWrap= document.getElementById('esi-override-wrap');
@@ -2713,7 +2713,7 @@ function autoCalcGratuity() {
   gratEl.value  = Math.round(monthly * 0.0481);
 }
 
-function autoCalcPfEsi() {
+function autoCalcPfEsi(force = false) {
   const v = id => parseFloat(document.getElementById(id)?.value) || 0;
   const basic      = _salaryMode === 'annual' ? v('edit-basic') / 12 : v('edit-basic');
   const hra        = _salaryMode === 'annual' ? v('edit-hra') / 12 : v('edit-hra');
@@ -2722,20 +2722,22 @@ function autoCalcPfEsi() {
   const foodCoupon = _salaryMode === 'annual' ? v('edit-food-coupon') / 12 : v('edit-food-coupon');
   const gross = basic + hra + special + gratuity + foodCoupon;
 
-  // PF
+  // PF — always update on force (oninput), only fill blank on modal open
   const pfBasis = document.getElementById('edit-pf-basis')?.value || 'capped';
   const pfBase  = pfBasis === 'actual' ? basic : Math.min(basic, 15000);
   const pfAmt   = Math.round(pfBase * 0.12);
   const pfEmpEl = document.getElementById('edit-pf-emp-override');
   const pfEmrEl = document.getElementById('edit-pf-emr-override');
-  if (pfEmpEl) pfEmpEl.value = pfAmt;
-  if (pfEmrEl) pfEmrEl.value = pfAmt;
+  if (pfEmpEl && (force || !pfEmpEl.value)) pfEmpEl.value = pfAmt;
+  if (pfEmrEl && (force || !pfEmrEl.value)) pfEmrEl.value = pfAmt;
 
-  // ESI — only if Gross ≤ ₹21,000
+  // ESI — only if Gross ≤ ₹21,000; always update on force, only fill blank on modal open
   const esiEmpEl = document.getElementById('edit-esi-emp-override');
   const esiEmrEl = document.getElementById('edit-esi-emr-override');
-  if (esiEmpEl) esiEmpEl.value = gross > 0 && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
-  if (esiEmrEl) esiEmrEl.value = gross > 0 && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
+  const esiEmp = gross > 0 && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
+  const esiEmr = gross > 0 && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
+  if (esiEmpEl && (force || !esiEmpEl.value)) esiEmpEl.value = esiEmp;
+  if (esiEmrEl && (force || !esiEmrEl.value)) esiEmrEl.value = esiEmr;
 }
 
 function recalcSalaryPreview() {
