@@ -146,22 +146,20 @@ function apptLogoB64() {
 
 function apptHeaderFooter() {
   const logo = apptLogoB64();
+  // Header: logo only (top-left), matching Word doc letterhead
   const headerTemplate = `
     <div style="width:100%;padding:0 15mm;font-family:Arial,sans-serif;">
-      <table style="width:100%;border-bottom:1.5px solid #000;border-collapse:collapse;padding-bottom:4px;">
-        <tr>
-          <td style="width:75px;vertical-align:middle;"><img src="${logo}" style="width:66px;height:auto;"></td>
-          <td style="text-align:center;vertical-align:middle;">
-            <div style="font-size:14px;font-weight:bold;color:#000;margin-bottom:6px;">${CONFIG.companyFullName}</div>
-            <div style="font-size:8px;color:#444;"><b>Registered Office:</b> ${CONFIG.companyOfficeAddr}</div>
-            <div style="font-size:8px;color:#444;margin-top:1px;">Phone: ${CONFIG.companyTel} &nbsp;|&nbsp; Email: ${CONFIG.supportEmail} &nbsp;|&nbsp; Website: ${CONFIG.websiteUrl}</div>
-          </td>
-        </tr>
-      </table>
+      <img src="${logo}" style="width:97px;height:auto;display:block;">
     </div>`;
+  // Footer: full company info block, matching Word doc footer
   const footerTemplate = `
-    <div style="width:100%;padding:0 15mm;font-family:Arial,sans-serif;font-size:9px;font-weight:bold;text-align:center;">
-      <div style="border-top:1px solid #000;padding-top:3px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span> &nbsp;|&nbsp; CIN: ${CONFIG.companyCIN}</div>
+    <div style="width:100%;padding:0 15mm;font-family:Arial,sans-serif;text-align:center;">
+      <div style="border-top:2px solid #000;padding-top:4px;">
+        <div style="font-size:10px;font-weight:bold;color:#000;">Risk Care Insurance Broking Services Private Limited</div>
+        <div style="font-size:8px;color:#000;margin-top:2px;">Registered Office: #708, 7th Floor, Hubtown Viva, Western Express Highway, Shankarwadi, Jogeshwari (East), Mumbai 400060, Maharashtra</div>
+        <div style="font-size:8px;color:#000;margin-top:1px;">CIN: ${CONFIG.companyCIN} &nbsp;|&nbsp; Registration No: 401 &nbsp;|&nbsp; Validity: 29/04/2025 to 28/04/2028 &nbsp;|&nbsp; Category: Composite Broker</div>
+        <div style="font-size:8px;color:#000;margin-top:1px;">Phone: ${CONFIG.companyTel} &nbsp;&nbsp;&nbsp; Email: ${CONFIG.supportEmail} &nbsp;&nbsp;&nbsp; Website: www.riskcareinsure.com</div>
+      </div>
     </div>`;
   return { headerTemplate, footerTemplate };
 }
@@ -390,7 +388,7 @@ function buildShortOfferLetterHTML(ol) {
   const salute = /^(mr|ms|mrs|miss)/i.test(ol.candidate_name||'') ? '' : 'Mr./Ms. ';
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="appt-letter">
 <style>
-  @page { size:A4; margin:28mm 15mm 18mm 15mm; }
+  @page { size:A4; margin:22mm 15mm 32mm 15mm; }
   * { box-sizing:border-box; }
   body { font-family:'Calibri','Carlito','Arial',sans-serif; font-size:12px; line-height:1.5; color:#000; margin:0; }
   p { margin:6px 0; text-align:justify; }

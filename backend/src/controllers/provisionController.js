@@ -563,7 +563,7 @@ function buildConfirmationLetterHTML(e) {
   const dept = escC(e.department || '');
   const loc = escC(CONFIG.companyCity || 'Mumbai');
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-  @page { size: A4; margin: 36mm 15mm 18mm 15mm; }
+  @page { size: A4; margin: 22mm 15mm 32mm 15mm; }
   body { font-family:'Calibri','Carlito','Arial',sans-serif; font-size:13px; line-height:1.6; color:#000; margin:0; }
   p { margin:0 0 12px; text-align:justify; }
 </style></head><body data-appt-letter="1">

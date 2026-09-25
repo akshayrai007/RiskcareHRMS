@@ -47,7 +47,7 @@ function buildRelievingLetterHTML(emp, sig1Image, sig2Image) {
 <head>
 <meta charset="UTF-8"><meta name="appt-letter">
 <style>
-  @page { size: A4; margin: 28mm 15mm 18mm 15mm; }
+  @page { size: A4; margin: 22mm 15mm 32mm 15mm; }
   * { box-sizing: border-box; }
   body { font-family: 'Calibri','Carlito','Arial',sans-serif; color: #000; line-height: 1.5; margin: 0; }
   .date-row { font-size: 13px; margin-bottom: 12px; }
