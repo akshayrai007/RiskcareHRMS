@@ -83,6 +83,11 @@ router.get ('/provision/accrual-log',    authenticate, authorize('hr','admin','s
 router.get ('/provision/:id/status',     authenticate, authorize(...PROVISION_APPROVERS), provCtrl.getConfirmationStatus);
 // Workflow actions
 router.get ('/provision/:id/confirmation-letter', authenticate, authorize('hr','admin','super_admin'), provCtrl.confirmationLetter);
+// Standalone confirmation letter (HR can generate for any employee without provision flow)
+router.get ('/employees/:id/confirmation-letter', authenticate, authorize('hr','admin','super_admin'), provCtrl.confirmationLetterStandalone);
+router.post('/employees/:id/send-confirmation-letter', authenticate, authorize('hr','admin','super_admin'), provCtrl.sendConfirmationLetterEmail);
+// Short offer letter (2-page pre-joining offer — separate from Appointment Letter)
+router.get ('/offer-letters/:id/short-preview', authenticate, authorize('hr','admin','super_admin'), offerCtrl.shortPreview);
 router.post('/provision/:id/initiate',   authenticate, authorize('hr','admin','super_admin'), provCtrl.initiateConfirmation);
 router.post('/provision/:id/approve',    authenticate, authorize(...PROVISION_APPROVERS),    provCtrl.approveConfirmation);
 // Monthly accrual (run 1st of each month, or manually)

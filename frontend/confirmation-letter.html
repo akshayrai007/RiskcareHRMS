@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Confirmation Letters — HRMS</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .cl-wrap { max-width:720px; margin:0 auto; padding:24px 16px; }
+  .cl-card  { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; margin-bottom:16px; }
+  .cl-card h3 { margin:0 0 16px; font-size:1rem; color:var(--accent); }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+  .form-row.single { grid-template-columns:1fr; }
+  .field label { display:block; font-size:.78rem; font-weight:700; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.5px; }
+  .field input, .field select { width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:.9rem; background:var(--surface2); color:var(--text); }
+  .field input:focus, .field select:focus { border-color:var(--accent); outline:none; }
+  .emp-search-wrap { position:relative; }
+  #emp-dropdown { position:absolute; top:100%; left:0; right:0; background:var(--surface); border:1px solid var(--border); border-radius:8px; z-index:50; max-height:200px; overflow-y:auto; box-shadow:0 4px 16px rgba(0,0,0,.12); display:none; }
+  .emp-opt { padding:9px 14px; cursor:pointer; font-size:.88rem; border-bottom:1px solid var(--border); }
+  .emp-opt:hover { background:var(--surface2); }
+  .emp-opt .code { font-size:.75rem; color:var(--muted); }
+  .btn-row { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+  .emp-info { background:var(--surface2); border-radius:8px; padding:12px 16px; margin-top:12px; font-size:.88rem; display:none; }
+  .emp-info table td { padding:3px 10px 3px 0; }
+  .emp-info table td:first-child { color:var(--muted); font-weight:600; white-space:nowrap; }
+  iframe#preview-frame { width:100%; height:75vh; border:none; border-radius:8px; background:#f5f5f5; display:none; margin-top:16px; }
+  .status-msg { padding:10px 14px; border-radius:8px; font-size:.88rem; display:none; margin-top:10px; }
+  .status-msg.ok  { background:#dcfce7; color:#166534; }
+  .status-msg.err { background:#fee2e2; color:#991b1b; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+  <h1 class="topbar-title">Confirmation Letters</h1>
+</header>
+<nav id="sidebar-nav"></nav>
+<main class="main-content">
+<div class="cl-wrap">
+
+  <!-- Employee Search -->
+  <div class="cl-card">
+    <h3>Select Employee</h3>
+    <div class="form-row single">
+      <div class="field">
+        <label>Search Employee</label>
+        <div class="emp-search-wrap">
+          <input type="text" id="emp-search" placeholder="Type name or employee code…" autocomplete="off">
+          <div id="emp-dropdown"></div>
+        </div>
+      </div>
+    </div>
+    <input type="hidden" id="emp-id">
+    <div class="emp-info" id="emp-info">
+      <table>
+        <tr><td>Employee</td><td id="ei-name">—</td></tr>
+        <tr><td>Code</td><td id="ei-code">—</td></tr>
+        <tr><td>Designation</td><td id="ei-desig">—</td></tr>
+        <tr><td>Department</td><td id="ei-dept">—</td></tr>
+        <tr><td>Joining Date</td><td id="ei-join">—</td></tr>
+        <tr><td>Email</td><td id="ei-email">—</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Letter Details -->
+  <div class="cl-card" id="letter-details" style="display:none">
+    <h3>Letter Details</h3>
+    <div class="form-row">
+      <div class="field">
+        <label>Probation End Date</label>
+        <input type="date" id="probation-end">
+      </div>
+      <div class="field">
+        <label>Confirmation Date (Effective From)</label>
+        <input type="date" id="confirmation-date">
+      </div>
+    </div>
+    <div class="form-row single">
+      <div class="field">
+        <label>Send To Email</label>
+        <input type="email" id="send-email" placeholder="employee@email.com">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="previewLetter()">👁 Preview PDF</button>
+      <button class="btn btn-secondary" onclick="downloadLetter()">⬇ Download PDF</button>
+      <button class="btn btn-outline" onclick="sendLetter()" id="send-btn">📧 Send via Email</button>
+    </div>
+    <div class="status-msg" id="status-msg"></div>
+  </div>
+
+  <!-- PDF Preview -->
+  <iframe id="preview-frame" title="Confirmation Letter Preview"></iframe>
+
+</div>
+</main>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+buildSidebar('confirmation-letter.html');
+
+let _employees = [];
+let _selectedEmp = null;
+
+async function loadEmployees() {
+  try {
+    const data = await api('GET', '/employees?active=true&limit=500');
+    _employees = (data.employees || data || []).filter(e => e.id);
+  } catch(e) { console.error(e); }
+}
+loadEmployees();
+
+document.getElementById('emp-search').addEventListener('input', function() {
+  const q = this.value.trim().toLowerCase();
+  const dd = document.getElementById('emp-dropdown');
+  if (!q || q.length < 2) { dd.style.display='none'; return; }
+  const matches = _employees.filter(e =>
+    (e.full_name||`${e.first_name} ${e.last_name||''}`).toLowerCase().includes(q) ||
+    (e.employee_code||'').toLowerCase().includes(q)
+  ).slice(0, 15);
+  if (!matches.length) { dd.style.display='none'; return; }
+  dd.innerHTML = matches.map(e => {
+    const name = e.full_name || `${e.first_name} ${e.last_name||''}`.trim();
+    return `<div class="emp-opt" onclick="selectEmp(${e.id},'${name.replace(/'/g,"\\'")}',this)">
+      ${name} <span class="code">${e.employee_code||''} · ${e.designation||''}</span>
+    </div>`;
+  }).join('');
+  dd.style.display='block';
+});
+
+async function selectEmp(id, name, el) {
+  document.getElementById('emp-search').value = name;
+  document.getElementById('emp-id').value = id;
+  document.getElementById('emp-dropdown').style.display='none';
+
+  // Load full employee info
+  try {
+    const data = await api('GET', `/employees/${id}`);
+    const e = data.employee || data;
+    _selectedEmp = e;
+    document.getElementById('ei-name').textContent  = `${e.first_name||''} ${e.last_name||''}`.trim();
+    document.getElementById('ei-code').textContent  = e.employee_code||'—';
+    document.getElementById('ei-desig').textContent = e.designation||'—';
+    document.getElementById('ei-dept').textContent  = e.department||'—';
+    document.getElementById('ei-join').textContent  = e.joining_date ? new Date(e.joining_date).toLocaleDateString('en-IN') : '—';
+    document.getElementById('ei-email').textContent = e.work_email || e.personal_email || '—';
+    document.getElementById('send-email').value     = e.work_email || e.personal_email || '';
+    // Pre-fill dates
+    if (e.provision_end_date) document.getElementById('probation-end').value = e.provision_end_date.slice(0,10);
+    if (e.confirmed_date)     document.getElementById('confirmation-date').value = e.confirmed_date.slice(0,10);
+    else { const today = new Date().toISOString().slice(0,10); document.getElementById('confirmation-date').value = today; }
+    document.getElementById('emp-info').style.display='block';
+    document.getElementById('letter-details').style.display='block';
+    document.getElementById('preview-frame').style.display='none';
+  } catch(err) { console.error(err); }
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.emp-search-wrap')) document.getElementById('emp-dropdown').style.display='none';
+});
+
+function buildPreviewUrl() {
+  const id   = document.getElementById('emp-id').value;
+  const conf = document.getElementById('confirmation-date').value;
+  const prob = document.getElementById('probation-end').value;
+  if (!id) { alert('Please select an employee first'); return null; }
+  let url = `/api/employees/${id}/confirmation-letter?`;
+  if (conf) url += `confirmation_date=${conf}&`;
+  if (prob) url += `probation_end_date=${prob}&`;
+  return url;
+}
+
+function previewLetter() {
+  const url = buildPreviewUrl();
+  if (!url) return;
+  const frame = document.getElementById('preview-frame');
+  frame.src = url;
+  frame.style.display='block';
+  frame.scrollIntoView({ behavior:'smooth' });
+}
+
+function downloadLetter() {
+  const id   = document.getElementById('emp-id').value;
+  const conf = document.getElementById('confirmation-date').value;
+  const prob = document.getElementById('probation-end').value;
+  if (!id) { alert('Please select an employee first'); return; }
+  let url = `/api/employees/${id}/confirmation-letter?download=1`;
+  if (conf) url += `&confirmation_date=${conf}`;
+  if (prob) url += `&probation_end_date=${prob}`;
+  window.open(url, '_blank');
+}
+
+async function sendLetter() {
+  const id    = document.getElementById('emp-id').value;
+  const email = document.getElementById('send-email').value.trim();
+  const conf  = document.getElementById('confirmation-date').value;
+  const prob  = document.getElementById('probation-end').value;
+  if (!id)    { alert('Please select an employee first'); return; }
+  if (!email) { alert('Please enter an email address'); return; }
+  const btn = document.getElementById('send-btn');
+  const msg = document.getElementById('status-msg');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const res = await api('POST', `/employees/${id}/send-confirmation-letter`, { email, confirmation_date: conf, probation_end_date: prob });
+    msg.textContent = res.message || 'Sent successfully!';
+    msg.className = 'status-msg ok'; msg.style.display='block';
+  } catch(err) {
+    msg.textContent = err.message || 'Failed to send email';
+    msg.className = 'status-msg err'; msg.style.display='block';
+  } finally {
+    btn.disabled = false; btn.textContent = '📧 Send via Email';
+  }
+}
+</script>
+</body>
+</html>

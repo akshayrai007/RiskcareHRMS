@@ -341,6 +341,113 @@ ${additionalTerms}
 </html>`;
 }
 
+// ── Short Offer Letter (2-page pre-joining format) ────────────────────────────
+function buildShortOfferLetterHTML(ol) {
+  const esc  = (v) => String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const num  = (v) => parseFloat(v || 0) || 0;
+  const fmtV = (v) => Number(Math.round(v)).toLocaleString('en-IN');
+  const logo = apptLogoB64();
+  const basic = num(ol.basic_monthly), hra = num(ol.hra_monthly),
+        other = num(ol.other_allowance_monthly), gratuity = num(ol.gratuity_monthly),
+        pfEmp = num(ol.pf_employee_monthly || 0), pfEmpr = num(ol.pf_employer_monthly);
+  const fixedA   = basic + hra + other + gratuity;
+  const retirals = pfEmpr;
+  const fixedPay = fixedA + retirals;
+  const variable = num(ol.variable_pay_monthly);
+  const ctcAnnual = num(ol.ctc_annual) || (fixedPay + variable) * 12;
+  const dash = (v) => v > 0 ? fmtV(v) : '&ndash;';
+  let sr = 0;
+  const row = (name, m, bold) => { sr++; return `<tr${bold?' style="font-weight:700;background:#f2f2f2"':''}><td style="text-align:center;border:1px solid #000;padding:4px 8px">${sr}</td><td style="border:1px solid #000;padding:4px 8px">${name}</td><td style="text-align:right;border:1px solid #000;padding:4px 8px">${dash(m)}</td><td style="text-align:right;border:1px solid #000;padding:4px 8px">${dash(m*12)}</td></tr>`; };
+  const rows = [
+    row('Fixed Basic', basic), row('HRA', hra), row('Other Allowances', other),
+    row('Gratuity', gratuity), row('Total Fixed Pay (A)', fixedA, true),
+    row('Provident Fund (B)', pfEmp), row('Company Contribution to Provident Fund (C)', pfEmpr),
+    row('Total Retirals (B+C)', pfEmp + pfEmpr, true),
+    row('FIXED PAY (A+B+C)', fixedPay + pfEmp, true),
+    row('Variable Pay (D)', variable),
+  ];
+  sr++;
+  rows.push(`<tr style="font-weight:700;background:#1e293b;color:#fff"><td style="text-align:center;border:1px solid #000;padding:4px 8px">${sr}</td><td style="border:1px solid #000;padding:4px 8px">Total Compensation Package (A+B+C+D)</td><td style="text-align:right;border:1px solid #000;padding:4px 8px">${fmtV((fixedPay+pfEmp+variable))}</td><td style="text-align:right;border:1px solid #000;padding:4px 8px">${fmtV(ctcAnnual)}</td></tr>`);
+  const ordDate = (d) => { const dt = d?new Date(d):new Date(); const day=dt.getDate(); const sup=(day>=11&&day<=13)?'th':([,'st','nd','rd'][day%10]||'th'); return day+'<sup>'+sup+'</sup> '+['January','February','March','April','May','June','July','August','September','October','November','December'][dt.getMonth()]+', '+dt.getFullYear(); };
+  const surname = ((ol.candidate_name||'').replace(/^(mr|ms|mrs|miss)\.?\s+/i,'').trim().split(/\s+/).slice(-1)[0])||'';
+  const designation = esc(ol.designation||''), department = esc(ol.department||'');
+  const posLabel = department ? designation+' - '+department : designation;
+  const location = esc(ol.location||CONFIG.companyCity||'Mumbai');
+  const salute = /^(mr|ms|mrs|miss)/i.test(ol.candidate_name||'') ? '' : 'Mr./Ms. ';
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<style>
+  @page { size:A4; margin:20mm 15mm 18mm 15mm; }
+  * { box-sizing:border-box; }
+  body { font-family:'Calibri','Carlito','Arial',sans-serif; font-size:12px; line-height:1.5; color:#000; margin:0; }
+  .logo-row { display:flex; align-items:center; gap:12px; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:14px; }
+  .logo-row img { height:50px; }
+  .co-name { font-size:14px; font-weight:bold; }
+  .co-sub { font-size:9px; color:#444; }
+  p { margin:6px 0; text-align:justify; }
+  table.ctc { width:100%; border-collapse:collapse; margin:10px 0; font-size:11.5px; }
+  table.ctc th { background:#1e293b; color:#fff; padding:5px 8px; border:1px solid #000; font-size:11px; }
+  .sig { margin-top:30px; }
+  .sig-line { border-top:1px solid #000; width:200px; display:inline-block; }
+  .avoid { page-break-inside:avoid; }
+</style></head><body>
+<div class="logo-row">
+  <img src="${logo}" alt="Logo">
+  <div>
+    <div class="co-name">${esc(CONFIG.companyFullName)}</div>
+    <div class="co-sub">${esc(CONFIG.companyOfficeAddr||'')}</div>
+    <div class="co-sub">Tel: ${esc(CONFIG.companyTel||'')} | Email: ${esc(CONFIG.supportEmail||'')} | ${esc(CONFIG.websiteUrl||'')}</div>
+  </div>
+</div>
+<p>Date: ${ordDate(ol.offer_date)}</p>
+<p>To,<br><strong>${esc(ol.candidate_name||'')}</strong><br>${esc(ol.candidate_address||'')}<br>Contact No.: ${esc(ol.candidate_mobile||'')}</p>
+<p style="margin-top:12px">Dear ${salute}${esc(surname)},</p>
+<p><strong>Sub: Offer for position of ${esc(ol.designation||'')} with ${esc(CONFIG.companyFullName)}</strong></p>
+<p>In reference to our discussions, we are pleased to offer you the position of <strong>${esc(posLabel)}</strong> in ${esc(CONFIG.companyFullName)}.</p>
+<p>We are pleased to issue this offer letter on the following terms and conditions:</p>
+<p>You will be appointed as <strong>${esc(posLabel)}</strong>, located in <strong>${location}</strong>.</p>
+<p>You will assist in promoting and developing business of ${esc(CONFIG.companyShortName||CONFIG.companyFullName)} by effectively communicating with various corporates / industrial sector clients for their insurance requirements and about various products &amp; services offered by the company viz &ndash; Risk Analysis, Risk Assessment, Underwriting, Placement, Claim Settlement etc.</p>
+<p>This appointment will be effective from the date of your joining.</p>
+<p>The total fixed remuneration payable to you on a CTC basis will be <strong>Rs.${fmtV(ctcAnnual)}/- per annum</strong>.</p>
+<p>The incentive and reward structure will be specified in your appointment letter.</p>
+<p>Severance of relationship can be done by giving one month written notice from Company and three months&apos; notice from your side.</p>
+<p>All correspondence addressed to you by the company and other copies of such correspondence, including printed matters and all books, records, or records of business or prices or other market data, samples and/or other papers belonging to the company, circulars and all other relevant papers and documents of any nature whatsoever relating to the company&apos;s business, shall be treated as strictly confidential.</p>
+<p>Detailed appointment letter will be issued to you on the date of joining.</p>
+<p>Please find the CTC Annexure - A details on next page.</p>
+<div class="avoid">
+  <div class="sig"><strong>As a token of your acceptance and in confirmation of the terms and conditions of this offer. Please sign the duplicate copy of this letter and return to us.</strong>
+  <p style="margin-top:14px"><strong>Yours truly,<br>For ${esc(CONFIG.companyFullName)}</strong></p>
+  <p style="margin-top:40px"><span class="sig-line"></span><br><strong>Authorized Signatory</strong></p>
+  </div>
+</div>
+<!-- ANNEXURE A -->
+<div style="page-break-before:always;">
+<p style="text-align:center;font-size:14px;font-weight:bold;text-decoration:underline">Annexure -A (Annual Cost to Company)</p>
+<p><strong>Name:</strong> ${esc(ol.candidate_name||'')} &nbsp;&nbsp;&nbsp; <strong>Designation:</strong> ${designation} &nbsp;&nbsp;&nbsp; <strong>Office of Posting:</strong> ${location}</p>
+<p><strong>Annual Compensation Package &ndash; Rs.${fmtV(ctcAnnual)}/- ; Rupees: ${numberToWords(Math.round(ctcAnnual))} per annum only.</strong></p>
+<table class="ctc"><thead><tr><th>Sr. No.</th><th style="text-align:left">Particulars</th><th>Monthly</th><th>Yearly</th></tr></thead><tbody>${rows.join('')}</tbody></table>
+<div class="avoid" style="margin-top:14px">
+  <p><strong>As a token of your acceptance and in confirmation of the terms and conditions of this offer. Please sign the duplicate copy of this letter and return to us.</strong></p>
+  <p style="margin-top:40px"><span class="sig-line"></span><br><strong>Authorized Signatory<br>For ${esc(CONFIG.companyFullName)}</strong></p>
+</div>
+</div>
+</body></html>`;
+}
+
+exports.shortPreview = async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM offer_letters WHERE id=$1', [req.params.id]);
+    if (!result.rows.length) return res.status(404).json({ success: false, message: 'Not found' });
+    const ol = result.rows[0];
+    const pdfBuffer = await htmlToPdf(buildShortOfferLetterHTML(ol));
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Offer_Letter_${(ol.candidate_name||'preview').replace(/\s+/g,'_')}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error('[shortPreview]', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 // ── GET /offer-letters/:id/preview — generate PDF and stream inline ───────────
 exports.preview = async (req, res) => {
   try {

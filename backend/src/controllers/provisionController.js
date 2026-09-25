@@ -600,3 +600,70 @@ exports.confirmationLetter = async (req, res) => {
     res.status(500).json({ success: false, message: `Server error: ${err.message}` });
   }
 };
+
+// ── Standalone confirmation letter — no provision flow needed ─────────────────
+// HR can generate for ANY confirmed employee; override dates via query params.
+exports.confirmationLetterStandalone = async (req, res) => {
+  try {
+    const r = await db.query(
+      `SELECT e.first_name, e.last_name, e.employee_code, e.gender, e.joining_date,
+              e.provision_end_date, e.confirmed_date, e.work_email, e.personal_email,
+              des.title AS designation, d.name AS department
+       FROM employees e
+       LEFT JOIN designations des ON des.id = e.designation_id
+       LEFT JOIN departments d ON d.id = e.department_id
+       WHERE e.id = $1`, [parseInt(req.params.id)]);
+    if (!r.rows.length) return res.status(404).json({ success: false, message: 'Employee not found' });
+    const emp = { ...r.rows[0] };
+    // Allow HR to override dates via query string
+    if (req.query.confirmation_date) emp.confirmed_date = req.query.confirmation_date;
+    if (req.query.probation_end_date) emp.provision_end_date = req.query.probation_end_date;
+    const pdf = await require('./offerLetterController').htmlToPdf(buildConfirmationLetterHTML(emp));
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Confirmation_Letter_${emp.employee_code}.pdf"`);
+    res.send(pdf);
+  } catch (err) {
+    console.error('[confirmationLetterStandalone]', err.message);
+    res.status(500).json({ success: false, message: `Server error: ${err.message}` });
+  }
+};
+
+// ── Email confirmation letter to employee ─────────────────────────────────────
+exports.sendConfirmationLetterEmail = async (req, res) => {
+  try {
+    const r = await db.query(
+      `SELECT e.first_name, e.last_name, e.employee_code, e.gender, e.joining_date,
+              e.provision_end_date, e.confirmed_date, e.work_email, e.personal_email,
+              des.title AS designation, d.name AS department
+       FROM employees e
+       LEFT JOIN designations des ON des.id = e.designation_id
+       LEFT JOIN departments d ON d.id = e.department_id
+       WHERE e.id = $1`, [parseInt(req.params.id)]);
+    if (!r.rows.length) return res.status(404).json({ success: false, message: 'Employee not found' });
+    const emp = { ...r.rows[0] };
+    if (req.body.confirmation_date) emp.confirmed_date = req.body.confirmation_date;
+    if (req.body.probation_end_date) emp.provision_end_date = req.body.probation_end_date;
+
+    const fullName = `${emp.first_name} ${emp.last_name || ''}`.trim();
+    const toEmail  = req.body.email || emp.work_email || emp.personal_email;
+    if (!toEmail) return res.status(400).json({ success: false, message: 'No email address found for employee' });
+
+    const pdf = await require('./offerLetterController').htmlToPdf(buildConfirmationLetterHTML(emp));
+    const title = /^(f|female)/i.test(emp.gender || '') ? 'Ms.' : 'Mr.';
+    const coverHtml = `<p>Dear ${title} ${escC(emp.last_name || emp.first_name)},</p>
+      <p>Please find attached your <strong>Employee Confirmation Letter</strong> from ${escC(CONFIG.companyFullName)}.</p>
+      <p>We look forward to your continued contributions.</p>
+      <p>Warm regards,<br>HR Team — ${escC(CONFIG.companyShortName || CONFIG.companyFullName)}</p>`;
+
+    await emailSvc.sendEmail({
+      to:          [{ email: toEmail, name: fullName }],
+      subject:     `Confirmation Letter — ${fullName} | ${CONFIG.companyShortName || 'Risk Care'}`,
+      htmlContent: coverHtml,
+      attachment:  [{ name: `Confirmation_Letter_${emp.employee_code}.pdf`, content: pdf.toString('base64') }],
+    });
+    res.json({ success: true, message: `Confirmation letter sent to ${toEmail}` });
+  } catch (err) {
+    console.error('[sendConfirmationLetterEmail]', err.message);
+    res.status(500).json({ success: false, message: `Server error: ${err.message}` });
+  }
+};

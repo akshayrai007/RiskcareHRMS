@@ -222,10 +222,11 @@ const NAV_GROUPS = [
   {
     label: 'Employee Lifecycle',
     items: [
-      { href:'onboarding.html',        icon: '🚀',               label:'Onboarding Tracker',  roles:['admin','super_admin','hr'] },
-      { href:'offer-letter.html',      icon: '📄',               label:'Offer Letters',       roles:['admin','super_admin','hr'] },
-      { href:'relieving-letter.html',  icon: '📋',               label:'Relieving Letters',   roles:['admin','super_admin','hr'] },
-      { href:'separation.html',        icon: ICONS.separation,   label:'Separation',         always:true },
+      { href:'onboarding.html',           icon: '🚀',   label:'Onboarding Tracker',     roles:['admin','super_admin','hr'] },
+      { href:'offer-letter.html',        icon: '📄',   label:'Offer / Appt Letters',   roles:['admin','super_admin','hr'] },
+      { href:'confirmation-letter.html', icon: '✅',   label:'Confirmation Letters',    roles:['admin','super_admin','hr'] },
+      { href:'relieving-letter.html',    icon: '📋',   label:'Relieving Letters',       roles:['admin','super_admin','hr'] },
+      { href:'separation.html',          icon: ICONS.separation, label:'Separation', always:true },
     ]
   },
   {

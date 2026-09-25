@@ -319,6 +319,15 @@
             </div>
           </div>
 
+          <!-- Letter Type -->
+          <div style="margin-bottom:12px">
+            <label style="font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Letter Type</label>
+            <div style="display:flex;gap:8px">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.88rem"><input type="radio" name="ol-type" value="appointment" checked> <span>Appointment Letter</span> <span style="font-size:.75rem;color:var(--muted)">(full legal document)</span></label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.88rem"><input type="radio" name="ol-type" value="offer"> <span>Offer Letter</span> <span style="font-size:.75rem;color:var(--muted)">(short 2-page format)</span></label>
+            </div>
+          </div>
+
           <!-- ACTIONS -->
           <div class="btn-row">
             <button class="btn btn-primary" onclick="saveOL()">💾 Save</button>
@@ -639,9 +648,10 @@ async function sendOL() {
 async function previewOL() {
   const id = document.getElementById('ol-id').value;
   if (!id) return alert('Save the offer letter first to preview it.');
-  // Auto-save first so preview reflects latest edits
   await saveOL();
-  window.open(API_BASE + `/offer-letters/${id}/preview?token=${Auth.getToken()}`, '_blank');
+  const letterType = document.querySelector('input[name="ol-type"]:checked')?.value || 'appointment';
+  const endpoint = letterType === 'offer' ? `offer-letters/${id}/short-preview` : `offer-letters/${id}/preview`;
+  window.open(API_BASE + `/${endpoint}?token=${Auth.getToken()}`, '_blank');
 }
 
 // ── Delete ────────────────────────────────────────────────────────────────────
