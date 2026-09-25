@@ -1322,13 +1322,11 @@ exports.downloadPayrollTemplate = async (req, res) => {
       'Emp Code', 'Full Name', 'Department', 'Division', 'Designation', 'Category',
       // ── B: Attendance ───────────────────────────────────────────────────────
       'Working Days', 'Present Days', 'LOP Days', 'LOP Reversal (Days)', 'Paid Days',
-      // ── C: Fixed Earnings (Fixed P.M. = structure amount; Earned = after LOP) ─
-      'Basic (Fixed P.M.)', 'Basic (Earned)',
-      'HRA (Fixed P.M.)', 'HRA (Earned)',
-      'Defray Allowance (Fixed P.M.)', 'Defray Allowance (Earned)',
-      'Gratuity (Fixed P.M.)', 'Gratuity (Earned)',
-      'Food Coupon (Fixed P.M.)', 'Food Coupon (Earned)',
-      // ── D: Variable / One-time Earnings ─────────────────────────────────────
+      // ── C: Fixed Earnings (salary structure amounts — per month) ────────────
+      'Basic (Fixed P.M.)', 'HRA (Fixed P.M.)', 'Defray Allowance (Fixed P.M.)', 'Gratuity (Fixed P.M.)', 'Food Coupon (Fixed P.M.)',
+      // ── D: Earned (pro-rated after LOP/attendance) ───────────────────────────
+      'Basic (Earned)', 'HRA (Earned)', 'Defray Allowance (Earned)', 'Gratuity (Earned)', 'Food Coupon (Earned)',
+      // ── E: Variable / One-time Earnings ─────────────────────────────────────
       'Food Coupon Adjustment', 'Extra Working Salary', 'Bonus', 'Incentive', 'Other Earning', 'Performance Bonus',
       // ── E: Gross ─────────────────────────────────────────────────────────────
       'Gross Salary',
@@ -1350,7 +1348,8 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // Section color map — used for header fill + a light tint on data rows.
     const COL_GROUPS = [
       { from: 'Emp Code',                   to: 'Paid Days',                          headBg:'475569', headFg:'FFFFFF', dataBg:'F1F5F9' }, // A: identity/attendance - slate
-      { from: 'Basic (Fixed P.M.)',          to: 'Food Coupon (Earned)',               headBg:'15803D', headFg:'FFFFFF', dataBg:'DCFCE7' }, // C: fixed earnings - green
+      { from: 'Basic (Fixed P.M.)',          to: 'Food Coupon (Fixed P.M.)',           headBg:'15803D', headFg:'FFFFFF', dataBg:'DCFCE7' }, // C: fixed P.M. - green
+      { from: 'Basic (Earned)',              to: 'Food Coupon (Earned)',               headBg:'166534', headFg:'FFFFFF', dataBg:'BBF7D0' }, // D: earned - darker green
       { from: 'Food Coupon Adjustment',     to: 'Performance Bonus',                 headBg:'0D9488', headFg:'FFFFFF', dataBg:'CCFBF1' }, // D: variable earnings - teal
       { from: 'Gross Salary',              to: 'Gross Salary',                       headBg:'B45309', headFg:'FFFFFF', dataBg:'FEF3C7' }, // E: gross - amber
       { from: 'PF (Employee)',             to: 'Salary Advance Recovery (Loan/EMI)', headBg:'B91C1C', headFg:'FFFFFF', dataBg:'FEE2E2' }, // F: employee deductions - red
@@ -1418,13 +1417,15 @@ exports.downloadPayrollTemplate = async (req, res) => {
           e.employee_code, e.full_name, e.department || '', e.division || '', e.designation || '', e.employee_category || '',
           // B: Attendance
           daysInMonth, monthAtt.paid, monthAtt.lop, 0, monthAtt.paid,
-          // C: Fixed Earnings (Monthly + Actual pairs)
-          parseFloat(e.basic)             || 0, 0,
-          parseFloat(e.hra)               || 0, 0,
-          parseFloat(e.special_allowance) || 0, 0,
-          Math.round((parseFloat(e.basic)||0)*0.0481), 0,  // Gratuity (Fixed P.M.) = Basic × 4.81%
-          parseFloat(e.food_coupon)       || 0, 0,
-          // D: Variable / One-time Earnings
+          // C: All Fixed P.M. (salary structure amounts)
+          parseFloat(e.basic)             || 0,
+          parseFloat(e.hra)               || 0,
+          parseFloat(e.special_allowance) || 0,
+          Math.round((parseFloat(e.basic)||0)*0.0481),     // Gratuity = Basic × 4.81%
+          parseFloat(e.food_coupon)       || 0,
+          // D: All Earned (live formulas below, placeholders here)
+          0, 0, 0, 0, 0,
+          // E: Variable / One-time Earnings
           0, 0, 0, 0, 0, 0,
           // E: Gross Salary
           gross,
