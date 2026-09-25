@@ -10,7 +10,7 @@
 .content .card{overflow:visible;padding:0;border:1.5px solid #c5cae9;border-radius:12px;max-width:100%}
 .itd{width:100%;box-sizing:border-box}
 /* ── Top bar ── */
-.itd-bar{padding:14px 22px 0;background:#fff;border-radius:12px 12px 0 0;border-bottom:2px solid #e8eaf6}
+.itd-bar{padding:14px 22px 0;background:#fff;border-bottom:2px solid #e8eaf6}
 .itd-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding-bottom:12px}
 /* ── Employee Info Panel ── */
 .emp-panel{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;background:#f0f4ff;border:1.5px solid #c5cae9;border-radius:10px;padding:14px 18px;margin:14px 22px 0}
@@ -208,7 +208,40 @@
   <div class="card">
   <div class="itd">
 
-    <!-- Top bar -->
+    <!-- ══ Row 1: FY + Employee picker (above everything) ══ -->
+    <div class="itd-ctrl" style="border-bottom:2px solid #e8eaf6;border-radius:12px 12px 0 0">
+      <div class="itd-ctrl-item">
+        <label>Financial Year</label>
+        <select id="sel-fy" onchange="onFYChange()">
+          <!-- populated by buildFYDropdowns() -->
+        </select>
+      </div>
+      <div class="itd-ctrl-item" id="hr-sel-wrap" style="display:none">
+        <label>Employee</label>
+        <div style="position:relative">
+          <input id="sel-hr-emp" type="text" placeholder="Type a name or code…" style="min-width:200px;max-width:280px;padding:7px 28px 7px 11px;border-radius:7px;border:1.5px solid #c5cae9;font-size:13px;font-family:inherit" oninput="onHREmpInput()" onblur="onHREmpBlur()" autocomplete="off">
+          <button id="emp-clear-btn" onclick="clearEmpPicker()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;font-size:16px;display:none">×</button>
+        </div>
+        <div id="emp-dropdown" style="display:none;position:absolute;z-index:200;background:#fff;border:1.5px solid #c5cae9;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:280px;max-height:240px;overflow-y:auto;margin-top:2px"></div>
+      </div>
+    </div>
+
+    <!-- ══ Row 2: Window dates banner ══ -->
+    <div class="itd-window-bar" id="itd-window-bar">
+      <div class="iwb-item">
+        <span class="iwb-icon">📝</span>
+        <span class="iwb-lbl">Declaration Window:</span>
+        <span class="iwb-val" id="iwb-decl">Loading…</span>
+      </div>
+      <div class="iwb-divider"></div>
+      <div class="iwb-item">
+        <span class="iwb-icon">📎</span>
+        <span class="iwb-lbl">Proof Upload Window:</span>
+        <span class="iwb-val" id="iwb-proof">Loading…</span>
+      </div>
+    </div>
+
+    <!-- ══ Row 3: Title + status + action buttons ══ -->
     <div class="itd-bar">
       <div class="itd-row">
         <div style="font-size:17px;font-weight:800;color:#1e3a5f">🧾 Income Tax Declaration</div>
@@ -219,7 +252,7 @@
         </div>
       </div>
 
-      <!-- Employee Info Panel -->
+      <!-- ══ Row 4: Employee Info Panel ══ -->
       <div class="emp-panel" id="emp-panel">
         <div class="emp-field"><span class="lbl">Employee Code</span><span class="val" id="ep-code">—</span></div>
         <div class="emp-field"><span class="lbl">Employee Name</span><span class="val" id="ep-name">—</span></div>
@@ -233,40 +266,7 @@
         <div class="emp-field"><span class="lbl">Tax Regime</span><span class="val" id="ep-regime">—</span></div>
       </div>
 
-      <!-- Controls -->
-      <div class="itd-ctrl">
-        <div class="itd-ctrl-item">
-          <label>Financial Year</label>
-          <select id="sel-fy" onchange="onFYChange()">
-            <!-- populated by buildFYDropdowns() -->
-          </select>
-        </div>
-        <div class="itd-ctrl-item" id="hr-sel-wrap" style="display:none">
-          <label>Employee (HR/Accounts)</label>
-          <div style="position:relative">
-            <input id="sel-hr-emp" type="text" placeholder="Type name or code to search…" style="min-width:220px;max-width:300px;padding:7px 28px 7px 11px;border-radius:7px;border:1.5px solid #c5cae9;font-size:13px;font-family:inherit" oninput="onHREmpInput()" onblur="onHREmpBlur()" autocomplete="off">
-            <button id="emp-clear-btn" onclick="clearEmpPicker()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;font-size:16px;display:none">×</button>
-          </div>
-          <div id="emp-dropdown" style="display:none;position:absolute;z-index:200;background:#fff;border:1.5px solid #c5cae9;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:280px;max-height:240px;overflow-y:auto;margin-top:2px"></div>
-        </div>
-      </div>
-
-      <!-- Window Dates Banner -->
-      <div class="itd-window-bar" id="itd-window-bar">
-        <div class="iwb-item">
-          <span class="iwb-icon">📝</span>
-          <span class="iwb-lbl">Declaration Window:</span>
-          <span class="iwb-val" id="iwb-decl">Loading…</span>
-        </div>
-        <div class="iwb-divider"></div>
-        <div class="iwb-item">
-          <span class="iwb-icon">📎</span>
-          <span class="iwb-lbl">Proof Upload Window:</span>
-          <span class="iwb-val" id="iwb-proof">Loading…</span>
-        </div>
-      </div>
-
-      <!-- Tabs -->
+      <!-- ══ Row 5: Tabs ══ -->
       <div class="itd-tabs">
         <button class="itd-tab active" id="itab-tax"   onclick="sw('tax')">🧮 Tax Preview</button>
         <button class="itd-tab"        id="itab-decl"  onclick="sw('decl')">📋 My Declaration</button>
