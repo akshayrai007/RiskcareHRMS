@@ -313,37 +313,18 @@ exports.action = async (req, res) => {
     // routes to the MD, so isCurrentApprover (actorCode === currentCode) is
     // what actually gates this — only the specific employee coded as MD can
     // act, not every super_admin, and `admin` is not a blanket approver either.
-    // super_admin is the MD and has blanket approval power over all leaves
-    const isSuperAdmin      = actorRole === 'super_admin';
     const isCurrentApprover = actorCode === currentCode;
 
-    // Block self-approval — NO role can approve their own leave
+    // Block self-approval
     if (leave.employee_id === req.user.id)
       return res.status(403).json({ success: false, message: 'You cannot approve your own leave request' });
 
-    // super_admin can act on any leave — skip further checks
-    if (!isSuperAdmin) {
-      // Check if actor is the employee's reporting manager or team leader
-      let isTeamManager = false;
-      if (!isCurrentApprover) {
-        const teamCheck = await client.query(
-          `SELECT 1 FROM employees
-           WHERE id=$1 AND (reporting_manager_id=$2 OR team_leader_id=$2)`,
-          [leave.employee_id, req.user.id]
-        );
-        isTeamManager = teamCheck.rows.length > 0;
-      }
-
-      // HR is allowed ONLY if they are the current approver or reporting manager
-      if (actorRole === 'hr' && !isCurrentApprover && !isTeamManager)
-        return res.status(403).json({
-          success: false,
-          message: 'HR can approve leave only if they are the reporting manager for this employee.'
-        });
-
-      if (!isCurrentApprover && !isTeamManager)
-        return res.status(403).json({ success: false, message: 'You are not the current approver for this leave' });
-    }
+    // Only the designated approver (E008) can approve — no role-based bypass
+    if (!isCurrentApprover)
+      return res.status(403).json({
+        success: false,
+        message: `Only ${currentCode} is authorised to approve this leave request.`
+      });
 
     // ── REJECT ────────────────────────────────────────────────
     if (action === 'reject') {
