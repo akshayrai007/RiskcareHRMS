@@ -1593,8 +1593,8 @@ exports.downloadPayrollTemplate = async (req, res) => {
     res.send(buf);
 
   } catch (err) {
-    console.error('[downloadPayrollTemplate]', err.message);
-    res.status(500).json({ success: false, message: err.message });
+    console.error('[downloadPayrollTemplate] FULL ERROR:', err.stack || err.message);
+    res.status(500).json({ success: false, message: err.message, stack: err.stack });
   }
 };
 
