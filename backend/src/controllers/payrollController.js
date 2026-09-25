@@ -1480,7 +1480,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
           ? `IF(${taxable}<=${rebateThresh},MAX(0,${slabTax}-${rebateAmt}),MIN(${slabTax},${taxable}-${rebateThresh}))`
           : `IF(${taxable}<=${rebateThresh},MAX(0,${slabTax}-${rebateAmt}),${slabTax})`;
         const annualTax = `ROUND((${afterRebate})*(1+${tdsParams.cess}),0)`;
-        setF('TDS', `MAX(0,ROUND((${annualTax}-${p.alreadyDeducted})/${p.monthsLeft},0))`, tds);
+        setF('TDS', `MAX(0,ROUND((${annualTax}-${p.alreadyDeducted})/${p.monthsLeft},0))`, num('TDS'));
       }
       setF('LOP Days', `MAX(0,${LT('Working Days')}${R}-${LT('Present Days')}${R})`, lop);
       setF('Paid Days', `MIN(${LT('Working Days')}${R},${LT('Present Days')}${R}+MIN(${LT('LOP Reversal (Days)')}${R},${LT('LOP Days')}${R}))`, paid);
