@@ -160,7 +160,8 @@
             <select id="summary-year" class="form-control" style="width:100px" onchange="loadLeaveSummary()">
             </select>
             <button class="btn btn-outline btn-sm" onclick="downloadLeaveSummaryExcel()">⬇ Download Excel</button>
-            <label class="btn btn-sm" id="import-leave-btn" style="display:none;background:#7c3aed;color:#fff;cursor:pointer;margin:0">⬆ Import Leave <input type="file" accept=".xlsx,.xls" style="display:none" onchange="importLeaveBalances(this)"></label>
+            <label class="btn btn-sm" id="import-leave-btn" style="display:none;background:#7c3aed;color:#fff;cursor:pointer;margin:0">⬆ Import Balances <input type="file" accept=".xlsx,.xls" style="display:none" onchange="importLeaveBalances(this)"></label>
+            <label class="btn btn-sm" id="import-requests-btn" style="display:none;background:#b45309;color:#fff;cursor:pointer;margin:0">⬆ Import Requests <input type="file" accept=".xlsx,.xls" style="display:none" onchange="importLeaveRequests(this)"></label>
           </div>
         </div>
         <div id="leave-summary-content"><div class="empty-state" style="padding:40px"><div class="empty-icon">🔍</div><p style="color:var(--muted)">Enter an employee name or ID to view their leave summary.</p></div></div>
@@ -423,7 +424,10 @@ function enableAllApplicationsTab() {
 function enableHrLeaveView(withImport = true) {
   document.getElementById('summary-tab').style.display = '';
   document.getElementById('txn-tab').style.display = '';
-  if (withImport) document.getElementById('import-leave-btn').style.display = '';
+  if (withImport) {
+    document.getElementById('import-leave-btn').style.display = '';
+    document.getElementById('import-requests-btn').style.display = '';
+  }
   // Populate year dropdowns (idempotent — skip if already populated)
   const curYr = new Date().getFullYear();
   ['summary-year','txn-year'].forEach(id => {
@@ -1298,6 +1302,24 @@ async function importLeaveBalances(input) {
     if (data.errors?.length) alert('Errors:\n' + data.errors.join('\n'));
     loadBalance();
     loadLeaveSummary();
+  } catch(e) { toast('Import failed: '+e.message,'error'); }
+  input.value = '';
+}
+
+async function importLeaveRequests(input) {
+  if (!input.files.length) return;
+  const fd = new FormData();
+  fd.append('file', input.files[0]);
+  try {
+    toast('Importing leave requests…','info');
+    const res = await fetch(`${API_BASE}/leave/import/requests`, {
+      method:'POST', headers:{ Authorization:'Bearer '+Auth.getToken() }, body:fd
+    });
+    const data = await res.json();
+    if (!data.success) { toast(data.message,'error'); return; }
+    const s = data.summary || {};
+    toast(`Requests imported: ${s.inserted} inserted, ${s.skipped} skipped, ${s.flagged} flagged`,'success');
+    if (data.flagged?.length) alert('Flagged rows (not imported):\n'+data.flagged.map(f=>`${f.row}: ${f.issues.join(', ')}`).join('\n'));
   } catch(e) { toast('Import failed: '+e.message,'error'); }
   input.value = '';
 }
