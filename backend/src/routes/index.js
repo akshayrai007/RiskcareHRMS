@@ -304,9 +304,9 @@ router.get ('/payroll/export',                    authenticate, authorize(...ACC
 router.post('/payroll/release',                   authenticate, authorize('accounts','hr','super_admin'), payCtrl.releasePayslips);
 router.delete('/payroll/uploads/:id',             authenticate, authorize('accounts','hr','super_admin'), payCtrl.deleteUpload);
 router.get ('/payroll/uploads',                   authenticate, authorize(...ACCOUNTS,'hr'), payCtrl.getUploads);
-router.get ('/payroll/salary-structures',         authenticate, authorize('hr'),        payCtrl.getAllSalaryStructures);
-router.get ('/payroll/salary-structure/:employee_id', authenticate, authorize('hr'),    payCtrl.getSalaryStructure);
-router.post('/payroll/salary-structure',          authenticate, authorize('hr'),        payCtrl.upsertSalaryStructure);
+router.get ('/payroll/salary-structures',         authenticate, authorize('hr','super_admin','accounts'),        payCtrl.getAllSalaryStructures);
+router.get ('/payroll/salary-structure/:employee_id', authenticate, authorize('hr','super_admin','accounts'),    payCtrl.getSalaryStructure);
+router.post('/payroll/salary-structure',          authenticate, authorize('hr','super_admin','accounts'),        payCtrl.upsertSalaryStructure);
 router.post('/payroll/upload',                    authenticate, authorize('accounts','hr'), payCtrl.uploadMiddleware, payCtrl.uploadPayroll);
 router.get ('/payroll/template',                  authenticate, authorize('accounts','hr','super_admin'), payCtrl.downloadPayrollTemplate);
 router.get ('/payroll/salary-structure-template',  authenticate, authorize('hr'),                   payCtrl.downloadSalaryStructureTemplate);
