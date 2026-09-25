@@ -103,8 +103,14 @@
 .ps-pending{background:#fef9c3;color:#92400e;border:1px solid #fde68a}
 .ps-approved{background:#dcfce7;color:#166534;border:1px solid #86efac}
 .ps-rejected{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
-/* ── Tax Preview ── */
-.tax-cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+/* ── Sticky KPI cards ── */
+.ded-cards-wrap{position:sticky;top:var(--topbar-h,56px);z-index:50;background:#fff;padding:10px 0 6px;margin-bottom:6px}
+@media(max-width:1100px){.ded-cards-wrap{position:static}}
+.dc-bar{height:4px;border-radius:2px;background:#e5e7eb;margin-top:6px;overflow:hidden}
+.dc-bar-fill{height:100%;border-radius:2px;background:#22c55e;transition:width .3s}
+.dc-bar-fill.warn{background:#f59e0b}
+/* ── Tax Preview (green palette) ── */
+.tax-cmp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 @media(max-width:680px){.tax-cmp-grid{grid-template-columns:1fr}}
 /* Summary cards row */
 .rc{border:1.5px solid #c7d2fe;border-radius:12px;padding:22px 20px;text-align:center;background:#f5f3ff;position:relative}
@@ -118,21 +124,21 @@
 .sel-btn:hover{background:#4338ca}
 .sel-btn.chosen{background:#312e81}
 /* Breakdown cards row */
-.tax-bk{border:1.5px solid #e2e8f0;border-radius:12px;background:#fff;overflow:hidden}
+.tax-bk{border:1.5px solid #e0e7ff;border-radius:12px;background:#fff;overflow:hidden}
 .tax-bk-hd{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#3730a3;padding:12px 16px;background:#f5f3ff;border-bottom:1.5px solid #e0e7ff}
-.tr{display:flex;justify-content:space-between;padding:8px 16px;border-bottom:1px solid #f1f5f9;font-size:13px}
+.tr{display:flex;justify-content:space-between;padding:8px 16px;border-bottom:1px solid #eef2ff;font-size:13px}
 .tr .tl{color:#64748b}.tr .tv{font-weight:600;color:#1e293b}
 .tr.ded .tv{color:#dc2626}
 .tr.total{background:#eef2ff;padding:9px 16px;border-bottom:none}
 .tr.total .tl{color:#3730a3;font-weight:700}.tr.total .tv{color:#3730a3;font-weight:800;font-size:14px}
 .rc-totals{display:flex;flex-direction:column;gap:0}
-.rc-tot-row{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e0e7ff}
-.rc-tot-row.t1{background:#eef2ff}
-.rc-tot-row.t2{background:#4f46e5}
-.rc-tot-row.t1 .rtl{color:#3730a3;font-size:13px;font-weight:600}
-.rc-tot-row.t1 .rta{color:#1e1b4b;font-size:18px;font-weight:800}
-.rc-tot-row.t2 .rtl{color:rgba(255,255,255,.85);font-size:13px;font-weight:600}
-.rc-tot-row.t2 .rta{color:#fff;font-size:18px;font-weight:800}
+.rc-tot-tile{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e0e7ff}
+.rc-tot-tile.t1{background:#eef2ff}
+.rc-tot-tile.t2{background:#4f46e5}
+.rc-tot-tile.t1 .rtl{color:#3730a3;font-size:13px;font-weight:600}
+.rc-tot-tile.t1 .rta{color:#1e1b4b;font-size:18px;font-weight:800}
+.rc-tot-tile.t2 .rtl{color:rgba(255,255,255,.85);font-size:13px;font-weight:600}
+.rc-tot-tile.t2 .rta{color:#fff;font-size:18px;font-weight:800}
 .rec-box{background:#fffbeb;border:1.5px solid #fde68a;border-radius:9px;padding:12px 16px;font-size:12.5px;color:#92400e;margin-bottom:16px}
 .rec-box strong{color:#1e3a5f;display:block;font-size:14px;margin-bottom:4px}
 .rec-box ul{margin:6px 0 0 16px;padding:0}
@@ -232,21 +238,16 @@
         <div class="itd-ctrl-item">
           <label>Financial Year</label>
           <select id="sel-fy" onchange="onFYChange()">
-            <option value="2030-31">FY 2030-31</option>
             <!-- populated by buildFYDropdowns() -->
           </select>
         </div>
-        <div class="itd-ctrl-item">
-          <label>Tax Regime</label>
-          <div class="reg-tog">
-            <button class="reg-btn active" id="rb-old" onclick="setRegime('old')">🏛️ Old Regime</button>
-            <button class="reg-btn" id="rb-new" onclick="setRegime('new')">✨ New Regime</button>
-          </div>
-        </div>
         <div class="itd-ctrl-item" id="hr-sel-wrap" style="display:none">
-          <label>Employee</label>
-          <input id="sel-hr-emp" list="emp-datalist" placeholder="Search by name or code…" style="min-width:220px;max-width:280px" oninput="onHREmpChange()" autocomplete="off">
-          <datalist id="emp-datalist"></datalist>
+          <label>Employee (HR/Accounts)</label>
+          <div style="position:relative">
+            <input id="sel-hr-emp" type="text" placeholder="Type name or code to search…" style="min-width:220px;max-width:300px;padding:7px 28px 7px 11px;border-radius:7px;border:1.5px solid #c5cae9;font-size:13px;font-family:inherit" oninput="onHREmpInput()" onblur="onHREmpBlur()" autocomplete="off">
+            <button id="emp-clear-btn" onclick="clearEmpPicker()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;font-size:16px;display:none">×</button>
+          </div>
+          <div id="emp-dropdown" style="display:none;position:absolute;z-index:200;background:#fff;border:1.5px solid #c5cae9;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:280px;max-height:240px;overflow-y:auto;margin-top:2px"></div>
         </div>
       </div>
 
@@ -279,8 +280,8 @@
     <div id="pane-decl" class="itd-body" style="display:none">
       <div id="lk-notice" class="lk-notice" style="display:none">🔒 Declaration is locked. Contact HR to reopen.</div>
 
-      <!-- Deduction Summary Cards -->
-      <div class="ded-cards" id="ded-cards"></div>
+      <!-- Deduction Summary Cards (sticky) -->
+      <div class="ded-cards-wrap"><div class="ded-cards" id="ded-cards"></div></div>
 
       <!-- OLD REGIME SECTIONS -->
       <div id="old-secs">
@@ -596,35 +597,37 @@
     <div id="pane-hr" class="itd-body" style="display:none">
       <div id="hr-stats-row" class="hr-stats"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-        <div style="font-size:13px;font-weight:700;color:#1e3a5f">All Declarations</div>
+        <div style="font-size:13px;font-weight:700;color:#1e3a5f">All Employees — IT Declarations</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input id="hr-search" type="text" placeholder="Search name / code…" style="padding:7px 11px;border-radius:7px;border:1.5px solid #c5cae9;font-size:13px;font-family:inherit;min-width:160px" oninput="loadHR()">
           <select id="hr-filter-fy" class="form-control" style="font-size:13px;padding:7px 10px;width:auto" onchange="loadHR()">
             <!-- populated by buildFYDropdowns() -->
           </select>
           <select id="hr-filter-st" class="form-control" style="font-size:13px;padding:7px 10px;width:auto" onchange="loadHR()">
             <option value="">All Statuses</option>
+            <option value="not_started">Not Started</option>
+            <option value="draft">Draft</option>
             <option value="submitted">Submitted</option>
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
             <option value="verified">Verified</option>
-            <option value="draft">Draft</option>
           </select>
-          <button class="btn btn-primary btn-sm" id="hr-export-btn" onclick="exportHRExcel()" style="font-size:12px;padding:7px 14px;font-weight:700">
-            📊 Export Excel
-          </button>
-          <button class="btn btn-sm" onclick="downloadAllZip()" style="font-size:12px;padding:7px 14px;font-weight:700;background:#4f46e5;color:#fff;border:none;border-radius:7px;cursor:pointer">
-            📥 Download All ZIP
-          </button>
+          <button class="btn btn-primary btn-sm" id="hr-export-btn" onclick="exportHRExcel()" style="font-size:12px;padding:7px 14px;font-weight:700">📊 Export Excel</button>
+          <button class="btn btn-sm" onclick="downloadAllZip()" style="font-size:12px;padding:7px 14px;font-weight:700;background:#4f46e5;color:#fff;border:none;border-radius:7px;cursor:pointer">📥 Download All ZIP</button>
         </div>
       </div>
-      <div style="overflow-x:auto;border-radius:8px;border:1px solid #e0e3ec">
-        <table class="hr-tbl">
+      <div style="overflow-x:auto;border-radius:8px;border:1.5px solid #c5cae9">
+        <table class="hr-tbl" style="border-collapse:collapse">
           <thead><tr>
-            <th>Employee</th><th>Code</th><th>PAN</th><th>FY</th><th>Regime</th>
-            <th>80C</th><th>Total Ded.</th><th>Est. Tax</th><th>TDS/mo</th>
-            <th>Status</th><th>Submitted</th><th>Actions</th>
+            <th style="border:1px solid #3a557a">Code</th>
+            <th style="border:1px solid #3a557a">Employee</th>
+            <th style="border:1px solid #3a557a">Contact</th>
+            <th style="border:1px solid #3a557a">Declaration</th>
+            <th style="border:1px solid #3a557a">Proofs</th>
+            <th style="border:1px solid #3a557a">Done?</th>
+            <th style="border:1px solid #3a557a">Actions</th>
           </tr></thead>
-          <tbody id="hr-tbody"><tr><td colspan="12" style="text-align:center;padding:28px;color:#9ca3af">Loading…</td></tr></tbody>
+          <tbody id="hr-tbody"><tr><td colspan="7" style="text-align:center;padding:28px;color:#9ca3af;border:1px solid #e8eaf6">Loading…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -683,6 +686,15 @@
   </div>
 </div>
 
+<!-- Full Form Modal (HR) -->
+<div class="mo" id="mo-full-form">
+  <div class="mb" style="width:min(880px,97vw);max-height:92vh">
+    <button class="mc" onclick="closeMo('mo-full-form')">×</button>
+    <h3 id="mo-ff-title">Full Declaration</h3>
+    <div id="mo-ff-body"></div>
+  </div>
+</div>
+
 <script src="app.js"></script>
 <script>
 // ── Build FY dropdowns dynamically ───────────────────────────────────────────
@@ -711,11 +723,19 @@ function buildFYDropdowns() {
 }
 
 Auth.guard();
-const HR_ROLES = ['hr','accounts','admin','super_admin'];
+const HR_ROLES   = ['hr','accounts'];          // only these can view all employees
 const ADMIN_ROLES = ['admin','super_admin'];
 let isHR = false, isAdmin = false;
 let currentDecl = null, declId = null, currentEmpId = null;
-let currentRegime = 'old', currentFY = '2025-26';
+let currentRegime = 'old';
+// Compute current Indian FY from IST date (Apr–Mar)
+function getIndianFY() {
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Kolkata' }));
+  const m = now.getMonth() + 1, y = now.getFullYear();
+  const s = m >= 4 ? y : y - 1;
+  return `${s}-${String(s + 1).slice(-2)}`;
+}
+let currentFY = getIndianFY();
 let isLocked = false;
 let reviewDeclId = null;
 let houseProps = [];
@@ -794,30 +814,49 @@ window.addEventListener('load', async () => {
 function onFYChange() {
   currentFY = document.getElementById('sel-fy').value;
   document.getElementById('cfg-fy-label').textContent = currentFY;
-  loadDecl();
+  reloadActiveTab();
+  loadDecl();   // always keep declaration in sync too
   loadWindowBanner();
   if (isHR) { loadHRStats(); loadHR(); }
 }
-let _hrEmpMap = {}; // "E001 — Name" → id
+let _hrEmps = []; // [{id, code, name, label}]
 async function loadHREmps() {
   const r = await api('GET','/employees');
   if (!r?.success) return;
-  const dl = document.getElementById('emp-datalist');
-  _hrEmpMap = {};
-  r.data.forEach(e => {
-    const label = `${e.employee_code} — ${e.first_name} ${e.last_name}`;
-    _hrEmpMap[label] = e.id;
-    const o = document.createElement('option');
-    o.value = label;
-    dl.appendChild(o);
-  });
+  _hrEmps = r.data.map(e => ({
+    id: e.id,
+    code: e.employee_code,
+    name: `${e.first_name} ${e.last_name}`.trim(),
+    label: `${e.employee_code} — ${e.first_name} ${e.last_name}`.trim(),
+  }));
 }
-function onHREmpChange() {
-  const txt = document.getElementById('sel-hr-emp').value.trim();
-  const id  = _hrEmpMap[txt];
-  if (!txt) { currentEmpId = Auth.getUser().id; reloadActiveTab(); return; }
-  if (!id) return; // still typing — wait for a valid match
+function onHREmpInput() {
+  const q = document.getElementById('sel-hr-emp').value.toLowerCase().trim();
+  document.getElementById('emp-clear-btn').style.display = q ? '' : 'none';
+  if (!q) { hideEmpDropdown(); currentEmpId = Auth.getUser().id; reloadActiveTab(); return; }
+  const matches = _hrEmps.filter(e => e.label.toLowerCase().includes(q)).slice(0, 40);
+  const dd = document.getElementById('emp-dropdown');
+  if (!matches.length) { dd.style.display = 'none'; return; }
+  dd.innerHTML = matches.map(e =>
+    `<div onclick="pickEmp(${e.id},'${e.label.replace(/'/g,"\\'")}','${e.code}')" style="padding:9px 13px;font-size:13px;cursor:pointer;border-bottom:1px solid #f0f2f8" onmouseover="this.style.background='#eef2ff'" onmouseout="this.style.background=''">${e.label}</div>`
+  ).join('');
+  dd.style.display = '';
+}
+function onHREmpBlur() {
+  setTimeout(hideEmpDropdown, 200);
+}
+function hideEmpDropdown() { document.getElementById('emp-dropdown').style.display='none'; }
+function pickEmp(id, label, code) {
+  document.getElementById('sel-hr-emp').value = label;
+  document.getElementById('emp-clear-btn').style.display = '';
+  hideEmpDropdown();
   currentEmpId = id;
+  reloadActiveTab();
+}
+function clearEmpPicker() {
+  document.getElementById('sel-hr-emp').value = '';
+  document.getElementById('emp-clear-btn').style.display = 'none';
+  currentEmpId = Auth.getUser().id;
   reloadActiveTab();
 }
 function reloadActiveTab() {
@@ -842,13 +881,11 @@ function sw(t) {
 // ── Regime ────────────────────────────────────────────────────────────────────
 function setRegime(r) {
   currentRegime = r;
-  document.getElementById('rb-old').classList.toggle('active', r === 'old');
-  document.getElementById('rb-new').classList.toggle('active', r === 'new');
   document.getElementById('old-secs').style.display     = r === 'old' ? '' : 'none';
   document.getElementById('new-secs').style.display     = r === 'new' ? '' : 'none';
   document.getElementById('old-other-sec').style.display= r === 'old' ? '' : 'none';
-  document.getElementById('ep-regime').textContent      = r === 'old' ? '🏛️ Old Regime' : '✨ New Regime';
-  // Auto-fetch employer NPS when switching to new regime
+  const epR = document.getElementById('ep-regime');
+  if (epR) epR.textContent = r === 'old' ? '🏛️ Old Regime' : '✨ New Regime';
   if (r === 'new') autoFetchEmployerNPS();
   live();
 }
@@ -953,12 +990,14 @@ function renderDedCards(c80c, nps, d80d, hl, edu, don, dd, u, ddb, lta) {
   const total = items.reduce((a,i) => a + i.val, 0);
   const all   = [...items, { lbl:'Total Deductions', val:total, max:null }];
   document.getElementById('ded-cards').innerHTML = all.map(it => {
-    const pct = it.max ? Math.min(100, Math.round(it.val/it.max*100)) : null;
-    const cls = it.val > 0 ? (pct !== null && pct >= 100 ? 'warn' : 'used') : '';
+    const pct  = it.max ? Math.min(100, Math.round(it.val/it.max*100)) : null;
+    const atCap = pct !== null && pct >= 95;
+    const cls  = it.val > 0 ? (atCap ? 'warn' : 'used') : '';
+    const bar  = it.max ? `<div class="dc-bar"><div class="dc-bar-fill${atCap?' warn':''}" style="width:${pct}%"></div></div>` : '';
     return `<div class="ded-card ${cls}">
       <div class="dc-lbl">${it.lbl}</div>
       <div class="dc-val">${money(it.val)}</div>
-      ${it.max ? `<div class="dc-sub">Max ${money(it.max)} · ${pct}% used</div>` : ''}
+      ${it.max ? `<div class="dc-sub">Max ${money(it.max)} · ${pct}%</div>${bar}` : ''}
     </div>`;
   }).join('');
 }
@@ -1558,8 +1597,8 @@ async function loadTaxPreview() {
         ${row('Total Tax Liability', money(o.tax))}
         ${o.prev_tds > 0 ? rowDed('Less: TDS by Previous Employer', money(o.prev_tds)) : ''}
         <div class="rc-totals">
-          <div class="rc-tot-row t1"><span class="rtl">Net Tax Payable</span><span class="rta">${money(o.net_tax)}</span></div>
-          <div class="rc-tot-row t2"><span class="rtl">Monthly TDS</span><span class="rta">${money(o.monthly_tds)}/mo</span></div>
+          <div class="rc-tot-tile t1"><span class="rtl">Net Tax Payable</span><span class="rta">${money(o.net_tax)}</span></div>
+          <div class="rc-tot-tile t2"><span class="rtl">Monthly TDS</span><span class="rta">${money(o.monthly_tds)}/mo</span></div>
         </div>
       </div>
 
@@ -1575,8 +1614,8 @@ async function loadTaxPreview() {
         ${row('Income Tax', money(nw.tax_before_cess))}
         ${row('Health & Education Cess (4%)', money(nw.cess))}
         <div class="rc-totals">
-          <div class="rc-tot-row t1"><span class="rtl">Net Tax Payable</span><span class="rta">${money(nw.net_tax)}</span></div>
-          <div class="rc-tot-row t2"><span class="rtl">Monthly TDS</span><span class="rta">${money(nw.monthly_tds)}/mo</span></div>
+          <div class="rc-tot-tile t1"><span class="rtl">Net Tax Payable</span><span class="rta">${money(nw.net_tax)}</span></div>
+          <div class="rc-tot-tile t2"><span class="rtl">Monthly TDS</span><span class="rta">${money(nw.monthly_tds)}/mo</span></div>
         </div>
       </div>
 
@@ -1603,34 +1642,48 @@ async function loadHRStats() {
 
 async function loadHR() {
   loadHRStats();
-  const fy  = document.getElementById('hr-filter-fy')?.value || document.getElementById('sel-fy').value;
-  const st  = document.getElementById('hr-filter-st').value;
-  const res = await api('GET', `/it-declaration/all?fy=${fy}${st?'&status='+st:''}`);
+  const fy     = document.getElementById('hr-filter-fy')?.value || document.getElementById('sel-fy').value;
+  const st     = document.getElementById('hr-filter-st').value;
+  const search = document.getElementById('hr-search')?.value || '';
+  let url = `/it-declaration/all?fy=${fy}`;
+  if (st)     url += `&status=${st}`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  const res = await api('GET', url);
   const tb  = document.getElementById('hr-tbody');
-  if (!res?.success) { tb.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#ef4444">Failed to load</td></tr>'; return; }
-  if (!res.data.length) { tb.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#9ca3af;padding:28px">No records found for selected filters</td></tr>'; return; }
-  const stM = {draft:'st-draft',submitted:'st-submitted',approved:'st-approved',rejected:'st-rejected',verified:'st-verified'};
-  tb.innerHTML = res.data.map(d => `<tr>
-    <td style="font-weight:700;color:#1e3a5f">${d.employee_name}${d.locked?'&nbsp;🔒':''}</td>
-    <td>${d.employee_code}</td>
-    <td style="font-size:11.5px;color:#546e7a">${d.pan_number||'—'}</td>
-    <td>${d.financial_year}</td>
-    <td><span style="font-size:11px;background:#e8eaf6;color:#3949ab;padding:2px 8px;border-radius:4px;font-weight:700">${(d.regime||'old').toUpperCase()}</span></td>
-    <td>${money(d.total_80c||0)}</td>
-    <td>${money(d.total_deductions||0)}</td>
-    <td style="font-weight:700;color:#283593">${money(d.estimated_tax||0)}</td>
-    <td style="font-weight:700">${money(d.monthly_tds||0)}/mo</td>
-    <td><span class="st-badge ${stM[d.status]||'st-draft'}">${d.status}</span></td>
-    <td>${d.submitted_at ? fmt.date(d.submitted_at) : '—'}</td>
-    <td>
-      <div style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="btn btn-outline btn-sm" style="font-size:11px" title="Approve / Reject declaration" onclick="openReview(${d.id},'${d.employee_name}')">📋 Review</button>
-        <button class="btn btn-outline btn-sm" style="font-size:11px" title="View full declaration details" onclick="viewDeclDetail(${d.id})">👁 Detail</button>
-        ${d.proof_count > 0 ? `<button class="btn btn-outline btn-sm" style="font-size:11px" title="View uploaded proofs" onclick="viewDeclProofs(${d.id})">📎 ${d.proof_count} Proof${d.proof_count==1?'':'s'}</button>` : ''}
-        <button class="btn btn-sm" style="font-size:11px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe" title="Download proofs + details as ZIP" onclick="downloadDeclZip(${d.id},'${(d.employee_code||'')}','${(d.employee_name||'').replace(/'/g,'')}')">📥 ZIP</button>
-      </div>
-    </td>
-  </tr>`).join('');
+  if (!res?.success) { tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#ef4444;border:1px solid #e8eaf6">Failed to load</td></tr>`; return; }
+  if (!res.data.length) { tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:28px;border:1px solid #e8eaf6">No records found</td></tr>`; return; }
+  const stM = {draft:'st-draft',submitted:'st-submitted',approved:'st-approved',rejected:'st-rejected',verified:'st-verified',not_started:'',};
+  const stL = {draft:'📝 Draft',submitted:'📤 Submitted',approved:'✅ Approved',rejected:'❌ Rejected',verified:'💜 Verified',not_started:'— Not Started'};
+  const B = 'border:1px solid #e8eaf6';
+  tb.innerHTML = res.data.map(d => {
+    const pc = parseInt(d.proof_count)||0, ap = parseInt(d.approved_proofs)||0, pend = parseInt(d.pending_proofs)||0, rej = parseInt(d.rejected_proofs)||0;
+    let proofCell = '—';
+    if (pc === 0) proofCell = '<span style="color:#9ca3af;font-size:11.5px">Not uploaded</span>';
+    else if (rej > 0) proofCell = `<span style="color:#991b1b;font-weight:700;font-size:11.5px">❌ ${rej} Rejected</span>`;
+    else if (pend > 0) proofCell = `<span style="color:#92400e;font-size:11.5px">${pend} pending · ${ap}/${pc} verified</span>`;
+    else proofCell = `<span style="color:#166534;font-size:11.5px">All ${pc} verified ✅</span>`;
+    const done = (d.status==='verified') || (d.status==='approved' && pc>0 && pend===0 && rej===0);
+    const declCell = d.id
+      ? `<span class="st-badge ${stM[d.status]||'st-draft'}" style="font-size:10px">${stL[d.status]||d.status}</span>
+         <div style="font-size:10.5px;color:#546e7a;margin-top:2px">${(d.regime||'old').toUpperCase()} · ${money(d.monthly_tds||0)}/mo</div>`
+      : `<span style="color:#9ca3af;font-size:11.5px">— Not Started</span>`;
+    const empQ = `'${(d.employee_name||'').replace(/'/g,"\\'")}','${d.employee_code||''}'`;
+    return `<tr>
+      <td style="${B};font-weight:700;color:#3949ab;white-space:nowrap">${d.employee_code}</td>
+      <td style="${B};font-weight:600;color:#1e3a5f">${d.employee_name}${d.locked?'&nbsp;🔒':''}</td>
+      <td style="${B};font-size:11.5px;color:#546e7a">${d.phone||'—'}<br><span style="font-size:10.5px">${d.email||''}</span></td>
+      <td style="${B}">${declCell}</td>
+      <td style="${B}">${proofCell}</td>
+      <td style="${B};text-align:center">${done?'<span style="color:#166534;font-size:18px">✅</span>':'<span style="color:#d1d5db;font-size:18px">○</span>'}</td>
+      <td style="${B}">
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${d.id ? `<button class="btn btn-outline btn-sm" style="font-size:11px" onclick="openReview(${d.id},${empQ})">📋 Review</button>
+          <button class="btn btn-outline btn-sm" style="font-size:11px" onclick="openFullForm(${d.id})">📄 Full Form</button>
+          <button class="btn btn-sm" style="font-size:11px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe" onclick="downloadDeclZip(${d.id},'${d.employee_code||''}',${empQ})">📥 ZIP</button>` : '<span style="font-size:11px;color:#9ca3af">No declaration</span>'}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
 async function exportHRExcel() {
@@ -1740,17 +1793,75 @@ async function qkReviewProof(id, action) {
   else toast(res?.message||'Failed', 'error');
 }
 
-function downloadDeclZip(id, code, name) {
-  const fname = `${code}_${name}`.replace(/[^a-zA-Z0-9_-]/g,'_');
+function downloadDeclZip(id, code) {
   const url = `${API_BASE}/it-declaration/${id}/download-zip`;
-  fetchZipFile(url, `${fname}.zip`);
+  fetchZipFile(url, `${(code||'emp')}.zip`);
 }
 function downloadAllZip() {
   const fy  = document.getElementById('hr-filter-fy')?.value || '';
   const st  = document.getElementById('hr-filter-st')?.value || '';
-  const url = `${API_BASE}/it-declaration/download-all-zip?fy=${encodeURIComponent(fy)}&status=${encodeURIComponent(st)}`;
+  const url = `${API_BASE}/it-declaration/export-zip?fy=${encodeURIComponent(fy)}&status=${encodeURIComponent(st)}`;
   const label = fy ? `IT_Declarations_${fy}.zip` : 'IT_Declarations.zip';
   fetchZipFile(url, label);
+}
+async function openFullForm(declId) {
+  document.getElementById('mo-ff-title').textContent = 'Full Declaration — Loading…';
+  document.getElementById('mo-ff-body').innerHTML = '<div style="text-align:center;padding:32px">Loading…</div>';
+  document.getElementById('mo-full-form').classList.add('open');
+  const [dRes, pRes] = await Promise.all([
+    api('GET', `/it-declaration/${declId}`),
+    api('GET', `/it-declaration/proofs?declaration_id=${declId}`),
+  ]);
+  if (!dRes?.success) { document.getElementById('mo-ff-body').innerHTML = '<p style="color:#ef4444">Failed to load declaration</p>'; return; }
+  const d = dRes.data, proofs = pRes?.data || [];
+  document.getElementById('mo-ff-title').textContent = `Full Declaration — ${d.employee_name} (${d.employee_code}) · FY ${d.financial_year}`;
+  const proofMap = {};
+  proofs.forEach(p => { if (!proofMap[p.section]) proofMap[p.section]=[]; proofMap[p.section].push(p); });
+  const sec = (icon, title, fields, secKey) => {
+    const vals = fields.filter(([,v]) => v || v===0);
+    if (!vals.length && !(proofMap[secKey]||[]).length) return '';
+    const proofHtml = (proofMap[secKey]||[]).map(p => `
+      <div class="proof-item" style="margin:4px 0">
+        <div class="pi-info"><div class="pi-name">${p.section_label||p.section} — ${p.doc_type||''}</div><div class="pi-file">📎 ${p.file_name}</div></div>
+        <div class="pi-actions">
+          <span class="proof-st ps-${p.status}">${p.status}</span>
+          <button class="btn btn-outline btn-sm" style="font-size:10px" onclick="viewProof(${p.id},'${p.section_label||p.section}')">👁 View</button>
+          ${p.status!=='approved'?`<button class="btn btn-sm" style="font-size:10px;background:#dcfce7;color:#166534;border:1px solid #86efac" onclick="qkReviewProof(${p.id},'approve')">✅</button>`:''}
+          ${p.status!=='rejected'?`<button class="btn btn-sm" style="font-size:10px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5" onclick="qkReviewProof(${p.id},'reject')">❌</button>`:''}
+        </div>
+      </div>`).join('');
+    return `<div class="it-sec" style="margin-bottom:10px">
+      <div class="it-sec-hdr open" onclick="tgl(this)"><span class="sh-title">${icon} ${title}</span><span class="sh-chev">▼</span></div>
+      <div class="it-sec-body open" style="padding:14px 16px">
+        <div class="fg2" style="margin-bottom:${proofHtml?8:0}px">${vals.map(([l,v])=>`<div><div style="font-size:10px;font-weight:700;color:#9fa8da;text-transform:uppercase">${l}</div><div style="font-size:13px;font-weight:700;color:#1e3a5f">${v}</div></div>`).join('')}</div>
+        ${proofHtml}
+      </div>
+    </div>`;
+  };
+  const hp = Array.isArray(d.house_properties) ? d.house_properties : [];
+  document.getElementById('mo-ff-body').innerHTML = `
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+      <span class="st-badge st-${d.status||'draft'}">${d.status||'draft'}</span>
+      <span style="font-size:12px;color:#546e7a">Regime: <b>${(d.regime||'old').toUpperCase()}</b></span>
+      <span style="font-size:12px;color:#546e7a">Est. Tax: <b>${money(d.estimated_tax||0)}</b></span>
+      <span style="font-size:12px;color:#546e7a">Monthly TDS: <b>${money(d.monthly_tds||0)}/mo</b></span>
+      <button class="btn btn-sm" style="font-size:11px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;margin-left:auto" onclick="downloadDeclZip(${d.id},'${d.employee_code||''}')">📥 Download ZIP</button>
+    </div>
+    ${sec('🏠','HRA — House Rent Allowance',[['Monthly Rent',money(d.rent_paid_monthly||0)],['Annual Rent',money(d.annual_rent||0)],['Landlord Name',d.landlord_name||''],['Landlord PAN',d.landlord_pan||''],['City Type',d.hra_city_type||'']],'HRA')}
+    ${sec('💰','Section 80C — Investments',[['EPF',money(d.sec80c_pf||0)],['PPF',money(d.sec80c_ppf||0)],['LIC',money(d.sec80c_lic||0)],['ELSS',money(d.sec80c_elss||0)],['NSC',money(d.sec80c_nsc||0)],['Home Loan Principal',money(d.sec80c_home_loan||0)],['Tuition Fees',money(d.sec80c_tuition||0)],['Tax Saving FD',money(d.sec80c_fd||0)],['Other 80C',money(d.sec80c_other||0)]],'80C')}
+    ${sec('🏦','Section 80CCD(1B) — NPS',[['NPS Contribution',money(d.sec80ccd_nps||0)]],'80CCD')}
+    ${sec('🏥','Section 80D — Medical Insurance',[['Self + Family',money(d.sec80d_self||0)],['Parents',money(d.sec80d_parents||0)],['Parents Senior Citizen?',d.sec80d_senior_parent||'']],'80D')}
+    ${sec('🏡','House Property / Sec 24(b)',[['Loan Provider',d.homeloan_provider||''],['Annual Interest',money(d.sec24b_home_loan||0)],['Address',d.homeloan_address||''],['Properties',hp.length?hp.length+' added':'']],'HP')}
+    ${sec('🎓','Section 80E — Education Loan',[['Interest Paid',money(d.sec80e_edu_loan||0)]],'80E')}
+    ${sec('🤝','Section 80G — Donations',[['Donation Amount',money(d.sec80g_donation||0)],['Institution',d.sec80g_institution||''],['Institution PAN',d.sec80g_pan||'']],'80G')}
+    ${sec('♿','Section 80DD — Dependent Disability',[['Dependent',d.sec80dd_dependent||''],['Relationship',d.sec80dd_relation||''],['Disability %',d.sec80dd_pct||'']],'80DD')}
+    ${sec('🦯','Section 80U — Self Disability',[['Disability %',d.sec80u_pct||''],['Category',d.sec80u_category||'']],'80U')}
+    ${sec('💊','Section 80DDB — Medical Treatment',[['Disease',d.sec80ddb_disease||''],['Patient',d.sec80ddb_patient||''],['Amount',money(d.sec80ddb_amount||0)]],'80DDB')}
+    ${sec('✈️','LTA',[['Travel Period',d.lta_travel_period||''],['Destination',d.lta_destination||''],['Amount',money(d.lta_amount||0)]],'LTA')}
+    ${sec('🏢','Previous Employment',[['Employer',d.prev_employer||''],['Period',d.prev_period||''],['Previous Gross',money(d.prev_gross_salary||0)],['TDS by Prev. Employer',money(d.prev_tds||0)],['PF Contribution',money(d.prev_pf||0)]],'PREV_EMP')}
+    ${sec('💹','Other Income',[['Savings Interest',money(d.other_savings_int||0)],['FD Interest',money(d.other_fd_int||0)],['Capital Gains',money(d.other_capital_gains||0)],['Dividend',money(d.other_dividend||0)],['Other',money(d.other_misc||0)]],'OTHER')}
+    ${d.hr_comment ? `<div style="background:#fef9c3;border:1.5px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#92400e;margin-top:8px"><b>HR Comment:</b> ${d.hr_comment}</div>` : ''}
+  `;
 }
 function fetchZipFile(url, filename) {
   toast('Preparing ZIP…');

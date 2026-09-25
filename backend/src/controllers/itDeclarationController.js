@@ -13,6 +13,8 @@ const multer = require('multer');
 const path   = require('path');
 const fs     = require('fs');
 
+const IT_VIEW_ALL = ['hr', 'accounts']; // only these roles can view/act on other people
+
 // ── File storage: disk (no base64 in DB) ─────────────────────────────────────
 const UPLOAD_DIR = path.join(__dirname, '../../../../uploads/it-proofs');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -591,7 +593,7 @@ exports.getDeclaration = async (req, res) => {
     const reqUser = req.user;
     const empId   = req.query.employee_id ? parseInt(req.query.employee_id) : reqUser.id;
     const fy      = req.query.fy || '2025-26';
-    const isPriv  = ['super_admin','hr','accounts'].includes(reqUser.role);
+    const isPriv  = IT_VIEW_ALL.includes(reqUser.role);
     if (!isPriv && empId !== reqUser.id)
       return res.status(403).json({ success:false, message:'Access denied' });
 
@@ -657,28 +659,59 @@ exports.getDeclaration = async (req, res) => {
 };
 
 // ── GET /it-declaration/all ───────────────────────────────────────────────────
+// Returns ALL active head-office employees (client_id IS NULL) LEFT JOINed to declarations.
+// Employees with no declaration appear with status='not_started'.
 exports.getAllDeclarations = async (req, res) => {
   try {
-    const { fy = '2025-26', status } = req.query;
+    const { fy, status, search } = req.query;
+    // Compute current Indian FY if not provided
+    const now = new Date();
+    const curFY = (() => {
+      const m = now.getMonth() + 1; // 1-12
+      const y = now.getFullYear();
+      const startY = m >= 4 ? y : y - 1;
+      return `${startY}-${String(startY + 1).slice(-2)}`;
+    })();
+    const fyFilter = fy || curFY;
+
     let q = `
-      SELECT d.id, d.employee_id, d.financial_year, d.regime, d.status, d.locked,
-             d.total_80c, d.total_deductions, d.estimated_tax, d.monthly_tds,
-             d.submitted_at, d.reviewed_at, d.approved_at, d.hr_comment,
-             CONCAT(e.first_name,' ',e.last_name) AS employee_name,
-             e.employee_code, e.pan_number, dept.name AS department,
-             des.title AS designation,
-             (SELECT COUNT(*) FROM it_proof_documents p WHERE p.declaration_id=d.id) AS proof_count,
-             (SELECT COUNT(*) FROM it_proof_documents p WHERE p.declaration_id=d.id AND p.status='pending') AS pending_proofs
-      FROM it_declarations d
-      JOIN employees e ON d.employee_id = e.id
+      SELECT
+        e.id AS employee_id, e.employee_code, e.phone,
+        CONCAT(e.first_name,' ',e.last_name) AS employee_name,
+        e.pan_number, e.email,
+        dept.name AS department, des.title AS designation,
+        d.id, d.financial_year, d.regime, d.status, d.locked,
+        d.total_80c, d.total_deductions, d.estimated_tax, d.monthly_tds,
+        d.submitted_at, d.reviewed_at, d.approved_at, d.hr_comment,
+        (SELECT COUNT(*) FROM it_proof_documents p WHERE p.declaration_id=d.id)                              AS proof_count,
+        (SELECT COUNT(*) FROM it_proof_documents p WHERE p.declaration_id=d.id AND p.status='pending')       AS pending_proofs,
+        (SELECT COUNT(*) FROM it_proof_documents p WHERE p.declaration_id=d.id AND p.status='approved')      AS approved_proofs,
+        (SELECT COUNT(*) FROM it_proof_documents p WHERE p.declaration_id=d.id AND p.status='rejected')      AS rejected_proofs
+      FROM employees e
       LEFT JOIN departments  dept ON e.department_id  = dept.id
       LEFT JOIN designations des  ON e.designation_id = des.id
-      WHERE d.financial_year=$1`;
-    const params = [fy];
-    if (status) { params.push(status); q += ` AND d.status=$${params.length}`; }
-    q += ` ORDER BY d.submitted_at DESC NULLS LAST, e.first_name`;
+      LEFT JOIN it_declarations d ON d.employee_id = e.id AND d.financial_year = $1
+      WHERE e.status = 'active' AND (e.client_id IS NULL)`;
+    const params = [fyFilter];
+
+    if (search) {
+      params.push(`%${search.toLowerCase()}%`);
+      q += ` AND (LOWER(CONCAT(e.first_name,' ',e.last_name)) LIKE $${params.length} OR LOWER(e.employee_code) LIKE $${params.length})`;
+    }
+    if (status && status !== 'not_started') {
+      params.push(status); q += ` AND d.status = $${params.length}`;
+    }
+    if (status === 'not_started') {
+      q += ` AND d.id IS NULL`;
+    }
+    q += ` ORDER BY e.employee_code`;
     const result = await db.query(q, params);
-    res.json({ success:true, data:result.rows });
+    const rows = result.rows.map(r => ({
+      ...r,
+      status: r.status || 'not_started',
+      financial_year: r.financial_year || fyFilter,
+    }));
+    res.json({ success:true, data:rows });
   } catch (err) {
     console.error('[getAllDeclarations]', err.message);
     res.status(500).json({ success:false, message:'Server error' });
@@ -1144,7 +1177,11 @@ exports.reviewProof = async (req, res) => {
 exports.taxPreview = async (req, res) => {
   try {
     const empId = req.query.employee_id ? parseInt(req.query.employee_id) : req.user.id;
-    const fy    = req.query.fy || '2025-26';
+    if (empId !== req.user.id && !IT_VIEW_ALL.includes(req.user.role))
+      return res.status(403).json({ success:false, message:'Access denied' });
+    const nowDate = new Date();
+    const defFY = (() => { const m = nowDate.getMonth()+1, y = nowDate.getFullYear(); const s = m>=4?y:y-1; return `${s}-${String(s+1).slice(-2)}`; })();
+    const fy    = req.query.fy || defFY;
     const cfg   = await loadConfig(fy);
 
     const salRes = await db.query(
@@ -1590,32 +1627,8 @@ exports.exportExcel = async (req, res) => {
 // ── Payroll integration: monthly TDS on salary ───────────────────────────────
 // Used by payrollController when building the monthly payroll template.
 //   Projected annual income = previous-employer salary
-// ── ZIP helpers ───────────────────────────────────────────────────────────────
-const archiver = require('archiver');
-const ExcelJS  = require('exceljs');
-
-async function buildDeclExcel(declRows) {
-  const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet('IT Declarations');
-  ws.columns = [
-    { header:'Employee Code', key:'employee_code', width:16 },
-    { header:'Employee Name', key:'employee_name', width:24 },
-    { header:'PAN',           key:'pan_number',    width:14 },
-    { header:'FY',            key:'financial_year',width:10 },
-    { header:'Regime',        key:'regime',        width:10 },
-    { header:'Status',        key:'status',        width:12 },
-    { header:'80C',           key:'total_80c',     width:12 },
-    { header:'Total Deductions', key:'total_deductions', width:16 },
-    { header:'Estimated Tax', key:'estimated_tax', width:16 },
-    { header:'Monthly TDS',   key:'monthly_tds',   width:14 },
-    { header:'Submitted At',  key:'submitted_at',  width:22 },
-    { header:'HR Comment',    key:'hr_comment',    width:30 },
-  ];
-  ws.getRow(1).font = { bold: true };
-  for (const d of declRows) ws.addRow(d);
-  const buf = await wb.xlsx.writeBuffer();
-  return buf;
-}
+// ── ZIP helpers (adm-zip) ─────────────────────────────────────────────────────
+const AdmZip = require('adm-zip');
 
 function resolveFilePath(filePath) {
   const UPLOAD_DIR_ABS = path.join(__dirname, '../../../../uploads/it-proofs');
@@ -1631,101 +1644,133 @@ function resolveFilePath(filePath) {
   return null;
 }
 
+// Builds a ZIP Buffer from an array of {decl, proofs[]} objects + an Excel buffer.
+// Folder structure: CODE - Name/section/doctype__filename
+async function buildDeclZip(items, excelBuf, excelName) {
+  const zip = new AdmZip();
+  const missing = [];
+  zip.addFile(excelName, Buffer.from(excelBuf));
+  for (const { d, proofs } of items) {
+    const folderName = `${d.employee_code} - ${((d.first_name||'') + ' ' + (d.last_name||'')).trim()}`;
+    for (const p of proofs) {
+      const absPath = resolveFilePath(p.file_path);
+      const section  = (p.section || 'misc').replace(/[^a-zA-Z0-9_]/g,'_');
+      const docType  = (p.doc_type || 'doc').replace(/[^a-zA-Z0-9_]/g,'_');
+      const ext      = path.extname(p.file_name || '');
+      const baseName = (p.file_name || `${docType}${ext}`).replace(/[^a-zA-Z0-9._-]/g,'_');
+      const zipPath  = `${folderName}/${section}/${docType}__${baseName}`;
+      if (absPath) {
+        zip.addLocalFile(absPath, `${folderName}/${section}`, `${docType}__${baseName}`);
+      } else {
+        missing.push(zipPath);
+      }
+    }
+  }
+  if (missing.length) {
+    zip.addFile('MISSING_FILES.txt', Buffer.from(missing.join('\n')));
+  }
+  return zip.toBuffer();
+}
+
+// ── GET /it-declaration/export-zip ───────────────────────────────────────────
+exports.exportZip = async (req, res) => {
+  try {
+    const nowDate = new Date();
+    const defFY = (() => { const m=nowDate.getMonth()+1,y=nowDate.getFullYear(),s=m>=4?y:y-1; return `${s}-${String(s+1).slice(-2)}`; })();
+    const fy     = req.query.fy     || defFY;
+    const status = req.query.status || '';
+    const idsRaw = req.query.ids    || '';
+    const ids    = idsRaw ? idsRaw.split(',').map(Number).filter(Boolean) : null;
+
+    let q = `SELECT d.*, e.employee_code, e.first_name, e.last_name
+              FROM it_declarations d JOIN employees e ON d.employee_id=e.id
+              WHERE d.financial_year=$1`;
+    const params = [fy];
+    if (status) { params.push(status); q += ` AND d.status=$${params.length}`; }
+    if (ids && ids.length) { params.push(ids); q += ` AND d.id = ANY($${params.length})`; }
+    q += ' ORDER BY e.employee_code';
+    const decls = (await db.query(q, params)).rows;
+
+    const declIds = decls.map(d => d.id);
+    let proofMap = {};
+    if (declIds.length) {
+      const pr = (await db.query(
+        `SELECT * FROM it_proof_documents WHERE declaration_id = ANY($1) ORDER BY declaration_id, section, uploaded_at`,
+        [declIds]
+      )).rows;
+      for (const p of pr) {
+        if (!proofMap[p.declaration_id]) proofMap[p.declaration_id] = [];
+        proofMap[p.declaration_id].push(p);
+      }
+    }
+
+    // Build Excel using existing exportExcel logic (reuse same query result)
+    const XLSX = require('xlsx-js-style');
+    const wb = XLSX.utils.book_new();
+    const headers = ['Code','Name','PAN','FY','Regime','Status','80C','Total Ded.','Est. Tax','Monthly TDS','Submitted'];
+    const rows = decls.map(d => [
+      d.employee_code, `${d.first_name||''} ${d.last_name||''}`.trim(),
+      d.pan_number||'', d.financial_year, d.regime||'', d.status||'',
+      parseFloat(d.total_80c||0), parseFloat(d.total_deductions||0),
+      parseFloat(d.estimated_tax||0), parseFloat(d.monthly_tds||0),
+      d.submitted_at ? new Date(d.submitted_at).toLocaleDateString('en-IN') : '—',
+    ]);
+    const wsData = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    XLSX.utils.book_append_sheet(wb, ws, 'IT Declarations');
+    const excelBuf = XLSX.write(wb, { type:'buffer', bookType:'xlsx' });
+    const fyLabel  = `_${fy}`;
+    const excelName = `IT_Declarations${fyLabel}.xlsx`;
+
+    const items = decls.map(d => ({ d, proofs: proofMap[d.id] || [] }));
+    const zipBuf = await buildDeclZip(items, excelBuf, excelName);
+
+    res.setHeader('Content-Disposition', `attachment; filename="IT_Declarations${fyLabel}.zip"`);
+    res.setHeader('Content-Type', 'application/zip');
+    res.send(zipBuf);
+  } catch (err) {
+    console.error('[exportZip]', err.message);
+    if (!res.headersSent) res.status(500).json({ success:false, message:'Server error' });
+  }
+};
+
 // ── GET /it-declaration/:id/download-zip ─────────────────────────────────────
 exports.downloadDeclZip = async (req, res) => {
   try {
     const declId = parseInt(req.params.id);
+    if (isNaN(declId)) return res.status(400).json({ success:false, message:'Invalid id' });
     const dRow = await db.query(
       `SELECT d.*, e.employee_code, e.first_name, e.last_name
        FROM it_declarations d JOIN employees e ON d.employee_id=e.id WHERE d.id=$1`, [declId]
     );
     if (!dRow.rows.length) return res.status(404).json({ success:false, message:'Not found' });
-    const d    = dRow.rows[0];
-    const name = `${d.employee_code}_${(d.first_name||'')}${(d.last_name||'')}`.replace(/[^a-zA-Z0-9_-]/g,'_');
-
-    const proofs = await db.query(
+    const d = dRow.rows[0];
+    const proofs = (await db.query(
       `SELECT * FROM it_proof_documents WHERE declaration_id=$1 ORDER BY section, uploaded_at`, [declId]
+    )).rows;
+
+    const XLSX = require('xlsx-js-style');
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['Code','Name','PAN','FY','Regime','Status','Est. Tax','Monthly TDS'],
+      [d.employee_code, `${d.first_name||''} ${d.last_name||''}`.trim(), d.pan_number||'',
+       d.financial_year, d.regime||'', d.status||'',
+       parseFloat(d.estimated_tax||0), parseFloat(d.monthly_tds||0)],
+    ]);
+    XLSX.utils.book_append_sheet(wb, ws, 'Declaration');
+    const excelBuf = XLSX.write(wb, { type:'buffer', bookType:'xlsx' });
+    const empLabel = `${d.employee_code} - ${((d.first_name||'') + ' ' + (d.last_name||'')).trim()}`;
+    const zipBuf = await buildDeclZip(
+      [{ d, proofs }],
+      excelBuf,
+      `${empLabel.replace(/[^a-zA-Z0-9 _-]/g,'_')}_details.xlsx`
     );
-
-    const excelBuf = await buildDeclExcel([{
-      employee_code: d.employee_code, employee_name: `${d.first_name||''} ${d.last_name||''}`.trim(),
-      pan_number: d.pan_number, financial_year: d.financial_year, regime: d.regime,
-      status: d.status, total_80c: d.total_80c||0, total_deductions: d.total_deductions||0,
-      estimated_tax: d.estimated_tax||0, monthly_tds: d.monthly_tds||0,
-      submitted_at: d.submitted_at, hr_comment: d.hr_comment||'',
-    }]);
-
-    res.setHeader('Content-Disposition', `attachment; filename="${name}.zip"`);
+    const safeName = empLabel.replace(/[^a-zA-Z0-9 _-]/g,'_');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeName}.zip"`);
     res.setHeader('Content-Type', 'application/zip');
-    const archive = archiver('zip', { zlib: { level: 6 } });
-    archive.pipe(res);
-    archive.append(Buffer.from(excelBuf), { name: `${name}_details.xlsx` });
-    for (const p of proofs.rows) {
-      const absPath = resolveFilePath(p.file_path);
-      if (absPath) {
-        const safeName = `${p.section}_${p.doc_type||''}_${p.file_name}`.replace(/[^a-zA-Z0-9._-]/g,'_');
-        archive.file(absPath, { name: `proofs/${safeName}` });
-      }
-    }
-    await archive.finalize();
+    res.send(zipBuf);
   } catch (err) {
     console.error('[downloadDeclZip]', err.message);
-    if (!res.headersSent) res.status(500).json({ success:false, message:'Server error' });
-  }
-};
-
-// ── GET /it-declaration/download-all-zip ─────────────────────────────────────
-exports.downloadAllZip = async (req, res) => {
-  try {
-    const fy = req.query.fy || '';
-    const st = req.query.status || '';
-    let q = `SELECT d.*, e.employee_code, e.first_name, e.last_name
-              FROM it_declarations d JOIN employees e ON d.employee_id=e.id WHERE 1=1`;
-    const params = [];
-    if (fy) { params.push(fy); q += ` AND d.financial_year=$${params.length}`; }
-    if (st) { params.push(st); q += ` AND d.status=$${params.length}`; }
-    q += ' ORDER BY e.employee_code';
-    const decls = (await db.query(q, params)).rows;
-
-    const allProofsRes = await db.query(
-      `SELECT p.*, d.employee_id FROM it_proof_documents p
-       JOIN it_declarations d ON p.declaration_id=d.id ${fy ? `WHERE d.financial_year=$1` : ''}
-       ORDER BY p.declaration_id, p.section`, fy ? [fy] : []
-    );
-    const proofMap = {};
-    for (const p of allProofsRes.rows) {
-      if (!proofMap[p.declaration_id]) proofMap[p.declaration_id] = [];
-      proofMap[p.declaration_id].push(p);
-    }
-
-    const excelBuf = await buildDeclExcel(decls.map(d => ({
-      employee_code: d.employee_code, employee_name: `${d.first_name||''} ${d.last_name||''}`.trim(),
-      pan_number: d.pan_number, financial_year: d.financial_year, regime: d.regime,
-      status: d.status, total_80c: d.total_80c||0, total_deductions: d.total_deductions||0,
-      estimated_tax: d.estimated_tax||0, monthly_tds: d.monthly_tds||0,
-      submitted_at: d.submitted_at, hr_comment: d.hr_comment||'',
-    })));
-
-    const fyLabel = fy ? `_${fy}` : '';
-    res.setHeader('Content-Disposition', `attachment; filename="IT_Declarations${fyLabel}.zip"`);
-    res.setHeader('Content-Type', 'application/zip');
-    const archive = archiver('zip', { zlib: { level: 6 } });
-    archive.pipe(res);
-    archive.append(Buffer.from(excelBuf), { name: `IT_Declarations${fyLabel}.xlsx` });
-    for (const d of decls) {
-      const empName = `${d.employee_code}_${(d.first_name||'')}${(d.last_name||'')}`.replace(/[^a-zA-Z0-9_-]/g,'_');
-      const proofs  = proofMap[d.id] || [];
-      for (const p of proofs) {
-        const absPath = resolveFilePath(p.file_path);
-        if (absPath) {
-          const safeName = `${p.section}_${p.doc_type||''}_${p.file_name}`.replace(/[^a-zA-Z0-9._-]/g,'_');
-          archive.file(absPath, { name: `${empName}/proofs/${safeName}` });
-        }
-      }
-    }
-    await archive.finalize();
-  } catch (err) {
-    console.error('[downloadAllZip]', err.message);
     if (!res.headersSent) res.status(500).json({ success:false, message:'Server error' });
   }
 };
