@@ -1282,12 +1282,25 @@ exports.downloadPayrollTemplate = async (req, res) => {
     const metaMap = {}; empMetaR.rows.forEach(r => { metaMap[r.id] = r; });
 
     // ── Leave utilised this month per employee per type ───────────────────
-    // days_requested is stored on the request; clip to days that fall inside this month.
     const leaveTypes = lvTypesR.rows; // [{code, name}, ...]
     const leaveUsedMap = {}; // { empId: { code: days } }
     lvR.rows.forEach(r => {
       if (!leaveUsedMap[r.employee_id]) leaveUsedMap[r.employee_id] = {};
       leaveUsedMap[r.employee_id][r.code] = (leaveUsedMap[r.employee_id][r.code] || 0) + (parseFloat(r.days_requested) || 0);
+    });
+
+    // ── Leave balance (closing) per employee per type ─────────────────────
+    const fyYear = m >= 4 ? y : y - 1; // leave year starts April
+    const lvBalR = await db.query(
+      `SELECT lb.employee_id, lt.code,
+              GREATEST(0, lb.allocated + lb.carry_forward - lb.used - lb.pending) AS balance
+       FROM leave_balances lb
+       JOIN leave_types lt ON lt.id = lb.leave_type_id
+       WHERE lb.year = $1`, [fyYear]);
+    const leaveBalMap = {}; // { empId: { code: balance } }
+    lvBalR.rows.forEach(r => {
+      if (!leaveBalMap[r.employee_id]) leaveBalMap[r.employee_id] = {};
+      leaveBalMap[r.employee_id][r.code] = parseFloat(r.balance) || 0;
     });
     const todayStr = new Date().toISOString().slice(0, 10);
     const monthAttendance = (empId) => {
@@ -1327,8 +1340,10 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // Deductions → Totals/Net Pay → Status. Each group gets its own color
     // (see COL_GROUPS below) so Earning vs Deduction is obvious at a glance,
     // and the same sheet is what gets uploaded for payroll AND used for payslips.
-    // Leave headers: one column per active leave type, e.g. "Leave (CL)", "Leave (SL)"
-    const leaveHeaders = leaveTypes.map(lt => `Leave (${lt.code})`);
+    // Two columns per leave type: taken this month + closing balance
+    const leaveTakenHeaders  = leaveTypes.map(lt => `${lt.code} Taken`);
+    const leaveBalHeaders    = leaveTypes.map(lt => `${lt.code} Balance`);
+    const leaveHeaders = leaveTypes.flatMap(lt => [`${lt.code} Taken`, `${lt.code} Balance`]);
     const HEADERS = [
       // ── A: Employee Identification ──────────────────────────────────────────
       'Emp Code', 'Full Name', 'Department', 'Division', 'Designation', 'Category',
@@ -1432,8 +1447,11 @@ exports.downloadPayrollTemplate = async (req, res) => {
           e.employee_code, e.full_name, e.department || '', e.division || '', e.designation || '', e.employee_category || '',
           // B: Attendance
           daysInMonth, monthAtt.paid, monthAtt.lop, 0, monthAtt.paid,
-          // B2: Leave Utilised (days taken per leave type this month)
-          ...leaveTypes.map(lt => (leaveUsedMap[e.id] || {})[lt.code] || 0),
+          // B2: Leave Taken + Balance (two columns per leave type)
+          ...leaveTypes.flatMap(lt => [
+            (leaveUsedMap[e.id] || {})[lt.code] || 0,
+            (leaveBalMap[e.id]  || {})[lt.code] || 0,
+          ]),
           // C: All Fixed P.M. (salary structure amounts)
           parseFloat(e.basic)             || 0,
           parseFloat(e.hra)               || 0,
