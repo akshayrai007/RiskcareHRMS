@@ -110,17 +110,17 @@
 .dc-bar-fill{height:100%;border-radius:2px;background:#22c55e;transition:width .3s}
 .dc-bar-fill.warn{background:#f59e0b}
 /* ── Tax Preview (green palette) ── */
-.tax-cmp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.tax-cmp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch}
 @media(max-width:680px){.tax-cmp-grid{grid-template-columns:1fr}}
 /* Summary cards row */
-.rc{border:1.5px solid #c7d2fe;border-radius:12px;padding:22px 20px;text-align:center;background:#f5f3ff;position:relative}
-.rc.cheaper{border-color:#a5b4fc;background:#ede9fe}
+.rc{border:2px solid #a5b4fc;border-radius:14px;padding:22px 20px;text-align:center;background:#ede9fe;position:relative;display:flex;flex-direction:column}
+.rc.cheaper{border-color:#6366f1;background:#e0e7ff}
 .rc-label{font-size:13px;font-weight:700;color:#3730a3;margin-bottom:8px}
 .rc-tax{font-size:36px;font-weight:900;color:#1e1b4b;line-height:1.1;margin-bottom:10px}
-.rc-meta{font-size:12px;color:#6b7280;margin:3px 0}
+.rc-meta{font-size:12px;color:#4338ca;margin:3px 0}
 .rc-meta strong{color:#1e1b4b}
 .rec-bdg{display:inline-block;background:#4f46e5;color:#fff;font-size:10px;font-weight:700;padding:3px 12px;border-radius:20px;margin:8px 0 4px}
-.sel-btn{margin-top:12px;width:100%;padding:10px;border-radius:8px;border:none;background:#4f46e5;color:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s}
+.sel-btn{margin-top:auto;padding-top:12px;width:100%;padding:10px;border-radius:8px;border:none;background:#4f46e5;color:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s}
 .sel-btn:hover{background:#4338ca}
 .sel-btn.chosen{background:#312e81}
 /* Breakdown cards row */
@@ -1549,22 +1549,26 @@ async function loadTaxPreview() {
       <div class="rc ${oCheap?'cheaper':''}">
         <div class="rc-label">🏛️ Old Regime</div>
         <div class="rc-tax">${money(o.net_tax)}</div>
-        <div class="rc-meta">Monthly TDS: <strong>${money(o.monthly_tds)}</strong></div>
-        <div class="rc-meta">Taxable Income: <strong>${money(o.taxable_income)}</strong></div>
-        ${o.tds_paid_ytd ? `<div class="rc-meta">Already Deducted: <strong>${money(o.tds_paid_ytd)}</strong></div>` : ''}
-        ${oCheap ? '<div><span class="rec-bdg">⭐ RECOMMENDED</span></div>' : ''}
-        <button class="sel-btn ${currentRegime==='old'?'chosen':''}" onclick="setRegime('old');sw('decl')">Select Old Regime</button>
+        <div style="flex:1">
+          <div class="rc-meta">Monthly TDS: <strong>${money(o.monthly_tds)}</strong></div>
+          <div class="rc-meta">Taxable Income: <strong>${money(o.taxable_income)}</strong></div>
+          ${o.tds_paid_ytd ? `<div class="rc-meta">Already Deducted: <strong>${money(o.tds_paid_ytd)}</strong></div>` : ''}
+          ${oCheap ? '<div style="margin-top:8px"><span class="rec-bdg">⭐ RECOMMENDED</span></div>' : ''}
+        </div>
+        <button class="sel-btn ${currentRegime==='old'?'chosen':''}" style="margin-top:14px" onclick="setRegime('old');sw('decl')">Select Old Regime</button>
       </div>
 
       <!-- NEW REGIME summary card -->
       <div class="rc ${nCheap?'cheaper':''}">
         <div class="rc-label">✨ New Regime</div>
         <div class="rc-tax">${money(nw.net_tax)}</div>
-        <div class="rc-meta">Monthly TDS: <strong>${money(nw.monthly_tds)}</strong></div>
-        <div class="rc-meta">Taxable Income: <strong>${money(nw.taxable_income)}</strong></div>
-        ${nw.tds_paid_ytd ? `<div class="rc-meta">Already Deducted: <strong>${money(nw.tds_paid_ytd)}</strong></div>` : ''}
-        ${nCheap ? '<div><span class="rec-bdg">⭐ RECOMMENDED</span></div>' : ''}
-        <button class="sel-btn ${currentRegime==='new'?'chosen':''}" onclick="setRegime('new');sw('decl')">Select New Regime</button>
+        <div style="flex:1">
+          <div class="rc-meta">Monthly TDS: <strong>${money(nw.monthly_tds)}</strong></div>
+          <div class="rc-meta">Taxable Income: <strong>${money(nw.taxable_income)}</strong></div>
+          ${nw.tds_paid_ytd ? `<div class="rc-meta">Already Deducted: <strong>${money(nw.tds_paid_ytd)}</strong></div>` : ''}
+          ${nCheap ? '<div style="margin-top:8px"><span class="rec-bdg">⭐ RECOMMENDED</span></div>' : ''}
+        </div>
+        <button class="sel-btn ${currentRegime==='new'?'chosen':''}" style="margin-top:14px" onclick="setRegime('new');sw('decl')">Select New Regime</button>
       </div>
 
     </div>
