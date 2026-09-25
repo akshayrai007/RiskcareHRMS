@@ -19,7 +19,8 @@ const payCtrl        = require('../controllers/payrollController');
 const geoCtrl        = require('../controllers/geofenceController');
 const sepCtrl        = require('../controllers/separationController');
 const empImportCtrl  = require('../controllers/employeeImportController');
-const attImportCtrl   = require('../controllers/attendanceImportController');
+const attImportCtrl    = require('../controllers/attendanceImportController');
+const lvImportCtrl     = require('../controllers/leaveImportController');
 const excelExportCtrl  = require('../controllers/excelExportController');
 const annCtrl        = require('../controllers/announcementController');
 const gkCtrl         = require('../controllers/gkController');
@@ -247,6 +248,8 @@ router.get ('/leave/report',                 authenticate,                      
 router.get ('/leave/summary',                authenticate, leaveCtrl.requireLeaveSummaryAccess, leaveCtrl.getLeaveSummary);
 router.get ('/leave/transactions',           authenticate, leaveCtrl.requireLeaveSummaryAccess, leaveCtrl.getLeaveTransactions);
 router.post('/leave/import-balances',        authenticate, authorize(...HR_ADMIN), xlsxUpload.single('file'), leaveCtrl.importLeaveBalances);
+router.post('/leave/import/status',          authenticate, authorize(...HR_ADMIN), lvImportCtrl.uploadMiddleware, lvImportCtrl.importStatusReport);
+router.post('/leave/import/summary',         authenticate, authorize(...HR_ADMIN), lvImportCtrl.uploadMiddleware, lvImportCtrl.importSummaryReport);
 
 
 // ── Advance Salary ────────────────────────────────────────────────────────────

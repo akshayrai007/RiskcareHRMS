@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RiskCare HR - Leave Data Import</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .imp-card { background:#fff; border:1px solid #fecaca; border-radius:10px; padding:20px 24px; margin-bottom:18px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+  .imp-card h3 { margin:0 0 4px; font-size:.85rem; font-weight:700; color:var(--cfg-primary,#C0272D); text-transform:uppercase; letter-spacing:.6px; }
+  .imp-card .sub { font-size:.78rem; color:#6b7280; margin-bottom:14px; }
+  .imp-expected { background:#fff8f8; border:1px solid #fecaca; border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:.78rem; }
+  .imp-expected b { color:var(--cfg-primary,#C0272D); }
+  .drop-zone { border:2px dashed #fca5a5; border-radius:8px; padding:28px; text-align:center; cursor:pointer; transition:all .15s; background:#fff8f8; }
+  .drop-zone:hover, .drop-zone.drag { border-color:var(--cfg-primary,#C0272D); background:#fff5f5; }
+  .drop-zone input[type=file] { display:none; }
+  .drop-zone .dz-icon { font-size:2rem; margin-bottom:8px; }
+  .drop-zone .dz-label { font-size:.86rem; color:#6b7280; }
+  .drop-zone .dz-file { font-size:.84rem; font-weight:600; color:var(--cfg-primary,#C0272D); margin-top:6px; }
+  .year-row { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .year-row label { font-size:.78rem; font-weight:700; color:var(--cfg-primary,#C0272D); text-transform:uppercase; }
+  .year-row input { padding:6px 10px; border:1px solid #fca5a5; border-radius:6px; font-size:.86rem; width:90px; background:#fff8f8; }
+  .imp-btn { display:inline-flex; align-items:center; gap:8px; padding:10px 20px; background:linear-gradient(135deg,var(--cfg-primary,#C0272D),#991b1b); color:#fff; border:none; border-radius:6px; font-size:.88rem; font-weight:700; cursor:pointer; margin-top:10px; transition:all .15s; }
+  .imp-btn:disabled { opacity:.45; cursor:not-allowed; }
+  .imp-btn:hover:not(:disabled) { background:linear-gradient(135deg,#991b1b,#7f1d1d); }
+  /* Results */
+  .result-box { margin-top:14px; display:none; }
+  .stat-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  .stat-chip { padding:8px 14px; border-radius:6px; font-size:.82rem; font-weight:700; }
+  .chip-ok   { background:#dcfce7; color:#166534; }
+  .chip-skip { background:#fef9c3; color:#854d0e; }
+  .chip-flag { background:#fee2e2; color:#991b1b; }
+  .flag-list { background:#fff8f8; border:1px solid #fecaca; border-radius:6px; padding:10px 14px; max-height:280px; overflow-y:auto; font-size:.78rem; }
+  .flag-list .fi { border-bottom:1px solid #fecaca; padding:6px 0; }
+  .flag-list .fi:last-child { border:none; }
+  .flag-list .fi-emp { font-weight:700; color:#111; }
+  .flag-list .fi-issue { color:#991b1b; margin-left:8px; }
+  .flag-list .fi-ok { color:#166534; margin-left:8px; }
+  /* Progress */
+  .prog { display:none; align-items:center; gap:10px; margin-top:10px; font-size:.84rem; color:#6b7280; }
+  .spinner { width:18px; height:18px; border:2px solid #fca5a5; border-top-color:var(--cfg-primary,#C0272D); border-radius:50%; animation:spin .6s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark"></div>
+    <div><div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div></div>
+    <div class="sidebar-company-short" id="sidebar-company-short"></div></div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign Out</button>
+  </div>
+</aside>
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+      <div class="topbar-title">Leave Data Import</div>
+    </div>
+    <div class="topbar-right">
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+  <div class="content fade-in">
+
+    <!-- ── Card 1: Status Report ── -->
+    <div class="imp-card">
+      <h3>📋 Leave Status Report</h3>
+      <div class="sub">Imports individual leave applications into the system (leave_requests). Skips exact duplicates.</div>
+      <div class="imp-expected">
+        <b>Expected columns:</b> SL No · Employee ID · Employee Name · Leave Type · Applied Date · From Date · To Date · From Session · To Session · No of Days · Reason · Status<br>
+        <b>Leave types:</b> Earned Leave → EL &nbsp;|&nbsp; Sick or Casual Leave → CL &nbsp;|&nbsp; Maternity Leave → ML<br>
+        <b>Statuses:</b> Leave Approved → approved &nbsp;|&nbsp; Leave Initiated → pending &nbsp;|&nbsp; Leave Rejected → rejected
+      </div>
+      <div class="drop-zone" id="dz1" onclick="document.getElementById('f1').click()" ondragover="dzDrag(event,'dz1')" ondragleave="dzLeave('dz1')" ondrop="dzDrop(event,'dz1','f1')">
+        <input type="file" id="f1" accept=".xlsx,.xls" onchange="dzPick('dz1',this)">
+        <div class="dz-icon">📂</div>
+        <div class="dz-label">Click to browse or drag &amp; drop Excel file</div>
+        <div class="dz-file" id="f1-name"></div>
+      </div>
+      <div class="prog" id="prog1"><div class="spinner"></div> Importing…</div>
+      <button class="imp-btn" id="btn1" onclick="doImport('status')" disabled>⬆ Import Status Report</button>
+      <div class="result-box" id="res1"></div>
+    </div>
+
+    <!-- ── Card 2: Summary Report ── -->
+    <div class="imp-card">
+      <h3>📊 Leave Summary Report</h3>
+      <div class="sub">Imports leave balances (leave_balances) — allocated, used, available per employee per leave type. Upserts existing records.</div>
+      <div class="imp-expected">
+        <b>Expected columns:</b> SL No · Employee ID · Employee Name · Leave Type · Date of Joining · Carried Over Previous Year · Leaves Encashed · Leaves Credited · Leave Granted · Leave Applied · Leave Availed · Leaves Lapsed · Leaves Available · Deducted · Credit Comments<br>
+        <b>Year:</b> Set the financial year below (data from credit comments will be used for 2026)
+      </div>
+      <div class="year-row">
+        <label>Year</label>
+        <input type="number" id="import-year" value="2026" min="2020" max="2030">
+      </div>
+      <div class="drop-zone" id="dz2" onclick="document.getElementById('f2').click()" ondragover="dzDrag(event,'dz2')" ondragleave="dzLeave('dz2')" ondrop="dzDrop(event,'dz2','f2')">
+        <input type="file" id="f2" accept=".xlsx,.xls" onchange="dzPick('dz2',this)">
+        <div class="dz-icon">📂</div>
+        <div class="dz-label">Click to browse or drag &amp; drop Excel file</div>
+        <div class="dz-file" id="f2-name"></div>
+      </div>
+      <div class="prog" id="prog2"><div class="spinner"></div> Importing…</div>
+      <button class="imp-btn" id="btn2" onclick="doImport('summary')" disabled>⬆ Import Summary Report</button>
+      <div class="result-box" id="res2"></div>
+    </div>
+
+    <!-- ── Flags section ── -->
+    <div class="imp-card" id="flags-card" style="display:none">
+      <h3>⚠ Known Issues &amp; Flags</h3>
+      <div class="sub">These were detected in your files. Review before or after import.</div>
+      <div id="flags-body" style="font-size:.82rem;line-height:1.7;"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+Auth.requireRole('hr','super_admin');
+buildSidebar('leave-import.html');
+
+// ── File drop zone helpers ────────────────────────────────────────────────────
+function dzDrag(e, id) { e.preventDefault(); document.getElementById(id).classList.add('drag'); }
+function dzLeave(id)   { document.getElementById(id).classList.remove('drag'); }
+function dzDrop(e, id, fid) {
+  e.preventDefault(); dzLeave(id);
+  const dt = e.dataTransfer; if (!dt.files.length) return;
+  const fi = document.getElementById(fid);
+  const dl = new DataTransfer(); dl.items.add(dt.files[0]);
+  fi.files = dl.files; dzPick(id, fi);
+}
+function dzPick(id, inp) {
+  const nm = inp.files[0]?.name || '';
+  document.getElementById(inp.id + '-name').textContent = nm;
+  const btnId = id === 'dz1' ? 'btn1' : 'btn2';
+  document.getElementById(btnId).disabled = !nm;
+}
+
+// ── Import ────────────────────────────────────────────────────────────────────
+async function doImport(type) {
+  const fid  = type === 'status' ? 'f1' : 'f2';
+  const btnId= type === 'status' ? 'btn1' : 'btn2';
+  const pgId = type === 'status' ? 'prog1' : 'prog2';
+  const resId= type === 'status' ? 'res1' : 'res2';
+  const file = document.getElementById(fid).files[0];
+  if (!file) return;
+
+  document.getElementById(btnId).disabled = true;
+  document.getElementById(pgId).style.display = 'flex';
+  document.getElementById(resId).style.display = 'none';
+
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    if (type === 'summary') fd.append('year', document.getElementById('import-year').value);
+
+    const r = await fetch(`${API_BASE}/leave/import/${type}`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + Auth.getToken() },
+      body: fd,
+    });
+    const data = await r.json();
+    renderResult(resId, data, type);
+    if (data.flagged?.length) renderFlags(data.flagged, type);
+  } catch(e) {
+    document.getElementById(resId).innerHTML = `<div style="color:#991b1b;font-size:.84rem">Error: ${e.message}</div>`;
+    document.getElementById(resId).style.display = 'block';
+  } finally {
+    document.getElementById(btnId).disabled = false;
+    document.getElementById(pgId).style.display = 'none';
+  }
+}
+
+function renderResult(id, data, type) {
+  const s = data.summary || {};
+  const isStatus = type === 'status';
+  const mainCount = isStatus ? s.inserted : s.upserted;
+  const mainLabel = isStatus ? 'Inserted' : 'Upserted';
+  let html = `<div class="stat-row">
+    <div class="stat-chip chip-ok">Total rows: ${s.total || 0}</div>
+    <div class="stat-chip chip-ok">${mainLabel}: ${mainCount || 0}</div>
+    ${isStatus && s.skipped ? `<div class="stat-chip chip-skip">Duplicates skipped: ${s.skipped}</div>` : ''}
+    ${s.flagged  ? `<div class="stat-chip chip-flag">Flagged: ${s.flagged}</div>` : ''}
+  </div>`;
+
+  if (data.flagged?.length) {
+    html += `<div class="flag-list"><b style="color:#991b1b">Flagged rows (not imported):</b>`;
+    data.flagged.forEach(f => {
+      html += `<div class="fi"><span class="fi-emp">${f.employee||f.leaveType||'?'}</span>`;
+      (f.issues||[]).forEach(i => { html += `<span class="fi-issue">⚠ ${i}</span>`; });
+      html += `</div>`;
+    });
+    html += `</div>`;
+  }
+  if (isStatus && data.skipped?.length) {
+    html += `<div style="margin-top:8px;font-size:.75rem;color:#6b7280">Showing first ${data.skipped.length} duplicate(s) skipped.</div>`;
+  }
+  document.getElementById(id).innerHTML = html;
+  document.getElementById(id).style.display = 'block';
+}
+
+function renderFlags(flagged, type) {
+  const card = document.getElementById('flags-card');
+  const body = document.getElementById('flags-body');
+  card.style.display = 'block';
+
+  const missing = [...new Set(flagged.flatMap(f => f.issues || []))];
+  let html = `<b>From ${type === 'status' ? 'Status' : 'Summary'} Report:</b><ul style="margin:6px 0 0 16px">`;
+  missing.forEach(m => { html += `<li style="color:#991b1b">⚠ ${m}</li>`; });
+  html += `</ul>`;
+  body.innerHTML += html;
+}
+
+// ── Pre-scan known issues on page load ───────────────────────────────────────
+(function showKnownFlags() {
+  const card = document.getElementById('flags-card');
+  const body = document.getElementById('flags-body');
+  card.style.display = 'block';
+  body.innerHTML = `
+    <b>Pre-scan flags from your files (393 status rows, 219 summary rows):</b>
+    <ul style="margin:6px 0 12px 16px;line-height:1.8">
+      <li><b>38 employees</b> appear in Summary but have <b>no leave applications</b> in Status — this is normal (zero leaves taken).</li>
+      <li><b>Session combo 1/4</b> detected in some rows — not a standard combination, treated as <b>full day</b>.</li>
+      <li><b>Maternity Leave (ML)</b> present — ensure <code>ML</code> leave type is active in your HRMS leave type settings before importing.</li>
+      <li><b>"Sick or Casual Leave"</b> from external system maps to <b>CL</b> in HRMS (SL and CL are merged). Employees will see it as CL.</li>
+      <li><b>71 employees</b> have leave applications (Status); <b>109 employees</b> have leave balances (Summary).</li>
+      <li>Employees in Status not found in HRMS by employee code will be <b>flagged and skipped</b> — check the result after import.</li>
+    </ul>`;
+})();
+</script>
+</body>
+</html>
