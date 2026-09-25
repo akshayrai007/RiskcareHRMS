@@ -1527,58 +1527,61 @@ async function loadTaxPreview() {
       </div>
     </div>
 
-    <!-- Old Regime breakdown -->
-    <div class="tax-bk">
-      <h4>🏛️ Old Regime — Full Breakdown</h4>
-      ${row('Gross Salary (Annual)', money(d.annual_gross))}
-      ${d.prev_salary > 0 ? row('+ Previous Employment Income', money(d.prev_salary)) : ''}
-      ${d.other_income > 0 ? row('+ Other Income', money(d.other_income)) : ''}
-      ${rowDed('Less: Standard Deduction', money(o.std_deduction))}
-      ${o.hra_exemption > 0 ? rowDed('Less: HRA Exemption', money(o.hra_exemption)) : ''}
-      ${o.deduction_80c > 0 ? rowDed('Less: 80C Investments', money(o.deduction_80c)) : ''}
-      ${o.deduction_nps > 0 ? rowDed('Less: NPS 80CCD(1B)', money(o.deduction_nps)) : ''}
-      ${o.deduction_80d > 0 ? rowDed('Less: 80D Medical Insurance', money(o.deduction_80d)) : ''}
-      ${o.deduction_homeloan > 0 ? rowDed('Less: Home Loan Interest Sec24(b)', money(o.deduction_homeloan)) : ''}
-      ${o.deduction_80e > 0 ? rowDed('Less: 80E Education Loan', money(o.deduction_80e)) : ''}
-      ${o.deduction_80g > 0 ? rowDed('Less: 80G Donations', money(o.deduction_80g)) : ''}
-      ${o.deduction_80dd > 0 ? rowDed('Less: 80DD Dependent Disability', money(o.deduction_80dd)) : ''}
-      ${o.deduction_80u  > 0 ? rowDed('Less: 80U Self Disability', money(o.deduction_80u)) : ''}
-      ${o.deduction_80ddb> 0 ? rowDed('Less: 80DDB Medical Treatment', money(o.deduction_80ddb)) : ''}
-      ${o.deduction_lta  > 0 ? rowDed('Less: LTA', money(o.deduction_lta)) : ''}
-      ${o.house_property > 0 ? rowDed('Less: House Property Loss', money(o.house_property)) : ''}
-      <div class="tr total"><span class="tl">Net Taxable Income</span><span class="tv">${money(o.taxable_income)}</span></div>
-      ${row('Income Tax', money(o.tax_before_cess))}
-      ${row('Health & Education Cess (4%)', money(o.cess))}
-      ${row('Total Tax Liability', money(o.tax))}
-      ${o.prev_tds > 0 ? rowDed('Less: TDS by Previous Employer', money(o.prev_tds)) : ''}
-      <div class="tds-hl">
-        <div><div class="thl">Net Tax Payable (Old Regime)</div></div>
-        <div class="tha">${money(o.net_tax)}</div>
+    <!-- Breakdowns side by side -->
+    <div class="regime-cmp" style="align-items:start">
+      <!-- Old Regime breakdown -->
+      <div class="tax-bk" style="margin-bottom:0">
+        <h4>🏛️ Old Regime — Full Breakdown</h4>
+        ${row('Gross Salary (Annual)', money(d.annual_gross))}
+        ${d.prev_salary > 0 ? row('+ Previous Employment Income', money(d.prev_salary)) : ''}
+        ${d.other_income > 0 ? row('+ Other Income', money(d.other_income)) : ''}
+        ${rowDed('Less: Standard Deduction', money(o.std_deduction))}
+        ${o.hra_exemption > 0 ? rowDed('Less: HRA Exemption', money(o.hra_exemption)) : ''}
+        ${o.deduction_80c > 0 ? rowDed('Less: 80C Investments', money(o.deduction_80c)) : ''}
+        ${o.deduction_nps > 0 ? rowDed('Less: NPS 80CCD(1B)', money(o.deduction_nps)) : ''}
+        ${o.deduction_80d > 0 ? rowDed('Less: 80D Medical Insurance', money(o.deduction_80d)) : ''}
+        ${o.deduction_homeloan > 0 ? rowDed('Less: Home Loan Interest Sec24(b)', money(o.deduction_homeloan)) : ''}
+        ${o.deduction_80e > 0 ? rowDed('Less: 80E Education Loan', money(o.deduction_80e)) : ''}
+        ${o.deduction_80g > 0 ? rowDed('Less: 80G Donations', money(o.deduction_80g)) : ''}
+        ${o.deduction_80dd > 0 ? rowDed('Less: 80DD Dependent Disability', money(o.deduction_80dd)) : ''}
+        ${o.deduction_80u  > 0 ? rowDed('Less: 80U Self Disability', money(o.deduction_80u)) : ''}
+        ${o.deduction_80ddb> 0 ? rowDed('Less: 80DDB Medical Treatment', money(o.deduction_80ddb)) : ''}
+        ${o.deduction_lta  > 0 ? rowDed('Less: LTA', money(o.deduction_lta)) : ''}
+        ${o.house_property > 0 ? rowDed('Less: House Property Loss', money(o.house_property)) : ''}
+        <div class="tr total"><span class="tl">Net Taxable Income</span><span class="tv">${money(o.taxable_income)}</span></div>
+        ${row('Income Tax', money(o.tax_before_cess))}
+        ${row('Health & Education Cess (4%)', money(o.cess))}
+        ${row('Total Tax Liability', money(o.tax))}
+        ${o.prev_tds > 0 ? rowDed('Less: TDS by Previous Employer', money(o.prev_tds)) : ''}
+        <div class="tds-hl">
+          <div><div class="thl">Net Tax Payable (Old Regime)</div></div>
+          <div class="tha">${money(o.net_tax)}</div>
+        </div>
+        <div class="tds-hl" style="background:linear-gradient(135deg,#283593,#3949ab);margin-top:8px">
+          <div><div class="thl">Monthly TDS</div></div>
+          <div class="tha">${money(o.monthly_tds)}/mo</div>
+        </div>
       </div>
-      <div class="tds-hl" style="background:linear-gradient(135deg,#283593,#3949ab);margin-top:8px">
-        <div><div class="thl">Monthly TDS</div></div>
-        <div class="tha">${money(o.monthly_tds)}/mo</div>
-      </div>
-    </div>
 
-    <!-- New Regime breakdown -->
-    <div class="tax-bk" style="background:#f0fdf4;border-color:#86efac">
-      <h4 style="color:#166534">✨ New Regime — Full Breakdown</h4>
-      ${row('Annual Gross Salary', money(d.annual_gross))}
-      ${d.prev_salary > 0 ? row('+ Previous Employment Income', money(d.prev_salary)) : ''}
-      ${d.other_income > 0 ? row('+ Other Income', money(d.other_income)) : ''}
-      ${nw.employer_nps > 0 ? rowDed('Less: Employer NPS — 80CCD(2)', money(nw.employer_nps)) : ''}
-      ${rowDed('Less: Standard Deduction (New Regime)', money(nw.std_deduction))}
-      <div class="tr total"><span class="tl">Net Taxable Income</span><span class="tv">${money(nw.taxable_income)}</span></div>
-      ${row('Income Tax', money(nw.tax_before_cess))}
-      ${row('Health & Education Cess (4%)', money(nw.cess))}
-      <div class="tds-hl" style="background:linear-gradient(135deg,#166534,#16a34a)">
-        <div><div class="thl">Net Tax Payable (New Regime)</div></div>
-        <div class="tha">${money(nw.net_tax)}</div>
-      </div>
-      <div class="tds-hl" style="background:linear-gradient(135deg,#166534,#22c55e);margin-top:8px">
-        <div><div class="thl">Monthly TDS</div></div>
-        <div class="tha">${money(nw.monthly_tds)}/mo</div>
+      <!-- New Regime breakdown -->
+      <div class="tax-bk" style="background:#f0fdf4;border-color:#86efac;margin-bottom:0">
+        <h4 style="color:#166534">✨ New Regime — Full Breakdown</h4>
+        ${row('Annual Gross Salary', money(d.annual_gross))}
+        ${d.prev_salary > 0 ? row('+ Previous Employment Income', money(d.prev_salary)) : ''}
+        ${d.other_income > 0 ? row('+ Other Income', money(d.other_income)) : ''}
+        ${nw.employer_nps > 0 ? rowDed('Less: Employer NPS — 80CCD(2)', money(nw.employer_nps)) : ''}
+        ${rowDed('Less: Standard Deduction (New Regime)', money(nw.std_deduction))}
+        <div class="tr total"><span class="tl">Net Taxable Income</span><span class="tv">${money(nw.taxable_income)}</span></div>
+        ${row('Income Tax', money(nw.tax_before_cess))}
+        ${row('Health & Education Cess (4%)', money(nw.cess))}
+        <div class="tds-hl" style="background:linear-gradient(135deg,#166534,#16a34a)">
+          <div><div class="thl">Net Tax Payable (New Regime)</div></div>
+          <div class="tha">${money(nw.net_tax)}</div>
+        </div>
+        <div class="tds-hl" style="background:linear-gradient(135deg,#166534,#22c55e);margin-top:8px">
+          <div><div class="thl">Monthly TDS</div></div>
+          <div class="tha">${money(nw.monthly_tds)}/mo</div>
+        </div>
       </div>
     </div>`;
 }
