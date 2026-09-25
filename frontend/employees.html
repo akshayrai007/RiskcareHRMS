@@ -2649,10 +2649,11 @@ function onRoleChange() {
 }
 
 // PT slab — mirrors backend's calcPT() in payrollController.js exactly.
+// PT only applicable for Maharashtra and West Bengal.
 function calcPTPreview(gross, state) {
   const s = (state || '').trim().toLowerCase();
+  if (!['maharashtra', 'west bengal'].includes(s)) return 0;
   if (s === 'west bengal') {
-    if (gross <= 8500)  return 0;
     if (gross <= 10000) return 0;
     if (gross <= 15000) return 110;
     if (gross <= 25000) return 130;

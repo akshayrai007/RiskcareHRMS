@@ -14,19 +14,21 @@ const fs       = require('fs');
 // Add more states here as needed. Falls back to Maharashtra's existing flat
 // ₹200 (gross >= 10,000) rule if the employee's state isn't listed, so nothing
 // changes for existing employees without this data filled in.
+const PT_STATES = ['maharashtra', 'west bengal'];
 function calcPT(gross, state) {
   const s = (state || '').trim().toLowerCase();
 
+  if (!PT_STATES.includes(s)) return 0;
+
   if (s === 'west bengal') {
-    if (gross <= 8500)  return 0;
     if (gross <= 10000) return 0;
     if (gross <= 15000) return 110;
     if (gross <= 25000) return 130;
     if (gross <= 40000) return 150;
-    return 200; // above 40,000
+    return 200;
   }
 
-  // Maharashtra / default — existing behaviour, unchanged
+  // Maharashtra
   return gross >= 10000 ? 200 : 0;
 }
 
