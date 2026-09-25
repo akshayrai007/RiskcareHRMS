@@ -729,7 +729,7 @@
           </div>
           <div class="sx-grid">
             <div class="sx-field sx-full"><label>Basic Salary *</label>
-              <div class="sx-money big"><span>₹</span><input id="edit-basic" type="number" class="form-control" placeholder="0" oninput="autoCalcGratuity();recalcSalaryPreview()"></div></div>
+              <div class="sx-money big"><span>₹</span><input id="edit-basic" type="number" class="form-control" placeholder="0" oninput="autoCalcGratuity();autoCalcPfEsi();recalcSalaryPreview()"></div></div>
             <div class="sx-field"><label>HRA</label>
               <div class="sx-money"><span>₹</span><input id="edit-hra" type="number" class="form-control" placeholder="0" oninput="recalcSalaryPreview()"></div></div>
             <div class="sx-field"><label>Defray Allowance</label>
@@ -752,7 +752,7 @@
           <div id="pf-override-wrap" class="sx-sub" style="display:none">
             <div class="sx-grid">
               <div class="sx-field"><label>PF basis</label>
-                <select id="edit-pf-basis" class="form-control" onchange="recalcSalaryPreview()">
+                <select id="edit-pf-basis" class="form-control" onchange="autoCalcPfEsi();recalcSalaryPreview()">
                   <option value="capped">Capped at ₹15,000</option>
                   <option value="actual">Actual Basic</option>
                 </select></div>
@@ -2560,11 +2560,12 @@ async function openEditEmp(id) {
   document.getElementById('edit-tax-regime').value    = s.tax_regime === 'old' ? 'old' : 'new';
   toggleTdsRegime();
   document.getElementById('edit-pf-basis').value      = s.pf_wage_basis === 'actual' ? 'actual' : 'capped';
-  // PF / ESI manual overrides — only shown when checkbox is ticked; blank = use formula
+  // PF / ESI manual overrides — pre-fill with auto-calculated values (HR can edit)
   document.getElementById('edit-pf-emp-override').value  = s.pf_employee_override  || '';
   document.getElementById('edit-pf-emr-override').value  = s.pf_employer_override  || '';
   document.getElementById('edit-esi-emp-override').value = s.esi_employee_override || '';
   document.getElementById('edit-esi-emr-override').value = s.esi_employer_override || '';
+  if (!s.pf_employee_override && !s.pf_employer_override && !s.esi_employee_override && !s.esi_employer_override) autoCalcPfEsi();
   // Show/hide override panels based on checkbox state
   const pfOvWrap = document.getElementById('pf-override-wrap');
   const esiOvWrap= document.getElementById('esi-override-wrap');
@@ -2710,6 +2711,31 @@ function autoCalcGratuity() {
   if (!gratEl) return;
   const monthly = _salaryMode === 'annual' ? basicVal / 12 : basicVal;
   gratEl.value  = Math.round(monthly * 0.0481);
+}
+
+function autoCalcPfEsi() {
+  const v = id => parseFloat(document.getElementById(id)?.value) || 0;
+  const basic      = _salaryMode === 'annual' ? v('edit-basic') / 12 : v('edit-basic');
+  const hra        = _salaryMode === 'annual' ? v('edit-hra') / 12 : v('edit-hra');
+  const special    = _salaryMode === 'annual' ? v('edit-special') / 12 : v('edit-special');
+  const gratuity   = parseFloat(document.getElementById('edit-gratuity')?.value) || 0;
+  const foodCoupon = _salaryMode === 'annual' ? v('edit-food-coupon') / 12 : v('edit-food-coupon');
+  const gross = basic + hra + special + gratuity + foodCoupon;
+
+  // PF
+  const pfBasis = document.getElementById('edit-pf-basis')?.value || 'capped';
+  const pfBase  = pfBasis === 'actual' ? basic : Math.min(basic, 15000);
+  const pfAmt   = Math.round(pfBase * 0.12);
+  const pfEmpEl = document.getElementById('edit-pf-emp-override');
+  const pfEmrEl = document.getElementById('edit-pf-emr-override');
+  if (pfEmpEl) pfEmpEl.value = pfAmt;
+  if (pfEmrEl) pfEmrEl.value = pfAmt;
+
+  // ESI — only if Gross ≤ ₹21,000
+  const esiEmpEl = document.getElementById('edit-esi-emp-override');
+  const esiEmrEl = document.getElementById('edit-esi-emr-override');
+  if (esiEmpEl) esiEmpEl.value = gross > 0 && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
+  if (esiEmrEl) esiEmrEl.value = gross > 0 && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
 }
 
 function recalcSalaryPreview() {
