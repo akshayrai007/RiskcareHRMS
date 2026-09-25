@@ -1590,6 +1590,146 @@ exports.exportExcel = async (req, res) => {
 // ── Payroll integration: monthly TDS on salary ───────────────────────────────
 // Used by payrollController when building the monthly payroll template.
 //   Projected annual income = previous-employer salary
+// ── ZIP helpers ───────────────────────────────────────────────────────────────
+const archiver = require('archiver');
+const ExcelJS  = require('exceljs');
+
+async function buildDeclExcel(declRows) {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('IT Declarations');
+  ws.columns = [
+    { header:'Employee Code', key:'employee_code', width:16 },
+    { header:'Employee Name', key:'employee_name', width:24 },
+    { header:'PAN',           key:'pan_number',    width:14 },
+    { header:'FY',            key:'financial_year',width:10 },
+    { header:'Regime',        key:'regime',        width:10 },
+    { header:'Status',        key:'status',        width:12 },
+    { header:'80C',           key:'total_80c',     width:12 },
+    { header:'Total Deductions', key:'total_deductions', width:16 },
+    { header:'Estimated Tax', key:'estimated_tax', width:16 },
+    { header:'Monthly TDS',   key:'monthly_tds',   width:14 },
+    { header:'Submitted At',  key:'submitted_at',  width:22 },
+    { header:'HR Comment',    key:'hr_comment',    width:30 },
+  ];
+  ws.getRow(1).font = { bold: true };
+  for (const d of declRows) ws.addRow(d);
+  const buf = await wb.xlsx.writeBuffer();
+  return buf;
+}
+
+function resolveFilePath(filePath) {
+  const UPLOAD_DIR_ABS = path.join(__dirname, '../../../../uploads/it-proofs');
+  const candidates = [
+    filePath,
+    path.resolve(process.cwd(), filePath),
+    path.join(UPLOAD_DIR_ABS, path.basename(filePath || '')),
+    path.resolve(__dirname, '../../../../', filePath || ''),
+  ].filter(Boolean);
+  for (const p of candidates) {
+    try { if (fs.existsSync(p)) return p; } catch (_) {}
+  }
+  return null;
+}
+
+// ── GET /it-declaration/:id/download-zip ─────────────────────────────────────
+exports.downloadDeclZip = async (req, res) => {
+  try {
+    const declId = parseInt(req.params.id);
+    const dRow = await db.query(
+      `SELECT d.*, e.employee_code, e.first_name, e.last_name
+       FROM it_declarations d JOIN employees e ON d.employee_id=e.id WHERE d.id=$1`, [declId]
+    );
+    if (!dRow.rows.length) return res.status(404).json({ success:false, message:'Not found' });
+    const d    = dRow.rows[0];
+    const name = `${d.employee_code}_${(d.first_name||'')}${(d.last_name||'')}`.replace(/[^a-zA-Z0-9_-]/g,'_');
+
+    const proofs = await db.query(
+      `SELECT * FROM it_proof_documents WHERE declaration_id=$1 ORDER BY section, uploaded_at`, [declId]
+    );
+
+    const excelBuf = await buildDeclExcel([{
+      employee_code: d.employee_code, employee_name: `${d.first_name||''} ${d.last_name||''}`.trim(),
+      pan_number: d.pan_number, financial_year: d.financial_year, regime: d.regime,
+      status: d.status, total_80c: d.total_80c||0, total_deductions: d.total_deductions||0,
+      estimated_tax: d.estimated_tax||0, monthly_tds: d.monthly_tds||0,
+      submitted_at: d.submitted_at, hr_comment: d.hr_comment||'',
+    }]);
+
+    res.setHeader('Content-Disposition', `attachment; filename="${name}.zip"`);
+    res.setHeader('Content-Type', 'application/zip');
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    archive.pipe(res);
+    archive.append(Buffer.from(excelBuf), { name: `${name}_details.xlsx` });
+    for (const p of proofs.rows) {
+      const absPath = resolveFilePath(p.file_path);
+      if (absPath) {
+        const safeName = `${p.section}_${p.doc_type||''}_${p.file_name}`.replace(/[^a-zA-Z0-9._-]/g,'_');
+        archive.file(absPath, { name: `proofs/${safeName}` });
+      }
+    }
+    await archive.finalize();
+  } catch (err) {
+    console.error('[downloadDeclZip]', err.message);
+    if (!res.headersSent) res.status(500).json({ success:false, message:'Server error' });
+  }
+};
+
+// ── GET /it-declaration/download-all-zip ─────────────────────────────────────
+exports.downloadAllZip = async (req, res) => {
+  try {
+    const fy = req.query.fy || '';
+    const st = req.query.status || '';
+    let q = `SELECT d.*, e.employee_code, e.first_name, e.last_name
+              FROM it_declarations d JOIN employees e ON d.employee_id=e.id WHERE 1=1`;
+    const params = [];
+    if (fy) { params.push(fy); q += ` AND d.financial_year=$${params.length}`; }
+    if (st) { params.push(st); q += ` AND d.status=$${params.length}`; }
+    q += ' ORDER BY e.employee_code';
+    const decls = (await db.query(q, params)).rows;
+
+    const allProofsRes = await db.query(
+      `SELECT p.*, d.employee_id FROM it_proof_documents p
+       JOIN it_declarations d ON p.declaration_id=d.id ${fy ? `WHERE d.financial_year=$1` : ''}
+       ORDER BY p.declaration_id, p.section`, fy ? [fy] : []
+    );
+    const proofMap = {};
+    for (const p of allProofsRes.rows) {
+      if (!proofMap[p.declaration_id]) proofMap[p.declaration_id] = [];
+      proofMap[p.declaration_id].push(p);
+    }
+
+    const excelBuf = await buildDeclExcel(decls.map(d => ({
+      employee_code: d.employee_code, employee_name: `${d.first_name||''} ${d.last_name||''}`.trim(),
+      pan_number: d.pan_number, financial_year: d.financial_year, regime: d.regime,
+      status: d.status, total_80c: d.total_80c||0, total_deductions: d.total_deductions||0,
+      estimated_tax: d.estimated_tax||0, monthly_tds: d.monthly_tds||0,
+      submitted_at: d.submitted_at, hr_comment: d.hr_comment||'',
+    })));
+
+    const fyLabel = fy ? `_${fy}` : '';
+    res.setHeader('Content-Disposition', `attachment; filename="IT_Declarations${fyLabel}.zip"`);
+    res.setHeader('Content-Type', 'application/zip');
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    archive.pipe(res);
+    archive.append(Buffer.from(excelBuf), { name: `IT_Declarations${fyLabel}.xlsx` });
+    for (const d of decls) {
+      const empName = `${d.employee_code}_${(d.first_name||'')}${(d.last_name||'')}`.replace(/[^a-zA-Z0-9_-]/g,'_');
+      const proofs  = proofMap[d.id] || [];
+      for (const p of proofs) {
+        const absPath = resolveFilePath(p.file_path);
+        if (absPath) {
+          const safeName = `${p.section}_${p.doc_type||''}_${p.file_name}`.replace(/[^a-zA-Z0-9._-]/g,'_');
+          archive.file(absPath, { name: `${empName}/proofs/${safeName}` });
+        }
+      }
+    }
+    await archive.finalize();
+  } catch (err) {
+    console.error('[downloadAllZip]', err.message);
+    if (!res.headersSent) res.status(500).json({ success:false, message:'Server error' });
+  }
+};
+
 //                           + salary already paid this FY (payroll table; catch-up at structure gross if a month is missing)
 //                           + THIS month's earned gross (paid-days based)
 //                           + structure gross x remaining months

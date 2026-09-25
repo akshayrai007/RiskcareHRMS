@@ -267,16 +267,16 @@
 
       <!-- Tabs -->
       <div class="itd-tabs">
-        <button class="itd-tab active" id="itab-decl"  onclick="sw('decl')">📋 My Declaration</button>
+        <button class="itd-tab active" id="itab-tax"   onclick="sw('tax')">🧮 Tax Preview</button>
+        <button class="itd-tab"        id="itab-decl"  onclick="sw('decl')">📋 My Declaration</button>
         <button class="itd-tab"        id="itab-proof" onclick="sw('proof')">📎 Proofs</button>
-        <button class="itd-tab"        id="itab-tax"   onclick="sw('tax')">🧮 Tax Preview</button>
         <button class="itd-tab"        id="itab-hr"    onclick="sw('hr')" style="display:none">👩‍💼 HR Review</button>
         <button class="itd-tab"        id="itab-cfg"   onclick="sw('cfg')" style="display:none">⚙️ Admin Config</button>
       </div>
     </div>
 
     <!-- ══ TAB: Declaration ══ -->
-    <div id="pane-decl" class="itd-body">
+    <div id="pane-decl" class="itd-body" style="display:none">
       <div id="lk-notice" class="lk-notice" style="display:none">🔒 Declaration is locked. Contact HR to reopen.</div>
 
       <!-- Deduction Summary Cards -->
@@ -588,7 +588,7 @@
     </div>
 
     <!-- ══ TAB: Tax Preview ══ -->
-    <div id="pane-tax" class="itd-body" style="display:none">
+    <div id="pane-tax" class="itd-body">
       <div id="tax-content"><div class="loader"><div class="spinner"></div></div></div>
     </div>
 
@@ -611,6 +611,9 @@
           </select>
           <button class="btn btn-primary btn-sm" id="hr-export-btn" onclick="exportHRExcel()" style="font-size:12px;padding:7px 14px;font-weight:700">
             📊 Export Excel
+          </button>
+          <button class="btn btn-sm" onclick="downloadAllZip()" style="font-size:12px;padding:7px 14px;font-weight:700;background:#4f46e5;color:#fff;border:none;border-radius:7px;cursor:pointer">
+            📥 Download All ZIP
           </button>
         </div>
       </div>
@@ -784,7 +787,7 @@ window.addEventListener('load', async () => {
     loadHRStats();
   }
   if (isAdmin) document.getElementById('itab-cfg').style.display = '';
-  await loadDecl();
+  await loadTaxPreview();
   loadWindowBanner();
 });
 
@@ -1624,6 +1627,7 @@ async function loadHR() {
         <button class="btn btn-outline btn-sm" style="font-size:11px" title="Approve / Reject declaration" onclick="openReview(${d.id},'${d.employee_name}')">📋 Review</button>
         <button class="btn btn-outline btn-sm" style="font-size:11px" title="View full declaration details" onclick="viewDeclDetail(${d.id})">👁 Detail</button>
         ${d.proof_count > 0 ? `<button class="btn btn-outline btn-sm" style="font-size:11px" title="View uploaded proofs" onclick="viewDeclProofs(${d.id})">📎 ${d.proof_count} Proof${d.proof_count==1?'':'s'}</button>` : ''}
+        <button class="btn btn-sm" style="font-size:11px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe" title="Download proofs + details as ZIP" onclick="downloadDeclZip(${d.id},'${(d.employee_code||'')}','${(d.employee_name||'').replace(/'/g,'')}')">📥 ZIP</button>
       </div>
     </td>
   </tr>`).join('');
@@ -1734,6 +1738,32 @@ async function qkReviewProof(id, action) {
   const res = await api('POST', `/it-declaration/proof/${id}/review`, { action });
   if (res?.success) toast(`Proof ${action}d`);
   else toast(res?.message||'Failed', 'error');
+}
+
+function downloadDeclZip(id, code, name) {
+  const fname = `${code}_${name}`.replace(/[^a-zA-Z0-9_-]/g,'_');
+  const url = `${API_BASE}/it-declaration/${id}/download-zip`;
+  fetchZipFile(url, `${fname}.zip`);
+}
+function downloadAllZip() {
+  const fy  = document.getElementById('hr-filter-fy')?.value || '';
+  const st  = document.getElementById('hr-filter-st')?.value || '';
+  const url = `${API_BASE}/it-declaration/download-all-zip?fy=${encodeURIComponent(fy)}&status=${encodeURIComponent(st)}`;
+  const label = fy ? `IT_Declarations_${fy}.zip` : 'IT_Declarations.zip';
+  fetchZipFile(url, label);
+}
+function fetchZipFile(url, filename) {
+  toast('Preparing ZIP…');
+  fetch(url, { headers: { Authorization: 'Bearer ' + Auth.getToken() } })
+    .then(r => { if (!r.ok) throw new Error('Failed'); return r.blob(); })
+    .then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    })
+    .catch(() => toast('ZIP download failed', 'error'));
 }
 
 // ── Admin Config ──────────────────────────────────────────────────────────────
