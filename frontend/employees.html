@@ -2811,14 +2811,15 @@ function recalcSalaryPreview() {
   setCell('pv-eps-m', epsAc10);     setCell('pv-eps-a', epsAc10 * 12);
   setCell('pv-pfadm2-m', pfAdmAc2); setCell('pv-pfadm2-a', pfAdmAc2 * 12);
   setCell('pv-edli-m', edliAc21);   setCell('pv-edli-a', edliAc21 * 12);
-  const empr = pfEmr + esiEmr + pfAdmin;
+  const empr    = pfEmr + pfAdmAc2 + edliAc21 + esiEmr;
+  const ctcNew  = gross + empr;
   setRow('esiemr', esiEmr, true);
-  setRow('emr', empr); setRow('net', net); setRow('ctc', ctc);
+  setRow('emr', empr); setRow('net', net); setRow('ctc', ctcNew);
   [['gross', gross], ['pf', pfEmp], ['esi', esiEmp], ['pt', pt], ['ded', totalDed]].forEach(([k, v]) => {
     const el = document.getElementById(`pv-${k}-a`); if (el) el.textContent = fmt2(v * 12);
   });
   window._annualCtc = Math.round(ctc * 12);
-  document.getElementById('prev-ctc').textContent     = fmt2(ctc * 12);
+  document.getElementById('prev-ctc').textContent     = fmt2(ctcNew * 12);
   document.getElementById('salary-preview').style.display = '';
 }
 
