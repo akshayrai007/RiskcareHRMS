@@ -169,6 +169,7 @@ let allProvision = [];
 document.addEventListener('DOMContentLoaded', async () => {
   Auth.guard();
   loadNotifBadge();
+Auth.requireRole('hr','admin','super_admin','accounts','manager','tl');
 buildSidebar('provision.html');
   loadNotifBadge();
   currentUser = Auth.getUser();

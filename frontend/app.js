@@ -48,6 +48,12 @@ const Auth = {
   setSession: (token, user) => { localStorage.setItem(window.CFG.tokenKey, token); localStorage.setItem(window.CFG.userKey, JSON.stringify(user)); },
   clear:      () => { localStorage.removeItem(window.CFG.tokenKey); localStorage.removeItem(window.CFG.userKey); },
   guard:      () => { if (!Auth.getToken()) { window.location.href = 'login.html'; return false; } return true; },
+  requireRole: (...roles) => {
+    if (!Auth.getToken()) { window.location.href = 'login.html'; return false; }
+    const user = Auth.getUser();
+    if (!user || !roles.includes(user.role)) { window.location.href = 'dashboard.html'; return false; }
+    return true;
+  },
   guardDashboard: () => {
     if (!Auth.getToken()) { window.location.href = 'login.html'; return false; }
     // Role defaults still gate immediately (no flash of the page for roles that

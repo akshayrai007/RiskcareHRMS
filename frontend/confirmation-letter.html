@@ -150,6 +150,7 @@
 
 <script src="app.js"></script>
 <script>
+Auth.requireRole('hr','admin','super_admin');
 buildSidebar('confirmation-letter.html');
 
 let _searchTimer = null;

@@ -713,6 +713,7 @@ Auth.guard();
 if (Auth.getUser()?.role !== 'hr') {
   window.location.href = 'dashboard.html';
 }
+Auth.requireRole('hr','admin','super_admin');
 buildSidebar('offer-letter.html');
 loadNotifBadge();
 </script>
