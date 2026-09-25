@@ -824,10 +824,16 @@ async function loadHREmps() {
 function onHREmpChange() {
   const txt = document.getElementById('sel-hr-emp').value.trim();
   const id  = _hrEmpMap[txt];
-  if (!txt) { currentEmpId = Auth.getUser().id; loadDecl(); return; }
+  if (!txt) { currentEmpId = Auth.getUser().id; reloadActiveTab(); return; }
   if (!id) return; // still typing — wait for a valid match
   currentEmpId = id;
-  loadDecl();
+  reloadActiveTab();
+}
+function reloadActiveTab() {
+  const active = ['decl','proof','tax','hr','cfg'].find(t => document.getElementById('pane-'+t)?.style.display !== 'none');
+  if (active === 'tax')   loadTaxPreview();
+  else if (active === 'proof') renderProofTab();
+  else loadDecl();
 }
 
 // ── Tab switch ────────────────────────────────────────────────────────────────
