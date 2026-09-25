@@ -1347,6 +1347,11 @@ exports.downloadPayrollTemplate = async (req, res) => {
     const dataCellStyle = (g, isNum) => ({ font:{name:'Calibri',sz:10,color:{rgb:'1F2937'}}, fill:{patternType:'solid',fgColor:{rgb:g.dataBg}}, alignment:{horizontal:isNum?'right':'left',vertical:'center'}, border:thinBorder, numFmt:isNum?'#,##0.00':undefined });
 
     const buildPayrollSheet = async (employeesList) => {
+    const tdsFy = m >= 4 ? `${y}-${String(y + 1).slice(2)}` : `${y - 1}-${String(y).slice(2)}`;
+    const tdsParams = await itDecl.getTdsSheetParams(tdsFy).catch(() => null);
+    // Turn a flattened slab array [{lo,step},...] into an Excel array-constant literal,
+    // e.g. {0,400000,800000,...} / {0,0.05,0.10,...} for a SUMPRODUCT tiered-tax formula.
+    const arrLit = (arr, key) => `{${arr.map(x => x[key]).join(',')}}`;
     const rows = [
       // Row 0: Title
       [`HRMS — Payroll Input Template | ${monthName} ${y} | Total Working Days: ${daysInMonth}`],
@@ -1373,12 +1378,19 @@ exports.downloadPayrollTemplate = async (req, res) => {
         // TDS: if the structure has TDS enabled, pre-fill this month's amount from the
         // employee's IT Declaration (regime, deductions, prev-employer income, TDS paid YTD).
         let tds = parseFloat(e.tds) || 0;
+        let tdsFormulaParts = null;   // set below when we can build a live in-sheet formula
         if (e.tds_applicable) {
           try {
             const fixedMonthly = (parseFloat(e.basic) || 0) + (parseFloat(e.hra) || 0) + (parseFloat(e.special_allowance) || 0) + (parseFloat(e.gratuity) || 0);
             const earned = fixedMonthly * (daysInMonth ? monthAtt.paid / daysInMonth : 0) + (parseFloat(e.food_coupon) || 0);
             const r = await itDecl.estimateMonthlyTds(e.id, m, y, earned);
             tds = r.tds || 0;
+            if (tdsParams && r.months_left > 0) {
+              tdsFormulaParts = {
+                baseIncome: r.base_income || 0, deductions: r.deductions || 0, alreadyDeducted: r.already_deducted || 0,
+                monthsLeft: r.months_left, regime: r.regime === 'old' ? 'old' : 'new',
+              };
+            }
           } catch (err) { console.error('TDS estimate failed for', e.employee_code, err.message); }
         } else { tds = 0; }
         const totalDed= parseFloat(e.total_deductions) || (pf + esi + pt + tds);
@@ -1445,6 +1457,24 @@ exports.downloadPayrollTemplate = async (req, res) => {
       const ded = num('PF (Employee)') + num('ESI (Employee)') + num('Prof Tax') + num('TDS') +
                   num('GTL Deduction') + num('Late Mark Deduction') + num('Salary Advance Recovery (Loan/EMI)');
       const setF = (label, f, v) => { ws1[LT(label) + R] = { t: 'n', f, v, s: dataCellStyle(groupForCol(hx(label)), true) }; };
+      // TDS: a real, editable tax formula, not a frozen number. Because it references
+      // this row's own live Gross Salary cell, TDS recalculates in Excel the moment HR
+      // edits Present Days, LOP, Bonus, etc. — a 30-day month and a 26-day month get
+      // different TDS automatically, with no re-upload needed.
+      if (tdsFormulaParts) {
+        const p  = tdsFormulaParts;
+        const lo = arrLit(p.regime === 'old' ? tdsParams.oldSlabs : tdsParams.newSlabs, 'lo');
+        const st = arrLit(p.regime === 'old' ? tdsParams.oldSlabs : tdsParams.newSlabs, 'step');
+        const rebateThresh = p.regime === 'old' ? tdsParams.rebateOld    : tdsParams.rebateNew;
+        const rebateAmt    = p.regime === 'old' ? tdsParams.rebateOldAmt : tdsParams.rebateNewAmt;
+        const taxable = `MAX(0,${p.baseIncome}-${p.deductions}+${LT('Gross Salary')}${R})`;
+        const slabTax = `SUMPRODUCT((${taxable}>${lo})*(${taxable}-${lo})*${st})`;
+        const afterRebate = p.regime === 'new'
+          ? `IF(${taxable}<=${rebateThresh},MAX(0,${slabTax}-${rebateAmt}),MIN(${slabTax},${taxable}-${rebateThresh}))`
+          : `IF(${taxable}<=${rebateThresh},MAX(0,${slabTax}-${rebateAmt}),${slabTax})`;
+        const annualTax = `ROUND((${afterRebate})*(1+${tdsParams.cess}),0)`;
+        setF('TDS', `MAX(0,ROUND((${annualTax}-${p.alreadyDeducted})/${p.monthsLeft},0))`, tds);
+      }
       setF('LOP Days', `MAX(0,${LT('Working Days')}${R}-${LT('Present Days')}${R})`, lop);
       setF('Paid Days', `MIN(${LT('Working Days')}${R},${LT('Present Days')}${R}+MIN(${LT('LOP Reversal (Days)')}${R},${LT('LOP Days')}${R}))`, paid);
       // "Actual" columns = what's actually earned this month once attendance is
