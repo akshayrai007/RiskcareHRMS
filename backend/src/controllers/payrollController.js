@@ -1320,6 +1320,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
     const HEADERS = [
       'Emp Code', 'Full Name', 'Department', 'Division', 'Designation', 'Category',
       'Working Days', 'Present Days', 'LOP Days', 'LOP Reversal (Days)', 'Paid Days',
+      'Gross CTC (Monthly)', 'Actual CTC',
       'Basic (Monthly)', 'Basic (Actual)',
       'HRA (Monthly)', 'HRA (Actual)',
       'Defray Allowance (Monthly)', 'Defray Allowance (Actual)',
@@ -1336,6 +1337,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // Section color map — used for header fill + a light tint on data rows.
     const COL_GROUPS = [
       { from: 'Emp Code',              to: 'Paid Days',                headBg:'475569', headFg:'FFFFFF', dataBg:'F1F5F9' }, // identity/attendance - slate
+      { from: 'Gross CTC (Monthly)',  to: 'Actual CTC',               headBg:'7C3AED', headFg:'FFFFFF', dataBg:'EDE9FE' }, // CTC overview - purple
       { from: 'Basic (Monthly)',       to: 'Food Coupon (Actual)',     headBg:'15803D', headFg:'FFFFFF', dataBg:'DCFCE7' }, // fixed earnings - green
       { from: 'Food Coupon Adjustment',to: 'Performance Bonus',        headBg:'0D9488', headFg:'FFFFFF', dataBg:'CCFBF1' }, // one-time earnings - teal
       { from: 'Gross Salary',          to: 'Gross Salary',             headBg:'B45309', headFg:'FFFFFF', dataBg:'FEF3C7' }, // gross - amber
@@ -1408,6 +1410,8 @@ exports.downloadPayrollTemplate = async (req, res) => {
           monthAtt.lop,      // LOP Days - pre-filled from attendance
           0,                 // LOP Reversal (Days) - credit LOP days back
           monthAtt.paid,     // Paid Days
+          gross + (parseFloat(e.pf_employer) || 0) + (parseFloat(e.pf_admin) || 0) + (parseFloat(e.esi_employer) || 0), // Gross CTC (Monthly)
+          0,                 // Actual CTC — live formula set below
           parseFloat(e.basic)             || 0, 0,   // Basic (Monthly), Basic (Actual - live formula, placeholder here)
           parseFloat(e.hra)               || 0, 0,   // HRA (Monthly), HRA (Actual)
           parseFloat(e.special_allowance) || 0, 0,   // Defray Allowance (Monthly), (Actual)
@@ -1503,6 +1507,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       const empr = num('EPF Employer (A/c-1)') + num('EPS Employer (A/c-10)') + num('PF Admin + EDLI (Employer)') + num('ESI (Employer)');
       setF('Total Employer Contribution', `${LT('EPF Employer (A/c-1)')}${R}+${LT('EPS Employer (A/c-10)')}${R}+${LT('PF Admin + EDLI (Employer)')}${R}+${LT('ESI (Employer)')}${R}`, empr);
       setF('Total Cost to Company', `${LT('Gross Salary')}${R}+${LT('Total Employer Contribution')}${R}`, gross + empr);
+      setF('Actual CTC', `${LT('Gross Salary')}${R}+${LT('Total Employer Contribution')}${R}`, gross + empr);
       setF('Net Pay', `MAX(0,${LT('Gross Salary')}${R}-${LT('Total Deductions')}${R})`, Math.max(0, gross - ded));
 
       // Style every remaining (non-formula) cell in this data row by its section color.
