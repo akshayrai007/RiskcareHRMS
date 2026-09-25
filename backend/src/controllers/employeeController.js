@@ -1129,13 +1129,13 @@ exports.exportMasterExcel = async (req, res) => {
     });
 
     const MASTER_GROUPS = [
-      { label: 'IDENTITY',               cols: 9, color: 'FF1565C0' },
-      { label: 'PROFESSIONAL',           cols: 9, color: 'FF2E7D32' },
-      { label: 'STATUTORY IDs & BANK',   cols: 7, color: 'FF6A1B9A' },
-      { label: 'EARNINGS',               cols: 5, color: 'FF388E3C' },
-      { label: 'EMPLOYEE DEDUCTIONS',    cols: 5, color: 'FFC62828' },
-      { label: 'EMPLOYER CONTRIBUTIONS', cols: 4, color: 'FF8E24AA' },
-      { label: 'CTC',                    cols: 2, color: 'FF37474F' },
+      { label: 'IDENTITY',               cols: 9,  color: 'FF1565C0' },
+      { label: 'PROFESSIONAL',           cols: 9,  color: 'FF2E7D32' },
+      { label: 'STATUTORY IDs & BANK',   cols: 7,  color: 'FF6A1B9A' },
+      { label: 'EARNINGS',               cols: 8,  color: 'FF388E3C' },
+      { label: 'EMPLOYEE DEDUCTIONS',    cols: 6,  color: 'FFC62828' },
+      { label: 'EMPLOYER CONTRIBUTIONS', cols: 4,  color: 'FF8E24AA' },
+      { label: 'NET & CTC',              cols: 3,  color: 'FF37474F' },
     ];
     const masterHeaders = [
       // IDENTITY (9)
@@ -1144,25 +1144,25 @@ exports.exportMasterExcel = async (req, res) => {
       'City','State','Department','Designation','Role','Category','Level','Joining Date','Reporting Manager',
       // STATUTORY IDs & BANK (7)
       'PAN','Aadhaar','UAN','PF No','Bank','Account No','IFSC',
-      // EARNINGS (5)
-      'Basic','HRA','Defray Allowance','Gratuity','Gross Salary',
-      // EMPLOYEE DEDUCTIONS (5)
-      'PF (Emp)','ESI (Emp)','Prof Tax','TDS','Total Deductions',
+      // EARNINGS (8)
+      'Basic','HRA','Conveyance','Special Allowance','Defray Allowance','Gratuity','Gross Salary','LWF',
+      // EMPLOYEE DEDUCTIONS (6)
+      'PF (Emp)','ESI (Emp)','Prof Tax','TDS','LWF (Emp)','Total Deductions',
       // EMPLOYER CONTRIBUTIONS (4)
       'PF (Employer)','ESI (Employer)','PF Admin','Total Employer Cost',
-      // CTC (2)
-      'CTC Monthly','CTC Annual',
+      // NET & CTC (3)
+      'Net Salary','CTC Monthly','CTC Annual',
     ];
-    const MASTER_COLS = masterHeaders.length;                 // 41
+    const MASTER_COLS = masterHeaders.length;                 // 46
     const FIRST_MONEY_COL0 = 25;                              // 0-based index of 'Basic'
     const masterWidths = [
       12,24,30,14,9,12,11,13,32,
       14,14,16,22,12,13,7,13,22,
       14,16,16,16,20,20,14,
-      12,11,14,11,13,
-      11,11,10,11,15,
+      12,11,13,16,15,12,13,10,
+      11,11,10,11,10,15,
       13,13,11,17,
-      13,13,
+      13,13,13,
     ];
 
     // Title
@@ -1200,12 +1200,16 @@ exports.exportMasterExcel = async (req, res) => {
     masterWidths.forEach((w, i) => { ws2.getColumn(i + 1).width = w; });
     ws2.getColumn(MASTER_COLS + 1).width = 55;   // deactivation remark
 
-    // Column letters for the live formulas (Gross / Total Ded / Employer Cost / CTC).
+    // Column letters for live formulas — col numbers (1-based):
+    // 26=Basic 27=HRA 28=Conveyance 29=SpecialAllowance 30=DefrayAllowance 31=Gratuity 32=Gross 33=LWF(earn)
+    // 34=PFEmp 35=ESIEmp 36=ProfTax 37=TDS 38=LWFEmp 39=TotalDed
+    // 40=PFEmr 41=ESIEmr 42=PFAdm 43=TotalEmpCost
+    // 44=NetSalary 45=CTCMonthly 46=CTCAnnual
     const M = {
-      basic: colLetter(26), special: colLetter(28), grat: colLetter(29), gross: colLetter(30),
-      pfEmp: colLetter(31), tds: colLetter(34), totalDed: colLetter(35),
-      pfEmr: colLetter(36), pfAdm: colLetter(38), totalEmpCost: colLetter(39),
-      ctcMonthly: colLetter(40),
+      basic: colLetter(26), defrAllw: colLetter(30), grat: colLetter(31), gross: colLetter(32),
+      pfEmp: colLetter(34), tds: colLetter(37), lwfEmp: colLetter(38), totalDed: colLetter(39),
+      pfEmr: colLetter(40), pfAdm: colLetter(42), totalEmpCost: colLetter(43),
+      netSalary: colLetter(44), ctcMonthly: colLetter(45),
     };
 
     function writeMasterRow(e, rowNum, isAlt, tint) {
@@ -1223,14 +1227,21 @@ exports.exportMasterExcel = async (req, res) => {
         e.reporting_manager || '',
         e.pan_number || '', e.aadhar_number || '', e.uan_number || '', e.pf_number || '',
         e.bank_name || '', e.bank_account || '', e.bank_ifsc || '',
-        num(e.basic), num(e.hra), num(e.special_allowance), num(e.gratuity),
-        // Gross = Basic..Special ONLY (gratuity is an employer retiral cost and is
-        // deliberately excluded — matches payroll/offer-letter/import).
-        { formula: `SUM(${M.basic}${R}:${M.special}${R})` },
+        // EARNINGS (8): Basic HRA Conveyance SpecialAllowance DefrayAllowance Gratuity Gross LWF
+        num(e.basic), num(e.hra), num(e.conveyance), num(e.special_allowance),
+        num(e.special_allowance), // Defray Allowance (same field, kept for display)
+        num(e.gratuity),
+        { formula: `SUM(${M.basic}${R}:${M.defrAllw}${R})` }, // Gross excl. gratuity
+        num(e.lwf),
+        // EMPLOYEE DEDUCTIONS (6): PFEmp ESIEmp ProfTax TDS LWFEmp TotalDed
         num(e.pf_employee), num(e.esi_employee), num(e.professional_tax), num(e.tds),
-        { formula: `SUM(${M.pfEmp}${R}:${M.tds}${R})` },
+        num(e.lwf),
+        { formula: `SUM(${M.pfEmp}${R}:${M.lwfEmp}${R})` },
+        // EMPLOYER CONTRIBUTIONS (4)
         num(e.pf_employer), num(e.esi_employer), num(e.pf_admin),
         { formula: `SUM(${M.pfEmr}${R}:${M.pfAdm}${R})+${M.grat}${R}` },
+        // NET & CTC (3)
+        num(e.net_salary),
         { formula: `${M.gross}${R}+${M.totalEmpCost}${R}` },
         { formula: `${M.ctcMonthly}${R}*12` },
       ];
@@ -1288,17 +1299,11 @@ exports.exportMasterExcel = async (req, res) => {
       mRow++; altIdx++;
     });
 
-    // ══════════════════════════════════════════════════════════════════════
-    // SHEET 2 — SUMMARY  (statewise headcount rollup)
-    // Pure master-data rollup: how many people, where, of what type. No
-    // attendance / pay figures — those are month-specific and belong to the
-    // Attendance export, not to a master file.
-    // ══════════════════════════════════════════════════════════════════════
-    if (employees.length) {
+    if (false) { // Summary sheet removed
       const ws5 = wb.addWorksheet('Summary');
       const sHeaders = ['Total Employees', 'Permanent', 'Provision', 'Contractual',
                         'Onsite', 'Offsite / Field', 'Active', 'Inactive'];
-      const colCount = sHeaders.length + 1; // +1 for the leading group-key column
+      const colCount = sHeaders.length + 1;
       [26, 15, 12, 12, 12, 10, 14, 10, 10].forEach((w, i) => ws5.getColumn(i + 1).width = w);
 
       function writeRollupTable(startRow, tableTitle, keyLabel, keyFn) {
