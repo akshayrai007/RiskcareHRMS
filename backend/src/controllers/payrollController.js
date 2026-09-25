@@ -164,10 +164,10 @@ async function computeAndSaveSalaryStructure(queryable, employeeId, fields, upda
   //   EPF Admin Charges A/c-2    0.50%
   //   EDLI A/c-21                0.50%
   //   EDLI Admin Charges A/c-22  0.00%
-  const pf_employee  = pf_applicable  ? Math.round(pfBase * 0.12)  : 0;
-  const pf_employer  = pf_applicable  ? Math.round(pfBase * 0.12)  : 0;
+  const pf_employee  = pf_applicable  ? Math.round(pfBase * 0.12)   : 0;
+  const pf_employer  = pf_applicable  ? Math.round(pfBase * 0.125 + 900) : 0;
   const pf_eps       = pf_applicable && eps_applicable ? Math.round(pfBase * 0.0833) : 0;
-  const pf_admin     = pf_applicable  ? Math.round(pfBase * 0.01)  : 0;  // A/c-2 (0.5%) + A/c-21 (0.5%) + A/c-22 (0%)
+  const pf_admin     = 0; // absorbed into pf_employer (12.5% + ₹900 fixed)
   const esi_employee = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
   const esi_employer = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
   const pt           = pt_applicable  ? calcPT(gross, empState) : 0;

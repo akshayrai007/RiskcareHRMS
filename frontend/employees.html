@@ -2725,11 +2725,12 @@ function autoCalcPfEsi(force = false) {
   // PF — always update on force (oninput), only fill blank on modal open
   const pfBasis = document.getElementById('edit-pf-basis')?.value || 'capped';
   const pfBase  = pfBasis === 'actual' ? basic : Math.min(basic, 15000);
-  const pfAmt   = Math.round(pfBase * 0.12);
+  const pfEmpAmt = Math.round(pfBase * 0.12);
+  const pfEmrAmt = Math.round(pfBase * 0.125 + 900);
   const pfEmpEl = document.getElementById('edit-pf-emp-override');
   const pfEmrEl = document.getElementById('edit-pf-emr-override');
-  if (pfEmpEl && (force || !pfEmpEl.value)) pfEmpEl.value = pfAmt;
-  if (pfEmrEl && (force || !pfEmrEl.value)) pfEmrEl.value = pfAmt;
+  if (pfEmpEl && (force || !pfEmpEl.value)) pfEmpEl.value = pfEmpAmt;
+  if (pfEmrEl && (force || !pfEmrEl.value)) pfEmrEl.value = pfEmrAmt;
 
   // ESI — only if Gross ≤ ₹21,000; always update on force, only fill blank on modal open
   const esiEmpEl = document.getElementById('edit-esi-emp-override');
@@ -2763,9 +2764,8 @@ function recalcSalaryPreview() {
   const _esiEmpOvr= parseFloat(document.getElementById('edit-esi-emp-override')?.value) || 0;
   const _esiEmrOvr= parseFloat(document.getElementById('edit-esi-emr-override')?.value) || 0;
   const pfEmp   = pfOn  ? (_pfEmpOvr  || Math.round(pfBase * 0.12)) : 0;
-  const pfEmr   = pfOn  ? (_pfEmrOvr  || Math.round(pfBase * 0.12)) : 0;
-  // PF Admin A/c-2 (0.5%) + EDLI A/c-21 (0.5%) + EDLI Admin A/c-22 (0%) — see PF card note
-  const pfAdmin = pfOn  ? Math.round(pfBase * 0.01) : 0;
+  const pfEmr   = pfOn  ? (_pfEmrOvr  || Math.round(pfBase * 0.125 + 900)) : 0;
+  const pfAdmin = 0; // absorbed into pfEmr (12.5% + ₹900 fixed)
   const esiEmp  = esiOn ? (_esiEmpOvr || (gross <= 21000 ? Math.round(gross * 0.0075) : 0)) : 0;
   const esiEmr  = esiOn ? (_esiEmrOvr || (gross <= 21000 ? Math.round(gross * 0.0325) : 0)) : 0;
   const state   = document.getElementById('edit-state')?.value || '';
