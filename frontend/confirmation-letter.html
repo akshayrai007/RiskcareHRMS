@@ -3,10 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Confirmation Letters — HRMS</title>
+<title>RiskCare HR - Confirmation Letters</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
-  .cl-wrap { max-width:720px; margin:0 auto; padding:24px 16px; }
+  .cl-wrap { max-width:720px; margin:0 auto; }
   .cl-card  { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; margin-bottom:16px; }
   .cl-card h3 { margin:0 0 16px; font-size:1rem; color:var(--accent); }
   .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
@@ -30,74 +32,93 @@
 </style>
 </head>
 <body>
-<header class="topbar">
-  <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
-  <h1 class="topbar-title">Confirmation Letters</h1>
-</header>
-<nav id="sidebar-nav"></nav>
-<main class="main-content">
-<div class="cl-wrap">
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="sidebar-logo-mark"></div>
+    <div><div class="logo-text-wrap"><div class="logo-text" id="sidebar-logo-text"></div></div>
+    <div class="sidebar-company-short" id="sidebar-company-short"></div></div>
+  </div>
+  <nav id="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div id="sidebar-user"></div>
+    <button class="logout-btn" onclick="Auth.logout()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign Out</button>
+  </div>
+</aside>
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="topbar-title">Confirmation Letters</div>
+    </div>
+    <div class="topbar-right">
+      <button id="notif-bell-btn" class="topbar-icon-btn notif-btn" title="Notifications">🔔<span id="notif-badge"></span></button>
+      <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
+    </div>
+  </div>
+  <div class="content fade-in">
+  <div class="cl-wrap">
 
-  <!-- Employee Search -->
-  <div class="cl-card">
-    <h3>Select Employee</h3>
-    <div class="form-row single">
-      <div class="field">
-        <label>Search Employee</label>
-        <div class="emp-search-wrap">
-          <input type="text" id="emp-search" placeholder="Type name or employee code…" autocomplete="off">
-          <div id="emp-dropdown"></div>
+    <!-- Employee Search -->
+    <div class="cl-card">
+      <h3>Select Employee</h3>
+      <div class="form-row single">
+        <div class="field">
+          <label>Search Employee</label>
+          <div class="emp-search-wrap">
+            <input type="text" id="emp-search" placeholder="Type name or employee code…" autocomplete="off">
+            <div id="emp-dropdown"></div>
+          </div>
         </div>
       </div>
+      <input type="hidden" id="emp-id">
+      <div class="emp-info" id="emp-info">
+        <table>
+          <tr><td>Employee</td><td id="ei-name">—</td></tr>
+          <tr><td>Code</td><td id="ei-code">—</td></tr>
+          <tr><td>Designation</td><td id="ei-desig">—</td></tr>
+          <tr><td>Department</td><td id="ei-dept">—</td></tr>
+          <tr><td>Joining Date</td><td id="ei-join">—</td></tr>
+          <tr><td>Email</td><td id="ei-email">—</td></tr>
+        </table>
+      </div>
     </div>
-    <input type="hidden" id="emp-id">
-    <div class="emp-info" id="emp-info">
-      <table>
-        <tr><td>Employee</td><td id="ei-name">—</td></tr>
-        <tr><td>Code</td><td id="ei-code">—</td></tr>
-        <tr><td>Designation</td><td id="ei-desig">—</td></tr>
-        <tr><td>Department</td><td id="ei-dept">—</td></tr>
-        <tr><td>Joining Date</td><td id="ei-join">—</td></tr>
-        <tr><td>Email</td><td id="ei-email">—</td></tr>
-      </table>
+
+    <!-- Letter Details -->
+    <div class="cl-card" id="letter-details" style="display:none">
+      <h3>Letter Details</h3>
+      <div class="form-row">
+        <div class="field">
+          <label>Probation End Date</label>
+          <input type="date" id="probation-end">
+        </div>
+        <div class="field">
+          <label>Confirmation Date (Effective From)</label>
+          <input type="date" id="confirmation-date">
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="field">
+          <label>Send To Email</label>
+          <input type="email" id="send-email" placeholder="employee@email.com">
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="previewLetter()">👁 Preview PDF</button>
+        <button class="btn btn-secondary" onclick="downloadLetter()">⬇ Download PDF</button>
+        <button class="btn btn-outline" onclick="sendLetter()" id="send-btn">📧 Send via Email</button>
+      </div>
+      <div class="status-msg" id="status-msg"></div>
     </div>
+
+    <!-- PDF Preview -->
+    <iframe id="preview-frame" title="Confirmation Letter Preview"></iframe>
+
   </div>
-
-  <!-- Letter Details -->
-  <div class="cl-card" id="letter-details" style="display:none">
-    <h3>Letter Details</h3>
-    <div class="form-row">
-      <div class="field">
-        <label>Probation End Date</label>
-        <input type="date" id="probation-end">
-      </div>
-      <div class="field">
-        <label>Confirmation Date (Effective From)</label>
-        <input type="date" id="confirmation-date">
-      </div>
-    </div>
-    <div class="form-row single">
-      <div class="field">
-        <label>Send To Email</label>
-        <input type="email" id="send-email" placeholder="employee@email.com">
-      </div>
-    </div>
-
-    <div class="btn-row">
-      <button class="btn btn-primary" onclick="previewLetter()">👁 Preview PDF</button>
-      <button class="btn btn-secondary" onclick="downloadLetter()">⬇ Download PDF</button>
-      <button class="btn btn-outline" onclick="sendLetter()" id="send-btn">📧 Send via Email</button>
-    </div>
-    <div class="status-msg" id="status-msg"></div>
   </div>
-
-  <!-- PDF Preview -->
-  <iframe id="preview-frame" title="Confirmation Letter Preview"></iframe>
-
 </div>
-</main>
 
-<script src="config.js"></script>
 <script src="app.js"></script>
 <script>
 buildSidebar('confirmation-letter.html');
@@ -124,19 +145,17 @@ document.getElementById('emp-search').addEventListener('input', function() {
   if (!matches.length) { dd.style.display='none'; return; }
   dd.innerHTML = matches.map(e => {
     const name = e.full_name || `${e.first_name} ${e.last_name||''}`.trim();
-    return `<div class="emp-opt" onclick="selectEmp(${e.id},'${name.replace(/'/g,"\\'")}',this)">
+    return `<div class="emp-opt" onclick="selectEmp(${e.id},'${name.replace(/'/g,"\\'")}')">
       ${name} <span class="code">${e.employee_code||''} · ${e.designation||''}</span>
     </div>`;
   }).join('');
   dd.style.display='block';
 });
 
-async function selectEmp(id, name, el) {
+async function selectEmp(id, name) {
   document.getElementById('emp-search').value = name;
   document.getElementById('emp-id').value = id;
   document.getElementById('emp-dropdown').style.display='none';
-
-  // Load full employee info
   try {
     const data = await api('GET', `/employees/${id}`);
     const e = data.employee || data;
@@ -148,10 +167,9 @@ async function selectEmp(id, name, el) {
     document.getElementById('ei-join').textContent  = e.joining_date ? new Date(e.joining_date).toLocaleDateString('en-IN') : '—';
     document.getElementById('ei-email').textContent = e.work_email || e.personal_email || '—';
     document.getElementById('send-email').value     = e.work_email || e.personal_email || '';
-    // Pre-fill dates
     if (e.provision_end_date) document.getElementById('probation-end').value = e.provision_end_date.slice(0,10);
     if (e.confirmed_date)     document.getElementById('confirmation-date').value = e.confirmed_date.slice(0,10);
-    else { const today = new Date().toISOString().slice(0,10); document.getElementById('confirmation-date').value = today; }
+    else document.getElementById('confirmation-date').value = new Date().toISOString().slice(0,10);
     document.getElementById('emp-info').style.display='block';
     document.getElementById('letter-details').style.display='block';
     document.getElementById('preview-frame').style.display='none';
@@ -162,19 +180,20 @@ document.addEventListener('click', e => {
   if (!e.target.closest('.emp-search-wrap')) document.getElementById('emp-dropdown').style.display='none';
 });
 
-function buildPreviewUrl() {
+function buildPreviewUrl(download) {
   const id   = document.getElementById('emp-id').value;
   const conf = document.getElementById('confirmation-date').value;
   const prob = document.getElementById('probation-end').value;
   if (!id) { alert('Please select an employee first'); return null; }
-  let url = `/api/employees/${id}/confirmation-letter?`;
-  if (conf) url += `confirmation_date=${conf}&`;
-  if (prob) url += `probation_end_date=${prob}&`;
+  let url = `${API_BASE}/employees/${id}/confirmation-letter?token=${Auth.getToken()}`;
+  if (download) url += '&download=1';
+  if (conf) url += `&confirmation_date=${conf}`;
+  if (prob) url += `&probation_end_date=${prob}`;
   return url;
 }
 
 function previewLetter() {
-  const url = buildPreviewUrl();
+  const url = buildPreviewUrl(false);
   if (!url) return;
   const frame = document.getElementById('preview-frame');
   frame.src = url;
@@ -183,14 +202,8 @@ function previewLetter() {
 }
 
 function downloadLetter() {
-  const id   = document.getElementById('emp-id').value;
-  const conf = document.getElementById('confirmation-date').value;
-  const prob = document.getElementById('probation-end').value;
-  if (!id) { alert('Please select an employee first'); return; }
-  let url = `/api/employees/${id}/confirmation-letter?download=1`;
-  if (conf) url += `&confirmation_date=${conf}`;
-  if (prob) url += `&probation_end_date=${prob}`;
-  window.open(url, '_blank');
+  const url = buildPreviewUrl(true);
+  if (url) window.open(url, '_blank');
 }
 
 async function sendLetter() {
