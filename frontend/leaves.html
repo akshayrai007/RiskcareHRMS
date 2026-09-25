@@ -426,10 +426,7 @@ function enableAllApplicationsTab() {
 function enableHrLeaveView(withImport = true) {
   document.getElementById('summary-tab').style.display = '';
   document.getElementById('txn-tab').style.display = '';
-  if (withImport) {
-    document.getElementById('import-leave-btn').style.display = '';
-    document.getElementById('import-requests-btn').style.display = '';
-  }
+  // import buttons hidden permanently
   // Populate year dropdowns (idempotent — skip if already populated)
   const curYr = new Date().getFullYear();
   ['summary-year','txn-year'].forEach(id => {
