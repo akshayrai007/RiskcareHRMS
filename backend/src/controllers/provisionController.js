@@ -607,7 +607,7 @@ exports.confirmationLetterStandalone = async (req, res) => {
   try {
     const r = await db.query(
       `SELECT e.first_name, e.last_name, e.employee_code, e.gender, e.joining_date,
-              e.provision_end_date, e.confirmed_date, e.work_email, e.personal_email,
+              e.provision_end_date, e.confirmed_date, e.email, e.personal_email,
               des.title AS designation, d.name AS department
        FROM employees e
        LEFT JOIN designations des ON des.id = e.designation_id
@@ -633,7 +633,7 @@ exports.sendConfirmationLetterEmail = async (req, res) => {
   try {
     const r = await db.query(
       `SELECT e.first_name, e.last_name, e.employee_code, e.gender, e.joining_date,
-              e.provision_end_date, e.confirmed_date, e.work_email, e.personal_email,
+              e.provision_end_date, e.confirmed_date, e.email, e.personal_email,
               des.title AS designation, d.name AS department
        FROM employees e
        LEFT JOIN designations des ON des.id = e.designation_id
@@ -645,7 +645,7 @@ exports.sendConfirmationLetterEmail = async (req, res) => {
     if (req.body.probation_end_date) emp.provision_end_date = req.body.probation_end_date;
 
     const fullName = `${emp.first_name} ${emp.last_name || ''}`.trim();
-    const toEmail  = req.body.email || emp.work_email || emp.personal_email;
+    const toEmail  = req.body.email || emp.email || emp.personal_email;
     if (!toEmail) return res.status(400).json({ success: false, message: 'No email address found for employee' });
 
     const pdf = await require('./offerLetterController').htmlToPdf(buildConfirmationLetterHTML(emp));

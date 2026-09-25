@@ -168,9 +168,9 @@ document.getElementById('emp-search').addEventListener('input', function() {
         return;
       }
       dd.innerHTML = list.map(e => {
-        const name = e.full_name || `${e.first_name||''} ${e.last_name||''}`.trim();
-        return `<div class="emp-opt" onclick="selectEmp(${e.id},'${name.replace(/'/g,"\\'")}')">
-          ${name} <span class="code">${e.employee_code||''} · ${e.designation||''}</span>
+        const name = `${e.first_name||''} ${e.last_name||''}`.trim();
+        return `<div class="emp-opt" onclick='selectEmp(${JSON.stringify(e)})'>
+          ${name} <span class="code">${e.employee_code||''} · ${e.designation_title||e.designation||''}</span>
         </div>`;
       }).join('');
     } catch(err) {
@@ -179,27 +179,25 @@ document.getElementById('emp-search').addEventListener('input', function() {
   }, 300);
 });
 
-async function selectEmp(id, name) {
+function selectEmp(e) {
+  const name = `${e.first_name||''} ${e.last_name||''}`.trim();
   document.getElementById('emp-search').value = name;
-  document.getElementById('emp-id').value = id;
+  document.getElementById('emp-id').value = e.id;
   document.getElementById('emp-dropdown').style.display='none';
-  try {
-    const data = await api('GET', `/employees/${id}`);
-    const e = data.employee || data;
-    document.getElementById('ei-name').textContent  = `${e.first_name||''} ${e.last_name||''}`.trim();
-    document.getElementById('ei-code').textContent  = e.employee_code||'—';
-    document.getElementById('ei-desig').textContent = e.designation||'—';
-    document.getElementById('ei-dept').textContent  = e.department||'—';
-    document.getElementById('ei-join').textContent  = e.joining_date ? new Date(e.joining_date).toLocaleDateString('en-IN') : '—';
-    document.getElementById('ei-email').textContent = e.work_email || e.personal_email || '—';
-    document.getElementById('send-email').value     = e.work_email || e.personal_email || '';
-    if (e.provision_end_date) document.getElementById('probation-end').value = e.provision_end_date.slice(0,10);
-    if (e.confirmed_date)     document.getElementById('confirmation-date').value = e.confirmed_date.slice(0,10);
-    else document.getElementById('confirmation-date').value = new Date().toISOString().slice(0,10);
-    document.getElementById('emp-info').style.display='block';
-    document.getElementById('letter-details').style.display='block';
-    document.getElementById('preview-frame').style.display='none';
-  } catch(err) { console.error(err); }
+  document.getElementById('ei-name').textContent  = name;
+  document.getElementById('ei-code').textContent  = e.employee_code||'—';
+  document.getElementById('ei-desig').textContent = e.designation_title||e.designation||'—';
+  document.getElementById('ei-dept').textContent  = e.department_name||e.department||'—';
+  document.getElementById('ei-join').textContent  = e.joining_date ? new Date(e.joining_date).toLocaleDateString('en-IN') : '—';
+  const email = e.email || e.personal_email || '';
+  document.getElementById('ei-email').textContent = email || '—';
+  document.getElementById('send-email').value     = email;
+  if (e.provision_end_date) document.getElementById('probation-end').value = e.provision_end_date.slice(0,10);
+  if (e.confirmed_date)     document.getElementById('confirmation-date').value = e.confirmed_date.slice(0,10);
+  else document.getElementById('confirmation-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('emp-info').style.display='block';
+  document.getElementById('letter-details').style.display='block';
+  document.getElementById('preview-frame').style.display='none';
 }
 
 document.addEventListener('click', e => {
