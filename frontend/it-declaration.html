@@ -257,9 +257,8 @@
         </div>
         <div class="itd-ctrl-item" id="hr-sel-wrap" style="display:none">
           <label>Employee</label>
-          <select id="sel-hr-emp" style="min-width:200px" onchange="onHREmpChange()">
-            <option value="">— All / Select Employee —</option>
-          </select>
+          <input id="sel-hr-emp" list="emp-datalist" placeholder="Search by name or code…" style="min-width:220px;max-width:280px" oninput="onHREmpChange()" autocomplete="off">
+          <datalist id="emp-datalist"></datalist>
         </div>
       </div>
 
@@ -808,20 +807,26 @@ function onFYChange() {
   loadWindowBanner();
   if (isHR) { loadHRStats(); loadHR(); }
 }
+let _hrEmpMap = {}; // "E001 — Name" → id
 async function loadHREmps() {
   const r = await api('GET','/employees');
   if (!r?.success) return;
-  const sel = document.getElementById('sel-hr-emp');
+  const dl = document.getElementById('emp-datalist');
+  _hrEmpMap = {};
   r.data.forEach(e => {
+    const label = `${e.employee_code} — ${e.first_name} ${e.last_name}`;
+    _hrEmpMap[label] = e.id;
     const o = document.createElement('option');
-    o.value = e.id;
-    o.textContent = `${e.employee_code} — ${e.first_name} ${e.last_name}`;
-    sel.appendChild(o);
+    o.value = label;
+    dl.appendChild(o);
   });
 }
 function onHREmpChange() {
-  const v = document.getElementById('sel-hr-emp').value;
-  currentEmpId = v ? parseInt(v) : Auth.getUser().id;
+  const txt = document.getElementById('sel-hr-emp').value.trim();
+  const id  = _hrEmpMap[txt];
+  if (!txt) { currentEmpId = Auth.getUser().id; loadDecl(); return; }
+  if (!id) return; // still typing — wait for a valid match
+  currentEmpId = id;
   loadDecl();
 }
 
