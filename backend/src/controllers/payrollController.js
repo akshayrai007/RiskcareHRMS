@@ -1352,7 +1352,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       'Gross Salary',
       // ── F: Employee Deductions ───────────────────────────────────────────────
       'PF (Employee)', 'ESI (Employee)', 'Prof Tax', 'TDS',
-      'GTL Deduction', 'Late Mark Deduction', 'Salary Advance Recovery (Loan/EMI)',
+      'GTL Deduction', 'Late Mark Deduction', 'Salary Advance Recovery (Loan/EMI)', 'Food Coupon Deduction',
       'Total Deductions',
       // ── G: Net Pay ───────────────────────────────────────────────────────────
       'Net Pay',
@@ -1373,7 +1373,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       { from: 'Basic (Earned)',              to: 'Food Coupon (Earned)',               headBg:'166534', headFg:'FFFFFF', dataBg:'BBF7D0' }, // D: earned - darker green
       { from: 'Food Coupon Adjustment',     to: 'Performance Bonus',                 headBg:'0D9488', headFg:'FFFFFF', dataBg:'CCFBF1' }, // D: variable earnings - teal
       { from: 'Gross Salary',              to: 'Gross Salary',                       headBg:'B45309', headFg:'FFFFFF', dataBg:'FEF3C7' }, // E: gross - amber
-      { from: 'PF (Employee)',             to: 'Salary Advance Recovery (Loan/EMI)', headBg:'B91C1C', headFg:'FFFFFF', dataBg:'FEE2E2' }, // F: employee deductions - red
+      { from: 'PF (Employee)',             to: 'Food Coupon Deduction',             headBg:'B91C1C', headFg:'FFFFFF', dataBg:'FEE2E2' }, // F: employee deductions - red
       { from: 'Total Deductions',          to: 'Total Deductions',                   headBg:'991B1B', headFg:'FFFFFF', dataBg:'FECACA' }, // F: deductions total - darker red
       { from: 'Net Pay',                   to: 'Net Pay',                            headBg:'1D4ED8', headFg:'FFFFFF', dataBg:'DBEAFE' }, // G: net pay - blue
       { from: 'EPF Employer (A/c-1)',      to: 'ESI (Employer)',                     headBg:'7C3AED', headFg:'FFFFFF', dataBg:'EDE9FE' }, // H: employer contributions - purple
@@ -1454,9 +1454,10 @@ exports.downloadPayrollTemplate = async (req, res) => {
           0, 0, 0, 0, 0, 0,
           // E: Gross Salary
           gross,
-          // F: Employee Deductions — PF(emp), ESI(emp), PT, TDS, GTL, Late Mark, Loan
+          // F: Employee Deductions — PF(emp), ESI(emp), PT, TDS, GTL, Late Mark, Loan, Food Coupon
           pf, esi, pt, tds, 0, 0,
           parseFloat(activeEMI ? activeEMI.monthly_emi : 0),
+          parseFloat(e.food_coupon) || 0,  // Food Coupon Deduction
           totalDed,          // Total Deductions (formula below)
           // G: Net Pay
           net,               // Net Pay (formula below)
@@ -1510,7 +1511,8 @@ exports.downloadPayrollTemplate = async (req, res) => {
       const oneTime = ['Food Coupon Adjustment','Extra Working Salary','Bonus','Incentive','Other Earning','Performance Bonus'].reduce((a, l) => a + num(l), 0);
       const gross = Math.round((earnedFixed + foodCouponMonthly + oneTime) * 100) / 100;
       const ded = num('PF (Employee)') + num('ESI (Employee)') + num('Prof Tax') + num('TDS') +
-                  num('GTL Deduction') + num('Late Mark Deduction') + num('Salary Advance Recovery (Loan/EMI)');
+                  num('GTL Deduction') + num('Late Mark Deduction') + num('Salary Advance Recovery (Loan/EMI)') +
+                  num('Food Coupon Deduction');
       const setF = (label, f, v) => { ws1[LT(label) + R] = { t: 'n', f, v, s: dataCellStyle(groupForCol(hx(label)), true) }; };
       // TDS: a real, editable tax formula, not a frozen number. Because it references
       // this row's own live Gross Salary cell, TDS recalculates in Excel the moment HR
@@ -1542,7 +1544,9 @@ exports.downloadPayrollTemplate = async (req, res) => {
       setF('Gratuity (Earned)',         `ROUND(${LT('Gratuity (Fixed P.M.)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('Gratuity (Fixed P.M.)') * prorateFactor * 100) / 100);
       setF('Food Coupon (Earned)',      `${LT('Food Coupon (Fixed P.M.)')}${R}`, foodCouponMonthly);
       setF('Gross Salary', `ROUND((${LT('Basic (Fixed P.M.)')}${R}+${LT('HRA (Fixed P.M.)')}${R}+${LT('Defray Allowance (Fixed P.M.)')}${R}+${LT('Gratuity (Fixed P.M.)')}${R})*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0)+${LT('Food Coupon (Fixed P.M.)')}${R}+SUM(${LT('Food Coupon Adjustment')}${R}:${LT('Performance Bonus')}${R}),2)`, gross);
-      setF('Total Deductions', `SUM(${LT('PF (Employee)')}${R}:${LT('Salary Advance Recovery (Loan/EMI)')}${R})`, ded);
+      const foodCouponDed = num('Food Coupon Deduction');
+      setF('Food Coupon Deduction', `${LT('Food Coupon (Earned)')}${R}`, foodCouponDed);
+      setF('Total Deductions', `SUM(${LT('PF (Employee)')}${R}:${LT('Food Coupon Deduction')}${R})`, ded + foodCouponDed);
       const empr = num('EPF Employer (A/c-1)') + num('EPS Employer (A/c-10)') + num('PF Admin + EDLI (Employer)') + num('ESI (Employer)');
       setF('Total Employer Contribution', `${LT('EPF Employer (A/c-1)')}${R}+${LT('EPS Employer (A/c-10)')}${R}+${LT('PF Admin + EDLI (Employer)')}${R}+${LT('ESI (Employer)')}${R}`, empr);
       setF('Total Cost to Company', `${LT('Gross Salary')}${R}+${LT('Total Employer Contribution')}${R}`, gross + empr);
