@@ -150,32 +150,33 @@
 <script>
 buildSidebar('confirmation-letter.html');
 
-let _employees = [];
-
-async function loadEmployees() {
-  try {
-    const data = await api('GET', '/employees?active=true&limit=500');
-    _employees = (data.employees || data || []).filter(e => e.id);
-  } catch(e) { console.error(e); }
-}
-loadEmployees();
+let _searchTimer = null;
 
 document.getElementById('emp-search').addEventListener('input', function() {
-  const q = this.value.trim().toLowerCase();
+  const q = this.value.trim();
   const dd = document.getElementById('emp-dropdown');
-  if (!q || q.length < 2) { dd.style.display='none'; return; }
-  const matches = _employees.filter(e =>
-    (e.full_name||`${e.first_name} ${e.last_name||''}`).toLowerCase().includes(q) ||
-    (e.employee_code||'').toLowerCase().includes(q)
-  ).slice(0, 15);
-  if (!matches.length) { dd.style.display='none'; return; }
-  dd.innerHTML = matches.map(e => {
-    const name = e.full_name || `${e.first_name} ${e.last_name||''}`.trim();
-    return `<div class="emp-opt" onclick="selectEmp(${e.id},'${name.replace(/'/g,"\\'")}')">
-      ${name} <span class="code">${e.employee_code||''} · ${e.designation||''}</span>
-    </div>`;
-  }).join('');
+  if (q.length < 2) { dd.style.display='none'; return; }
+  clearTimeout(_searchTimer);
+  dd.innerHTML = '<div class="emp-opt" style="color:#9ca3af;cursor:default">Searching…</div>';
   dd.style.display='block';
+  _searchTimer = setTimeout(async () => {
+    try {
+      const data = await api('GET', `/employees?search=${encodeURIComponent(q)}&active=true&limit=15`);
+      const list = data.employees || data || [];
+      if (!list.length) {
+        dd.innerHTML = '<div class="emp-opt" style="color:#9ca3af;cursor:default">No employees found</div>';
+        return;
+      }
+      dd.innerHTML = list.map(e => {
+        const name = e.full_name || `${e.first_name||''} ${e.last_name||''}`.trim();
+        return `<div class="emp-opt" onclick="selectEmp(${e.id},'${name.replace(/'/g,"\\'")}')">
+          ${name} <span class="code">${e.employee_code||''} · ${e.designation||''}</span>
+        </div>`;
+      }).join('');
+    } catch(err) {
+      dd.innerHTML = '<div class="emp-opt" style="color:#dc2626;cursor:default">Error loading employees</div>';
+    }
+  }, 300);
 });
 
 async function selectEmp(id, name) {
