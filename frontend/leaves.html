@@ -110,17 +110,19 @@
       <div class="card">
         <div class="card-header">
           <div class="card-title"><span class="card-title-icon">📂</span>All Leave Applications</div>
-          <div class="flex gap-2">
+          <div class="flex gap-2" style="align-items:center;flex-wrap:wrap">
             <select id="all-status-filter" class="form-control" style="width:150px" onchange="loadAllLeaves()">
               <option value="pending">Pending</option>
               <option value="">All Status</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
             </select>
-            <div class="input-with-icon" style="width:220px">
+            <div class="input-with-icon" style="width:200px">
               <span class="input-icon">🔍</span>
               <input id="all-search" class="form-control" placeholder="Search employee…" oninput="filterAll()">
             </div>
+            <button id="approve-selected-btn" style="display:none;background:#16a34a;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer" onclick="bulkApproveSelected()">✓ Approve Selected</button>
+            <button id="approve-all-btn" style="display:none;background:#1e40af;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer" onclick="bulkApproveAll()">✓✓ Approve All Pending</button>
           </div>
         </div>
         <div id="all-leaves-list"><div class="loader"><div class="spinner"></div></div></div>
@@ -751,23 +753,32 @@ function filterAll() {
     el.innerHTML = '<div class="empty-state"><div class="empty-icon">📂</div><p>No applications found.</p></div>';
     return;
   }
-  const canApprove = Role.canApproveLeave();
+  // hr/super_admin/accounts can approve any leave (not just their own reporting chain)
+  const canApprove = Role.is('hr','super_admin','accounts') || Role.canApproveLeave();
   const userCode   = user.employee_code;
   const userId     = user.id;
+  const hasPending = filtered.some(a => a.status === 'pending' && a.employee_id !== userId);
+  document.getElementById('approve-all-btn').style.display      = canApprove && hasPending ? '' : 'none';
+  document.getElementById('approve-selected-btn').style.display = 'none'; // shown on checkbox tick
+
   const TH = `border:1px solid #cbd5e1;background:#1e293b;color:#fff;font-size:11px;font-weight:700;padding:7px 10px;white-space:nowrap;text-align:center`;
   const TD = `border:1px solid #e2e8f0;padding:6px 9px;font-size:12px;vertical-align:middle`;
   const statusStyle = { approved:'background:#dcfce7;color:#166534', pending:'background:#fef9c3;color:#854d0e', rejected:'background:#fee2e2;color:#991b1b', cancelled:'background:#f3f4f6;color:#6b7280' };
   const rows = filtered.map((a, i) => {
     const isOwnLeave = a.employee_id === userId;
-    const isMyTurn   = !isOwnLeave && a.current_approver_code === userCode && a.status === 'pending';
+    const isPending  = a.status === 'pending' && !isOwnLeave;
     const bg = i % 2 === 0 ? '#fff' : '#f8fafc';
-    const actions = canApprove && isMyTurn
+    const chk = canApprove && isPending
+      ? `<input type="checkbox" class="all-leave-chk" data-id="${a.id}" style="width:15px;height:15px;cursor:pointer;accent-color:#1e40af" onchange="onAllLeaveChk()">`
+      : '';
+    const actions = canApprove && isPending
       ? `<button class="btn btn-success btn-sm" style="padding:2px 8px;font-size:11px" onclick="actionLeave(${a.id},'approve')">✓</button>
-         <button class="btn btn-danger btn-sm"  style="padding:2px 8px;font-size:11px;margin-left:3px" onclick="openReject(${a.id})">✗</button>`
-      : (a.status === 'pending' && a.employee_id === userId
+         <button class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:11px;margin-left:3px" onclick="openReject(${a.id})">✗</button>`
+      : (a.status === 'pending' && isOwnLeave
           ? `<button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:11px" onclick="cancelLeave(${a.id})">Cancel</button>`
           : '—');
     return `<tr style="background:${bg};cursor:pointer" onclick="showDetail(${a.id})">
+      <td style="${TD};text-align:center" onclick="event.stopPropagation()">${chk}</td>
       <td style="${TD};font-weight:700;color:#2563eb">${a.employee_code||''}</td>
       <td style="${TD};font-weight:600">${a.employee_name||''}</td>
       <td style="${TD};color:#64748b">${a.department_name||'—'}</td>
@@ -781,9 +792,13 @@ function filterAll() {
       <td style="${TD};text-align:center" onclick="event.stopPropagation()">${actions}</td>
     </tr>`;
   }).join('');
+  const allChk = canApprove && hasPending
+    ? `<input type="checkbox" id="all-leave-chk-all" style="width:15px;height:15px;cursor:pointer;accent-color:#1e40af" onchange="toggleAllLeaveChk(this)">`
+    : '';
   el.innerHTML = `<div style="overflow-x:auto">
     <table style="border-collapse:collapse;width:100%;min-width:900px">
       <thead><tr>
+        <th style="${TH};width:36px">${allChk}</th>
         <th style="${TH}">Emp Code</th>
         <th style="${TH}">Employee Name</th>
         <th style="${TH}">Department</th>
@@ -800,6 +815,31 @@ function filterAll() {
     </table>
     <div style="font-size:11px;color:#94a3b8;padding:6px 2px">${filtered.length} record(s)</div>
   </div>`;
+}
+
+function onAllLeaveChk() {
+  const checked = document.querySelectorAll('.all-leave-chk:checked').length;
+  document.getElementById('approve-selected-btn').style.display = checked > 0 ? '' : 'none';
+}
+function toggleAllLeaveChk(master) {
+  document.querySelectorAll('.all-leave-chk').forEach(c => c.checked = master.checked);
+  onAllLeaveChk();
+}
+async function bulkApproveSelected() {
+  const ids = [...document.querySelectorAll('.all-leave-chk:checked')].map(c => +c.dataset.id);
+  if (!ids.length) return;
+  if (!confirm(`Approve ${ids.length} selected leave(s)?`)) return;
+  for (const id of ids) await api('PUT', `/leave/${id}/action`, { action:'approve', remarks:'' });
+  toast(`${ids.length} leave(s) approved`, 'success');
+  loadAllLeaves();
+}
+async function bulkApproveAll() {
+  const ids = [...document.querySelectorAll('.all-leave-chk')].map(c => +c.dataset.id);
+  if (!ids.length) return;
+  if (!confirm(`Approve ALL ${ids.length} pending leave(s)?`)) return;
+  for (const id of ids) await api('PUT', `/leave/${id}/action`, { action:'approve', remarks:'' });
+  toast(`${ids.length} leave(s) approved`, 'success');
+  loadAllLeaves();
 }
 
 function renderLeaveCard(a, canApprove) {
