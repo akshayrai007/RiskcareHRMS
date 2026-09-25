@@ -38,7 +38,7 @@
   /* ── Employee info card ── */
   .emp-info { background:#fff5f5; border:1px solid #fecaca; border-radius:8px; padding:12px 16px; margin-top:12px; font-size:.86rem; display:none; }
   .emp-info table { width:100%; }
-  .emp-info table td { padding:3px 10px 3px 0; vertical-align:top; }
+  .emp-info table td { padding:3px 10px 3px 0; vertical-align:top; user-select:none; pointer-events:none; }
   .emp-info table td:first-child { color:var(--cfg-primary,#C0272D); font-weight:700; white-space:nowrap; font-size:.78rem; text-transform:uppercase; }
 
   /* ── Buttons ── */
@@ -86,7 +86,7 @@
       <a class="topbar-icon-btn" href="dashboard.html" title="Dashboard">🏠</a>
     </div>
   </div>
-  <div class="content fade-in" style="max-width:760px;">
+  <div class="content fade-in">
 
     <!-- Employee Search -->
     <div class="tool-card">
