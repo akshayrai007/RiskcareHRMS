@@ -153,6 +153,7 @@ async function computeAndSaveSalaryStructure(queryable, employeeId, fields, upda
 
   const gross        = parseFloat(basic) + parseFloat(hra) + parseFloat(conveyance) + parseFloat(special_allowance) + parseFloat(gratuity) + parseFloat(food_coupon);
   const pfBase       = pf_wage_basis === 'actual' ? parseFloat(basic) : Math.min(parseFloat(basic), 15000);
+  const edliBase     = Math.min(parseFloat(basic), 15000); // EDLI always capped at ₹15,000
   // Statutory PF/EPS/EDLI breakup (employer's 12% share splits into EPS +
   // EPF A/c-1 only when EPS applies to this employee; otherwise the whole
   // 12% stays in EPF A/c-1). pf_employer is kept as the COMBINED employer
@@ -167,7 +168,7 @@ async function computeAndSaveSalaryStructure(queryable, employeeId, fields, upda
   const pf_employee  = pf_applicable  ? Math.round(pfBase * 0.12)  : 0;
   const pf_employer  = pf_applicable  ? Math.round(pfBase * 0.12)  : 0;
   const pf_eps       = pf_applicable && eps_applicable ? Math.round(pfBase * 0.0833) : 0;
-  const pf_admin     = pf_applicable  ? Math.round(pfBase * 0.01)  : 0;  // A/c-2 (0.5%) + A/c-21 (0.5%) + A/c-22 (0%)
+  const pf_admin     = pf_applicable  ? Math.round(pfBase * 0.005) + Math.round(edliBase * 0.005) : 0;  // A/c-2 (0.5% pfBase) + A/c-21 (0.5% capped at 15k) + A/c-22 (0%)
   const esi_employee = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0075) : 0;
   const esi_employer = esi_applicable && gross <= 21000 ? Math.round(gross * 0.0325) : 0;
   const pt           = pt_applicable  ? calcPT(gross, empState) : 0;

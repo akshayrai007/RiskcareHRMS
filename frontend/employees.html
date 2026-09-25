@@ -855,7 +855,7 @@
               <tr class="emr-row"><td>EPF Employer A/c-1 <span class="pv-badge">3.67%</span></td><td id="pv-epf-ac1-m"></td><td id="pv-epf-ac1-a"></td></tr>
               <tr class="emr-row"><td>EPS A/c-10 <span class="pv-badge">8.33%</span></td><td id="pv-eps-m"></td><td id="pv-eps-a"></td></tr>
               <tr class="emr-row"><td>EPF Admin A/c-2 <span class="pv-badge">0.50%</span></td><td id="pv-pfadm2-m"></td><td id="pv-pfadm2-a"></td></tr>
-              <tr class="emr-row"><td>EDLI A/c-21 <span class="pv-badge">0.50%</span></td><td id="pv-edli-m"></td><td id="pv-edli-a"></td></tr>
+              <tr class="emr-row"><td>EDLI A/c-21 <span class="pv-badge">0.50% · cap ₹15k</span></td><td id="pv-edli-m"></td><td id="pv-edli-a"></td></tr>
               <tr id="pvr-esiemr" class="emr-row"><td>ESI (Employer) <span class="pv-badge">3.25%</span></td><td id="pv-esiemr-m"></td><td id="pv-esiemr-a"></td></tr>
               <tr class="tot emr-tot"><td>Total Employer Contribution</td><td id="pv-emr-m"></td><td id="pv-emr-a"></td></tr>
               <tr class="ctc"><td>Cost to Company (CTC)</td><td id="pv-ctc-m"></td><td id="pv-ctc-a"></td></tr>
@@ -2801,10 +2801,11 @@ function recalcSalaryPreview() {
   setRow('basic', basic); setRow('hra', hra, true); setRow('special', special, true);
   setRow('gratuity', gratuity, true); setRow('food', foodCoupon, true);
   // Break out employer PF into individual A/c rows
-  const epfAc1 = pfOn ? Math.round(pfBase * 0.0367) : 0;
-  const epsAc10 = pfOn ? Math.round(pfBase * 0.0833) : 0;
-  const pfAdmAc2 = pfOn ? Math.round(pfBase * 0.005) : 0;
-  const edliAc21 = pfOn ? Math.round(pfBase * 0.005) : 0;
+  const edliBase = Math.min(basic, 15000); // EDLI always capped at ₹15,000
+  const epfAc1   = pfOn ? Math.round(pfBase * 0.0367) : 0;
+  const epsAc10  = pfOn ? Math.round(pfBase * 0.0833) : 0;
+  const pfAdmAc2 = pfOn ? Math.round(pfBase * 0.005)  : 0;
+  const edliAc21 = pfOn ? Math.round(edliBase * 0.005) : 0;
   const setCell = (id, v) => { const el = document.getElementById(id); if (el) { el.textContent = v > 0 ? fmt2(v) : '—'; } };
   setCell('pv-epf-ac1-m', epfAc1);  setCell('pv-epf-ac1-a', epfAc1 * 12);
   setCell('pv-eps-m', epsAc10);     setCell('pv-eps-a', epsAc10 * 12);
