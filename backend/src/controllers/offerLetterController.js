@@ -341,12 +341,15 @@ ${additionalTerms}
 </html>`;
 }
 
+// Export htmlToPdf so other controllers (relievingLetter, etc.) can share the same
+// Puppeteer instance and letterhead logic without duplicating browser helpers.
+exports.htmlToPdf = htmlToPdf;
+
 // ── Short Offer Letter (2-page pre-joining format) ────────────────────────────
 function buildShortOfferLetterHTML(ol) {
   const esc  = (v) => String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const num  = (v) => parseFloat(v || 0) || 0;
   const fmtV = (v) => Number(Math.round(v)).toLocaleString('en-IN');
-  const logo = apptLogoB64();
   const basic = num(ol.basic_monthly), hra = num(ol.hra_monthly),
         other = num(ol.other_allowance_monthly), gratuity = num(ol.gratuity_monthly),
         pfEmp = num(ol.pf_employee_monthly || 0), pfEmpr = num(ol.pf_employer_monthly);
@@ -374,30 +377,18 @@ function buildShortOfferLetterHTML(ol) {
   const posLabel = department ? designation+' - '+department : designation;
   const location = esc(ol.location||CONFIG.companyCity||'Mumbai');
   const salute = /^(mr|ms|mrs|miss)/i.test(ol.candidate_name||'') ? '' : 'Mr./Ms. ';
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="appt-letter">
 <style>
-  @page { size:A4; margin:20mm 15mm 18mm 15mm; }
+  @page { size:A4; margin:28mm 15mm 18mm 15mm; }
   * { box-sizing:border-box; }
   body { font-family:'Calibri','Carlito','Arial',sans-serif; font-size:12px; line-height:1.5; color:#000; margin:0; }
-  .logo-row { display:flex; align-items:center; gap:12px; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:14px; }
-  .logo-row img { height:50px; }
-  .co-name { font-size:14px; font-weight:bold; }
-  .co-sub { font-size:9px; color:#444; }
   p { margin:6px 0; text-align:justify; }
   table.ctc { width:100%; border-collapse:collapse; margin:10px 0; font-size:11.5px; }
   table.ctc th { background:#1e293b; color:#fff; padding:5px 8px; border:1px solid #000; font-size:11px; }
   .sig { margin-top:30px; }
   .sig-line { border-top:1px solid #000; width:200px; display:inline-block; }
   .avoid { page-break-inside:avoid; }
-</style></head><body>
-<div class="logo-row">
-  <img src="${logo}" alt="Logo">
-  <div>
-    <div class="co-name">${esc(CONFIG.companyFullName)}</div>
-    <div class="co-sub">${esc(CONFIG.companyOfficeAddr||'')}</div>
-    <div class="co-sub">Tel: ${esc(CONFIG.companyTel||'')} | Email: ${esc(CONFIG.supportEmail||'')} | ${esc(CONFIG.websiteUrl||'')}</div>
-  </div>
-</div>
+</style></head><body data-appt-letter="1">
 <p>Date: ${ordDate(ol.offer_date)}</p>
 <p>To,<br><strong>${esc(ol.candidate_name||'')}</strong><br>${esc(ol.candidate_address||'')}<br>Contact No.: ${esc(ol.candidate_mobile||'')}</p>
 <p style="margin-top:12px">Dear ${salute}${esc(surname)},</p>

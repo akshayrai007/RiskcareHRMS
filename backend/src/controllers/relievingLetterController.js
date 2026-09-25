@@ -3,38 +3,7 @@ const CONFIG = require('../Main_file');
 // Relieving Letter Controller — RiskCare HRMS
 
 const db            = require('../config/db');
-const path          = require('path');
-const fs            = require('fs');
-const puppeteerCore = require('puppeteer-core');
-const chromium      = require('@sparticuz/chromium').default;
-
-// ── Browser helpers ────────────────────────────────────────────────────────────
-async function launchBrowser() {
-  const execPath = await chromium.executablePath();
-  return puppeteerCore.launch({
-    args: chromium.args,
-    executablePath: execPath,
-    headless: true,
-  });
-}
-
-async function htmlToPdf(htmlString, browser) {
-  const ownBrowser = !browser;
-  if (ownBrowser) browser = await launchBrowser();
-  try {
-    const page = await browser.newPage();
-    await page.setContent(htmlString, { waitUntil: 'networkidle0' });
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: 0, right: 0, bottom: 0, left: 0 }
-    });
-    await page.close();
-    return Buffer.from(pdfBuffer);
-  } finally {
-    if (ownBrowser) await browser.close();
-  }
-}
+const { htmlToPdf } = require('./offerLetterController');
 
 // ── Date formatter ─────────────────────────────────────────────────────────────
 function formatDate(d) {
@@ -50,15 +19,6 @@ function formatDate(d) {
 
 // ── Build Relieving Letter HTML ────────────────────────────────────────────────
 function buildRelievingLetterHTML(emp, sig1Image, sig2Image) {
-  // ── Logo: direct PNG from frontend folder ──────────────────────────────────
-  const LOGO_PATH = path.join(__dirname, '../../../frontend/Logo.png');
-  let LOGO_B64 = '';
-  try {
-    LOGO_B64 = 'data:image/png;base64,' + fs.readFileSync(LOGO_PATH).toString('base64');
-  } catch (e) {
-    console.error('Logo not found:', e.message);
-  }
-
   const fullName      = ((emp.first_name || '') + ' ' + (emp.last_name || '')).trim();
   const designation   = emp.designation_title || emp.designation || 'Employee';
   const department    = emp.department_name || emp.department || 'Operations';
@@ -82,77 +42,25 @@ function buildRelievingLetterHTML(emp, sig1Image, sig2Image) {
   const relievingDateLong  = longDate(emp.separation_date || emp.last_working_date);
   const todayDateLong      = longDate(new Date());
 
-  // ── RiskCare Letterhead Header ─────────────────────────────────────────────
-  const hdr = `
-    <table class="header-table">
-      <tr>
-        <td style="width:120px;vertical-align:middle;">
-          <img src="${LOGO_B64}" style="width:110px;height:auto;display:block;">
-        </td>
-        <td style="text-align:center;vertical-align:middle;">
-          <div style="font-family:Arial,sans-serif;font-size:20px;font-weight:bold;color:#000;margin-bottom:4px;">${CONFIG.companyFullName}</div>
-          <div style="font-family:Arial,sans-serif;font-size:11px;color:#444;"><strong>Registered Office:</strong> ${CONFIG.companyOfficeAddr}</div>
-          <div style="font-family:Arial,sans-serif;font-size:11px;color:#444;margin-top:2px;">Phone: ${CONFIG.companyTel} &nbsp;|&nbsp; Email: ${CONFIG.supportEmail} &nbsp;|&nbsp; Website: ${CONFIG.websiteUrl}</div>
-        </td>
-      </tr>
-    </table>`;
-
-  // ── RiskCare Footer ────────────────────────────────────────────────────────
-  const ftr = `
-    <div class="footer">
-      CIN: ${CONFIG.companyCIN}
-    </div>`;
-
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8"><meta name="appt-letter">
 <style>
+  @page { size: A4; margin: 28mm 15mm 18mm 15mm; }
   * { box-sizing: border-box; }
-  body {
-    font-family: 'Georgia','Times New Roman',Times,serif;
-    color: #000; line-height: 1.4; margin: 0;
-    background-color: #525659; padding: 20px 0;
-    -webkit-print-color-adjust: exact; print-color-adjust: exact;
-  }
-  .page {
-    width: 210mm; height: 297mm; position: relative;
-    margin: 0 auto 20px auto; background: #fff;
-    box-shadow: 0 0 10px rgba(0,0,0,.5);
-    padding: 5mm 15mm 25mm 15mm;
-    overflow: hidden;
-  }
-  .header-table {
-    width: 100%; border-bottom: 2px solid #000;
-    padding-bottom: 22px; margin-bottom: 65px;
-    border-collapse: collapse;
-  }
-  .footer {
-    position: absolute; bottom: 10mm; left: 15mm; right: 15mm;
-    text-align: center; font-size: 10px; color: #000;
-    border-top: 1px solid #000; padding-top: 5px;
-    font-family: 'Arial',sans-serif; font-weight: bold;
-  }
-  .date-row { text-align: right; font-weight: bold; font-size: 13.5px; margin-bottom: 15px; }
+  body { font-family: 'Calibri','Carlito','Arial',sans-serif; color: #000; line-height: 1.5; margin: 0; }
+  .date-row { font-size: 13px; margin-bottom: 12px; }
   p { margin: 8px 0; text-align: justify; font-size: 13px; line-height: 1.7; }
   .sig-block { margin-top: 60px; font-size: 14px; }
   .dual-signature { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; }
   .sig-left { text-align: left; }
   .sig-right { text-align: right; }
-  @media print {
-    @page { size: A4; margin: 0 !important; }
-    html, body { background-color: #fff; padding: 0 !important; margin: 0 !important; }
-    .page { box-shadow: none !important; margin: 0 !important; }
-    .page:last-of-type { page-break-after: avoid !important; }
-  }
 </style>
 </head>
-<body>
+<body data-appt-letter="1">
 
-<div class="page">
-  ${hdr}
-
-  <div class="date-row" style="text-align:left;font-weight:normal;">Date: ${todayDateLong}</div>
+  <div class="date-row">Date: ${todayDateLong}</div>
 
   <p style="margin:14px 0 0 0;">To,</p>
   <p style="margin:0;text-align:left;">${mrOrMs} ${fullName}</p>
@@ -188,8 +96,6 @@ function buildRelievingLetterHTML(emp, sig1Image, sig2Image) {
     </div>
   </div>
 
-  ${ftr}
-</div>
 
 </body>
 </html>`;
