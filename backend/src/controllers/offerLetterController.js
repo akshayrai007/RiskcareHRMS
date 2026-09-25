@@ -89,12 +89,23 @@ function numberToWords(num) {
 
 // ── Browser helpers ────────────────────────────────────────────────────────────
 async function launchBrowser() {
-  const execPath = await chromium.executablePath();
-  return puppeteerCore.launch({
-    args: chromium.args,
-    executablePath: execPath,
-    headless: true,
-  });
+  // Retry up to 3 times — first call after deploy can hit ETXTBSY while
+  // @sparticuz/chromium extracts its binary to /tmp.
+  let lastErr;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const execPath = await chromium.executablePath();
+      return await puppeteerCore.launch({
+        args: chromium.args,
+        executablePath: execPath,
+        headless: true,
+      });
+    } catch (err) {
+      lastErr = err;
+      if (i < 2) await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+    }
+  }
+  throw lastErr;
 }
 
 async function htmlToPdf(htmlString, browser) {
