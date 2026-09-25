@@ -988,11 +988,18 @@ exports.getAllSalaryStructures = async (req, res) => {
          COALESCE(ess.pt_applicable,true)   AS pt_applicable,
          COALESCE(ess.lwf_applicable,true)  AS lwf_applicable,
          COALESCE(ess.tds_applicable,false) AS tds_applicable,
-         e.state AS employee_state
+         e.state AS employee_state,
+         COALESCE(itd.monthly_tds, 0) AS it_monthly_tds,
+         itd.regime AS it_regime
        FROM employees e
        LEFT JOIN employee_salary_structure ess ON ess.employee_id = e.id
        LEFT JOIN departments d   ON e.department_id = d.id
        LEFT JOIN designations des ON e.designation_id = des.id
+       LEFT JOIN LATERAL (
+         SELECT monthly_tds, regime FROM it_declarations
+         WHERE employee_id = e.id
+         ORDER BY financial_year DESC LIMIT 1
+       ) itd ON true
        ${where}
        ORDER BY d.name, e.first_name`,
       params

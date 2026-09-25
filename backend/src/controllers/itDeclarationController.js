@@ -1638,35 +1638,50 @@ exports.estimateMonthlyTds = async (empId, month, year, earnedGrossThisMonth) =>
   }
   const joinedBy = (y, m) => !jY || (y * 12 + m) >= (jY * 12 + jM);
 
-  let projected = 0, tdsPaid = 0, monthsLeft = 0;   // prevSal is added inside computeRegimeTax — don't add it twice
+  // Collect only TDS already paid from payroll history (NOT gross — we use structGross for
+  // income projection so the result stays consistent with the IT Declaration Tax Preview,
+  // which also uses structGross × 12 rather than actual past payroll figures).
+  let tdsPaid = 0, monthsLeft = 0;
   for (let i = 0; i < 12; i++) {
-    const m = ((3 + i) % 12) + 1;                 // 4,5,...,12,1,2,3
-    const y = m >= 4 ? fyStart : fyStart + 1;
-    const key = `${y}-${m}`;
-    const ord = y * 12 + m, cur = year * 12 + month;
-    if (ord < cur) {                               // past month
-      if (!joinedBy(y, m)) { /* before joining — not this employer's income, even if a stray payroll row exists */ }
-      else if (hist[key]) { projected += parseFloat(hist[key].gross_salary) || 0; tdsPaid += parseFloat(hist[key].tds) || 0; }
-      else projected += structGross;   // no payroll row: assume full salary (catch-up TDS)
-    } else if (ord === cur) {                      // this month: actual earned (paid-days based)
-      projected += earnedGrossThisMonth; monthsLeft += 1;
-    } else {                                       // future month
-      if (joinedBy(y, m)) projected += structGross; monthsLeft += 1;
+    const mo = ((3 + i) % 12) + 1;                // 4,5,...,12,1,2,3
+    const yr = mo >= 4 ? fyStart : fyStart + 1;
+    const key = `${yr}-${mo}`;
+    const ord = yr * 12 + mo, cur = year * 12 + month;
+    if (ord < cur) {
+      if (joinedBy(yr, mo) && hist[key]) tdsPaid += parseFloat(hist[key].tds) || 0;
+    } else {
+      if (joinedBy(yr, mo)) monthsLeft += 1;       // current + future months
     }
   }
 
-  const sal2 = { ...sal, gross_salary: projected / 12, age_group: getAgeGroup(sal.date_of_birth, fy) };
+  // Project income at structGross × months_employed (same basis as taxPreview / IT Declaration)
+  let monthsEmployed = 12;
+  if (jY) monthsEmployed = Math.max(0, Math.min(12, 12 - ((jY * 12 + jM) - (fyStart * 12 + 4))));
+  const annGrossForCalc = structGross * monthsEmployed;
+
+  const sal2 = { ...sal, gross_salary: annGrossForCalc / 12, age_group: getAgeGroup(sal.date_of_birth, fy) };
   const computed = computeRegimeTax(regime, d, cfg, sal2, prevSal, otherInc);
   const remaining = Math.max(0, computed.tax - prevTds - tdsPaid);
   let tds = monthsLeft > 0 ? Math.round(remaining / monthsLeft) : 0;
-  tds = Math.max(0, Math.min(tds, Math.round(earnedGrossThisMonth)));
-  // Components so the Excel template can recompute TDS live when HR edits days / bonus:
-  //   taxable = base_income + this month's gross - deductions ; TDS = (annual tax - already_deducted) / months_left
-  const totalIncome = projected + prevSal + otherInc;
-  const out = { base_income: Math.round(totalIncome - earnedGrossThisMonth), deductions: Math.round(Math.max(0, totalIncome - computed.taxableIncome)),
-                already_deducted: Math.round(prevTds + tdsPaid),
-                tds, fy, regime, joined: jY ? `${jY}-${String(jM).padStart(2,'0')}` : null, has_declaration: !!d.id, projected_gross: Math.round(projected), prev_salary: Math.round(prevSal),
-                annual_tax: computed.tax, taxable_income: Math.round(computed.taxableIncome), tds_paid_ytd: tdsPaid, months_left: monthsLeft };
+  tds = Math.max(0, Math.min(tds, Math.round(earnedGrossThisMonth || structGross)));
+  // Components for the Excel live-formula:
+  //   taxable = base_income + GrossSalaryCell - deductions
+  //   TDS = MAX(0, ROUND((annual_tax - already_deducted) / months_left, 0))
+  const totalIncome = annGrossForCalc + prevSal + otherInc;
+  const out = {
+    base_income: Math.round(totalIncome - structGross),   // everything except this month's gross
+    deductions: Math.round(Math.max(0, totalIncome - computed.taxableIncome)),
+    already_deducted: Math.round(prevTds + tdsPaid),
+    tds, fy, regime,
+    joined: jY ? `${jY}-${String(jM).padStart(2,'0')}` : null,
+    has_declaration: !!d.id,
+    projected_gross: Math.round(annGrossForCalc),
+    prev_salary: Math.round(prevSal),
+    annual_tax: computed.tax,
+    taxable_income: Math.round(computed.taxableIncome),
+    tds_paid_ytd: tdsPaid,
+    months_left: monthsLeft,
+  };
   console.log('[TDS estimate]', empId, JSON.stringify(out));
   return out;
 };

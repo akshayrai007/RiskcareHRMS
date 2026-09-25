@@ -810,7 +810,7 @@ async function loadSalaryStructures() {
         <tr>
           <th colspan="4" style="${XLH};background:#e8eaf6;border:1px solid #9fa8da"></th>
           <th colspan="5" style="${XLH};background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20">💵 EARNINGS (₹/mo)</th>
-          <th colspan="7" style="${XLH};background:#fce4ec;border:1px solid #f48fb1;color:#880e4f">📋 DEDUCTIONS (₹/mo)</th>
+          <th colspan="8" style="${XLH};background:#fce4ec;border:1px solid #f48fb1;color:#880e4f">📋 DEDUCTIONS (₹/mo)</th>
           <th colspan="3" style="${XLH};background:#e3f2fd;border:1px solid #90caf9;color:#0d47a1">💼 SUMMARY</th>
           <th style="${XLH};background:#fff3e0;border:1px solid #ffcc80" rowspan="2">Action</th>
         </tr>
@@ -829,6 +829,7 @@ async function loadSalaryStructures() {
           <th style="${XLH};background:#fce4ec">ESI (Emp)</th>
           <th style="${XLH};background:#fce4ec">ESI (Empr)</th>
           <th style="${XLH};background:#fce4ec">PT</th>
+          <th style="${XLH};background:#fce4ec">TDS/mo</th>
           <th style="${XLH};background:#fce4ec">Total Ded.</th>
           <th style="${XLH};background:#e3f2fd">Net Salary</th>
           <th style="${XLH};background:#e3f2fd">CTC/mo</th>
@@ -852,6 +853,7 @@ async function loadSalaryStructures() {
           <td style="${XLD};text-align:right;color:#dc2626">${fmt.money(r.esi_employee)}</td>
           <td style="${XLD};text-align:right;color:#9f1239">${fmt.money(r.esi_employer)}</td>
           <td style="${XLD};text-align:right;color:#dc2626">${fmt.money(r.professional_tax||r.pt_amount||0)}</td>
+          <td style="${XLD};text-align:right;color:#dc2626">${r.tds_applicable && r.it_monthly_tds > 0 ? fmt.money(r.it_monthly_tds) : (r.tds_applicable ? '<span style="color:#d97706;font-size:11px">No IT Decl.</span>' : '—')}</td>
           <td style="${XLD};text-align:right;color:#dc2626">- ${fmt.money(r.total_deductions)}</td>
           <td style="${XLD};text-align:right;font-weight:800;color:#16a34a;font-size:13px">${fmt.money(r.net_salary)}</td>
           <td style="${XLD};text-align:right;color:#1d4ed8">${fmt.money(r.ctc_monthly)}</td>
