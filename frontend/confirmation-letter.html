@@ -161,8 +161,8 @@ document.getElementById('emp-search').addEventListener('input', function() {
   dd.style.display='block';
   _searchTimer = setTimeout(async () => {
     try {
-      const data = await api('GET', `/employees?search=${encodeURIComponent(q)}&active=true&limit=15`);
-      const list = data.employees || data || [];
+      const data = await api('GET', `/employees?search=${encodeURIComponent(q)}&limit=15`);
+      const list = data.data || data.employees || [];
       if (!list.length) {
         dd.innerHTML = '<div class="emp-opt" style="color:#9ca3af;cursor:default">No employees found</div>';
         return;
