@@ -350,7 +350,7 @@ exports.uploadPayroll = async (req, res) => {
     // with the fuzzy column lookups above)
     const colEx = (name) => headers.findIndex(h => h.startsWith(name));
     const iLopRev   = colEx('lop reversal');
-    const iFoodBase = colEx('food coupon (monthly');
+    const iFoodBase = colEx('food coupon (fixed') !== -1 ? colEx('food coupon (fixed') : colEx('food coupon (monthly');
     const iFoodAdj  = colEx('food coupon adj');
     const iExtraWk  = colEx('extra working');
     const iBonus    = colEx('bonus');
@@ -1322,12 +1322,12 @@ exports.downloadPayrollTemplate = async (req, res) => {
       'Emp Code', 'Full Name', 'Department', 'Division', 'Designation', 'Category',
       // ── B: Attendance ───────────────────────────────────────────────────────
       'Working Days', 'Present Days', 'LOP Days', 'LOP Reversal (Days)', 'Paid Days',
-      // ── C: Fixed Earnings (Monthly structure + Actual after LOP) ────────────
-      'Basic (Monthly)', 'Basic (Actual)',
-      'HRA (Monthly)', 'HRA (Actual)',
-      'Defray Allowance (Monthly)', 'Defray Allowance (Actual)',
-      'Gratuity (Monthly)', 'Gratuity (Actual)',
-      'Food Coupon (Monthly)', 'Food Coupon (Actual)',
+      // ── C: Fixed Earnings (Fixed P.M. = structure amount; Earned = after LOP) ─
+      'Basic (Fixed P.M.)', 'Basic (Earned)',
+      'HRA (Fixed P.M.)', 'HRA (Earned)',
+      'Defray Allowance (Fixed P.M.)', 'Defray Allowance (Earned)',
+      'Gratuity (Fixed P.M.)', 'Gratuity (Earned)',
+      'Food Coupon (Fixed P.M.)', 'Food Coupon (Earned)',
       // ── D: Variable / One-time Earnings ─────────────────────────────────────
       'Food Coupon Adjustment', 'Extra Working Salary', 'Bonus', 'Incentive', 'Other Earning', 'Performance Bonus',
       // ── E: Gross ─────────────────────────────────────────────────────────────
@@ -1350,7 +1350,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // Section color map — used for header fill + a light tint on data rows.
     const COL_GROUPS = [
       { from: 'Emp Code',                   to: 'Paid Days',                          headBg:'475569', headFg:'FFFFFF', dataBg:'F1F5F9' }, // A: identity/attendance - slate
-      { from: 'Basic (Monthly)',            to: 'Food Coupon (Actual)',               headBg:'15803D', headFg:'FFFFFF', dataBg:'DCFCE7' }, // C: fixed earnings - green
+      { from: 'Basic (Fixed P.M.)',          to: 'Food Coupon (Earned)',               headBg:'15803D', headFg:'FFFFFF', dataBg:'DCFCE7' }, // C: fixed earnings - green
       { from: 'Food Coupon Adjustment',     to: 'Performance Bonus',                 headBg:'0D9488', headFg:'FFFFFF', dataBg:'CCFBF1' }, // D: variable earnings - teal
       { from: 'Gross Salary',              to: 'Gross Salary',                       headBg:'B45309', headFg:'FFFFFF', dataBg:'FEF3C7' }, // E: gross - amber
       { from: 'PF (Employee)',             to: 'Salary Advance Recovery (Loan/EMI)', headBg:'B91C1C', headFg:'FFFFFF', dataBg:'FEE2E2' }, // F: employee deductions - red
@@ -1479,8 +1479,8 @@ exports.downloadPayrollTemplate = async (req, res) => {
       const prorateFactor = wd ? paid / wd : 0;
       // Fixed components (Basic/HRA/Defray/Gratuity) prorate by attendance; Food
       // Coupon is a flat monthly meal-voucher benefit and is NEVER prorated.
-      const earnedFixed = (num('Basic (Monthly)') + num('HRA (Monthly)') + num('Defray Allowance (Monthly)') + num('Gratuity (Monthly)')) * prorateFactor;
-      const foodCouponMonthly = num('Food Coupon (Monthly)');
+      const earnedFixed = (num('Basic (Fixed P.M.)') + num('HRA (Fixed P.M.)') + num('Defray Allowance (Fixed P.M.)') + num('Gratuity (Fixed P.M.)')) * prorateFactor;
+      const foodCouponMonthly = num('Food Coupon (Fixed P.M.)');
       const oneTime = ['Food Coupon Adjustment','Extra Working Salary','Bonus','Incentive','Other Earning','Performance Bonus'].reduce((a, l) => a + num(l), 0);
       const gross = Math.round((earnedFixed + foodCouponMonthly + oneTime) * 100) / 100;
       const ded = num('PF (Employee)') + num('ESI (Employee)') + num('Prof Tax') + num('TDS') +
@@ -1509,12 +1509,12 @@ exports.downloadPayrollTemplate = async (req, res) => {
       setF('Paid Days', `MIN(${LT('Working Days')}${R},${LT('Present Days')}${R}+MIN(${LT('LOP Reversal (Days)')}${R},${LT('LOP Days')}${R}))`, paid);
       // "Actual" columns = what's actually earned this month once attendance is
       // applied. Food Coupon (Actual) mirrors the monthly value since it's flat.
-      setF('Basic (Actual)', `ROUND(${LT('Basic (Monthly)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('Basic (Monthly)') * prorateFactor * 100) / 100);
-      setF('HRA (Actual)', `ROUND(${LT('HRA (Monthly)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('HRA (Monthly)') * prorateFactor * 100) / 100);
-      setF('Defray Allowance (Actual)', `ROUND(${LT('Defray Allowance (Monthly)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('Defray Allowance (Monthly)') * prorateFactor * 100) / 100);
-      setF('Gratuity (Actual)', `ROUND(${LT('Gratuity (Monthly)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('Gratuity (Monthly)') * prorateFactor * 100) / 100);
-      setF('Food Coupon (Actual)', `${LT('Food Coupon (Monthly)')}${R}`, foodCouponMonthly);
-      setF('Gross Salary', `ROUND((${LT('Basic (Monthly)')}${R}+${LT('HRA (Monthly)')}${R}+${LT('Defray Allowance (Monthly)')}${R}+${LT('Gratuity (Monthly)')}${R})*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0)+${LT('Food Coupon (Monthly)')}${R}+SUM(${LT('Food Coupon Adjustment')}${R}:${LT('Performance Bonus')}${R}),2)`, gross);
+      setF('Basic (Earned)',            `ROUND(${LT('Basic (Fixed P.M.)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('Basic (Fixed P.M.)') * prorateFactor * 100) / 100);
+      setF('HRA (Earned)',              `ROUND(${LT('HRA (Fixed P.M.)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('HRA (Fixed P.M.)') * prorateFactor * 100) / 100);
+      setF('Defray Allowance (Earned)', `ROUND(${LT('Defray Allowance (Fixed P.M.)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('Defray Allowance (Fixed P.M.)') * prorateFactor * 100) / 100);
+      setF('Gratuity (Earned)',         `ROUND(${LT('Gratuity (Fixed P.M.)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('Gratuity (Fixed P.M.)') * prorateFactor * 100) / 100);
+      setF('Food Coupon (Earned)',      `${LT('Food Coupon (Fixed P.M.)')}${R}`, foodCouponMonthly);
+      setF('Gross Salary', `ROUND((${LT('Basic (Fixed P.M.)')}${R}+${LT('HRA (Fixed P.M.)')}${R}+${LT('Defray Allowance (Fixed P.M.)')}${R}+${LT('Gratuity (Fixed P.M.)')}${R})*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0)+${LT('Food Coupon (Fixed P.M.)')}${R}+SUM(${LT('Food Coupon Adjustment')}${R}:${LT('Performance Bonus')}${R}),2)`, gross);
       setF('Total Deductions', `SUM(${LT('PF (Employee)')}${R}:${LT('Salary Advance Recovery (Loan/EMI)')}${R})`, ded);
       const empr = num('EPF Employer (A/c-1)') + num('EPS Employer (A/c-10)') + num('PF Admin + EDLI (Employer)') + num('ESI (Employer)');
       setF('Total Employer Contribution', `${LT('EPF Employer (A/c-1)')}${R}+${LT('EPS Employer (A/c-10)')}${R}+${LT('PF Admin + EDLI (Employer)')}${R}+${LT('ESI (Employer)')}${R}`, empr);
@@ -1581,8 +1581,8 @@ exports.downloadPayrollTemplate = async (req, res) => {
       ['Present Days',      'Paid days for the month (present + weekly offs + holidays + paid leave) - PRE-FILLED from attendance, edit if needed'],
       ['LOP Days',          'Loss of Pay days - PRE-FILLED from attendance (absent / unpaid leave / before joining)'],
       ['LOP Reversal (Days)','Days of LOP to credit back this month (paid for those days; LOP Days reduces by the same)'],
-      ['Food Coupon (Monthly)','Fixed monthly meal-voucher amount for this employee - pre-filled from salary structure. Leave 0 if not eligible. NOT prorated by attendance.'],
-      ['Food Coupon Adjustment','One-time +/- adjustment ON TOP of Food Coupon (Monthly), for this month only (e.g. a correction)'],
+      ['Food Coupon (Fixed P.M.)','Fixed monthly meal-voucher amount for this employee - pre-filled from salary structure. Leave 0 if not eligible. NOT prorated by attendance.'],
+      ['Food Coupon Adjustment','One-time +/- adjustment ON TOP of Food Coupon (Fixed P.M.), for this month only (e.g. a correction)'],
       ['Extra Working Salary / Bonus / Incentive / Other Earning / Performance Bonus','One-time earnings for THIS month only - not prorated, not part of the salary structure'],
       ['GTL / Late Mark Deduction','One-time deductions for THIS month only'],
       ['Salary Advance Recovery','Monthly advance/loan EMI recovery (pre-filled from active advance; reduces the advance balance)'],
@@ -1591,8 +1591,8 @@ exports.downloadPayrollTemplate = async (req, res) => {
       [''],
       ['COLUMNS PRE-FILLED (do not change unless needed):'],
       ['Column', 'Source'],
-      ['Basic/HRA/Defray/Gratuity/Food Coupon (Monthly)', 'Full monthly amount from employee salary structure in system'],
-      ['Basic/HRA/Defray/Gratuity/Food Coupon (Actual)', 'What is actually earned THIS month after attendance/LOP is applied - live formulas, for review only, do not edit'],
+      ['Basic/HRA/Defray/Gratuity/Food Coupon (Fixed P.M.)', 'Fixed per-month amount from employee salary structure in system'],
+      ['Basic/HRA/Defray/Gratuity/Food Coupon (Earned)', 'Amount earned THIS month after attendance/LOP pro-ration - live formula, do not edit'],
       ['Gross Salary',      'Sum of all earnings'],
       ['PF, ESI, PT',  'From salary structure'],
       ['TDS',  'Auto-calculated from IT Declaration if TDS is enabled for the employee; edit if needed'],
