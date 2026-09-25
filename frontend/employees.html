@@ -813,6 +813,11 @@
   #salary-preview .pv-tbl tr.tds td{background:#fffbeb}
   #salary-preview .pv-tbl tr.ctc td{background:#1d4ed8;color:#fff;font-weight:800;font-size:14px;border-bottom:0}
   #salary-preview .pv-tbl tbody tr:last-child td{border-bottom:0}
+  #salary-preview .pv-tbl tr.emr-sec td{background:#eff6ff;color:#1e40af;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;text-align:left;padding:7px 12px}
+  #salary-preview .pv-tbl tr.emr-row td{background:#f8faff;color:#1e293b}
+  #salary-preview .pv-tbl tr.emr-row td:not(:first-child){color:#1d4ed8}
+  #salary-preview .pv-tbl tr.emr-tot td{background:#dbeafe;font-weight:800;color:#1e3a8a;border-top:1px solid #93c5fd}
+  #salary-preview .pv-tbl .pv-rate{display:block;font-size:10px;color:#64748b;margin-top:1px;font-weight:400}
 </style>
         <div id="salary-preview" style="display:none;background:#f8fafc;border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -846,11 +851,13 @@
               <tr class="tds" id="prev-tds-row" style="display:none"><td>TDS<small>Calculated each month in payroll</small></td><td>—</td><td>—</td></tr>
               <tr class="tot ded"><td>Total Deductions</td><td id="prev-ded"></td><td id="pv-ded-a"></td></tr>
               <tr class="tot net"><td>Net Take-Home</td><td id="pv-net-m"></td><td id="pv-net-a"></td></tr>
-              <tr class="sec"><td colspan="3">Employer Contribution</td></tr>
-              <tr id="pvr-pfemr"><td>PF (Employer)</td><td id="pv-pfemr-m"></td><td id="pv-pfemr-a"></td></tr>
-              <tr id="pvr-pfadm"><td>PF Admin + EDLI</td><td id="pv-pfadm-m"></td><td id="pv-pfadm-a"></td></tr>
-              <tr id="pvr-esiemr"><td>ESI (Employer)</td><td id="pv-esiemr-m"></td><td id="pv-esiemr-a"></td></tr>
-              <tr class="tot"><td>Total Employer Contribution</td><td id="pv-emr-m"></td><td id="pv-emr-a"></td></tr>
+              <tr class="sec emr-sec"><td colspan="3">Employer Contribution</td></tr>
+              <tr class="emr-row"><td>EPF Employer A/c-1 <small class="pv-rate">3.67% of PF wages</small></td><td id="pv-epf-ac1-m"></td><td id="pv-epf-ac1-a"></td></tr>
+              <tr class="emr-row"><td>EPS A/c-10 <small class="pv-rate">8.33% of PF wages</small></td><td id="pv-eps-m"></td><td id="pv-eps-a"></td></tr>
+              <tr class="emr-row"><td>EPF Admin A/c-2 <small class="pv-rate">0.50% of PF wages</small></td><td id="pv-pfadm2-m"></td><td id="pv-pfadm2-a"></td></tr>
+              <tr class="emr-row"><td>EDLI A/c-21 <small class="pv-rate">0.50% of PF wages</small></td><td id="pv-edli-m"></td><td id="pv-edli-a"></td></tr>
+              <tr id="pvr-esiemr" class="emr-row"><td>ESI (Employer) <small class="pv-rate">3.25% of gross (if applicable)</small></td><td id="pv-esiemr-m"></td><td id="pv-esiemr-a"></td></tr>
+              <tr class="tot emr-tot"><td>Total Employer Contribution</td><td id="pv-emr-m"></td><td id="pv-emr-a"></td></tr>
               <tr class="ctc"><td>Cost to Company (CTC)</td><td id="pv-ctc-m"></td><td id="pv-ctc-a"></td></tr>
             </tbody>
           </table>
@@ -2793,8 +2800,18 @@ function recalcSalaryPreview() {
   };
   setRow('basic', basic); setRow('hra', hra, true); setRow('special', special, true);
   setRow('gratuity', gratuity, true); setRow('food', foodCoupon, true);
+  // Break out employer PF into individual A/c rows
+  const epfAc1 = pfOn ? Math.round(pfBase * 0.0367) : 0;
+  const epsAc10 = pfOn ? Math.round(pfBase * 0.0833) : 0;
+  const pfAdmAc2 = pfOn ? Math.round(pfBase * 0.005) : 0;
+  const edliAc21 = pfOn ? Math.round(pfBase * 0.005) : 0;
+  const setCell = (id, v) => { const el = document.getElementById(id); if (el) { el.textContent = v > 0 ? fmt2(v) : '—'; } };
+  setCell('pv-epf-ac1-m', epfAc1);  setCell('pv-epf-ac1-a', epfAc1 * 12);
+  setCell('pv-eps-m', epsAc10);     setCell('pv-eps-a', epsAc10 * 12);
+  setCell('pv-pfadm2-m', pfAdmAc2); setCell('pv-pfadm2-a', pfAdmAc2 * 12);
+  setCell('pv-edli-m', edliAc21);   setCell('pv-edli-a', edliAc21 * 12);
   const empr = pfEmr + esiEmr + pfAdmin;
-  setRow('pfemr', pfEmr, true); setRow('pfadm', pfAdmin, true); setRow('esiemr', esiEmr, true);
+  setRow('esiemr', esiEmr, true);
   setRow('emr', empr); setRow('net', net); setRow('ctc', ctc);
   [['gross', gross], ['pf', pfEmp], ['esi', esiEmp], ['pt', pt], ['ded', totalDed]].forEach(([k, v]) => {
     const el = document.getElementById(`pv-${k}-a`); if (el) el.textContent = fmt2(v * 12);
