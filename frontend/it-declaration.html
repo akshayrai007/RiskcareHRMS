@@ -103,30 +103,39 @@
 .ps-approved{background:#dcfce7;color:#166534;border:1px solid #86efac}
 .ps-rejected{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
 /* ── Tax Preview ── */
-.regime-cmp{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
-@media(max-width:580px){.regime-cmp{grid-template-columns:1fr}}
-.rc{border:2px solid #e0e3ec;border-radius:12px;padding:18px;text-align:center;position:relative}
-.rc.cheaper{border-color:#166534;background:#f0fdf4}
-.rc h3{font-size:14px;font-weight:800;color:#1e3a5f;margin:0 0 10px}
-.rc .tax-amt{font-size:30px;font-weight:800;color:#1e3a5f}
-.rc .tds-ln{font-size:12px;color:#546e7a;margin-top:4px}
-.rc .rec-bdg{display:inline-block;background:#166534;color:#fff;font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:10px;margin-top:8px}
-.rc .sel-btn{margin-top:12px;width:100%;padding:8px;border-radius:7px;border:1.5px solid #3949ab;background:#fff;color:#3949ab;font-size:12px;font-weight:700;cursor:pointer}
-.rc .sel-btn:hover,.rc .sel-btn.chosen{background:#3949ab;color:#fff}
-.tax-bk{background:#f0f4ff;border:1.5px solid #c5cae9;border-radius:10px;padding:16px 18px;margin-bottom:14px}
-.tax-bk h4{font-size:12px;font-weight:800;color:#3949ab;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px}
-.tr{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #e0e3ec;font-size:13px}
-.tr:last-child{border-bottom:none;font-weight:800;font-size:14px;color:#283593}
-.tr .tl{color:#546e7a}.tr .tv{font-weight:700;color:#1e293b}
-.tr.ded .tv{color:#166534}
-.tr.total .tv{color:#3949ab;font-size:15px}
-.tds-hl{background:linear-gradient(135deg,#1e3a5f,#3949ab);border-radius:9px;padding:14px 18px;color:#fff;display:flex;justify-content:space-between;align-items:center;margin-top:12px}
-.tds-hl .thl{font-size:12.5px;font-weight:600;opacity:.85}
-.tds-hl .tha{font-size:24px;font-weight:800}
-.rec-box{background:#fffbeb;border:1.5px solid #fde68a;border-radius:9px;padding:14px 16px;font-size:13px;color:#92400e;margin-bottom:14px}
-.rec-box strong{color:#1e3a5f;display:block;font-size:15px;margin-bottom:4px}
-.rec-box ul{margin:8px 0 0 16px;padding:0}
-.rec-box li{margin-bottom:4px}
+.tax-cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:0}
+@media(max-width:640px){.tax-cmp-grid{grid-template-columns:1fr}}
+/* Regime summary card */
+.rc{border:2px solid #d1d5db;border-radius:14px;padding:22px 20px;text-align:center;position:relative;background:#fff}
+.rc.cheaper{border-color:#16a34a;background:#f0fdf4}
+.rc-label{font-size:13px;font-weight:800;color:#374151;letter-spacing:.03em;margin:0 0 8px}
+.rc-tax{font-size:32px;font-weight:900;color:#111827;line-height:1.1;margin-bottom:10px}
+.rc-meta{font-size:12px;color:#6b7280;margin:3px 0}
+.rc-meta strong{color:#111827}
+.rec-bdg{display:inline-block;background:#15803d;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;margin:8px 0 4px}
+.sel-btn{margin-top:12px;width:100%;padding:9px;border-radius:8px;border:2px solid #3730a3;background:#fff;color:#3730a3;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.sel-btn:hover,.sel-btn.chosen{background:#3730a3;color:#fff}
+/* Breakdown table */
+.tax-bk{border-radius:12px;padding:16px 18px;border:1.5px solid #c7d2fe;background:#f5f3ff}
+.tax-bk.new-r{border-color:#86efac;background:#f0fdf4}
+.tax-bk-hd{font-size:11px;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:.07em;margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid #c7d2fe}
+.tax-bk.new-r .tax-bk-hd{color:#15803d;border-color:#86efac}
+.tr{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e5e7eb;font-size:12.5px}
+.tr:last-child{border-bottom:none}
+.tr .tl{color:#6b7280}.tr .tv{font-weight:600;color:#111827}
+.tr.ded .tv{color:#15803d}
+.tr.total{background:#eef2ff;border-radius:6px;padding:6px 8px;margin:6px 0;border-bottom:none}
+.tr.total .tl{color:#3730a3;font-weight:700}.tr.total .tv{color:#3730a3;font-size:14px;font-weight:800}
+.tds-hl{background:#3730a3;border-radius:8px;padding:12px 16px;color:#fff;display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+.tax-bk.new-r .tds-hl{background:#15803d}
+.tds-hl2{background:#4f46e5;border-radius:8px;padding:10px 16px;color:#fff;display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.tax-bk.new-r .tds-hl2{background:#16a34a}
+.tds-hl .thl,.tds-hl2 .thl{font-size:12px;font-weight:600;opacity:.9}
+.tds-hl .tha,.tds-hl2 .tha{font-size:20px;font-weight:800}
+.rec-box{background:#fffbeb;border:1.5px solid #fde68a;border-radius:9px;padding:12px 16px;font-size:12.5px;color:#92400e;margin-bottom:16px}
+.rec-box strong{color:#1e3a5f;display:block;font-size:14px;margin-bottom:4px}
+.rec-box ul{margin:6px 0 0 16px;padding:0}
+.rec-box li{margin-bottom:3px}
 /* ── HR dashboard stats ── */
 .hr-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px}
 .hr-stat{border:1.5px solid #e0e3ec;border-radius:9px;padding:12px 14px;text-align:center}
@@ -1505,84 +1514,74 @@ async function loadTaxPreview() {
       <ul>${d.recommendation_reasons.map(r => `<li>${r}</li>`).join('')}</ul>
     </div>
 
-    <!-- Regime comparison cards -->
-    <div class="regime-cmp">
-      <div class="rc ${oCheap?'cheaper':''}">
-        <h3>🏛️ Old Regime</h3>
-        <div class="tax-amt">${money(o.net_tax)}</div>
-        <div class="tds-ln">Monthly TDS: <strong>${money(o.monthly_tds)}</strong></div>
-        ${o.tds_paid_ytd ? `<div class="tds-ln">Already deducted: ${money(o.tds_paid_ytd)}</div>` : ''}
-        <div class="tds-ln">Taxable Income: ${money(o.taxable_income)}</div>
-        ${oCheap ? '<span class="rec-bdg">⭐ RECOMMENDED</span>' : ''}
-        <button class="sel-btn ${currentRegime==='old'?'chosen':''}" onclick="setRegime('old');sw('decl')">Select Old Regime</button>
-      </div>
-      <div class="rc ${nCheap?'cheaper':''}">
-        <h3>✨ New Regime</h3>
-        <div class="tax-amt">${money(nw.net_tax)}</div>
-        <div class="tds-ln">Monthly TDS: <strong>${money(nw.monthly_tds)}</strong></div>
-        ${nw.tds_paid_ytd ? `<div class="tds-ln">Already deducted: ${money(nw.tds_paid_ytd)}</div>` : ''}
-        <div class="tds-ln">Taxable Income: ${money(nw.taxable_income)}</div>
-        ${nCheap ? '<span class="rec-bdg">⭐ RECOMMENDED</span>' : ''}
-        <button class="sel-btn ${currentRegime==='new'?'chosen':''}" onclick="setRegime('new');sw('decl')">Select New Regime</button>
-      </div>
-    </div>
+    <!-- Cards + Breakdowns in one unified 2-column grid -->
+    <div class="tax-cmp-grid">
 
-    <!-- Breakdowns side by side -->
-    <div class="regime-cmp" style="align-items:start">
-      <!-- Old Regime breakdown -->
-      <div class="tax-bk" style="margin-bottom:0">
-        <h4>🏛️ Old Regime — Full Breakdown</h4>
-        ${row('Gross Salary (Annual)', money(d.annual_gross))}
-        ${d.prev_salary > 0 ? row('+ Previous Employment Income', money(d.prev_salary)) : ''}
-        ${d.other_income > 0 ? row('+ Other Income', money(d.other_income)) : ''}
-        ${rowDed('Less: Standard Deduction', money(o.std_deduction))}
-        ${o.hra_exemption > 0 ? rowDed('Less: HRA Exemption', money(o.hra_exemption)) : ''}
-        ${o.deduction_80c > 0 ? rowDed('Less: 80C Investments', money(o.deduction_80c)) : ''}
-        ${o.deduction_nps > 0 ? rowDed('Less: NPS 80CCD(1B)', money(o.deduction_nps)) : ''}
-        ${o.deduction_80d > 0 ? rowDed('Less: 80D Medical Insurance', money(o.deduction_80d)) : ''}
-        ${o.deduction_homeloan > 0 ? rowDed('Less: Home Loan Interest Sec24(b)', money(o.deduction_homeloan)) : ''}
-        ${o.deduction_80e > 0 ? rowDed('Less: 80E Education Loan', money(o.deduction_80e)) : ''}
-        ${o.deduction_80g > 0 ? rowDed('Less: 80G Donations', money(o.deduction_80g)) : ''}
-        ${o.deduction_80dd > 0 ? rowDed('Less: 80DD Dependent Disability', money(o.deduction_80dd)) : ''}
-        ${o.deduction_80u  > 0 ? rowDed('Less: 80U Self Disability', money(o.deduction_80u)) : ''}
-        ${o.deduction_80ddb> 0 ? rowDed('Less: 80DDB Medical Treatment', money(o.deduction_80ddb)) : ''}
-        ${o.deduction_lta  > 0 ? rowDed('Less: LTA', money(o.deduction_lta)) : ''}
-        ${o.house_property > 0 ? rowDed('Less: House Property Loss', money(o.house_property)) : ''}
-        <div class="tr total"><span class="tl">Net Taxable Income</span><span class="tv">${money(o.taxable_income)}</span></div>
-        ${row('Income Tax', money(o.tax_before_cess))}
-        ${row('Health & Education Cess (4%)', money(o.cess))}
-        ${row('Total Tax Liability', money(o.tax))}
-        ${o.prev_tds > 0 ? rowDed('Less: TDS by Previous Employer', money(o.prev_tds)) : ''}
-        <div class="tds-hl">
-          <div><div class="thl">Net Tax Payable (Old Regime)</div></div>
-          <div class="tha">${money(o.net_tax)}</div>
+      <!-- LEFT: Old Regime -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="rc ${oCheap?'cheaper':''}">
+          <div class="rc-label">🏛️ Old Regime</div>
+          <div class="rc-tax">${money(o.net_tax)}</div>
+          <div class="rc-meta">Monthly TDS: <strong>${money(o.monthly_tds)}</strong></div>
+          <div class="rc-meta">Taxable Income: <strong>${money(o.taxable_income)}</strong></div>
+          ${o.tds_paid_ytd ? `<div class="rc-meta">Already deducted: <strong>${money(o.tds_paid_ytd)}</strong></div>` : ''}
+          ${oCheap ? '<div><span class="rec-bdg">⭐ RECOMMENDED</span></div>' : ''}
+          <button class="sel-btn ${currentRegime==='old'?'chosen':''}" onclick="setRegime('old');sw('decl')">Select Old Regime</button>
         </div>
-        <div class="tds-hl" style="background:linear-gradient(135deg,#283593,#3949ab);margin-top:8px">
-          <div><div class="thl">Monthly TDS</div></div>
-          <div class="tha">${money(o.monthly_tds)}/mo</div>
+        <div class="tax-bk">
+          <div class="tax-bk-hd">🏛️ Old Regime — Full Breakdown</div>
+          ${row('Gross Salary (Annual)', money(d.annual_gross))}
+          ${d.prev_salary > 0 ? row('+ Previous Employment Income', money(d.prev_salary)) : ''}
+          ${d.other_income > 0 ? row('+ Other Income', money(d.other_income)) : ''}
+          ${rowDed('Less: Standard Deduction', money(o.std_deduction))}
+          ${o.hra_exemption > 0 ? rowDed('Less: HRA Exemption', money(o.hra_exemption)) : ''}
+          ${o.deduction_80c > 0 ? rowDed('Less: 80C Investments', money(o.deduction_80c)) : ''}
+          ${o.deduction_nps > 0 ? rowDed('Less: NPS 80CCD(1B)', money(o.deduction_nps)) : ''}
+          ${o.deduction_80d > 0 ? rowDed('Less: 80D Medical Insurance', money(o.deduction_80d)) : ''}
+          ${o.deduction_homeloan > 0 ? rowDed('Less: Home Loan Interest 24(b)', money(o.deduction_homeloan)) : ''}
+          ${o.deduction_80e > 0 ? rowDed('Less: 80E Education Loan', money(o.deduction_80e)) : ''}
+          ${o.deduction_80g > 0 ? rowDed('Less: 80G Donations', money(o.deduction_80g)) : ''}
+          ${o.deduction_80dd > 0 ? rowDed('Less: 80DD Dependent Disability', money(o.deduction_80dd)) : ''}
+          ${o.deduction_80u  > 0 ? rowDed('Less: 80U Self Disability', money(o.deduction_80u)) : ''}
+          ${o.deduction_80ddb> 0 ? rowDed('Less: 80DDB Medical Treatment', money(o.deduction_80ddb)) : ''}
+          ${o.deduction_lta  > 0 ? rowDed('Less: LTA', money(o.deduction_lta)) : ''}
+          ${o.house_property > 0 ? rowDed('Less: House Property Loss', money(o.house_property)) : ''}
+          <div class="tr total"><span class="tl">Net Taxable Income</span><span class="tv">${money(o.taxable_income)}</span></div>
+          ${row('Income Tax', money(o.tax_before_cess))}
+          ${row('Health & Education Cess (4%)', money(o.cess))}
+          ${row('Total Tax Liability', money(o.tax))}
+          ${o.prev_tds > 0 ? rowDed('Less: TDS by Previous Employer', money(o.prev_tds)) : ''}
+          <div class="tds-hl"><span class="thl">Net Tax Payable</span><span class="tha">${money(o.net_tax)}</span></div>
+          <div class="tds-hl2"><span class="thl">Monthly TDS</span><span class="tha">${money(o.monthly_tds)}/mo</span></div>
         </div>
       </div>
 
-      <!-- New Regime breakdown -->
-      <div class="tax-bk" style="background:#f0fdf4;border-color:#86efac;margin-bottom:0">
-        <h4 style="color:#166534">✨ New Regime — Full Breakdown</h4>
-        ${row('Annual Gross Salary', money(d.annual_gross))}
-        ${d.prev_salary > 0 ? row('+ Previous Employment Income', money(d.prev_salary)) : ''}
-        ${d.other_income > 0 ? row('+ Other Income', money(d.other_income)) : ''}
-        ${nw.employer_nps > 0 ? rowDed('Less: Employer NPS — 80CCD(2)', money(nw.employer_nps)) : ''}
-        ${rowDed('Less: Standard Deduction (New Regime)', money(nw.std_deduction))}
-        <div class="tr total"><span class="tl">Net Taxable Income</span><span class="tv">${money(nw.taxable_income)}</span></div>
-        ${row('Income Tax', money(nw.tax_before_cess))}
-        ${row('Health & Education Cess (4%)', money(nw.cess))}
-        <div class="tds-hl" style="background:linear-gradient(135deg,#166534,#16a34a)">
-          <div><div class="thl">Net Tax Payable (New Regime)</div></div>
-          <div class="tha">${money(nw.net_tax)}</div>
+      <!-- RIGHT: New Regime -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="rc ${nCheap?'cheaper':''}">
+          <div class="rc-label">✨ New Regime</div>
+          <div class="rc-tax">${money(nw.net_tax)}</div>
+          <div class="rc-meta">Monthly TDS: <strong>${money(nw.monthly_tds)}</strong></div>
+          <div class="rc-meta">Taxable Income: <strong>${money(nw.taxable_income)}</strong></div>
+          ${nw.tds_paid_ytd ? `<div class="rc-meta">Already deducted: <strong>${money(nw.tds_paid_ytd)}</strong></div>` : ''}
+          ${nCheap ? '<div><span class="rec-bdg">⭐ RECOMMENDED</span></div>' : ''}
+          <button class="sel-btn ${currentRegime==='new'?'chosen':''}" onclick="setRegime('new');sw('decl')">Select New Regime</button>
         </div>
-        <div class="tds-hl" style="background:linear-gradient(135deg,#166534,#22c55e);margin-top:8px">
-          <div><div class="thl">Monthly TDS</div></div>
-          <div class="tha">${money(nw.monthly_tds)}/mo</div>
+        <div class="tax-bk new-r">
+          <div class="tax-bk-hd">✨ New Regime — Full Breakdown</div>
+          ${row('Gross Salary (Annual)', money(d.annual_gross))}
+          ${d.prev_salary > 0 ? row('+ Previous Employment Income', money(d.prev_salary)) : ''}
+          ${d.other_income > 0 ? row('+ Other Income', money(d.other_income)) : ''}
+          ${nw.employer_nps > 0 ? rowDed('Less: Employer NPS — 80CCD(2)', money(nw.employer_nps)) : ''}
+          ${rowDed('Less: Standard Deduction', money(nw.std_deduction))}
+          <div class="tr total"><span class="tl">Net Taxable Income</span><span class="tv">${money(nw.taxable_income)}</span></div>
+          ${row('Income Tax', money(nw.tax_before_cess))}
+          ${row('Health & Education Cess (4%)', money(nw.cess))}
+          <div class="tds-hl"><span class="thl">Net Tax Payable</span><span class="tha">${money(nw.net_tax)}</span></div>
+          <div class="tds-hl2"><span class="thl">Monthly TDS</span><span class="tha">${money(nw.monthly_tds)}/mo</span></div>
         </div>
       </div>
+
     </div>`;
 }
 function row(l, v) { return `<div class="tr"><span class="tl">${l}</span><span class="tv">${v}</span></div>`; }
