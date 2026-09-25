@@ -153,7 +153,7 @@
 <script>
 Auth.guard();
 if (Auth.getUser()?.role !== 'hr') { window.location.href = 'dashboard.html'; throw new Error('relieving-letter.html is HR only'); }
-Auth.requireRole('hr','admin','super_admin');
+Auth.requireRole('hr');
 buildSidebar('relieving-letter.html');
 let employees=[];
 

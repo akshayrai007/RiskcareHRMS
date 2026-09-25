@@ -1787,8 +1787,8 @@ async function showEmpDetail(id) {
   const footer = document.getElementById('emp-detail-footer');
   // Build all buttons in ONE assignment — multiple innerHTML+= re-parses the DOM each time
   // which can cause button misalignment / double-firing issues
-  const canManage = Role.is('hr', 'accounts');
-  const canDanger = Role.is('admin', 'hr', 'accounts');
+  const canManage = Role.is('hr', 'accounts', 'admin', 'super_admin');
+  const canDanger = Role.is('admin', 'super_admin', 'hr', 'accounts');
   const hrButtons = canManage ? `
     <button class="btn btn-outline btn-sm" id="btn-reset-pwd">🔑 Reset Password</button>
     ${e.device_token ? `<button class="btn btn-outline btn-sm" id="btn-reset-device" title="${(e.last_login_device||'Unknown device')} · last login ${e.last_login_at ? new Date(e.last_login_at).toLocaleString() : '—'}">📱 Reset Device</button>` : ''}
