@@ -1352,17 +1352,10 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // Turn a flattened slab array [{lo,step},...] into an Excel array-constant literal,
     // e.g. {0,400000,800000,...} / {0,0.05,0.10,...} for a SUMPRODUCT tiered-tax formula.
     const arrLit = (arr, key) => `{${arr.map(x => x[key]).join(',')}}`;
-    const rows = [
-      // Row 0: Title
-      [`HRMS — Payroll Input Template | ${monthName} ${y} | Total Working Days: ${daysInMonth}`],
-      // Row 1: Instructions
-      [`Present/LOP days are pre-filled from attendance. Bonus, deductions and EMI apply to this month only. TDS is pre-filled from IT Declaration (where TDS is enabled). Status: Paid / Hold / Pending`],
-      // Row 2: Empty spacer
-      [],
-      // Row 3: Headers
-      HEADERS,
-      // Data rows
-      ...await Promise.all(employeesList.map(async e => {
+    // tdsFormulaMap[i] holds the live-formula parts for data row i (0-indexed from first data row).
+    // Built inside the per-employee Promise.all callback and read in the formula loop below.
+    const tdsFormulaMap = [];
+    const dataRows = await Promise.all(employeesList.map(async (e, idx) => {
         const gross   = parseFloat(e.gross_salary)   || 0;
         // Fetch active EMI for this employee
         const emiRes  = await db.query(
@@ -1378,7 +1371,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
         // TDS: if the structure has TDS enabled, pre-fill this month's amount from the
         // employee's IT Declaration (regime, deductions, prev-employer income, TDS paid YTD).
         let tds = parseFloat(e.tds) || 0;
-        let tdsFormulaParts = null;   // set below when we can build a live in-sheet formula
+        tdsFormulaMap[idx] = null;   // default: no live formula
         if (e.tds_applicable) {
           try {
             const fixedMonthly = (parseFloat(e.basic) || 0) + (parseFloat(e.hra) || 0) + (parseFloat(e.special_allowance) || 0) + (parseFloat(e.gratuity) || 0);
@@ -1386,7 +1379,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
             const r = await itDecl.estimateMonthlyTds(e.id, m, y, earned);
             tds = r.tds || 0;
             if (tdsParams && r.months_left > 0) {
-              tdsFormulaParts = {
+              tdsFormulaMap[idx] = {
                 baseIncome: r.base_income || 0, deductions: r.deductions || 0, alreadyDeducted: r.already_deducted || 0,
                 monthsLeft: r.months_left, regime: r.regime === 'old' ? 'old' : 'new',
               };
@@ -1431,7 +1424,18 @@ exports.downloadPayrollTemplate = async (req, res) => {
           'Paid',    // Payment Status default
           '',        // Remarks
         ];
-      })),
+      }));
+    const rows = [
+      // Row 0: Title
+      [`HRMS — Payroll Input Template | ${monthName} ${y} | Total Working Days: ${daysInMonth}`],
+      // Row 1: Instructions
+      [`Present/LOP days are pre-filled from attendance. Bonus, deductions and EMI apply to this month only. TDS is pre-filled from IT Declaration (where TDS is enabled). Status: Paid / Hold / Pending`],
+      // Row 2: Empty spacer
+      [],
+      // Row 3: Headers
+      HEADERS,
+      // Data rows
+      ...dataRows,
     ];
 
     const ws1 = XLSX.utils.aoa_to_sheet(rows);
@@ -1461,6 +1465,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       // this row's own live Gross Salary cell, TDS recalculates in Excel the moment HR
       // edits Present Days, LOP, Bonus, etc. — a 30-day month and a 26-day month get
       // different TDS automatically, with no re-upload needed.
+      const tdsFormulaParts = tdsFormulaMap[i - 4];  // i=4 is first data row, maps to idx=0
       if (tdsFormulaParts) {
         const p  = tdsFormulaParts;
         const lo = arrLit(p.regime === 'old' ? tdsParams.oldSlabs : tdsParams.newSlabs, 'lo');
