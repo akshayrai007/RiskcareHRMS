@@ -797,26 +797,31 @@
 
         <!-- Live Preview -->
         <style>
-  #salary-preview .pv-tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden}
-  #salary-preview .pv-tbl th{background:#f1f5f9;color:#475569;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;text-align:right;padding:9px 12px;border-bottom:1px solid #e2e8f0}
-  #salary-preview .pv-tbl th:first-child{text-align:left}
-  #salary-preview .pv-tbl td{background:#fff;color:#1e293b;padding:8px 12px;text-align:right;border-bottom:1px solid #f1f5f9;font-variant-numeric:tabular-nums}
+  #salary-preview .pv-tbl{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden}
+  #salary-preview .pv-tbl th{background:#f1f5f9;color:#475569;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;text-align:right;padding:9px 12px;border-bottom:1.5px solid #e2e8f0;border-right:1px solid #e2e8f0}
+  #salary-preview .pv-tbl th:first-child{text-align:left;width:46%}
+  #salary-preview .pv-tbl th:nth-child(2){width:12%;text-align:center}
+  #salary-preview .pv-tbl th:last-child{border-right:0}
+  #salary-preview .pv-tbl td{background:#fff;color:#1e293b;padding:8px 12px;text-align:right;border-bottom:1px solid #f1f5f9;border-right:1px solid #f1f5f9;font-variant-numeric:tabular-nums}
   #salary-preview .pv-tbl td:first-child{text-align:left;color:#334155}
-  #salary-preview .pv-tbl tbody tr:not(.tot):hover td{background:#fff}
+  #salary-preview .pv-tbl td:nth-child(2){text-align:center;color:#64748b;font-size:12px}
+  #salary-preview .pv-tbl td:last-child{border-right:0}
+  #salary-preview .pv-tbl tbody tr:not(.tot):not(.ctc):not(.emr-tot):not(.net):not(.sec):not(.emr-sec):not(.tds):hover td{background:#f8fafc}
   #salary-preview .pv-tbl small{display:block;font-size:10px;color:#059669;margin-top:1px}
-  #salary-preview .pv-tbl tr.sec td{background:#eef2ff;color:#4338ca;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;text-align:left;padding:7px 12px}
-  #salary-preview .pv-tbl tr.tot td{background:#f8fafc;font-weight:800;color:#0f172a;border-top:1px solid #cbd5e1}
-  #salary-preview .pv-tbl tr.ded td:not(:first-child){color:#dc2626}
+  #salary-preview .pv-tbl tr.sec td{background:#eef2ff;color:#4338ca;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;text-align:left;padding:7px 12px;border-right:0}
+  #salary-preview .pv-tbl tr.tot td{background:#f8fafc;font-weight:800;color:#0f172a;border-top:1.5px solid #cbd5e1;border-right:1px solid #e2e8f0}
+  #salary-preview .pv-tbl tr.ded td:not(:first-child):not(:nth-child(2)){color:#dc2626}
   #salary-preview .pv-tbl tr.tot.ded td:first-child{color:#0f172a}
-  #salary-preview .pv-tbl tr.net td{background:#dcfce7;color:#166534;font-weight:800;font-size:14px}
+  #salary-preview .pv-tbl tr.net td{background:#dcfce7;color:#166534;font-weight:800;font-size:14px;border-right:1px solid #86efac}
   #salary-preview .pv-tbl tr.tds td,#salary-preview .pv-tbl tr.tds small{color:#b45309}
-  #salary-preview .pv-tbl tr.tds td{background:#fffbeb}
-  #salary-preview .pv-tbl tr.ctc td{background:#1d4ed8;color:#fff;font-weight:800;font-size:14px;border-bottom:0}
+  #salary-preview .pv-tbl tr.tds td{background:#fffbeb;border-right:1px solid #fde68a}
+  #salary-preview .pv-tbl tr.ctc td{background:#1d4ed8 !important;color:#fff !important;font-weight:800;font-size:14px;border-bottom:0;border-right:1px solid #1e40af}
+  #salary-preview .pv-tbl tr.ctc:hover td{background:#1d4ed8 !important}
   #salary-preview .pv-tbl tbody tr:last-child td{border-bottom:0}
-  #salary-preview .pv-tbl tr.emr-sec td{background:#eff6ff;color:#1e40af;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;text-align:left;padding:7px 12px}
-  #salary-preview .pv-tbl tr.emr-row td{background:#f8faff;color:#1e293b}
-  #salary-preview .pv-tbl tr.emr-row td:not(:first-child){color:#1d4ed8}
-  #salary-preview .pv-tbl tr.emr-tot td{background:#1e40af;font-weight:800;color:#fff;border-top:2px solid #1e3a8a}
+  #salary-preview .pv-tbl tr.emr-sec td{background:#eff6ff;color:#1e40af;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;text-align:left;padding:7px 12px;border-right:0}
+  #salary-preview .pv-tbl tr.emr-row td{background:#f8faff;color:#1e293b;border-right:1px solid #e8f0fe}
+  #salary-preview .pv-tbl tr.emr-row td:not(:first-child):not(:nth-child(2)){color:#1d4ed8}
+  #salary-preview .pv-tbl tr.emr-tot td{background:#1e40af;font-weight:800;color:#fff;border-top:2px solid #1e3a8a;border-right:1px solid #1e3a8a}
   #salary-preview .pv-tbl .pv-badge{display:inline-block;font-size:9.5px;color:#3b82f6;background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:0 5px;font-weight:700;margin-left:4px;vertical-align:middle;line-height:16px}
 </style>
         <div id="salary-preview" style="display:none;background:#f8fafc;border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:16px">
@@ -835,30 +840,30 @@
             </div>
           </div>
           <table class="pv-tbl">
-            <thead><tr><th>Component</th><th>Monthly</th><th>Annual</th></tr></thead>
+            <thead><tr><th>Component</th><th>%</th><th>Monthly</th><th>Annual</th></tr></thead>
             <tbody>
-              <tr class="sec"><td colspan="3">Earnings</td></tr>
-              <tr id="pvr-basic"><td>Basic</td><td id="pv-basic-m"></td><td id="pv-basic-a"></td></tr>
-              <tr id="pvr-hra"><td>HRA</td><td id="pv-hra-m"></td><td id="pv-hra-a"></td></tr>
-              <tr id="pvr-special"><td>Defray Allowance</td><td id="pv-special-m"></td><td id="pv-special-a"></td></tr>
-              <tr id="pvr-gratuity"><td>Gratuity</td><td id="pv-gratuity-m"></td><td id="pv-gratuity-a"></td></tr>
-              <tr id="pvr-food"><td>Food Coupon</td><td id="pv-food-m"></td><td id="pv-food-a"></td></tr>
-              <tr class="tot"><td>Total Earnings (Gross)</td><td id="prev-gross"></td><td id="pv-gross-a"></td></tr>
-              <tr class="sec"><td colspan="3">Deductions</td></tr>
-              <tr class="ded"><td>PF (Employee)</td><td id="prev-pf-emp"></td><td id="pv-pf-a"></td></tr>
-              <tr class="ded"><td>ESI (Employee)<small id="prev-esi-detail"></small></td><td id="prev-esi-emp"></td><td id="pv-esi-a"></td></tr>
-              <tr class="ded"><td>Professional Tax</td><td id="prev-pt"></td><td id="pv-pt-a"></td></tr>
-              <tr class="tds" id="prev-tds-row" style="display:none"><td>TDS<small>Calculated each month in payroll</small></td><td>—</td><td>—</td></tr>
-              <tr class="tot ded"><td>Total Deductions</td><td id="prev-ded"></td><td id="pv-ded-a"></td></tr>
-              <tr class="tot net"><td>Net Take-Home</td><td id="pv-net-m"></td><td id="pv-net-a"></td></tr>
-              <tr class="sec emr-sec"><td colspan="3">Employer Contribution</td></tr>
-              <tr class="emr-row"><td>EPF Employer A/c-1 <span class="pv-badge">3.67%</span></td><td id="pv-epf-ac1-m"></td><td id="pv-epf-ac1-a"></td></tr>
-              <tr class="emr-row"><td>EPS A/c-10 <span class="pv-badge">8.33%</span></td><td id="pv-eps-m"></td><td id="pv-eps-a"></td></tr>
-              <tr class="emr-row"><td>EPF Admin A/c-2 <span class="pv-badge">0.50%</span></td><td id="pv-pfadm2-m"></td><td id="pv-pfadm2-a"></td></tr>
-              <tr class="emr-row"><td>EDLI A/c-21 <span class="pv-badge">0.50% · cap ₹15k</span></td><td id="pv-edli-m"></td><td id="pv-edli-a"></td></tr>
-              <tr id="pvr-esiemr" class="emr-row"><td>ESI (Employer) <span class="pv-badge">3.25%</span></td><td id="pv-esiemr-m"></td><td id="pv-esiemr-a"></td></tr>
-              <tr class="tot emr-tot"><td>Total Employer Contribution</td><td id="pv-emr-m"></td><td id="pv-emr-a"></td></tr>
-              <tr class="ctc"><td>Cost to Company (CTC)</td><td id="pv-ctc-m"></td><td id="pv-ctc-a"></td></tr>
+              <tr class="sec"><td colspan="4">Earnings</td></tr>
+              <tr id="pvr-basic"><td>Basic</td><td>—</td><td id="pv-basic-m"></td><td id="pv-basic-a"></td></tr>
+              <tr id="pvr-hra"><td>HRA</td><td id="pv-hra-pct">—</td><td id="pv-hra-m"></td><td id="pv-hra-a"></td></tr>
+              <tr id="pvr-special"><td>Defray Allowance</td><td>—</td><td id="pv-special-m"></td><td id="pv-special-a"></td></tr>
+              <tr id="pvr-gratuity"><td>Gratuity</td><td>4.81%</td><td id="pv-gratuity-m"></td><td id="pv-gratuity-a"></td></tr>
+              <tr id="pvr-food"><td>Food Coupon</td><td>—</td><td id="pv-food-m"></td><td id="pv-food-a"></td></tr>
+              <tr class="tot"><td>Total Earnings (Gross)</td><td>—</td><td id="prev-gross"></td><td id="pv-gross-a"></td></tr>
+              <tr class="sec"><td colspan="4">Deductions</td></tr>
+              <tr class="ded"><td>PF (Employee)</td><td>12%</td><td id="prev-pf-emp"></td><td id="pv-pf-a"></td></tr>
+              <tr class="ded"><td>ESI (Employee)<small id="prev-esi-detail"></small></td><td>0.75%</td><td id="prev-esi-emp"></td><td id="pv-esi-a"></td></tr>
+              <tr class="ded"><td>Professional Tax</td><td>Slab</td><td id="prev-pt"></td><td id="pv-pt-a"></td></tr>
+              <tr class="tds" id="prev-tds-row" style="display:none"><td>TDS<small>Calculated each month in payroll</small></td><td>—</td><td>—</td><td>—</td></tr>
+              <tr class="tot ded"><td>Total Deductions</td><td>—</td><td id="prev-ded"></td><td id="pv-ded-a"></td></tr>
+              <tr class="tot net"><td>Net Take-Home</td><td>—</td><td id="pv-net-m"></td><td id="pv-net-a"></td></tr>
+              <tr class="sec emr-sec"><td colspan="4">Employer Contribution</td></tr>
+              <tr class="emr-row"><td>EPF Employer A/c-1</td><td>3.67%</td><td id="pv-epf-ac1-m"></td><td id="pv-epf-ac1-a"></td></tr>
+              <tr class="emr-row"><td>EPS A/c-10</td><td>8.33%</td><td id="pv-eps-m"></td><td id="pv-eps-a"></td></tr>
+              <tr class="emr-row"><td>EPF Admin A/c-2</td><td>0.50%</td><td id="pv-pfadm2-m"></td><td id="pv-pfadm2-a"></td></tr>
+              <tr class="emr-row"><td>EDLI A/c-21 <span class="pv-badge">cap ₹15k</span></td><td>0.50%</td><td id="pv-edli-m"></td><td id="pv-edli-a"></td></tr>
+              <tr id="pvr-esiemr" class="emr-row"><td>ESI (Employer)</td><td>3.25%</td><td id="pv-esiemr-m"></td><td id="pv-esiemr-a"></td></tr>
+              <tr class="tot emr-tot"><td>Total Employer Contribution</td><td>—</td><td id="pv-emr-m"></td><td id="pv-emr-a"></td></tr>
+              <tr class="ctc"><td>Cost to Company (CTC)</td><td>—</td><td id="pv-ctc-m"></td><td id="pv-ctc-a"></td></tr>
             </tbody>
           </table>
         </div>
