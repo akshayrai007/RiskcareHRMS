@@ -1448,14 +1448,24 @@ exports.getLeaveTransactions = async (req, res) => {
     const status = req.query.status || '';
     const month = req.query.month ? parseInt(req.query.month) : null;
 
-    let conds = [`EXTRACT(YEAR FROM lr.from_date) = $1`];
-    let params = [year];
-    let idx = 2;
+    // Use text-range so it works whether from_date is DATE or VARCHAR
+    let rangeStart, rangeEnd;
+    if (month) {
+      const mm  = String(month).padStart(2, '0');
+      const ny  = month === 12 ? year + 1 : year;
+      const nm  = month === 12 ? 1 : month + 1;
+      rangeStart = `${year}-${mm}-01`;
+      rangeEnd   = `${ny}-${String(nm).padStart(2, '0')}-01`;
+    } else {
+      rangeStart = `${year}-01-01`;
+      rangeEnd   = `${year + 1}-01-01`;
+    }
+    let conds = [`lr.from_date::text >= $1 AND lr.from_date::text < $2`];
+    let params = [rangeStart, rangeEnd];
+    let idx = 3;
 
     const empScope = scope.buildEmployeeScope(req.user, 'e', idx);
     if (empScope.clause) { conds.push(empScope.clause); params.push(...empScope.params); idx = empScope.nextIdx; }
-
-    if (month) { conds.push(`EXTRACT(MONTH FROM lr.from_date) = $${idx++}`); params.push(month); }
     if (employee_id) {
       conds.push(`lr.employee_id = $${idx++}`);
       params.push(employee_id);

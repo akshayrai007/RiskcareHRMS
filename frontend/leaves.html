@@ -1173,7 +1173,11 @@ async function loadLeaveTransactions() {
   el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
   const params = `year=${yr}&search=${encodeURIComponent(srch)}&month=${month}&leave_type=${ltype}&status=${status}`;
   const data   = await api('GET', `/leave/transactions?${params}`);
-  if (!data?.success || !data.data?.length) {
+  if (!data?.success) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p style="color:#dc2626">Error: ${data?.message || 'Failed to load transactions'}</p></div>`;
+    return;
+  }
+  if (!data.data?.length) {
     el.innerHTML = `<div class="empty-state"><div class="empty-icon">🔄</div><p>No transactions found${srch?' for "'+srch+'"':''}.</p></div>`;
     return;
   }
