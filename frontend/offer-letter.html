@@ -565,6 +565,7 @@ async function saveOL() {
   if (!id && res.data?.id) {
     document.getElementById('ol-id').value = res.data.id;
     document.getElementById('btn-send').disabled    = !body.candidate_email;
+    document.getElementById('btn-preview').disabled = false;
     document.getElementById('btn-delete').style.display = '';
     document.getElementById('form-title').textContent = `✏️ Edit — ${name}`;
   }
