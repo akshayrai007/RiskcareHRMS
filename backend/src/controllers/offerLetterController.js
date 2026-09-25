@@ -152,7 +152,7 @@ function apptHeaderFooter() {
         <tr>
           <td style="width:75px;vertical-align:middle;"><img src="${logo}" style="width:66px;height:auto;"></td>
           <td style="text-align:center;vertical-align:middle;">
-            <div style="font-size:14px;font-weight:bold;color:#000;margin-bottom:3px;">${CONFIG.companyFullName}</div>
+            <div style="font-size:14px;font-weight:bold;color:#000;margin-bottom:6px;">${CONFIG.companyFullName}</div>
             <div style="font-size:8px;color:#444;"><b>Registered Office:</b> ${CONFIG.companyOfficeAddr}</div>
             <div style="font-size:8px;color:#444;margin-top:1px;">Phone: ${CONFIG.companyTel} &nbsp;|&nbsp; Email: ${CONFIG.supportEmail} &nbsp;|&nbsp; Website: ${CONFIG.websiteUrl}</div>
           </td>
