@@ -1487,7 +1487,6 @@ exports.getLeaveTransactions = async (req, res) => {
               lr.reason, lr.status, lr.is_half_day,
               lr.created_at AS applied_at,
               lr.remarks AS action_remarks,
-              lr.actioned_remarks,
               CONCAT(ab.first_name,' ',ab.last_name) AS actioned_by_name
        FROM leave_requests lr
        JOIN employees e ON lr.employee_id = e.id

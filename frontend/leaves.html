@@ -1241,7 +1241,7 @@ async function loadLeaveTransactions() {
           <td style="${XLD};text-align:center"><span style="padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;${statusColors[r.status]||statusColors.cancelled}">${r.status.charAt(0).toUpperCase()+r.status.slice(1)}</span></td>
           <td style="${XLD};white-space:nowrap;color:var(--muted)">${fmt.date(r.applied_at)}</td>
           <td style="${XLD};color:var(--muted)">${r.actioned_by_name||'—'}</td>
-          <td style="${XLD};color:var(--muted);max-width:180px;word-break:break-word">${r.actioned_remarks||r.remarks||'—'}</td>
+          <td style="${XLD};color:var(--muted);max-width:180px;word-break:break-word">${r.action_remarks||'—'}</td>
         </tr>`).join('')}
       </tbody>
     </table>
