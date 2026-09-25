@@ -103,35 +103,47 @@
 .ps-approved{background:#dcfce7;color:#166534;border:1px solid #86efac}
 .ps-rejected{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
 /* ── Tax Preview ── */
-.tax-cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:0}
-@media(max-width:640px){.tax-cmp-grid{grid-template-columns:1fr}}
-/* Regime summary card */
-.rc{border:2px solid #d1d5db;border-radius:14px;padding:22px 20px;text-align:center;position:relative;background:#fff}
-.rc.cheaper{border-color:#16a34a;background:#f0fdf4}
-.rc-label{font-size:13px;font-weight:800;color:#374151;letter-spacing:.03em;margin:0 0 8px}
-.rc-tax{font-size:32px;font-weight:900;color:#111827;line-height:1.1;margin-bottom:10px}
-.rc-meta{font-size:12px;color:#6b7280;margin:3px 0}
-.rc-meta strong{color:#111827}
-.rec-bdg{display:inline-block;background:#15803d;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;margin:8px 0 4px}
-.sel-btn{margin-top:12px;width:100%;padding:9px;border-radius:8px;border:2px solid #3730a3;background:#fff;color:#3730a3;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
-.sel-btn:hover,.sel-btn.chosen{background:#3730a3;color:#fff}
-/* Breakdown table */
-.tax-bk{border-radius:12px;padding:16px 18px;border:1.5px solid #c7d2fe;background:#f5f3ff}
-.tax-bk.new-r{border-color:#86efac;background:#f0fdf4}
-.tax-bk-hd{font-size:11px;font-weight:800;color:#4338ca;text-transform:uppercase;letter-spacing:.07em;margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid #c7d2fe}
-.tax-bk.new-r .tax-bk-hd{color:#15803d;border-color:#86efac}
-.tr{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e5e7eb;font-size:12.5px}
-.tr:last-child{border-bottom:none}
-.tr .tl{color:#6b7280}.tr .tv{font-weight:600;color:#111827}
+.tax-cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+@media(max-width:680px){.tax-cmp-grid{grid-template-columns:1fr}}
+.regime-col{border-radius:14px;overflow:hidden;border:2px solid #e2e8f0;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.regime-col.old-col{border-color:#6366f1}
+.regime-col.new-col{border-color:#22c55e}
+/* Column header band */
+.rc-head{padding:18px 20px 16px;text-align:center}
+.old-col .rc-head{background:linear-gradient(135deg,#3730a3,#6366f1)}
+.new-col .rc-head{background:linear-gradient(135deg,#15803d,#22c55e)}
+.rc-head-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.rc-head-tax{font-size:36px;font-weight:900;color:#fff;line-height:1}
+.rc-head-sub{font-size:12px;color:rgba(255,255,255,.8);margin-top:6px}
+.rc-head-sub span{font-weight:700;color:#fff}
+.rec-bdg{display:inline-block;background:rgba(255,255,255,.25);color:#fff;border:1px solid rgba(255,255,255,.5);font-size:10px;font-weight:700;padding:2px 10px;border-radius:20px;margin-top:8px}
+/* Select button */
+.rc-sel-wrap{padding:12px 16px;border-bottom:1px solid #f1f5f9}
+.sel-btn{width:100%;padding:9px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;transition:all .15s}
+.old-col .sel-btn{border:2px solid #4f46e5;background:#fff;color:#4f46e5}
+.old-col .sel-btn:hover,.old-col .sel-btn.chosen{background:#4f46e5;color:#fff}
+.new-col .sel-btn{border:2px solid #16a34a;background:#fff;color:#16a34a}
+.new-col .sel-btn:hover,.new-col .sel-btn.chosen{background:#16a34a;color:#fff}
+/* Breakdown inside column */
+.rc-bk{padding:14px 16px}
+.rc-bk-title{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px;padding-bottom:8px}
+.old-col .rc-bk-title{color:#4338ca;border-bottom:2px solid #e0e7ff}
+.new-col .rc-bk-title{color:#15803d;border-bottom:2px solid #bbf7d0}
+.tr{display:flex;justify-content:space-between;padding:5px 2px;border-bottom:1px solid #f1f5f9;font-size:12px}
+.tr .tl{color:#64748b}.tr .tv{font-weight:600;color:#1e293b}
 .tr.ded .tv{color:#15803d}
-.tr.total{background:#eef2ff;border-radius:6px;padding:6px 8px;margin:6px 0;border-bottom:none}
-.tr.total .tl{color:#3730a3;font-weight:700}.tr.total .tv{color:#3730a3;font-size:14px;font-weight:800}
-.tds-hl{background:#3730a3;border-radius:8px;padding:12px 16px;color:#fff;display:flex;justify-content:space-between;align-items:center;margin-top:10px}
-.tax-bk.new-r .tds-hl{background:#15803d}
-.tds-hl2{background:#4f46e5;border-radius:8px;padding:10px 16px;color:#fff;display:flex;justify-content:space-between;align-items:center;margin-top:6px}
-.tax-bk.new-r .tds-hl2{background:#16a34a}
-.tds-hl .thl,.tds-hl2 .thl{font-size:12px;font-weight:600;opacity:.9}
-.tds-hl .tha,.tds-hl2 .tha{font-size:20px;font-weight:800}
+.tr.total{background:#f8faff;border-radius:6px;padding:6px 8px;margin:6px 0;border-bottom:none}
+.old-col .tr.total .tl,.old-col .tr.total .tv{color:#4338ca;font-weight:800}
+.new-col .tr.total .tl,.new-col .tr.total .tv{color:#15803d;font-weight:800}
+.tr.total .tv{font-size:13px}
+.rc-totals{padding:0 16px 16px;display:flex;flex-direction:column;gap:6px}
+.rc-tot-row{border-radius:8px;padding:11px 14px;color:#fff;display:flex;justify-content:space-between;align-items:center}
+.old-col .rc-tot-row.t1{background:#3730a3}
+.old-col .rc-tot-row.t2{background:#4f46e5}
+.new-col .rc-tot-row.t1{background:#15803d}
+.new-col .rc-tot-row.t2{background:#16a34a}
+.rc-tot-row .rtl{font-size:11.5px;font-weight:600;opacity:.9}
+.rc-tot-row .rta{font-size:19px;font-weight:800}
 .rec-box{background:#fffbeb;border:1.5px solid #fde68a;border-radius:9px;padding:12px 16px;font-size:12.5px;color:#92400e;margin-bottom:16px}
 .rec-box strong{color:#1e3a5f;display:block;font-size:14px;margin-bottom:4px}
 .rec-box ul{margin:6px 0 0 16px;padding:0}
@@ -1514,22 +1526,23 @@ async function loadTaxPreview() {
       <ul>${d.recommendation_reasons.map(r => `<li>${r}</li>`).join('')}</ul>
     </div>
 
-    <!-- Cards + Breakdowns in one unified 2-column grid -->
+    <!-- 2-column regime comparison -->
     <div class="tax-cmp-grid">
 
-      <!-- LEFT: Old Regime -->
-      <div style="display:flex;flex-direction:column;gap:14px">
-        <div class="rc ${oCheap?'cheaper':''}">
-          <div class="rc-label">🏛️ Old Regime</div>
-          <div class="rc-tax">${money(o.net_tax)}</div>
-          <div class="rc-meta">Monthly TDS: <strong>${money(o.monthly_tds)}</strong></div>
-          <div class="rc-meta">Taxable Income: <strong>${money(o.taxable_income)}</strong></div>
-          ${o.tds_paid_ytd ? `<div class="rc-meta">Already deducted: <strong>${money(o.tds_paid_ytd)}</strong></div>` : ''}
-          ${oCheap ? '<div><span class="rec-bdg">⭐ RECOMMENDED</span></div>' : ''}
+      <!-- OLD REGIME column -->
+      <div class="regime-col old-col">
+        <div class="rc-head">
+          <div class="rc-head-title">🏛️ Old Regime</div>
+          <div class="rc-head-tax">${money(o.net_tax)}</div>
+          <div class="rc-head-sub">Monthly TDS: <span>${money(o.monthly_tds)}</span> &nbsp;|&nbsp; Taxable: <span>${money(o.taxable_income)}</span></div>
+          ${o.tds_paid_ytd ? `<div class="rc-head-sub">Already deducted: <span>${money(o.tds_paid_ytd)}</span></div>` : ''}
+          ${oCheap ? '<span class="rec-bdg">⭐ RECOMMENDED</span>' : ''}
+        </div>
+        <div class="rc-sel-wrap">
           <button class="sel-btn ${currentRegime==='old'?'chosen':''}" onclick="setRegime('old');sw('decl')">Select Old Regime</button>
         </div>
-        <div class="tax-bk">
-          <div class="tax-bk-hd">🏛️ Old Regime — Full Breakdown</div>
+        <div class="rc-bk">
+          <div class="rc-bk-title">Full Breakdown</div>
           ${row('Gross Salary (Annual)', money(d.annual_gross))}
           ${d.prev_salary > 0 ? row('+ Previous Employment Income', money(d.prev_salary)) : ''}
           ${d.other_income > 0 ? row('+ Other Income', money(d.other_income)) : ''}
@@ -1551,24 +1564,27 @@ async function loadTaxPreview() {
           ${row('Health & Education Cess (4%)', money(o.cess))}
           ${row('Total Tax Liability', money(o.tax))}
           ${o.prev_tds > 0 ? rowDed('Less: TDS by Previous Employer', money(o.prev_tds)) : ''}
-          <div class="tds-hl"><span class="thl">Net Tax Payable</span><span class="tha">${money(o.net_tax)}</span></div>
-          <div class="tds-hl2"><span class="thl">Monthly TDS</span><span class="tha">${money(o.monthly_tds)}/mo</span></div>
+        </div>
+        <div class="rc-totals">
+          <div class="rc-tot-row t1"><span class="rtl">Net Tax Payable</span><span class="rta">${money(o.net_tax)}</span></div>
+          <div class="rc-tot-row t2"><span class="rtl">Monthly TDS</span><span class="rta">${money(o.monthly_tds)}/mo</span></div>
         </div>
       </div>
 
-      <!-- RIGHT: New Regime -->
-      <div style="display:flex;flex-direction:column;gap:14px">
-        <div class="rc ${nCheap?'cheaper':''}">
-          <div class="rc-label">✨ New Regime</div>
-          <div class="rc-tax">${money(nw.net_tax)}</div>
-          <div class="rc-meta">Monthly TDS: <strong>${money(nw.monthly_tds)}</strong></div>
-          <div class="rc-meta">Taxable Income: <strong>${money(nw.taxable_income)}</strong></div>
-          ${nw.tds_paid_ytd ? `<div class="rc-meta">Already deducted: <strong>${money(nw.tds_paid_ytd)}</strong></div>` : ''}
-          ${nCheap ? '<div><span class="rec-bdg">⭐ RECOMMENDED</span></div>' : ''}
+      <!-- NEW REGIME column -->
+      <div class="regime-col new-col">
+        <div class="rc-head">
+          <div class="rc-head-title">✨ New Regime</div>
+          <div class="rc-head-tax">${money(nw.net_tax)}</div>
+          <div class="rc-head-sub">Monthly TDS: <span>${money(nw.monthly_tds)}</span> &nbsp;|&nbsp; Taxable: <span>${money(nw.taxable_income)}</span></div>
+          ${nw.tds_paid_ytd ? `<div class="rc-head-sub">Already deducted: <span>${money(nw.tds_paid_ytd)}</span></div>` : ''}
+          ${nCheap ? '<span class="rec-bdg">⭐ RECOMMENDED</span>' : ''}
+        </div>
+        <div class="rc-sel-wrap">
           <button class="sel-btn ${currentRegime==='new'?'chosen':''}" onclick="setRegime('new');sw('decl')">Select New Regime</button>
         </div>
-        <div class="tax-bk new-r">
-          <div class="tax-bk-hd">✨ New Regime — Full Breakdown</div>
+        <div class="rc-bk">
+          <div class="rc-bk-title">Full Breakdown</div>
           ${row('Gross Salary (Annual)', money(d.annual_gross))}
           ${d.prev_salary > 0 ? row('+ Previous Employment Income', money(d.prev_salary)) : ''}
           ${d.other_income > 0 ? row('+ Other Income', money(d.other_income)) : ''}
@@ -1577,8 +1593,10 @@ async function loadTaxPreview() {
           <div class="tr total"><span class="tl">Net Taxable Income</span><span class="tv">${money(nw.taxable_income)}</span></div>
           ${row('Income Tax', money(nw.tax_before_cess))}
           ${row('Health & Education Cess (4%)', money(nw.cess))}
-          <div class="tds-hl"><span class="thl">Net Tax Payable</span><span class="tha">${money(nw.net_tax)}</span></div>
-          <div class="tds-hl2"><span class="thl">Monthly TDS</span><span class="tha">${money(nw.monthly_tds)}/mo</span></div>
+        </div>
+        <div class="rc-totals">
+          <div class="rc-tot-row t1"><span class="rtl">Net Tax Payable</span><span class="rta">${money(nw.net_tax)}</span></div>
+          <div class="rc-tot-row t2"><span class="rtl">Monthly TDS</span><span class="rta">${money(nw.monthly_tds)}/mo</span></div>
         </div>
       </div>
 
