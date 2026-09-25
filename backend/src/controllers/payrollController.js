@@ -1335,23 +1335,13 @@ exports.downloadPayrollTemplate = async (req, res) => {
     const wb = XLSX.utils.book_new();
 
     // ── Sheet 1: Payroll Input Template ───────────────────────────────────
-    // Grouped in proper payroll sequence: Identity/Attendance → Fixed Earnings
-    // (Monthly = full structure amount, Actual = what's actually earned this
-    // month after attendance is applied) → One-time Earnings → Gross →
-    // Deductions → Totals/Net Pay → Status. Each group gets its own color
-    // (see COL_GROUPS below) so Earning vs Deduction is obvious at a glance,
-    // and the same sheet is what gets uploaded for payroll AND used for payslips.
-    // Two columns per leave type: taken this month + closing balance
-    const leaveTakenHeaders  = leaveTypes.map(lt => `${lt.code} Taken`);
-    const leaveBalHeaders    = leaveTypes.map(lt => `${lt.code} Balance`);
-    const leaveHeaders = leaveTypes.flatMap(lt => [`${lt.code} Taken`, `${lt.code} Balance`]);
     const HEADERS = [
       // ── A: Employee Identification ──────────────────────────────────────────
       'Emp Code', 'Full Name', 'Department', 'Division', 'Designation', 'Category',
       // ── B: Attendance ───────────────────────────────────────────────────────
       'Working Days', 'Present Days', 'LOP Days', 'LOP Reversal (Days)', 'Paid Days',
-      // ── B2: Leave Utilised (one column per leave type) ──────────────────────
-      ...leaveHeaders,
+      // ── B2: Leave Summary ───────────────────────────────────────────────────
+      'Total Paid Leave', 'Total Unpaid Leave (LWP)', 'Total Leave Balance',
       // ── C: Fixed Earnings (salary structure amounts — per month) ────────────
       'Basic (Fixed P.M.)', 'HRA (Fixed P.M.)', 'Defray Allowance (Fixed P.M.)', 'Gratuity (Fixed P.M.)', 'Food Coupon (Fixed P.M.)',
       // ── D: Earned (pro-rated after LOP/attendance) ───────────────────────────
@@ -1378,7 +1368,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
     // Section color map — used for header fill + a light tint on data rows.
     const COL_GROUPS = [
       { from: 'Emp Code',                   to: 'Paid Days',                          headBg:'475569', headFg:'FFFFFF', dataBg:'F1F5F9' }, // A: identity/attendance - slate
-      ...(leaveHeaders.length ? [{ from: leaveHeaders[0], to: leaveHeaders[leaveHeaders.length-1], headBg:'C2410C', headFg:'FFFFFF', dataBg:'FFEDD5' }] : []), // B2: leave - orange
+      { from: 'Total Paid Leave',           to: 'Total Leave Balance',               headBg:'C2410C', headFg:'FFFFFF', dataBg:'FFEDD5' }, // B2: leave summary - orange
       { from: 'Basic (Fixed P.M.)',          to: 'Food Coupon (Fixed P.M.)',           headBg:'15803D', headFg:'FFFFFF', dataBg:'DCFCE7' }, // C: fixed P.M. - green
       { from: 'Basic (Earned)',              to: 'Food Coupon (Earned)',               headBg:'166534', headFg:'FFFFFF', dataBg:'BBF7D0' }, // D: earned - darker green
       { from: 'Food Coupon Adjustment',     to: 'Performance Bonus',                 headBg:'0D9488', headFg:'FFFFFF', dataBg:'CCFBF1' }, // D: variable earnings - teal
@@ -1448,11 +1438,10 @@ exports.downloadPayrollTemplate = async (req, res) => {
           e.employee_code, e.full_name, e.department || '', e.division || '', e.designation || '', e.employee_category || '',
           // B: Attendance
           daysInMonth, monthAtt.paid, monthAtt.lop, 0, monthAtt.paid,
-          // B2: Leave Taken + Balance (two columns per leave type)
-          ...leaveTypes.flatMap(lt => [
-            (leaveUsedMap[e.id] || {})[lt.code] || 0,
-            (leaveBalMap[e.id]  || {})[lt.code] || 0,
-          ]),
+          // B2: Leave Summary
+          leaveTypes.filter(lt => lt.code !== 'LWP').reduce((s, lt) => s + ((leaveUsedMap[e.id] || {})[lt.code] || 0), 0), // Total Paid Leave
+          (leaveUsedMap[e.id] || {})['LWP'] || 0,                                                                            // Total Unpaid Leave (LWP)
+          Object.values(leaveBalMap[e.id] || {}).reduce((s, v) => s + v, 0),                                                 // Total Leave Balance
           // C: All Fixed P.M. (salary structure amounts)
           parseFloat(e.basic)             || 0,
           parseFloat(e.hra)               || 0,
