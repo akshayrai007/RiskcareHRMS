@@ -1422,7 +1422,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
           parseFloat(e.basic)             || 0, 0,
           parseFloat(e.hra)               || 0, 0,
           parseFloat(e.special_allowance) || 0, 0,
-          parseFloat(e.gratuity)          || 0, 0,
+          Math.round((parseFloat(e.basic)||0)*0.0481), 0,  // Gratuity (Fixed P.M.) = Basic × 4.81%
           parseFloat(e.food_coupon)       || 0, 0,
           // D: Variable / One-time Earnings
           0, 0, 0, 0, 0, 0,
@@ -1510,6 +1510,7 @@ exports.downloadPayrollTemplate = async (req, res) => {
       // "Actual" columns = what's actually earned this month once attendance is
       // applied. Food Coupon (Actual) mirrors the monthly value since it's flat.
       setF('Basic (Earned)',            `ROUND(${LT('Basic (Fixed P.M.)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('Basic (Fixed P.M.)') * prorateFactor * 100) / 100);
+      setF('Gratuity (Fixed P.M.)',    `ROUND(${LT('Basic (Fixed P.M.)')}${R}*0.0481,0)`, Math.round(num('Basic (Fixed P.M.)') * 0.0481));
       setF('HRA (Earned)',              `ROUND(${LT('HRA (Fixed P.M.)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('HRA (Fixed P.M.)') * prorateFactor * 100) / 100);
       setF('Defray Allowance (Earned)', `ROUND(${LT('Defray Allowance (Fixed P.M.)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('Defray Allowance (Fixed P.M.)') * prorateFactor * 100) / 100);
       setF('Gratuity (Earned)',         `ROUND(${LT('Gratuity (Fixed P.M.)')}${R}*IF(${LT('Working Days')}${R}>0,${LT('Paid Days')}${R}/${LT('Working Days')}${R},0),2)`, Math.round(num('Gratuity (Fixed P.M.)') * prorateFactor * 100) / 100);

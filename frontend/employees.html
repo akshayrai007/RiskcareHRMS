@@ -729,13 +729,13 @@
           </div>
           <div class="sx-grid">
             <div class="sx-field sx-full"><label>Basic Salary *</label>
-              <div class="sx-money big"><span>₹</span><input id="edit-basic" type="number" class="form-control" placeholder="0" oninput="recalcSalaryPreview()"></div></div>
+              <div class="sx-money big"><span>₹</span><input id="edit-basic" type="number" class="form-control" placeholder="0" oninput="autoCalcGratuity();recalcSalaryPreview()"></div></div>
             <div class="sx-field"><label>HRA</label>
               <div class="sx-money"><span>₹</span><input id="edit-hra" type="number" class="form-control" placeholder="0" oninput="recalcSalaryPreview()"></div></div>
             <div class="sx-field"><label>Defray Allowance</label>
               <div class="sx-money"><span>₹</span><input id="edit-special" type="number" class="form-control" placeholder="0" oninput="recalcSalaryPreview()"></div></div>
-            <div class="sx-field"><label>Gratuity <small>(monthly)</small></label>
-              <div class="sx-money"><span>₹</span><input id="edit-gratuity" type="number" class="form-control" placeholder="0" oninput="recalcSalaryPreview()"></div></div>
+            <div class="sx-field"><label>Gratuity <small>(Basic × 4.81% — auto)</small></label>
+              <div class="sx-money"><span>₹</span><input id="edit-gratuity" type="number" class="form-control" placeholder="Auto" oninput="recalcSalaryPreview()"></div></div>
             <div class="sx-field"><label>Food Coupon <small>(if eligible)</small></label>
               <div class="sx-money"><span>₹</span><input id="edit-food-coupon" type="number" class="form-control" placeholder="0" oninput="recalcSalaryPreview()"></div></div>
           </div>
@@ -2700,6 +2700,14 @@ function toggleESIOverride() {
     const b = document.getElementById('edit-esi-emr-override');
     if (a) a.value = ''; if (b) b.value = '';
   }
+}
+
+function autoCalcGratuity() {
+  const basicVal = parseFloat(document.getElementById('edit-basic')?.value) || 0;
+  const gratEl   = document.getElementById('edit-gratuity');
+  if (!gratEl) return;
+  const monthly = _salaryMode === 'annual' ? basicVal / 12 : basicVal;
+  gratEl.value  = Math.round(monthly * 0.0481);
 }
 
 function recalcSalaryPreview() {
